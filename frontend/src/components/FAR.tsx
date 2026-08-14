@@ -47,6 +47,7 @@ import {
   createOperationalMetricBadgeColumn,
   getOperationalContentAwareWidth,
 } from './shared/OperationalGoldenColumns'
+import { useFarOperatorIntelligence } from './FAR.operatorIntelligence'
 
 import 'ag-grid-community/styles/ag-grid.css'
 import 'ag-grid-community/styles/ag-theme-alpine.css'
@@ -305,12 +306,16 @@ export default function FAR() {
     () => filterFarModes(modes, searchTerm, quickFilters),
     [modes, quickFilters, searchTerm]
   )
-  const selectionScopeKey = useMemo(() => JSON.stringify({
+  const operatorIntelligence = useFarOperatorIntelligence({
+    rows: filteredModes,
     groupBy,
-    search: searchTerm.trim(),
+    searchTerm,
     quickFilters,
-    visibleIds: filteredModes.map((mode: any) => Number(mode.id)),
-  }), [filteredModes, groupBy, quickFilters, searchTerm])
+    onOpenDetail: (mode) => mode?.id && setSelectedModeId(Number(mode.id)),
+    gridRef,
+  })
+  const displayedModes = operatorIntelligence.rows
+  const selectionScopeKey = operatorIntelligence.selectionScopeKey
 
   const selectedMode = useMemo(() => modes?.find((m: any) => m.id === selectedModeId), [modes, selectedModeId])
 
@@ -388,18 +393,23 @@ export default function FAR() {
     },
     executeRequest: async ({ action, ids }) => {
       if (action !== 'delete') throw new Error('Unsupported FAR bulk action.')
-      const res = await apiFetch('/api/v1/far/modes/bulk-delete', {
-        method: 'POST',
-        body: JSON.stringify({ ids }),
-      })
-      if (!res.ok) throw new Error(await res.text())
-      const result = await res.json()
-      const changedCount = Number(result?.count || 0)
-      return {
-        ...result,
-        changed_count: changedCount,
-        unchanged_count: Math.max(0, ids.length - changedCount),
-        changed_ids: changedCount === ids.length ? ids : [],
+      operatorIntelligence.beginPending(ids)
+      try {
+        const res = await apiFetch('/api/v1/far/modes/bulk-delete', {
+          method: 'POST',
+          body: JSON.stringify({ ids }),
+        })
+        if (!res.ok) throw new Error(await res.text())
+        const result = await res.json()
+        const changedCount = Number(result?.count || 0)
+        return {
+          ...result,
+          changed_count: changedCount,
+          unchanged_count: Math.max(0, ids.length - changedCount),
+          changed_ids: changedCount === ids.length ? ids : [],
+        }
+      } finally {
+        operatorIntelligence.endPending(ids)
       }
     },
     refresh: () => queryClient.invalidateQueries({ queryKey: ['far', 'modes'] }),
@@ -412,15 +422,7 @@ export default function FAR() {
 
   // AgGrid Defs (High Density)
   const columnDefs = useMemo(() => [
-    ...createOperationalUtilityColumns({
-      includeRecentChange: false,
-      includeFavorite: false,
-      includeWatch: false,
-      isRecentChange: () => false,
-      onToggleFavorite: () => undefined,
-      onToggleWatch: () => undefined,
-      itemLabel: 'failure mode',
-    }),
+    ...createOperationalUtilityColumns(operatorIntelligence.utilityColumnsConfig),
     createOperationalGoldenTextColumn({
       field: 'system_name',
       headerName: 'System',
@@ -635,7 +637,7 @@ export default function FAR() {
         ><Trash2 size={14}/></button>,
       ]),
     })
-  ], [farDefaultWidths, fontSize, hiddenColumns, requestBulkPreview]) as any
+  ], [farDefaultWidths, fontSize, hiddenColumns, operatorIntelligence.utilityColumnsConfig, requestBulkPreview]) as any
 
   // Advanced Metrics Calculation
   const metrics = useMemo(() => {
@@ -723,7 +725,18 @@ export default function FAR() {
         <ToolbarSearch value={searchTerm} onChange={(event) => setSearchTerm(event.target.value)} placeholder="Scan risk vectors..." />
       )}
       toolbarControls={(
-        goldenWorkspace.toolbarControls
+        <>
+          {goldenWorkspace.toolbarControls}
+          <ToolbarGroup>
+            <ToolbarButton
+              active={operatorIntelligence.isIntelligenceExpanded}
+              onClick={() => operatorIntelligence.setIsIntelligenceExpanded((current) => !current)}
+              title={operatorIntelligence.isIntelligenceExpanded ? 'Hide activity columns' : 'Show activity columns'}
+            >
+              <Activity size={14} /> Signals
+            </ToolbarButton>
+          </ToolbarGroup>
+        </>
       )}
       toolbarActions={(
         goldenWorkspace.toolbarActions
@@ -804,14 +817,17 @@ export default function FAR() {
       <div className="relative flex min-h-0 flex-1 flex-col">
         <FAROperationalGridView
           gridRef={gridRef}
-          rows={filteredModes || []}
+          rows={displayedModes}
           groupBy={groupBy}
           selectionScopeKey={selectionScopeKey}
           selectedIds={selectedIds}
           setSelectedIds={setSelectedIds}
           columnDefs={columnDefs as any}
           runtime={goldenWorkspace.gridRuntime}
+          rowInteractions={operatorIntelligence.rowInteractions}
           contextMenu={goldenWorkspace.contextMenu}
+          gridContext={operatorIntelligence.gridContext}
+          getRowClass={operatorIntelligence.getRowClass}
           fontSize={fontSize}
           rowDensity={rowDensity}
           loading={modesLoading || !goldenWorkspace.workingStateReady}

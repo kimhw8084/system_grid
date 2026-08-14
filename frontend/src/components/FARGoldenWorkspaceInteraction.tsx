@@ -79,7 +79,10 @@ export function FAROperationalGridView({
   setSelectedIds,
   columnDefs,
   runtime,
+  rowInteractions,
   contextMenu,
+  gridContext,
+  getRowClass,
   fontSize,
   rowDensity,
   loading,
@@ -95,7 +98,10 @@ export function FAROperationalGridView({
   setSelectedIds: React.Dispatch<React.SetStateAction<number[]>>
   columnDefs: any[]
   runtime: any
+  rowInteractions: any
   contextMenu: any
+  gridContext: any
+  getRowClass: (params: any) => string
   fontSize: number
   rowDensity: number
   loading: boolean
@@ -131,7 +137,10 @@ export function FAROperationalGridView({
         rows={rows}
         columnDefs={columnDefs}
         runtime={runtime}
+        rowInteractions={rowInteractions}
         contextMenu={contextMenu}
+        context={gridContext}
+        getRowClass={getRowClass}
         fontSize={fontSize}
         rowDensity={rowDensity}
         noRowsLabel="No failure modes in scope"
@@ -194,7 +203,10 @@ export function FAROperationalGridView({
                 rows={section.items}
                 columnDefs={columnDefs}
                 runtime={runtime}
+                rowInteractions={rowInteractions}
                 contextMenu={contextMenu}
+                context={gridContext}
+                getRowClass={getRowClass}
                 fontSize={fontSize}
                 rowDensity={rowDensity}
                 noRowsLabel="No failure modes in group"

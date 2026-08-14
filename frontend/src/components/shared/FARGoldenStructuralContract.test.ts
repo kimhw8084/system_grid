@@ -6,6 +6,7 @@ import { FAR_PRESERVES_EXPLICIT_COLUMN_WIDTHS, getStableFarManualResizeLayout } 
 import { filterFarModes, groupFarModes, normalizeFarQuickFilters } from '../FAR.workspaceModel'
 import { FAR_WORKING_STATE_KEY, sanitizeFarWorkspaceViewConfig } from '../FAR.workspaceState'
 import { getOperationalContentAwareWidth } from './OperationalGoldenColumns'
+import { isFarRecentChange, sortFarModesByFavorite, toggleFarPreferenceId } from '../FAR.operatorIntelligence'
 
 const componentsRoot = path.resolve(process.cwd(), 'src/components')
 const read = (fileName: string) => fs.readFileSync(path.join(componentsRoot, fileName), 'utf8')
@@ -15,10 +16,10 @@ describe('FAR Monitoring-golden structural contract', () => {
     const far = read('FAR.tsx')
     const standard = read('shared/OperationalGridStandard.tsx')
 
-    expect(far).toContain('...createOperationalUtilityColumns({')
-    expect(far).toContain('includeRecentChange: false')
-    expect(far).toContain('includeFavorite: false')
-    expect(far).toContain('includeWatch: false')
+    expect(far).toContain('...createOperationalUtilityColumns(operatorIntelligence.utilityColumnsConfig)')
+    expect(read('FAR.operatorIntelligence.ts')).toContain('includeRecentChange: true')
+    expect(read('FAR.operatorIntelligence.ts')).toContain('includeFavorite: true')
+    expect(read('FAR.operatorIntelligence.ts')).toContain('includeWatch: true')
     expect(far).toContain('createOperationalActionColumnDefinition({')
     expect(far).toContain('width: OPERATIONAL_GRID_WIDTHS.standardAction')
     expect(far).toContain('renderOperationalActionButtons([')
@@ -227,6 +228,29 @@ describe('FAR Monitoring-golden structural contract', () => {
     expect(controls).toContain('groupOptions={FAR_GROUP_OPTIONS}')
     expect(controls).toContain('showFilterBar')
     expect(controls).toContain('quickFilters')
+  })
+
+  it('adds Monitoring-golden operator intelligence without changing FAR semantics', () => {
+    const far = read('FAR.tsx')
+    const interaction = read('FARGoldenWorkspaceInteraction.tsx')
+
+    expect(toggleFarPreferenceId([2], 1)).toEqual([2, 1])
+    expect(toggleFarPreferenceId([2, 1], 2)).toEqual([1])
+    expect(sortFarModesByFavorite([{ id: 1 }, { id: 2 }, { id: 3 }], [2]).map((row) => row.id)).toEqual([2, 1, 3])
+    const visitedAt = Date.parse('2026-08-14T01:00:00Z')
+    expect(isFarRecentChange({ updated_at: '2026-08-14T02:00:00Z' }, visitedAt)).toBe(true)
+    expect(isFarRecentChange({ updated_at: '2026-08-14T00:30:00Z' }, visitedAt)).toBe(false)
+
+    expect(far).toContain('operatorIntelligence.beginPending(ids)')
+    expect(far).toContain('operatorIntelligence.endPending(ids)')
+    expect(far).toContain('operatorIntelligence.isIntelligenceExpanded')
+    expect(far).toContain('<Activity size={14} /> Signals')
+    expect(far).toContain('rowInteractions={operatorIntelligence.rowInteractions}')
+    expect(far).toContain('gridContext={operatorIntelligence.gridContext}')
+    expect(far).toContain('getRowClass={operatorIntelligence.getRowClass}')
+    expect(interaction).toContain('rowInteractions={rowInteractions}')
+    expect(interaction).toContain('context={gridContext}')
+    expect(interaction).toContain('getRowClass={getRowClass}')
   })
 
   it('keeps FAR analytical semantics intact while adopting the shared frame', () => {
