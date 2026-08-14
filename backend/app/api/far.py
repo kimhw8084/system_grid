@@ -12,7 +12,23 @@ from sqlalchemy import delete, update
 from ..api.utils import filter_valid_columns, normalize_json_object, normalize_json_list
 
 router = APIRouter(prefix="/far", tags=["FAR"])
-IMMUTABLE_FAR_FIELDS = {"id", "created_at", "updated_at", "created_by_user_id", "version"}
+IMMUTABLE_FAR_FIELDS = {"id", "created_at", "updated_at", "created_by_user_id", "version", "is_deleted"}
+
+FAR_HISTORY_FIELD_LABELS = {
+    "system_name": "System",
+    "failure_type": "Failure type",
+    "title": "Failure mode",
+    "effect": "Effect",
+    "severity": "Severity",
+    "occurrence": "Occurrence",
+    "detection": "Detection",
+    "rpn": "RPN",
+    "status": "Maturity status",
+    "affected_asset_ids": "Affected assets",
+    "cause_ids": "Causes",
+    "has_incident_history": "Incident history",
+    "is_deleted": "Lifecycle",
+}
 
 def build_far_snapshot(mode: models.FarFailureMode) -> dict:
     """Creates a forensic snapshot of a Failure Mode."""
@@ -27,8 +43,35 @@ def build_far_snapshot(mode: models.FarFailureMode) -> dict:
         "rpn": mode.rpn,
         "status": mode.status,
         "affected_asset_ids": [a.id for a in mode.affected_assets],
-        "cause_ids": [c.id for c in mode.causes]
+        "cause_ids": [c.id for c in mode.causes],
+        "has_incident_history": bool(mode.has_incident_history),
+        "is_deleted": bool(mode.is_deleted),
     }
+
+def build_far_history_delta(previous_snapshot: Optional[dict], current_snapshot: dict) -> list[dict]:
+    previous = previous_snapshot or {}
+    current = current_snapshot or {}
+    keys = list(dict.fromkeys([*FAR_HISTORY_FIELD_LABELS.keys(), *previous.keys(), *current.keys()]))
+    delta = []
+    for field in keys:
+        previous_value = previous.get(field, False) if field == "is_deleted" else previous.get(field)
+        current_value = current.get(field, False) if field == "is_deleted" else current.get(field)
+        if previous_snapshot is not None and previous_value == current_value:
+            continue
+        if field == "is_deleted":
+            change_type = "archived" if current_value else "restored"
+        elif previous_snapshot is None:
+            change_type = "created"
+        else:
+            change_type = "updated"
+        delta.append({
+            "field": field,
+            "label": FAR_HISTORY_FIELD_LABELS.get(field, field.replace("_", " ").title()),
+            "before": previous_value,
+            "after": current_value,
+            "change_type": change_type,
+        })
+    return delta
 
 async def save_far_history(mode_id: int, version: int, db: AsyncSession, summary: str = None):
     stmt = select(models.FarFailureMode).options(
@@ -55,7 +98,11 @@ async def save_far_history(mode_id: int, version: int, db: AsyncSession, summary
 # --- FAILURE MODES ---
 
 @router.get("/modes", response_model=List[schemas.FarFailureModeResponse])
-async def get_failure_modes(system: Optional[str] = None, db: AsyncSession = Depends(get_db)):
+async def get_failure_modes(
+    system: Optional[str] = None,
+    include_deleted: bool = False,
+    db: AsyncSession = Depends(get_db),
+):
     stmt = select(models.FarFailureMode).options(
         selectinload(models.FarFailureMode.causes).selectinload(models.FarFailureCause.resolutions).selectinload(models.FarResolution.knowledge_bkm),
         selectinload(models.FarFailureMode.causes).selectinload(models.FarFailureCause.mitigations),
@@ -64,7 +111,9 @@ async def get_failure_modes(system: Optional[str] = None, db: AsyncSession = Dep
         selectinload(models.FarFailureMode.affected_assets),
         selectinload(models.FarFailureMode.prevention_actions),
         selectinload(models.FarFailureMode.linked_rcas)
-    ).filter(models.FarFailureMode.is_deleted == False)
+    )
+    if not include_deleted:
+        stmt = stmt.filter(models.FarFailureMode.is_deleted == False)
     
     if system:
         stmt = stmt.filter(models.FarFailureMode.system_name == system)
@@ -181,7 +230,24 @@ async def update_failure_mode(mode_id: int, data: dict, db: AsyncSession = Depen
 async def get_far_history(mode_id: int, db: AsyncSession = Depends(get_db)):
     stmt = select(models.FarHistory).filter(models.FarHistory.far_mode_id == mode_id).order_by(models.FarHistory.version.desc())
     res = await db.execute(stmt)
-    return res.scalars().all()
+    entries = list(res.scalars().all())
+    history = []
+    for index, entry in enumerate(entries):
+        previous_entry = entries[index + 1] if index + 1 < len(entries) else None
+        delta = build_far_history_delta(previous_entry.snapshot if previous_entry else None, entry.snapshot or {})
+        history.append({
+            "id": entry.id,
+            "far_mode_id": entry.far_mode_id,
+            "version": entry.version,
+            "snapshot": entry.snapshot,
+            "change_summary": entry.change_summary,
+            "created_at": entry.created_at,
+            "previous_version": previous_entry.version if previous_entry else None,
+            "delta": delta,
+            "changed_fields": [item["field"] for item in delta],
+            "changed_labels": [item["label"] for item in delta],
+        })
+    return history
 
 @router.post("/modes/{mode_id}/restore/{version}")
 async def restore_far_version(mode_id: int, version: int, db: AsyncSession = Depends(get_db)):
@@ -195,7 +261,7 @@ async def restore_far_version(mode_id: int, version: int, db: AsyncSession = Dep
     mode = mode_res.scalar_one()
     
     snapshot = history.snapshot
-    # Apply snapshot (Cloned from standard)
+    # Content-version restore must not mutate the independent archive lifecycle.
     for k, v in snapshot.items():
         if k == 'affected_asset_ids' and isinstance(v, list):
             asset_stmt = select(models.Device).filter(models.Device.id.in_(v))
@@ -205,6 +271,8 @@ async def restore_far_version(mode_id: int, version: int, db: AsyncSession = Dep
             cause_stmt = select(models.FarFailureCause).filter(models.FarFailureCause.id.in_(v))
             cause_res = await db.execute(cause_stmt)
             mode.causes = list(cause_res.scalars().all())
+        elif k == 'is_deleted':
+            continue
         elif hasattr(mode, k):
             setattr(mode, k, v)
             
@@ -220,10 +288,15 @@ async def delete_failure_mode(mode_id: int, db: AsyncSession = Depends(get_db)):
     result = await db.execute(stmt)
     mode = result.scalar_one_or_none()
     if not mode: raise HTTPException(404)
+    if mode.is_deleted:
+        return {"status": "success", "changed": False, "version": mode.version}
     
     mode.is_deleted = True
+    mode.version = (mode.version or 1) + 1
+    await db.flush()
+    await save_far_history(mode.id, mode.version, db, "Archived failure vector")
     await db.commit()
-    return {"status": "success"}
+    return {"status": "success", "changed": True, "version": mode.version}
 
 @router.post("/modes/bulk-delete")
 async def bulk_delete_failure_modes(data: dict, db: AsyncSession = Depends(get_db)):
@@ -233,12 +306,55 @@ async def bulk_delete_failure_modes(data: dict, db: AsyncSession = Depends(get_d
     stmt = select(models.FarFailureMode).filter(models.FarFailureMode.id.in_(ids))
     result = await db.execute(stmt)
     modes = result.scalars().all()
-    
+    changed = []
     for mode in modes:
+        if mode.is_deleted:
+            continue
         mode.is_deleted = True
+        mode.version = (mode.version or 1) + 1
+        await db.flush()
+        await save_far_history(mode.id, mode.version, db, "Archived failure vector")
+        changed.append(mode.id)
         
     await db.commit()
-    return {"status": "success", "count": len(modes)}
+    return {"status": "success", "count": len(changed), "changed_ids": changed}
+
+@router.post("/modes/{mode_id}/restore")
+async def restore_failure_mode(mode_id: int, db: AsyncSession = Depends(get_db)):
+    stmt = select(models.FarFailureMode).filter(models.FarFailureMode.id == mode_id)
+    result = await db.execute(stmt)
+    mode = result.scalar_one_or_none()
+    if not mode: raise HTTPException(404)
+    if not mode.is_deleted:
+        return {"status": "success", "changed": False, "version": mode.version}
+
+    mode.is_deleted = False
+    mode.version = (mode.version or 1) + 1
+    await db.flush()
+    await save_far_history(mode.id, mode.version, db, "Restored failure vector")
+    await db.commit()
+    return {"status": "success", "changed": True, "version": mode.version}
+
+@router.post("/modes/bulk-restore")
+async def bulk_restore_failure_modes(data: dict, db: AsyncSession = Depends(get_db)):
+    ids = data.get("ids", [])
+    if not ids: return {"status": "success", "count": 0}
+
+    stmt = select(models.FarFailureMode).filter(models.FarFailureMode.id.in_(ids))
+    result = await db.execute(stmt)
+    modes = result.scalars().all()
+    changed = []
+    for mode in modes:
+        if not mode.is_deleted:
+            continue
+        mode.is_deleted = False
+        mode.version = (mode.version or 1) + 1
+        await db.flush()
+        await save_far_history(mode.id, mode.version, db, "Restored failure vector")
+        changed.append(mode.id)
+
+    await db.commit()
+    return {"status": "success", "count": len(changed), "changed_ids": changed}
 
 # --- CAUSES ---
 
