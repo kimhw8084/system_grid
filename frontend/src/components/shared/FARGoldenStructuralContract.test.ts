@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import fs from 'node:fs'
 import path from 'node:path'
 import { OPERATIONAL_GRID_WIDTHS } from './OperationalGridContract'
+import { FAR_PRESERVES_EXPLICIT_COLUMN_WIDTHS, getStableFarManualResizeLayout } from '../FAR.gridStability'
 
 const componentsRoot = path.resolve(process.cwd(), 'src/components')
 const read = (fileName: string) => fs.readFileSync(path.join(componentsRoot, fileName), 'utf8')
@@ -63,6 +64,31 @@ describe('FAR Monitoring-golden structural contract', () => {
     expect(controls).toContain('centerViewportWidth < FAR_MIN_DESKTOP_CENTER_VIEWPORT_WIDTH')
     expect(controls).toContain('requestedPinnedWidth > Math.max(0, window.innerWidth - FAR_MIN_DESKTOP_CENTER_VIEWPORT_WIDTH)')
     expect(controls).toContain("api.ensureColumnVisible?.('title', 'middle')")
+  })
+
+
+  it('keeps FAR sizing stable on load and persists only completed manual resize state', () => {
+    const controls = read('FARGoldenWorkspaceControls.tsx')
+    const state = [
+      { colId: 'system_name', width: 164, hide: false, pinned: null, sort: null, sortIndex: null, flex: null },
+      { colId: 'title', width: 312, hide: false, pinned: null, sort: null, sortIndex: null, flex: null },
+    ]
+    const api = { getColumnState: () => state }
+
+    expect(FAR_PRESERVES_EXPLICIT_COLUMN_WIDTHS).toBe(true)
+    expect(getStableFarManualResizeLayout({ finished: false, source: 'uiColumnResized', api })).toBeNull()
+    for (const source of ['autosizeColumns', 'sizeColumnsToFit', 'api', 'flex']) {
+      expect(getStableFarManualResizeLayout({ finished: true, source, api })).toBeNull()
+    }
+    expect(getStableFarManualResizeLayout({ finished: true, source: 'uiColumnResized', api })).toEqual([
+      { colId: 'system_name', hide: false, pinned: null, sort: null, sortIndex: null, width: 164, flex: null },
+      { colId: 'title', hide: false, pinned: null, sort: null, sortIndex: null, width: 312, flex: null },
+    ])
+
+    expect(controls).toContain('preserveExplicitColumnWidths: FAR_PRESERVES_EXPLICIT_COLUMN_WIDTHS')
+    expect(controls).toContain('handleColumnResized: handleStableColumnResized')
+    expect(controls).not.toContain('api.sizeColumnsToFit?.()')
+    expect(controls).not.toContain('handleColumnResized,\n  } = useOperationalGridLayout')
   })
 
   it('keeps FAR analytical semantics intact while adopting the shared frame', () => {

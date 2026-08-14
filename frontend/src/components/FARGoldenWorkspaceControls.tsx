@@ -46,6 +46,7 @@ import {
   sanitizeOperationalFilterModel,
   sanitizeOperationalSortModel,
 } from './shared/OperationalGridSizing'
+import { FAR_PRESERVES_EXPLICIT_COLUMN_WIDTHS, getStableFarManualResizeLayout } from './FAR.gridStability'
 import {
   isRemoteWorkspaceViewId,
   useCollaborativeWorkspaceViews,
@@ -167,10 +168,8 @@ export function useFARGoldenWorkspaceControls({
     columnLayoutState,
     setColumnLayoutState,
     setTransientManualColumnWidths,
-    preserveExplicitColumnWidths,
     syncColumnLayoutState,
     applyColumnLayoutState,
-    handleColumnResized,
   } = useOperationalGridLayout([], false)
   const {
     handleColumnMoved,
@@ -257,15 +256,7 @@ export function useFARGoldenWorkspaceControls({
         }, 0)
         const persistedPinnedLayoutOverwhelmsViewport = window.innerWidth >= 900
           && requestedPinnedWidth > Math.max(0, window.innerWidth - FAR_MIN_DESKTOP_CENTER_VIEWPORT_WIDTH)
-        const shouldFitRecoveredLayout = requestedLayout.length > 0 && !hasExplicitColumnSizing(requestedLayout)
-
         if (!persistedPinnedLayoutOverwhelmsViewport && !noCenterColumns && !collapsedDesktopViewport) {
-          if (shouldFitRecoveredLayout) {
-            window.requestAnimationFrame(() => {
-              api.sizeColumnsToFit?.()
-              api.ensureColumnVisible?.('title', 'middle')
-            })
-          }
           return
         }
 
@@ -292,7 +283,6 @@ export function useFARGoldenWorkspaceControls({
         }))
         setTransientManualColumnWidths(false)
         window.requestAnimationFrame(() => {
-          api.sizeColumnsToFit?.()
           api.ensureColumnVisible?.('title', 'middle')
         })
       })
@@ -406,17 +396,24 @@ export function useFARGoldenWorkspaceControls({
     scheduleGridOperabilityCheck(params.api, config.columnLayoutState)
   }, [applyColumnLayoutState, currentDefinition, scheduleGridOperabilityCheck, setTransientManualColumnWidths])
 
+  const handleStableColumnResized = useCallback((event: any) => {
+    const nextLayout = getStableFarManualResizeLayout(event)
+    if (!nextLayout) return
+    setTransientManualColumnWidths(true)
+    setColumnLayoutState(nextLayout)
+  }, [setColumnLayoutState, setTransientManualColumnWidths])
+
   const gridRuntime = useMemo(() => ({
-    preserveExplicitColumnWidths,
+    preserveExplicitColumnWidths: FAR_PRESERVES_EXPLICIT_COLUMN_WIDTHS,
     handleGridReady,
-    handleColumnResized,
+    handleColumnResized: handleStableColumnResized,
     handleColumnMoved,
     handleDragStopped,
     handleColumnPinned,
     handleColumnVisible,
     handleFilterChanged: (event: any) => setGridFilterModel(sanitizeOperationalFilterModel(event.api?.getFilterModel?.() || {}, FAR_PERSISTED_COLUMN_IDS)),
     handleSortChanged: (event: any) => setGridSortModel(sanitizeOperationalSortModel(readSortModel(event.api), FAR_PERSISTED_COLUMN_IDS) as FarWorkspaceViewConfig['sortModel']),
-  }), [handleColumnMoved, handleColumnPinned, handleColumnResized, handleColumnVisible, handleDragStopped, handleGridReady, preserveExplicitColumnWidths])
+  }), [handleColumnMoved, handleColumnPinned, handleColumnVisible, handleDragStopped, handleGridReady, handleStableColumnResized])
 
   const toggleColumn = useCallback((field: string) => {
     const currentlyHidden = hiddenColumns.includes(field)
