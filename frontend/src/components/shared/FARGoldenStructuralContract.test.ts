@@ -33,6 +33,26 @@ describe('FAR Monitoring-golden structural contract', () => {
     expect(OPERATIONAL_GRID_WIDTHS.standardAction).toBe(208)
   })
 
+  it('bounds FAR center columns before the shared fitCellContents auto-size runs', () => {
+    const far = read('FAR.tsx')
+    const block = (field: string) => far.split(`field: "${field}"`)[1]?.split('    },')[0] || ''
+
+    expect(block('system_name')).toContain('maxWidth: 180')
+    expect(block('failure_type')).toContain('maxWidth: 130')
+    expect(block('title')).toContain('width: 240')
+    expect(block('title')).toContain('minWidth: 170')
+    expect(block('title')).toContain('maxWidth: 340')
+    expect(block('title')).not.toContain('flex: 2')
+    expect(block('severity')).toContain('maxWidth: 90')
+    expect(block('occurrence')).toContain('maxWidth: 90')
+    expect(block('detection')).toContain('maxWidth: 90')
+    expect(block('rpn')).toContain('maxWidth: 100')
+    expect(block('status')).toContain('maxWidth: 170')
+    expect(block('linked_rcas')).toContain('maxWidth: 140')
+    expect(block('created_by_user_id')).toContain('maxWidth: 160')
+    expect(far).toContain('headerName: "Vectors",\n      width: 160,\n      minWidth: 150,\n      maxWidth: 180,')
+  })
+
   it('recovers before FAR loses the golden analytical center viewport', () => {
     const controls = read('FARGoldenWorkspaceControls.tsx')
 
