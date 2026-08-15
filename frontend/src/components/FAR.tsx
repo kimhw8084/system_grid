@@ -1,5 +1,16 @@
 import React, { useState, useMemo, useEffect } from 'react'
-import { WorkspaceEmptyState } from "./shared/OperationalWorkspacePrimitives";
+import {
+  WorkspaceCollapsibleHeader,
+  WorkspaceEmptyState,
+  WorkspaceFieldError,
+  WorkspaceFieldLabel,
+  WorkspaceSectionBadge,
+  WorkspaceSectionCard,
+  WorkspaceSelectField,
+  WorkspaceStickyIdentityBar,
+  WorkspaceValidationBanner,
+  getWorkspaceInputClass,
+} from './shared/OperationalWorkspacePrimitives'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { 
@@ -16,7 +27,6 @@ import { apiFetch } from '../api/apiClient'
 import { toast } from 'react-hot-toast'
 import { formatAppDate } from '../utils/dateUtils'
 import { BulkImportModal } from './shared/BulkImportModal'
-import { StyledSelect } from './shared/StyledSelect'
 import { StatusPill } from './shared/StatusPill'
 import { ConfigRegistryModal } from './ConfigRegistry'
 import { MonitoringForm } from './monitoring/MonitoringForm'
@@ -49,6 +59,18 @@ import {
   getOperationalContentAwareWidth,
 } from './shared/OperationalGoldenColumns'
 import { useFarOperatorIntelligence } from './FAR.operatorIntelligence'
+import { WorkspaceModal } from './shared/WorkspaceModal'
+import { useOperationalFormDirty } from './shared/OperationalFormContracts'
+import { parseOperationalApiValidationError } from './shared/OperationalFieldValidation'
+import {
+  buildFarAuthoringDraft,
+  buildFarAuthoringErrors,
+  changeFarAuthoringSystem,
+  getFarAuthoringFirstErrorTab,
+  getFarAuthoringTabErrorCounts,
+  sanitizeFarAuthoringPayload,
+  type FarAuthoringTab,
+} from './FAR.authoringModel'
 
 import 'ag-grid-community/styles/ag-grid.css'
 import 'ag-grid-community/styles/ag-theme-alpine.css'
@@ -1081,24 +1103,15 @@ export default function FAR() {
          displayName="Failure Modes & Risk Matrix" 
       />
 
-      <AnimatePresence>
-        {showWizard && (
-          <div className="fixed inset-0 z-[150] flex items-center justify-center bg-black/90 backdrop-blur-xl p-10">
-            <motion.div initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} className="glass-panel w-full max-w-6xl h-[85vh] flex flex-col rounded-lg border border-rose-500/20 overflow-hidden shadow-2xl">
-               <div className="px-8 py-6 border-b border-white/5 bg-white/5 flex items-start justify-between shrink-0">
-                  <div>
-                    <h1 className="text-3xl font-bold uppercase tracking-tighter text-white">{selectedMode ? 'Edit Failure Mode' : 'New Failure Mode'}</h1>
-                    <p className="text-[9px] text-slate-500 font-bold uppercase tracking-[0.3em]">Reliability Engineering Risk Documentation Studio</p>
-                  </div>
-                  <button onClick={() => setShowWizard(false)} className="p-2 bg-white/5 hover:bg-white/10 rounded-lg text-slate-500 hover:text-white transition-all"><X size={20}/></button>
-               </div>
-               <div className="flex-1 overflow-y-auto custom-scrollbar p-8">
-                 <FARWizard initialData={selectedMode} onComplete={() => { setShowWizard(false); queryClient.invalidateQueries({ queryKey: ['far', 'modes'] }); }} />
-               </div>
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
+      <FARAuthoringModal
+        isOpen={showWizard}
+        initialData={selectedMode}
+        onClose={() => setShowWizard(false)}
+        onComplete={() => {
+          setShowWizard(false)
+          queryClient.invalidateQueries({ queryKey: ['far', 'modes'] })
+        }}
+      />
 
       <OperationalBulkPreviewModal
         isOpen={Boolean(bulkOperationPreview)}
@@ -1418,159 +1431,329 @@ export function GaugeSelector({ label, value, onChange, levels, color, accent }:
   )
 }
 
-function FARWizard({ initialData, onComplete }: any) {
-  const buildFormData = (value: any) => {
-    const base = {
-      system_name: '',
-      failure_type: 'Design',
-      title: '',
-      effect: '',
-      severity: 1,
-      occurrence: 1,
-      detection: 1,
-      affected_assets: [],
-      ...value
-    }
-    if (base.affected_assets && base.affected_assets.length > 0 && typeof base.affected_assets[0] === 'object') {
-      base.affected_assets = base.affected_assets.map((a: any) => a.id)
-    }
-    return base
-  }
-  const [formData, setFormData] = useState<any>(() => {
-    return buildFormData(initialData)
+function FARAuthoringModal({ isOpen, initialData, onClose, onComplete }: any) {
+  const [activeTab, setActiveTab] = useState<FarAuthoringTab>('definition')
+  const [formErrors, setFormErrors] = useState<Record<string, string>>({})
+  const [generalError, setGeneralError] = useState('')
+  const [submitAttempted, setSubmitAttempted] = useState(false)
+  const [collapsedSections, setCollapsedSections] = useState<Record<string, boolean>>({
+    identity: false,
+    context: false,
+    risk: false,
+    assets: false,
   })
-  const [assetSearch, setAssetSearch] = useState('')
-  useEffect(() => {
-    setFormData(buildFormData(initialData))
-    setAssetSearch('')
-  }, [initialData])
-  const { data: options } = useQuery({ queryKey: ['settings-options'], queryFn: async () => (await apiFetch('/api/v1/settings/options')).json() })
-  const systems = options?.filter((o: any) => o.category === 'LogicalSystem') || []
-  const { data: devices } = useQuery({ 
-    queryKey: ['devices-far', formData.system_name], 
-    enabled: !!formData.system_name, 
-    queryFn: async () => (await apiFetch(`/api/v1/devices?system=${encodeURIComponent(formData.system_name)}`)).json() 
-  })
-  const mutation = useMutation({ 
-    mutationFn: async (data: any) => {
-      const url = data.id ? `/api/v1/far/modes/${data.id}` : '/api/v1/far/modes';
-      // Clean payload: Filter out relationship objects and keep only IDs
-      const payload = { ...data };
-      if (payload.affected_assets && typeof payload.affected_assets[0] === 'object') {
-        payload.affected_assets = payload.affected_assets.map((a: any) => a.id);
-      }
-      // causes, mitigations, etc are managed in sub-modals, filter them out from mode update
-      delete payload.causes;
-      delete payload.mitigations;
-      delete payload.prevention_actions;
-      delete payload.linked_rcas;
-      
-      // Safety: Strip read-only fields that error out the backend on PUT (SQLite strictness)
-      delete payload.created_at;
-      delete payload.updated_at;
-      delete payload.created_by_user_id;
-      delete payload.version;
-      delete payload.is_deleted;
 
-      const res = await apiFetch(url, { 
-        method: data.id ? 'PUT' : 'POST', 
-        body: JSON.stringify(payload) 
-      });
-      if (!res.ok) throw new Error(await res.text());
-      return res.json();
-    }, 
-    onSuccess: () => { toast.success('Registry Synchronized'); onComplete(); } 
+  const initialDraft = useMemo(() => buildFarAuthoringDraft(initialData), [initialData])
+  const {
+    value: formData,
+    isDirty,
+    updateValue: updateFormData,
+    resetDirty,
+    resolveIsDirty,
+  } = useOperationalFormDirty(initialDraft, sanitizeFarAuthoringPayload)
+
+  useEffect(() => {
+    if (!isOpen) return
+    setActiveTab('definition')
+    setFormErrors({})
+    setGeneralError('')
+    setSubmitAttempted(false)
+    setCollapsedSections({ identity: false, context: false, risk: false, assets: false })
+  }, [initialData?.id, isOpen])
+
+  useEffect(() => {
+    if (!submitAttempted) return
+    setFormErrors(buildFarAuthoringErrors(formData))
+  }, [formData, submitAttempted])
+
+  const { data: options } = useQuery({
+    queryKey: ['settings-options'],
+    enabled: isOpen,
+    queryFn: async () => (await apiFetch('/api/v1/settings/options')).json(),
   })
-  const rpn = formData.severity * formData.occurrence * formData.detection
+  const systems = options?.filter((option: any) => option.category === 'LogicalSystem') || []
+  const { data: devices } = useQuery({
+    queryKey: ['devices-far', formData.system_name],
+    enabled: isOpen && Boolean(formData.system_name),
+    queryFn: async () => (await apiFetch(`/api/v1/devices?system=${encodeURIComponent(formData.system_name)}`)).json(),
+  })
+
+  const isArchived = Boolean(initialData?.is_deleted)
+  const rpn = Number(formData.severity || 0) * Number(formData.occurrence || 0) * Number(formData.detection || 0)
+  const tabErrors = useMemo(() => getFarAuthoringTabErrorCounts(formErrors), [formErrors])
+  const totalErrors = Object.keys(formErrors).length
+  const tabs = useMemo(() => [
+    { id: 'definition', label: 'Definition', badgeCount: tabErrors.definition },
+    { id: 'risk', label: 'Risk', badgeCount: tabErrors.risk },
+    { id: 'impact', label: 'Impact', badgeCount: tabErrors.impact },
+  ], [tabErrors])
+
+  const patchFormData = (patch: Record<string, any>) => {
+    setGeneralError('')
+    updateFormData((current: any) => ({ ...current, ...patch }))
+  }
+
+  const mutation = useMutation({
+    mutationFn: async (data: any) => {
+      if (isArchived) throw new Error('Archived failure vectors are read-only. Restore the vector before editing it.')
+      const url = data.id ? `/api/v1/far/modes/${data.id}` : '/api/v1/far/modes'
+      const res = await apiFetch(url, {
+        method: data.id ? 'PUT' : 'POST',
+        body: JSON.stringify(sanitizeFarAuthoringPayload(data)),
+      })
+      if (!res.ok) throw new Error(await res.text())
+      return res.json()
+    },
+    onSuccess: (data: any) => {
+      setGeneralError('')
+      resetDirty(buildFarAuthoringDraft(data ? { ...formData, ...data } : formData))
+      toast.success('Registry Synchronized')
+      onComplete()
+    },
+    onError: (error: any) => {
+      const parsed = parseOperationalApiValidationError(error)
+      const nextErrors = { ...buildFarAuthoringErrors(formData), ...parsed.fieldErrors }
+      setFormErrors(nextErrors)
+      setGeneralError(parsed.generalError || error?.message || 'Unable to save the failure vector.')
+      if (Object.keys(nextErrors).length) setActiveTab(getFarAuthoringFirstErrorTab(nextErrors))
+    },
+  })
+
+  const handleSubmit = () => {
+    if (mutation.isPending) return
+    setSubmitAttempted(true)
+    if (isArchived) {
+      setGeneralError('Archived failure vectors are read-only. Restore the vector before editing it.')
+      return
+    }
+    const errors = buildFarAuthoringErrors(formData)
+    setFormErrors(errors)
+    if (Object.keys(errors).length) {
+      setGeneralError(`Resolve ${Object.keys(errors).length} validation issue${Object.keys(errors).length === 1 ? '' : 's'} before committing.`)
+      setActiveTab(getFarAuthoringFirstErrorTab(errors))
+      return
+    }
+    setGeneralError('')
+    mutation.mutate(formData)
+  }
+
+  const toggleSection = (key: string) => {
+    setCollapsedSections((current) => ({ ...current, [key]: !current[key] }))
+  }
+
+  const handleClose = () => {
+    resetDirty(initialDraft)
+    setFormErrors({})
+    setGeneralError('')
+    setSubmitAttempted(false)
+    setActiveTab('definition')
+    onClose()
+  }
 
   return (
-    <div className="grid grid-cols-12 gap-6 font-bold uppercase tracking-tight">
-       <div className="col-span-6 space-y-4">
-          <div className="grid grid-cols-2 gap-4">
-             <div className="space-y-1">
-                <label className="text-[9px] font-bold text-slate-500 ">Operational Domain *</label>
-                <StyledSelect options={systems.map((s: any) => ({ label: s.label, value: s.value }))} value={formData.system_name} onChange={e => setFormData({ ...formData, system_name: e.target.value })} />
-             </div>
-             <div className="space-y-1">
-                <label className="text-[9px] font-bold text-slate-500 ">Root Classification *</label>
-                <StyledSelect options={FAILURE_TYPES} value={formData.failure_type} onChange={e => setFormData({ ...formData, failure_type: e.target.value })} />
-             </div>
+    <WorkspaceModal
+      isOpen={isOpen}
+      onClose={handleClose}
+      size="workspace"
+      title={initialData ? 'Edit Failure Mode' : 'New Failure Mode'}
+      subtitle="Reliability Engineering Risk Documentation Studio"
+      icon={<Target size={22} />}
+      status={isArchived
+        ? <WorkspaceSectionBadge tone="amber">Archived · read-only</WorkspaceSectionBadge>
+        : <WorkspaceSectionBadge tone={isDirty ? 'amber' : 'emerald'}>{isDirty ? 'Unsaved changes' : 'Draft synchronized'}</WorkspaceSectionBadge>}
+      forensicLineage={initialData ? { createdAt: initialData.created_at, updatedAt: initialData.updated_at } : undefined}
+      tabs={tabs}
+      activeTab={activeTab}
+      onTabChange={(tab) => setActiveTab(tab as FarAuthoringTab)}
+      isDirty={isDirty && !isArchived}
+      resolveIsDirty={resolveIsDirty}
+      dirtyConfirmTitle="Discard FAR changes?"
+      dirtyConfirmMessage="This failure vector has unsaved authoring changes. Close and discard them?"
+      dirtyConfirmText="Discard changes"
+      footerLeft={(
+        <div className="flex flex-wrap items-center gap-2 text-[9px] font-semibold text-slate-500">
+          <span>RPN {rpn}</span>
+          <span className="h-1 w-1 rounded-full bg-slate-700" />
+          <span>{isDirty ? 'Unsaved authoring state' : 'No pending changes'}</span>
+        </div>
+      )}
+      footerRight={(
+        <ToolbarButton
+          variant="primary"
+          onClick={handleSubmit}
+          disabled={mutation.isPending || isArchived}
+          className="min-w-32 justify-center"
+        >
+          {mutation.isPending ? <RefreshCcw size={14} className="animate-spin" /> : <Save size={14} />}
+          {mutation.isPending ? 'Committing…' : 'Commit'}
+        </ToolbarButton>
+      )}
+    >
+      <WorkspaceStickyIdentityBar>
+        <div className="flex flex-wrap items-center justify-between gap-4">
+          <div className="min-w-0">
+            <div className="flex flex-wrap items-center gap-2">
+              <WorkspaceSectionBadge tone="rose">{formData.id ? `VECTOR_${formData.id}` : 'NEW_VECTOR'}</WorkspaceSectionBadge>
+              <WorkspaceSectionBadge>{formData.system_name || 'Domain not selected'}</WorkspaceSectionBadge>
+              <WorkspaceSectionBadge>{formData.failure_type || 'Classification not selected'}</WorkspaceSectionBadge>
+            </div>
+            <p className="mt-2 truncate text-sm font-black text-white">{formData.title || 'Untitled failure vector'}</p>
           </div>
-          <div className="space-y-1">
-             <label className="text-[9px] font-bold text-slate-500 ">Incidence Signature *</label>
-             <input value={formData.title} onChange={e => setFormData({ ...formData, title: e.target.value })} placeholder="E.G., DATABASE_CONNECTION_TIMEOUT" className="w-full bg-black/40 border border-white/10 rounded-lg px-4 py-2 text-xs font-bold text-white outline-none focus:border-rose-500  placeholder:text-slate-700" />
+          <div className="text-right">
+            <p className="text-[8px] font-bold uppercase tracking-widest text-slate-600">Risk priority</p>
+            <p className={`text-2xl font-black ${rpn > 150 ? 'text-rose-400' : rpn >= 80 ? 'text-amber-400' : 'text-emerald-400'}`}>{rpn}</p>
           </div>
-          <div className="space-y-1">
-             <label className="text-[9px] font-bold text-slate-500 ">Consequence Assessment (Effect)</label>
-             <textarea value={formData.effect} onChange={e => setFormData({ ...formData, effect: e.target.value })} placeholder="Describe the systemic consequences..." className="w-full bg-black/40 border border-white/10 rounded-lg p-4 text-xs font-bold text-white min-h-[60px] outline-none focus:border-rose-500 custom-scrollbar  placeholder:text-slate-700" />
-          </div>
-          <div className="bg-black/20 p-4 rounded-lg border border-white/5 space-y-3">
-             <div className="flex items-center justify-between">
-                <label className="text-[9px] font-bold text-slate-500 ">Blast Radius Entities</label>
-                <div className="relative">
-                   <Search size={10} className="absolute left-2 top-1/2 -translate-y-1/2 text-slate-600" />
-                   <input value={assetSearch} onChange={e => setAssetSearch(e.target.value)} placeholder="SCAN..." className="bg-black/40 border border-white/10 rounded-lg pl-7 pr-2 py-1 text-[9px] font-bold outline-none focus:border-rose-500 w-32" />
-                </div>
-             </div>
-             <div className="grid grid-cols-2 gap-2 max-h-[120px] overflow-y-auto pr-2 custom-scrollbar">
-                {devices?.filter((d: any) => !assetSearch || d.name.toLowerCase().includes(assetSearch.toLowerCase())).map((d: any) => (
-                  <label key={d.id} 
-                    className={`flex items-center gap-3 p-2 rounded-lg border transition-all cursor-pointer ${formData.affected_assets.includes(d.id) ? 'bg-rose-500/10 border-rose-500 text-white shadow-lg' : 'bg-white/5 border-white/5 text-slate-500 hover:border-white/10'}`}
-                    onClick={e => e.stopPropagation()}
-                  >
-                    <input 
-                      type="checkbox" 
-                      className="sr-only" 
-                      checked={formData.affected_assets.includes(d.id)} 
-                      onChange={(e) => {
-                        e.preventDefault();
-                        e.stopPropagation();
-                        setFormData({ 
-                          ...formData, 
-                          affected_assets: formData.affected_assets.includes(d.id) 
-                            ? formData.affected_assets.filter((id: any) => id !== d.id) 
-                            : [...formData.affected_assets, d.id] 
-                        });
-                      }} 
-                    />
-                    <Server size={12} className={formData.affected_assets.includes(d.id) ? 'text-rose-500' : 'text-slate-700'} />
-                    <div className="min-w-0">
-                       <p className="text-[11px] font-bold truncate  leading-none">{d.name}</p>
-                       <p className="text-[9px] text-slate-600 font-bold truncate mt-1">{d.model}</p>
-                    </div>
-                  </label>
-                ))}
-                {(!devices || devices.length === 0) && <div className="col-span-2 py-8 text-center text-slate-600 text-[9px] font-bold">Select a system to view assets</div>}
-             </div>
-          </div>
-       </div>
+        </div>
+      </WorkspaceStickyIdentityBar>
 
-       <div className="col-span-6 space-y-4">
-          <div className="bg-white/[0.02] p-5 rounded-lg border border-white/5 space-y-5">
-             <GaugeSelector label="Severity" value={formData.severity} onChange={(v: any) => setFormData({ ...formData, severity: v })} levels={SEVERITY_LEVELS} color="text-rose-500" accent="bg-rose-500" />
-             <GaugeSelector label="Occurrence" value={formData.occurrence} onChange={(v: any) => setFormData({ ...formData, occurrence: v })} levels={OCCURRENCE_LEVELS} color="text-amber-500" accent="bg-amber-500" />
-             <GaugeSelector label="Detection" value={formData.detection} onChange={(v: any) => setFormData({ ...formData, detection: v })} levels={DETECTION_LEVELS} color="text-sky-400" accent="bg-sky-400" />
-          </div>
+      <WorkspaceValidationBanner
+        message={generalError || (submitAttempted && totalErrors ? `Review ${totalErrors} highlighted validation issue${totalErrors === 1 ? '' : 's'}.` : undefined)}
+      />
 
-          <div className="bg-[#0f111a] rounded-lg p-5 border border-white/10 flex items-center justify-between relative overflow-hidden">
-             <div className="absolute top-0 right-0 w-32 h-32 bg-rose-500/5 blur-[50px] pointer-events-none" />
-             <div>
-                <p className="text-[9px] font-bold text-slate-500  mb-1 uppercase tracking-widest leading-none">Risk Priority Number (RPN)</p>
-                <div className="flex items-baseline gap-1.5">
-                   <h4 className={`text-4xl font-bold tracking-tighter ${rpn > 200 ? 'text-rose-600' : rpn > 100 ? 'text-rose-400' : 'text-emerald-400'}`}>{rpn}</h4>
-                   <span className={`text-[10px] font-bold ${rpn > 150 ? 'text-rose-500' : 'text-emerald-500'}`}>{rpn > 150 ? 'CRITICAL' : 'NOMINAL'}</span>
+      {activeTab === 'definition' && (
+        <div id="far-authoring-definition" className="space-y-5">
+          <WorkspaceSectionCard>
+            <WorkspaceCollapsibleHeader
+              title="Failure identity"
+              subtitle="Define the operational domain, classification, and incidence signature."
+              badge={<WorkspaceSectionBadge tone={tabErrors.definition ? 'rose' : 'blue'}>{tabErrors.definition ? `${tabErrors.definition} issue${tabErrors.definition === 1 ? '' : 's'}` : 'Required identity'}</WorkspaceSectionBadge>}
+              collapsed={collapsedSections.identity}
+              onToggle={() => toggleSection('identity')}
+            />
+            {!collapsedSections.identity && (
+              <div className="mt-5 grid grid-cols-1 gap-5 lg:grid-cols-2">
+                <WorkspaceSelectField
+                  label="Operational Domain"
+                  required
+                  searchable
+                  disabled={isArchived}
+                  value={formData.system_name}
+                  options={systems.map((system: any) => ({ value: system.value, label: system.label, description: system.description }))}
+                  placeholder="Select operational domain"
+                  error={formErrors.system_name}
+                  onChange={(next) => {
+                    setGeneralError('')
+                    updateFormData((current: any) => changeFarAuthoringSystem(current, String(next)))
+                  }}
+                />
+                <WorkspaceSelectField
+                  label="Root Classification"
+                  required
+                  disabled={isArchived}
+                  value={formData.failure_type}
+                  options={FAILURE_TYPES}
+                  placeholder="Select failure classification"
+                  error={formErrors.failure_type}
+                  onChange={(next) => patchFormData({ failure_type: String(next) })}
+                />
+                <div className="space-y-1.5 lg:col-span-2">
+                  <WorkspaceFieldLabel label="Incidence Signature" required />
+                  <input
+                    value={formData.title}
+                    disabled={isArchived}
+                    aria-invalid={Boolean(formErrors.title)}
+                    aria-describedby={formErrors.title ? 'far-title-error' : undefined}
+                    onChange={(event) => patchFormData({ title: event.target.value })}
+                    placeholder="E.G., DATABASE_CONNECTION_TIMEOUT"
+                    className={getWorkspaceInputClass(formErrors.title)}
+                  />
+                  <div id="far-title-error"><WorkspaceFieldError message={formErrors.title} /></div>
                 </div>
-             </div>
-             <button 
-               disabled={!formData.system_name || !formData.title || mutation.isPending} 
-               onClick={() => mutation.mutate(formData)} 
-               className="bg-rose-600 hover:bg-rose-500 text-white px-6 py-4 rounded-lg text-[10px] font-bold uppercase tracking-widest shadow-2xl shadow-rose-600/20 active:scale-95 transition-all flex items-center gap-2 "
-             >
-               {mutation.isPending ? <RefreshCcw size={16} className="animate-spin" /> : <Save size={16} />} COMMIT
-             </button>
-          </div>
-       </div>
-    </div>
+              </div>
+            )}
+          </WorkspaceSectionCard>
+
+          <WorkspaceSectionCard>
+            <WorkspaceCollapsibleHeader
+              title="Consequence context"
+              subtitle="Record the operator-visible effect without changing the FAR risk model."
+              badge={<WorkspaceSectionBadge>Optional context</WorkspaceSectionBadge>}
+              collapsed={collapsedSections.context}
+              onToggle={() => toggleSection('context')}
+            />
+            {!collapsedSections.context && (
+              <div className="mt-5 space-y-1.5">
+                <WorkspaceFieldLabel label="Consequence Assessment (Effect)" />
+                <textarea
+                  value={formData.effect}
+                  disabled={isArchived}
+                  onChange={(event) => patchFormData({ effect: event.target.value })}
+                  placeholder="Describe the systemic consequences..."
+                  className={`${getWorkspaceInputClass(formErrors.effect)} min-h-36 resize-y`}
+                />
+                <WorkspaceFieldError message={formErrors.effect} />
+              </div>
+            )}
+          </WorkspaceSectionCard>
+        </div>
+      )}
+
+      {activeTab === 'risk' && (
+        <div id="far-authoring-risk">
+          <WorkspaceSectionCard>
+            <WorkspaceCollapsibleHeader
+              title="Risk scoring"
+              subtitle="Apply the existing FAR severity × occurrence × detection model."
+              badge={<WorkspaceSectionBadge tone={tabErrors.risk ? 'rose' : 'amber'}>{tabErrors.risk ? `${tabErrors.risk} issue${tabErrors.risk === 1 ? '' : 's'}` : `RPN ${rpn}`}</WorkspaceSectionBadge>}
+              collapsed={collapsedSections.risk}
+              onToggle={() => toggleSection('risk')}
+            />
+            {!collapsedSections.risk && (
+              <div className="mt-5 grid grid-cols-1 gap-6 lg:grid-cols-3">
+                <div>
+                  <GaugeSelector label="Severity" value={formData.severity} onChange={(value: number) => patchFormData({ severity: value })} levels={SEVERITY_LEVELS} color="text-rose-500" accent="bg-rose-500" />
+                  <WorkspaceFieldError message={formErrors.severity} />
+                </div>
+                <div>
+                  <GaugeSelector label="Occurrence" value={formData.occurrence} onChange={(value: number) => patchFormData({ occurrence: value })} levels={OCCURRENCE_LEVELS} color="text-amber-500" accent="bg-amber-500" />
+                  <WorkspaceFieldError message={formErrors.occurrence} />
+                </div>
+                <div>
+                  <GaugeSelector label="Detection" value={formData.detection} onChange={(value: number) => patchFormData({ detection: value })} levels={DETECTION_LEVELS} color="text-sky-400" accent="bg-sky-400" />
+                  <WorkspaceFieldError message={formErrors.detection} />
+                </div>
+              </div>
+            )}
+          </WorkspaceSectionCard>
+        </div>
+      )}
+
+      {activeTab === 'impact' && (
+        <div id="far-authoring-impact">
+          <WorkspaceSectionCard>
+            <WorkspaceCollapsibleHeader
+              title="Blast radius"
+              subtitle="Search and map the infrastructure entities affected by this failure vector."
+              badge={<WorkspaceSectionBadge tone="blue">{formData.affected_assets.length} mapped</WorkspaceSectionBadge>}
+              collapsed={collapsedSections.assets}
+              onToggle={() => toggleSection('assets')}
+            />
+            {!collapsedSections.assets && (
+              <div className="mt-5">
+                <WorkspaceSelectField
+                  label="Affected Infrastructure"
+                  searchable
+                  multi
+                  disabled={isArchived || !formData.system_name}
+                  value={formData.affected_assets.map((value: any) => String(value))}
+                  options={(devices || []).map((device: any) => ({ value: String(device.id), label: device.name, description: device.model }))}
+                  placeholder={formData.system_name ? 'Select affected infrastructure' : 'Select an operational domain first'}
+                  error={formErrors.affected_assets}
+                  onChange={(values) => patchFormData({
+                    affected_assets: (Array.isArray(values) ? values : [])
+                      .map((value: any) => Number(value))
+                      .filter((value: number) => Number.isFinite(value)),
+                  })}
+                />
+                {formData.system_name && !devices?.length ? (
+                  <p className="mt-3 text-[9px] font-semibold text-slate-500">No infrastructure entities are available for the selected operational domain.</p>
+                ) : null}
+              </div>
+            )}
+          </WorkspaceSectionCard>
+        </div>
+      )}
+    </WorkspaceModal>
   )
 }
 
