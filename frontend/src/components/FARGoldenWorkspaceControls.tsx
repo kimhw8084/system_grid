@@ -133,6 +133,7 @@ export function useFARGoldenWorkspaceControls({
   setShowInsights,
   columnDefs,
   onExport,
+  onRoundTripExport,
   onCopySelected,
   onImport,
   onRetireSelected,
@@ -164,6 +165,7 @@ export function useFARGoldenWorkspaceControls({
   setShowInsights: React.Dispatch<React.SetStateAction<boolean>>
   columnDefs: any[]
   onExport: () => void
+  onRoundTripExport: () => void
   onCopySelected: () => void
   onImport: () => void
   onRetireSelected: (ids?: number[]) => void
@@ -638,6 +640,7 @@ export function useFARGoldenWorkspaceControls({
           </ToolbarButton>
         </div>
         <ToolbarIconButton onClick={onExport} title="Export CSV"><FileText size={16} /></ToolbarIconButton>
+        <ToolbarIconButton onClick={onRoundTripExport} title="Export Round-Trip Snapshot"><Download size={16} /></ToolbarIconButton>
         <ToolbarIconButton onClick={onCopySelected} disabled={selectedIds.length === 0} title="Copy to Clipboard"><Clipboard size={16} /></ToolbarIconButton>
         <ToolbarIconButton onClick={onSettings} disabled={readOnly} title="Matrix Registry Enums"><Settings size={16} /></ToolbarIconButton>
       </ToolbarGroup>

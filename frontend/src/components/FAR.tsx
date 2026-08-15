@@ -26,7 +26,8 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { apiFetch } from '../api/apiClient'
 import { toast } from 'react-hot-toast'
 import { formatAppDate } from '../utils/dateUtils'
-import { BulkImportModal } from './shared/BulkImportModal'
+import { OperationalImportModal } from './shared/OperationalImportModal'
+import { downloadOperationalImportFile } from './shared/OperationalImportExport'
 import { StatusPill } from './shared/StatusPill'
 import { ConfigRegistryModal } from './ConfigRegistry'
 import { MonitoringForm } from './monitoring/MonitoringForm'
@@ -74,6 +75,10 @@ import {
 
 import 'ag-grid-community/styles/ag-grid.css'
 import 'ag-grid-community/styles/ag-theme-alpine.css'
+
+const FAR_IMPORT_PROFILE = 'far_records'
+const FAR_IMPORT_SCHEMA_VERSION = '2026-08-far-v1'
+const FAR_SNAPSHOT_FILENAME_PATTERN = /^SYSGRID_far_records_Snapshot\.csv$/
 
 // --- Types ---
 interface FailureMode {
@@ -372,6 +377,28 @@ export default function FAR() {
     link.download = `SysGrid_FAR_${new Date().toISOString().split('T')[0]}.csv`
     link.click()
     URL.revokeObjectURL(url)
+  }
+
+  const handleExportRoundTrip = async () => {
+    try {
+      const result = await downloadOperationalImportFile({
+        tableName: FAR_IMPORT_PROFILE,
+        kind: 'snapshot',
+        expectedProfile: FAR_IMPORT_PROFILE,
+        requireSchemaHeaders: true,
+        fallbackFileName: 'SYSGRID_far_records_Snapshot.csv',
+        metadataContract: {
+          manifestEndpoint: `/api/v1/import/snapshot/${FAR_IMPORT_PROFILE}/manifest`,
+          expectedProfile: FAR_IMPORT_PROFILE,
+          expectedSchemaVersion: FAR_IMPORT_SCHEMA_VERSION,
+          expectedFilenamePattern: FAR_SNAPSHOT_FILENAME_PATTERN,
+          expectedContentType: 'text/csv',
+        },
+      })
+      toast.success(`FAR round-trip snapshot exported (${result.schemaVersion || FAR_IMPORT_SCHEMA_VERSION})`)
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Unable to export FAR round-trip snapshot')
+    }
   }
 
   const handleCopyToClipboard = () => {
@@ -756,6 +783,7 @@ export default function FAR() {
     setShowInsights,
     columnDefs,
     onExport: handleExportCSV,
+    onRoundTripExport: handleExportRoundTrip,
     onCopySelected: handleCopyToClipboard,
     onImport: () => setShowImportModal(true),
     onRetireSelected: (ids) => requestBulkPreview(ids?.length ? { action: 'delete', ids } : { action: 'delete' }),
@@ -1096,11 +1124,11 @@ export default function FAR() {
       <MetricHelpModal metric={activeMetricHelp} onClose={() => setActiveMetricHelp(null)} />
 
       <ConfigRegistryModal isOpen={showConfig} onClose={() => setShowConfig(false)} title="Reliability Matrix Registry" sections={[{ title: "Systems", category: "LogicalSystem", icon: LayoutGrid }, { title: "Risk Cats", category: "RiskCategory", icon: Target }, { title: "Teams", category: "BusinessUnit", icon: User }]} />
-      <BulkImportModal 
-         isOpen={showImportModal} 
-         onClose={() => setShowImportModal(false)} 
-         tableName="far_records" 
-         displayName="Failure Modes & Risk Matrix" 
+      <OperationalImportModal
+        isOpen={showImportModal}
+        onClose={() => setShowImportModal(false)}
+        tableName={FAR_IMPORT_PROFILE}
+        displayName="Failure Modes & Risk Matrix"
       />
 
       <FARAuthoringModal

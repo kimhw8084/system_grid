@@ -24,12 +24,14 @@ from .monitoring import (
     save_monitoring_history,
     summarize_monitoring_snapshot_delta,
 )
+from .far import save_far_history
 from .utils import filter_valid_columns, get_current_user_id
 
 router = APIRouter(prefix="/import", tags=["Intelligence Engine"])
 MONITORING_IMPORT_SCHEMA_VERSION = "2026-06-monitoring-v1"
 EXTERNAL_IMPORT_SCHEMA_VERSION = "2026-06-external-v1"
 NETWORK_IMPORT_SCHEMA_VERSION = "2026-06-network-v1"
+FAR_IMPORT_SCHEMA_VERSION = "2026-08-far-v1"
 ROUND_TRIP_EXPOSE_HEADER_NAMES = (
     "Content-Disposition",
     "X-SysGrid-Import-Profile",
@@ -1411,6 +1413,135 @@ async def execute_monitoring_rows(db: AsyncSession, rows: list[dict[str, Any]], 
     return {"status": "success", "count": count}
 
 
+def build_far_import_fields() -> list[ImportField]:
+    return [
+        ImportField("system_name", "System", required=True, template_hint="[Logical system]", validation_rules=["Required."]),
+        ImportField("failure_type", "Failure Type", required=True, template_hint="[Design|Process|Hardware|Software|Network|Human|Environment]", validation_rules=["Required."]),
+        ImportField("title", "Failure Mode", required=True, template_hint="[Short failure-mode title]", validation_rules=["Required."]),
+        ImportField("effect", "Effect", input_kind="multiline", input_control="textarea", template_hint="[Operational effect]"),
+        ImportField("severity", "Severity", required=True, input_control="number", template_hint="[1-10]", validation_rules=["Integer from 1 to 10."]),
+        ImportField("occurrence", "Occurrence", required=True, input_control="number", template_hint="[1-10]", validation_rules=["Integer from 1 to 10."]),
+        ImportField("detection", "Detection", required=True, input_control="number", template_hint="[1-10]", validation_rules=["Integer from 1 to 10."]),
+        ImportField("status", "Status", template_hint="[Analyzing]"),
+    ]
+
+
+FAR_IMPORT_FIELDS = build_far_import_fields()
+
+
+def _coerce_far_import_score(value: Any, label: str) -> int:
+    normalized = normalize_scalar(value)
+    if normalized is None:
+        raise ValueError(f"{label} is required")
+    if isinstance(normalized, bool):
+        raise ValueError(f"{label} must be an integer from 1 to 10")
+    number = float(normalized)
+    if not number.is_integer() or number < 1 or number > 10:
+        raise ValueError(f"{label} must be an integer from 1 to 10")
+    return int(number)
+
+
+def build_far_import_row(raw_row: dict[str, Any]) -> dict[str, Any]:
+    system_name = normalize_scalar(raw_row.get("system_name"))
+    failure_type = normalize_scalar(raw_row.get("failure_type"))
+    title = normalize_scalar(raw_row.get("title"))
+    if not system_name:
+        raise ValueError("system_name is required")
+    if not failure_type:
+        raise ValueError("failure_type is required")
+    if not title:
+        raise ValueError("title is required")
+
+    severity = _coerce_far_import_score(raw_row.get("severity"), "severity")
+    occurrence = _coerce_far_import_score(raw_row.get("occurrence"), "occurrence")
+    detection = _coerce_far_import_score(raw_row.get("detection"), "detection")
+    effect = normalize_scalar(raw_row.get("effect"))
+    return {
+        "system_name": str(system_name),
+        "failure_type": str(failure_type),
+        "title": str(title),
+        "effect": str(effect) if effect is not None else None,
+        "severity": severity,
+        "occurrence": occurrence,
+        "detection": detection,
+        "rpn": severity * occurrence * detection,
+        "status": str(normalize_scalar(raw_row.get("status")) or "Analyzing"),
+    }
+
+
+async def preview_far_rows(db: AsyncSession, rows: list[dict[str, Any]]) -> dict[str, Any]:
+    results = []
+    for index, raw_row in enumerate(rows):
+        errors: list[str] = []
+        normalized_row: dict[str, Any] = {}
+        try:
+            normalized_row = build_far_import_row(raw_row)
+        except (ValueError, TypeError) as exc:
+            errors.append(str(exc))
+        results.append({
+            "row": index + 1,
+            "source": raw_row,
+            "normalized": normalized_row,
+            "status": "VALID" if not errors else "INVALID",
+            "errors": errors,
+        })
+    valid = [result for result in results if result["status"] == "VALID"]
+    invalid = [result for result in results if result["status"] == "INVALID"]
+    return {
+        "total_rows": len(results),
+        "valid_rows": len(valid),
+        "invalid_rows": len(invalid),
+        "total_errors": sum(len(result["errors"]) for result in invalid),
+        "results": results,
+    }
+
+
+async def execute_far_rows(db: AsyncSession, rows: list[dict[str, Any]], user_id: Optional[str]) -> dict[str, Any]:
+    preview = await preview_far_rows(db, rows)
+    invalid = [result for result in preview["results"] if result["status"] == "INVALID"]
+    if invalid:
+        return {"status": "failed", "errors": [f"Row {result['row']}: {', '.join(result['errors'])}" for result in invalid], "count": 0}
+
+    for result in preview["results"]:
+        payload = dict(result["normalized"])
+        if user_id:
+            payload["created_by_user_id"] = user_id
+        mode = models.FarFailureMode(
+            **payload,
+            version=1,
+            affected_assets=[],
+            causes=[],
+        )
+        db.add(mode)
+        await db.flush()
+        await save_far_history(mode.id, mode.version, db, "Bulk import creation")
+    await db.commit()
+    count = len(preview["results"])
+    if user_id:
+        db.add(models.AuditLog(
+            user_id=user_id,
+            action="BULK_IMPORT",
+            target_table=models.FarFailureMode.__tablename__.upper(),
+            target_id="MULTIPLE",
+            description=f"Bulk imported {count} records into {models.FarFailureMode.__tablename__}.",
+        ))
+        await db.commit()
+    return {"status": "success", "count": count}
+
+
+async def serialize_far_example_row(db: AsyncSession, item: models.FarFailureMode) -> dict[str, Any]:
+    return {
+        "system_name": item.system_name or "",
+        "failure_type": item.failure_type or "Design",
+        "title": item.title or "",
+        "effect": item.effect or "",
+        "severity": item.severity if item.severity is not None else 1,
+        "occurrence": item.occurrence if item.occurrence is not None else 1,
+        "detection": item.detection if item.detection is not None else 1,
+        "status": item.status or "Analyzing",
+    }
+
+
 def profile_fields_to_payload(fields: list[ImportField], context: Optional[dict[str, Any]] = None) -> list[dict[str, Any]]:
     options_map = (context or {}).get("options", {})
     return [
@@ -1437,7 +1568,6 @@ GENERIC_MODEL_MAPPING = {
     "devices": models.Device,
     "racks": models.Rack,
     "logical_services": models.LogicalService,
-    "far_records": models.FarFailureMode,
 }
 
 
@@ -1462,6 +1592,15 @@ def build_import_profiles() -> dict[str, ImportProfile]:
             execute_rows=execute_external_rows,
             schema_context=build_external_schema_context,
             serialize_example_row=serialize_external_example_row,
+        ),
+        "far_records": ImportProfile(
+            key="far_records",
+            display_name="Failure Modes & Risk Matrix",
+            model=models.FarFailureMode,
+            fields=FAR_IMPORT_FIELDS,
+            preview_rows=preview_far_rows,
+            execute_rows=execute_far_rows,
+            serialize_example_row=serialize_far_example_row,
         ),
         "port_connections": ImportProfile(
             key="port_connections",
@@ -1520,6 +1659,9 @@ def build_round_trip_download_headers(profile: ImportProfile, filename: str) -> 
     elif profile.key == "external_entities":
         headers["X-SysGrid-Schema-Version"] = EXTERNAL_IMPORT_SCHEMA_VERSION
         headers["X-SysGrid-Import-Profile"] = profile.key
+    elif profile.key == "far_records":
+        headers["X-SysGrid-Schema-Version"] = FAR_IMPORT_SCHEMA_VERSION
+        headers["X-SysGrid-Import-Profile"] = profile.key
     return headers
 
 
@@ -1560,6 +1702,8 @@ def build_snapshot_manifest(profile: ImportProfile, export_token: Optional[str] 
         manifest["download_url"] = f"/api/v1/import/snapshot/{profile.key}?export_token={token}"
     elif profile.key == "port_connections":
         manifest["schema_version"] = NETWORK_IMPORT_SCHEMA_VERSION
+    elif profile.key == "far_records":
+        manifest["schema_version"] = FAR_IMPORT_SCHEMA_VERSION
     else:
         manifest["schema_version"] = None
     return manifest
@@ -1576,6 +1720,8 @@ async def get_import_schema(table_name: str, db: AsyncSession = Depends(get_db))
         headers["schema_version"] = EXTERNAL_IMPORT_SCHEMA_VERSION
     elif profile.key == "port_connections":
         headers["schema_version"] = NETWORK_IMPORT_SCHEMA_VERSION
+    elif profile.key == "far_records":
+        headers["schema_version"] = FAR_IMPORT_SCHEMA_VERSION
     return {
         "table_name": profile.key,
         "display_name": profile.display_name,
@@ -1690,7 +1836,7 @@ async def download_snapshot(table_name: str, export_token: Optional[str] = None,
 @router.get("/snapshot/{table_name}/manifest")
 async def get_snapshot_manifest(table_name: str):
     profile = get_import_profile(table_name)
-    if profile.key != "external_entities":
+    if profile.key not in {"external_entities", "far_records"}:
         raise HTTPException(status_code=404, detail="Snapshot manifest not found")
     return build_snapshot_manifest(profile)
 
