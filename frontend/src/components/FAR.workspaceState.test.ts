@@ -1,7 +1,13 @@
 import { describe, expect, it } from 'vitest'
 import {
   FAR_PERSISTED_COLUMN_IDS,
+  FAR_WORKSPACE_PREFERENCE_ENDPOINT,
+  FAR_WORKSPACE_PREFERENCE_KEY,
+  FAR_WORKSPACE_PREFERENCE_VERSION,
+  buildFarWorkspacePreference,
+  buildFarWorkspacePreferencePatch,
   normalizeFarSavedViews,
+  normalizeFarWorkspacePreference,
   sanitizeFarWorkspaceViewConfig,
 } from './FAR.workspaceState'
 
@@ -31,13 +37,40 @@ describe('FAR golden workspace view state', () => {
     expect(result.rowDensity).toBe(0)
     expect(result.hiddenColumns).toEqual(['rpn'])
     expect(result.quickFilter).toBe('thermal risk')
-    expect(result.quickFilters).toEqual({ system_name: ['Core'] })
+    expect(result.quickFilters).toEqual({
+      system_name: ['Core'],
+      failure_type: [],
+      status: [],
+      risk_band: [],
+    })
     expect(Object.keys(result.filterModel)).toEqual(['status'])
     expect(result.sortModel).toEqual([{ colId: 'rpn', sort: 'desc' }])
     expect(result.columnLayoutState).toEqual([
       expect.objectContaining({ colId: 'title', width: 320, pinned: 'left' }),
     ])
     expect(FAR_PERSISTED_COLUMN_IDS.has('linked_rcas')).toBe(true)
+  })
+
+  it('round-trips only the current versioned backend working-state preference', () => {
+    const preference = buildFarWorkspacePreference({
+      fontSize: 12,
+      groupBy: 'risk_band',
+      hiddenColumns: ['status', 'unknown'],
+      quickFilter: '  power loss  ',
+    })
+
+    expect(FAR_WORKSPACE_PREFERENCE_ENDPOINT).toBe('/api/v1/settings/user/settings')
+    expect(preference.version).toBe(FAR_WORKSPACE_PREFERENCE_VERSION)
+    expect(preference.workingDefinition.groupBy).toBe('risk_band')
+    expect(preference.workingDefinition.hiddenColumns).toEqual(['status'])
+    expect(preference.workingDefinition.quickFilter).toBe('power loss')
+    expect(buildFarWorkspacePreferencePatch(preference.workingDefinition)).toEqual({
+      [FAR_WORKSPACE_PREFERENCE_KEY]: preference,
+    })
+    expect(normalizeFarWorkspacePreference(preference)).toEqual(preference)
+    expect(normalizeFarWorkspacePreference({ ...preference, version: 99 })).toBeNull()
+    expect(normalizeFarWorkspacePreference({ version: FAR_WORKSPACE_PREFERENCE_VERSION })).toBeNull()
+    expect(normalizeFarWorkspacePreference(null)).toBeNull()
   })
 
   it('normalizes collaborative FAR views without duplicating ids', () => {

@@ -14,6 +14,9 @@ import {
 export const FAR_VIEW_STORAGE_KEY = 'sysgrid_far_views_v2'
 export const FAR_ACTIVE_VIEW_KEY = 'sysgrid_far_active_view_v2'
 export const FAR_WORKING_STATE_KEY = 'sysgrid_far_working_state_v1'
+export const FAR_WORKSPACE_PREFERENCE_KEY = 'far_workspace_state_v1'
+export const FAR_WORKSPACE_PREFERENCE_ENDPOINT = '/api/v1/settings/user/settings'
+export const FAR_WORKSPACE_PREFERENCE_VERSION = 1
 export const FAR_COLLABORATIVE_VIEW_MIGRATION_KEY = 'sysgrid_far_collaborative_views_v1_migrated'
 
 export const FAR_PERSISTED_COLUMN_IDS = new Set([
@@ -45,6 +48,11 @@ export type FarWorkspaceViewConfig = {
 }
 
 export type FarSavedView = CollaborativeSavedView<FarWorkspaceViewConfig>
+
+export type FarWorkspacePreference = {
+  version: typeof FAR_WORKSPACE_PREFERENCE_VERSION
+  workingDefinition: FarWorkspaceViewConfig
+}
 
 const clampNumber = (value: unknown, minimum: number, maximum: number, fallback: number) => {
   if (typeof value !== 'number' || !Number.isFinite(value)) return fallback
@@ -108,6 +116,27 @@ export function sanitizeFarWorkspaceViewConfig(value: unknown): FarWorkspaceView
     sortModel: sanitizeOperationalSortModel(source.sortModel, FAR_PERSISTED_COLUMN_IDS) as FarWorkspaceViewConfig['sortModel'],
     columnLayoutState: columnLayout.layout,
   }
+}
+
+export function buildFarWorkspacePreference(value: unknown): FarWorkspacePreference {
+  return {
+    version: FAR_WORKSPACE_PREFERENCE_VERSION,
+    workingDefinition: sanitizeFarWorkspaceViewConfig(value),
+  }
+}
+
+export function buildFarWorkspacePreferencePatch(value: unknown) {
+  return {
+    [FAR_WORKSPACE_PREFERENCE_KEY]: buildFarWorkspacePreference(value),
+  }
+}
+
+export function normalizeFarWorkspacePreference(value: unknown): FarWorkspacePreference | null {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return null
+  const source = value as Record<string, unknown>
+  if (source.version !== FAR_WORKSPACE_PREFERENCE_VERSION) return null
+  if (!source.workingDefinition || typeof source.workingDefinition !== 'object' || Array.isArray(source.workingDefinition)) return null
+  return buildFarWorkspacePreference(source.workingDefinition)
 }
 
 export function normalizeFarSavedViews(value: FarSavedView[]): FarSavedView[] {

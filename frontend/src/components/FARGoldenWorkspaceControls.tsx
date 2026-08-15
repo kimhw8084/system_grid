@@ -47,6 +47,7 @@ import {
   sanitizeOperationalSortModel,
 } from './shared/OperationalGridSizing'
 import { FAR_PRESERVES_EXPLICIT_COLUMN_WIDTHS, getStableFarManualResizeLayout } from './FAR.gridStability'
+import { useFarWorkspacePreference } from './FAR.workspacePreference'
 import {
   FAR_GROUP_OPTIONS,
   FAR_RISK_BAND_OPTIONS,
@@ -229,6 +230,10 @@ export function useFARGoldenWorkspaceControls({
     sortModel: gridSortModel,
     columnLayoutState,
   }), [columnLayoutState, fontSize, gridFilterModel, gridSortModel, groupBy, hiddenColumns, quickFilters, rowDensity, searchTerm, showFilterBar])
+  const {
+    remoteWorkingDefinition,
+    userSettingsReady,
+  } = useFarWorkspacePreference(currentDefinition, workingStateReady)
 
   const normalizedViews = useMemo(() => normalizeFarSavedViews(savedViews), [savedViews])
   const savedViewPanelModels = useMemo<FarSavedViewPanelModel[]>(() => normalizedViews.map((view) => ({
@@ -344,8 +349,8 @@ export function useFARGoldenWorkspaceControls({
     if (requestedId) {
       const requestedView = normalizedViews.find((entry) => entry.id === requestedId)
       if (!requestedView) {
-        if (collaborativeViews.status === 'loading') return
-        applyViewConfig(workingDefinition)
+        if (collaborativeViews.status === 'loading' || !userSettingsReady) return
+        applyViewConfig(remoteWorkingDefinition ?? workingDefinition)
         setActiveViewId(null)
         collaborativeViews.setViewLink(null)
       } else {
@@ -354,10 +359,21 @@ export function useFARGoldenWorkspaceControls({
         setActiveViewId(requestedView.id)
       }
     } else {
-      applyViewConfig(workingDefinition)
+      if (!userSettingsReady) return
+      applyViewConfig(remoteWorkingDefinition ?? workingDefinition)
     }
     setWorkingStateReady(true)
-  }, [applyViewConfig, collaborativeViews.requestedViewId, collaborativeViews.status, normalizedViews, setActiveViewId, workingDefinition, workingStateReady])
+  }, [
+    applyViewConfig,
+    collaborativeViews.requestedViewId,
+    collaborativeViews.status,
+    normalizedViews,
+    remoteWorkingDefinition,
+    setActiveViewId,
+    userSettingsReady,
+    workingDefinition,
+    workingStateReady,
+  ])
 
   useEffect(() => {
     if (!workingStateReady) return
