@@ -72,6 +72,7 @@ import {
   sanitizeFarAuthoringPayload,
   type FarAuthoringTab,
 } from './FAR.authoringModel'
+import { getFarDeepLinkNotice, getFarGridDataState, resolveFarDeepLink } from './FAR.deepLink'
 
 import 'ag-grid-community/styles/ag-grid.css'
 import 'ag-grid-community/styles/ag-theme-alpine.css'
@@ -275,18 +276,19 @@ export default function FAR() {
     active: (modes || []).filter((mode: any) => !mode.is_deleted).length,
     archived: (modes || []).filter((mode: any) => Boolean(mode.is_deleted)).length,
   }), [modes])
+  const deepLinkResolution = useMemo(() => resolveFarDeepLink(idParam, modes), [idParam, modes])
+  const deepLinkNotice = useMemo(() => getFarDeepLinkNotice(deepLinkResolution), [deepLinkResolution])
 
   useEffect(() => {
-    if (!idParam || !modes) return
-    const targetId = parseInt(idParam, 10)
-    if (Number.isNaN(targetId)) return
-    const mode = modes.find((m: any) => m.id === targetId)
-    if (!mode) {
-      setSelectedModeId(null)
+    if (deepLinkResolution.kind !== 'resolved') {
+      if (deepLinkResolution.kind === 'invalid' || deepLinkResolution.kind === 'unavailable') {
+        setSelectedModeId(null)
+      }
       return
     }
+    const { targetId, mode, lifecycleScope: targetLifecycleScope } = deepLinkResolution
 
-    setLifecycleScope(mode.is_deleted ? 'archived' : 'active')
+    setLifecycleScope(targetLifecycleScope)
     setSearchTerm(mode.title)
     setSelectedModeId(targetId)
 
@@ -299,7 +301,7 @@ export default function FAR() {
         }
       })
     })
-  }, [idParam, modes])
+  }, [deepLinkResolution])
 
   const { data: options } = useQuery({ queryKey: ['settings-options'], queryFn: async () => (await apiFetch('/api/v1/settings/options')).json() })
   const availableSystems = useMemo(() => Array.from(new Set([
@@ -948,19 +950,13 @@ export default function FAR() {
           loading={modesLoading || !goldenWorkspace.workingStateReady}
           loadingIcon={<RefreshCcw size={28} className="animate-spin text-rose-400" />}
           loadingLabel={<p className="text-[10px] font-semibold text-rose-300">Loading failure analysis registry...</p>}
-          dataState={modesError ? {
-            kind: 'query-error',
-            noRowsLabel: 'No failure modes in scope',
-            title: 'Failure analysis registry unavailable',
-            description: 'The FAR registry could not be loaded. Retry from the workspace navigation.',
-          } : (!modesLoading && filteredModes.length === 0 ? {
-            kind: 'filtered-empty',
-            noRowsLabel: lifecycleScope === 'archived' ? 'No archived failure modes' : 'No failure modes in scope',
-            title: lifecycleScope === 'archived' ? 'No archived failure modes' : 'No failure modes in scope',
-            description: lifecycleScope === 'archived'
-              ? 'Archived failure vectors will appear here and can be restored without losing forensic history.'
-              : 'Create a failure mode or adjust the current filters.',
-          } : { kind: 'ready', noRowsLabel: 'No failure modes in scope' })}
+          dataState={getFarGridDataState({
+            modesError,
+            modesLoading,
+            filteredModeCount: filteredModes.length,
+            lifecycleScope,
+            deepLinkNotice,
+          })}
         />
         <AnimatePresence>
           {showColumnPicker && (
