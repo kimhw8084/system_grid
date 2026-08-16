@@ -73,6 +73,8 @@ import {
   type FarAuthoringTab,
 } from './FAR.authoringModel'
 import { getFarDeepLinkNotice, getFarGridDataState, resolveFarDeepLink } from './FAR.deepLink'
+import DataStatusPill, { DataDiagnosticModal } from './shared/OperationalDataStatus'
+import { buildFarRegistryDiagnosticDetail } from './FAR.diagnostics'
 
 import 'ag-grid-community/styles/ag-grid.css'
 import 'ag-grid-community/styles/ag-theme-alpine.css'
@@ -256,11 +258,12 @@ export default function FAR() {
   const [showConfig, setShowConfig] = useState(false)
   const [selectedIds, setSelectedIds] = useState<number[]>([])
   const [lifecycleScope, setLifecycleScope] = useState<'active' | 'archived'>('active')
+  const [showDataDiagnostic, setShowDataDiagnostic] = useState(false)
   
   const [bkmGuidanceModal, setBkmGuidanceModal] = useState<{show: boolean, cause: any}>({ show: false, cause: null })
 
   // Queries
-  const { data: modes, isLoading: modesLoading, isError: modesError } = useQuery({ 
+  const { data: modes, isLoading: modesLoading, isError: modesError, error: modesQueryError } = useQuery({
     queryKey: ['far', 'modes'], 
     queryFn: () => fetchFarList('/api/v1/far/modes?include_deleted=true')
   })
@@ -278,6 +281,10 @@ export default function FAR() {
   }), [modes])
   const deepLinkResolution = useMemo(() => resolveFarDeepLink(idParam, modes), [idParam, modes])
   const deepLinkNotice = useMemo(() => getFarDeepLinkNotice(deepLinkResolution), [deepLinkResolution])
+  const farRegistryDiagnosticDetail = useMemo(
+    () => buildFarRegistryDiagnosticDetail(modesQueryError),
+    [modesQueryError],
+  )
 
   useEffect(() => {
     if (deepLinkResolution.kind !== 'resolved') {
@@ -811,21 +818,30 @@ export default function FAR() {
         ),
         subtitle: 'Reliability Knowledge Engine // FMEA Studio',
         actions: (
-          <HeaderScopeSwitch
-            label="Registry Scope"
-            summary={`${lifecycleCounts.active} active · ${lifecycleCounts.archived} archived`}
-            value={lifecycleScope}
-            onChange={(next) => {
-              setLifecycleScope(next as 'active' | 'archived')
-              setSelectedIds([])
-              setSelectedModeId(null)
-              gridRef.current?.api?.deselectAll?.()
-            }}
-            options={[
-              { label: 'Active', value: 'active' },
-              { label: 'Archived', value: 'archived' },
-            ]}
-          />
+          <div className="flex items-center gap-2">
+            {modesError && (
+              <DataStatusPill
+                status="error"
+                errorDetail={farRegistryDiagnosticDetail}
+                onClick={() => setShowDataDiagnostic(true)}
+              />
+            )}
+            <HeaderScopeSwitch
+              label="Registry Scope"
+              summary={`${lifecycleCounts.active} active · ${lifecycleCounts.archived} archived`}
+              value={lifecycleScope}
+              onChange={(next) => {
+                setLifecycleScope(next as 'active' | 'archived')
+                setSelectedIds([])
+                setSelectedModeId(null)
+                gridRef.current?.api?.deselectAll?.()
+              }}
+              options={[
+                { label: 'Active', value: 'active' },
+                { label: 'Archived', value: 'archived' },
+              ]}
+            />
+          </div>
         ),
       }}
       toolbarSearch={(
@@ -1118,6 +1134,12 @@ export default function FAR() {
       </AnimatePresence>
 
       <MetricHelpModal metric={activeMetricHelp} onClose={() => setActiveMetricHelp(null)} />
+
+      <DataDiagnosticModal
+        isOpen={showDataDiagnostic}
+        onClose={() => setShowDataDiagnostic(false)}
+        errorDetail={farRegistryDiagnosticDetail}
+      />
 
       <ConfigRegistryModal isOpen={showConfig} onClose={() => setShowConfig(false)} title="Reliability Matrix Registry" sections={[{ title: "Systems", category: "LogicalSystem", icon: LayoutGrid }, { title: "Risk Cats", category: "RiskCategory", icon: Target }, { title: "Teams", category: "BusinessUnit", icon: User }]} />
       <OperationalImportModal
