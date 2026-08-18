@@ -76,6 +76,7 @@ import { getFarDeepLinkNotice, getFarGridDataState, resolveFarDeepLink } from '.
 import DataStatusPill, { DataDiagnosticModal } from './shared/OperationalDataStatus'
 import { buildFarRegistryDiagnosticDetail } from './FAR.diagnostics'
 import { FARDossierShell } from './FAR.dossier'
+import { getFarLifecycleEndpoint, getFarLifecycleRevertAction, isFarLifecycleAction } from './FAR.lifecycleVocabulary'
 
 import 'ag-grid-community/styles/ag-grid.css'
 import 'ag-grid-community/styles/ag-theme-alpine.css'
@@ -446,7 +447,7 @@ export default function FAR() {
     revertErrorMessage: 'Unable to revert the FAR lifecycle change.',
     getSnapshots: (ids) => (modes || []).filter((mode: any) => ids.includes(Number(mode.id))),
     previewRequest: async ({ action, ids }) => {
-      if (action !== 'delete' && action !== 'restore') throw new Error('Unsupported FAR lifecycle action.')
+      if (!isFarLifecycleAction(action)) throw new Error('Unsupported FAR lifecycle action.')
       const current = new Map((modes || []).map((mode: any) => [Number(mode.id), mode]))
       const changedIds = ids.filter((id) => {
         const mode = current.get(id)
@@ -472,10 +473,10 @@ export default function FAR() {
       }
     },
     executeRequest: async ({ action, ids }) => {
-      if (action !== 'delete' && action !== 'restore') throw new Error('Unsupported FAR lifecycle action.')
+      if (!isFarLifecycleAction(action)) throw new Error('Unsupported FAR lifecycle action.')
       operatorIntelligence.beginPending(ids)
       try {
-        const endpoint = action === 'restore' ? '/api/v1/far/modes/bulk-restore' : '/api/v1/far/modes/bulk-delete'
+        const endpoint = getFarLifecycleEndpoint(action)
         const res = await apiFetch(endpoint, {
           method: 'POST',
           body: JSON.stringify({ ids }),
@@ -495,10 +496,10 @@ export default function FAR() {
     },
     refresh: () => queryClient.invalidateQueries({ queryKey: ['far', 'modes'] }),
     buildRevertRequest: ({ action, changedIds }) => (
-      action === 'delete'
-        ? { action: 'restore', ids: changedIds }
+      action === 'archive'
+        ? { action: getFarLifecycleRevertAction(action), ids: changedIds }
         : action === 'restore'
-          ? { action: 'delete', ids: changedIds }
+          ? { action: getFarLifecycleRevertAction(action), ids: changedIds }
           : null
     ),
     onExecutionSuccess: () => {
@@ -726,7 +727,7 @@ export default function FAR() {
           ><Edit2 size={14}/></button>,
           <button
             key="retire"
-            onClick={() => row?.id && requestBulkPreview({ action: 'delete', ids: [row.id] })}
+            onClick={() => row?.id && requestBulkPreview({ action: 'archive', ids: [row.id] })}
             title="Retire failure vector"
             className="text-rose-400 hover:text-rose-200 transition-all"
           ><Trash2 size={14}/></button>,
@@ -796,7 +797,7 @@ export default function FAR() {
     onRoundTripExport: handleExportRoundTrip,
     onCopySelected: handleCopyToClipboard,
     onImport: () => setShowImportModal(true),
-    onRetireSelected: (ids) => requestBulkPreview(ids?.length ? { action: 'delete', ids } : { action: 'delete' }),
+    onRetireSelected: (ids) => requestBulkPreview(ids?.length ? { action: 'archive', ids } : { action: 'archive' }),
     onAdd: () => { setSelectedModeId(null); setShowWizard(true) },
     onSettings: () => setShowConfig(true),
     onRpnHelp: () => setShowRpnHelp(true),

@@ -282,8 +282,9 @@ async def restore_far_version(mode_id: int, version: int, db: AsyncSession = Dep
     await db.commit()
     return {"status": "success", "new_version": mode.version}
 
-@router.delete("/modes/{mode_id}")
-async def delete_failure_mode(mode_id: int, db: AsyncSession = Depends(get_db)):
+@router.post("/modes/{mode_id}/archive")
+@router.delete("/modes/{mode_id}", include_in_schema=False)
+async def archive_failure_mode(mode_id: int, db: AsyncSession = Depends(get_db)):
     stmt = select(models.FarFailureMode).filter(models.FarFailureMode.id == mode_id)
     result = await db.execute(stmt)
     mode = result.scalar_one_or_none()
@@ -298,8 +299,9 @@ async def delete_failure_mode(mode_id: int, db: AsyncSession = Depends(get_db)):
     await db.commit()
     return {"status": "success", "changed": True, "version": mode.version}
 
-@router.post("/modes/bulk-delete")
-async def bulk_delete_failure_modes(data: dict, db: AsyncSession = Depends(get_db)):
+@router.post("/modes/bulk-archive")
+@router.post("/modes/bulk-delete", include_in_schema=False)
+async def bulk_archive_failure_modes(data: dict, db: AsyncSession = Depends(get_db)):
     ids = data.get("ids", [])
     if not ids: return {"status": "success", "count": 0}
     
