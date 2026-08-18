@@ -75,6 +75,7 @@ import {
 import { getFarDeepLinkNotice, getFarGridDataState, resolveFarDeepLink } from './FAR.deepLink'
 import DataStatusPill, { DataDiagnosticModal } from './shared/OperationalDataStatus'
 import { buildFarRegistryDiagnosticDetail } from './FAR.diagnostics'
+import { FARDossierShell } from './FAR.dossier'
 
 import 'ag-grid-community/styles/ag-grid.css'
 import 'ag-grid-community/styles/ag-theme-alpine.css'
@@ -1323,9 +1324,14 @@ function FailureDetailView({ mode, onClose, onUpdate, onRestore, setBkmGuidanceM
   }, [mode.rpn]);
 
   return (
-    <div className="fixed inset-0 z-[120] flex items-center justify-center bg-black/80 backdrop-blur-xl p-6 font-bold uppercase tracking-tight">
-      <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="glass-panel w-full max-w-[1200px] h-[90vh] flex flex-col rounded-lg border border-rose-500/30 bg-[#02040a] overflow-hidden shadow-2xl relative">
-         
+    <FARDossierShell
+      mode={mode}
+      systemRank={systemRank}
+      humanSummary={humanSummary}
+      onClose={onClose}
+      onEdit={() => onUpdate('edit')}
+      onRestore={onRestore}
+    >
          {/* HEADER SECTION */}
          <div className="px-8 py-6 border-b border-white/5 bg-white/[0.02] flex flex-col shrink-0 relative overflow-hidden">
             <div className="absolute top-0 right-0 w-96 h-96 bg-rose-600/5 blur-[100px] -translate-y-1/2 translate-x-1/2 pointer-events-none" />
@@ -1355,26 +1361,6 @@ function FailureDetailView({ mode, onClose, onUpdate, onRestore, setBkmGuidanceM
                          <p className={`text-4xl font-bold tracking-tighter ${mode.rpn > 150 ? 'text-rose-500 drop-shadow-[0_0_10px_rgba(244,63,94,0.3)]' : 'text-white'}`}>{mode.rpn}</p>
                          <p className="text-[8px] font-bold text-slate-500  uppercase">RPN</p>
                       </div>
-                  </div>
-                  <div className="flex items-center gap-2 ml-2">
-                    {mode.is_deleted ? (
-                      <button
-                        onClick={onRestore}
-                        className="p-2 bg-emerald-600/20 hover:bg-emerald-600/40 border border-emerald-500/30 rounded-lg text-emerald-400 hover:text-white transition-all"
-                        title="Restore Failure Vector"
-                      >
-                        <Undo2 size={18}/>
-                      </button>
-                    ) : (
-                      <button
-                        onClick={() => onUpdate('edit')}
-                        className="p-2 bg-amber-600/20 hover:bg-amber-600/40 border border-amber-500/30 rounded-lg text-amber-400 hover:text-white transition-all"
-                        title="Edit Matrix Configuration"
-                      >
-                        <Edit2 size={18}/>
-                      </button>
-                    )}
-                    <button onClick={onClose} className="p-2 bg-white/5 hover:bg-white/10 rounded-lg text-slate-500 hover:text-white transition-all border border-white/10"><X size={20}/></button>
                   </div>
               </div>
             </div>
@@ -1431,8 +1417,7 @@ function FailureDetailView({ mode, onClose, onUpdate, onRestore, setBkmGuidanceM
                <span>D: {mode.detection}</span>
             </div>
          </div>
-      </motion.div>
-    </div>
+    </FARDossierShell>
   )
 }
 
