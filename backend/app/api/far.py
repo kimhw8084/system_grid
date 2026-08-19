@@ -15,6 +15,35 @@ router = APIRouter(prefix="/far", tags=["FAR"])
 IMMUTABLE_FAR_FIELDS = {"id", "created_at", "updated_at", "created_by_user_id", "version", "is_deleted"}
 FAR_BULK_SCORE_FIELDS = {"severity", "occurrence", "detection"}
 
+def normalize_far_versioned_mutation_request(data: dict):
+    if not isinstance(data, dict):
+        raise ValueError("FAR mutation request must be an object")
+
+    expected_version = data.get("expected_version")
+    if isinstance(expected_version, bool) or not isinstance(expected_version, int) or expected_version <= 0:
+        raise ValueError("expected_version must be a positive integer")
+
+    mutation_data = dict(data)
+    mutation_data.pop("expected_version", None)
+    return expected_version, mutation_data
+
+def get_far_versioned_mutation_precondition(mode, expected_version: int):
+    actual_version = int(getattr(mode, "version", 1) or 1)
+    if bool(getattr(mode, "is_deleted", False)):
+        return {
+            "code": "far_mode_archived_read_only",
+            "id": int(getattr(mode, "id")),
+            "actual_version": actual_version,
+        }
+    if actual_version != expected_version:
+        return {
+            "code": "far_mode_version_conflict",
+            "id": int(getattr(mode, "id")),
+            "expected_version": expected_version,
+            "actual_version": actual_version,
+        }
+    return None
+
 def normalize_far_bulk_score_request(data: dict):
     if not isinstance(data, dict):
         raise ValueError("Bulk score request must be an object")
@@ -254,20 +283,39 @@ async def create_failure_mode(data: dict, db: AsyncSession = Depends(get_db)):
 
 @router.put("/modes/{mode_id}", response_model=schemas.FarFailureModeResponse)
 async def update_failure_mode(mode_id: int, data: dict, db: AsyncSession = Depends(get_db)):
-    stmt = select(models.FarFailureMode).options(
+    try:
+        expected_version, mutation_data = normalize_far_versioned_mutation_request(data)
+    except ValueError as exc:
+        raise HTTPException(422, str(exc))
+
+    lock_stmt = (
+        select(models.FarFailureMode)
+        .filter(models.FarFailureMode.id == mode_id)
+        .with_for_update()
+    )
+    lock_result = await db.execute(lock_stmt)
+    mode = lock_result.scalar_one_or_none()
+    if not mode:
+        raise HTTPException(404)
+
+    blocker = get_far_versioned_mutation_precondition(mode, expected_version)
+    if blocker:
+        raise HTTPException(409, detail=blocker)
+
+    # Keep the row lock while loading the relationship collections needed for assignment.
+    relation_stmt = select(models.FarFailureMode).options(
         joinedload(models.FarFailureMode.affected_assets),
         joinedload(models.FarFailureMode.causes)
     ).filter(models.FarFailureMode.id == mode_id)
-    result = await db.execute(stmt)
-    mode = result.unique().scalar_one_or_none()
-    if not mode: raise HTTPException(404)
-    
-    # Track if we need to update RPN
+    relation_result = await db.execute(relation_stmt)
+    mode = relation_result.unique().scalar_one()
+
+    # Track if we need to update RPN.
     rpn_fields = {'severity', 'occurrence', 'detection'}
     needs_rpn = False
-    
-    clean_data = filter_valid_columns(models.FarFailureMode, data, exclude=IMMUTABLE_FAR_FIELDS)
-    
+
+    clean_data = filter_valid_columns(models.FarFailureMode, mutation_data, exclude=IMMUTABLE_FAR_FIELDS)
+
     for k, v in clean_data.items():
         if k == 'affected_assets' and isinstance(v, list):
             asset_stmt = select(models.Device).filter(models.Device.id.in_(v))
@@ -279,17 +327,18 @@ async def update_failure_mode(mode_id: int, data: dict, db: AsyncSession = Depen
             mode.causes = list(cause_res.scalars().all())
         elif hasattr(mode, k):
             setattr(mode, k, v)
-            if k in rpn_fields: needs_rpn = True
-            
+            if k in rpn_fields:
+                needs_rpn = True
+
     if needs_rpn:
         mode.rpn = mode.severity * mode.occurrence * mode.detection
-            
-    mode.version = (mode.version or 1) + 1
+
+    mode.version = int(mode.version or 1) + 1
     await db.flush()
-    await save_far_history(mode.id, mode.version, db, data.get("_change_summary", "Update via API"))
+    await save_far_history(mode.id, mode.version, db, mutation_data.get("_change_summary", "Update via API"))
     await db.commit()
-    
-    # Reload with full relations
+
+    # Reload with full relations.
     stmt = select(models.FarFailureMode).options(
         selectinload(models.FarFailureMode.causes).selectinload(models.FarFailureCause.resolutions).selectinload(models.FarResolution.knowledge_bkm),
         selectinload(models.FarFailureMode.causes).selectinload(models.FarFailureCause.mitigations),
@@ -326,16 +375,39 @@ async def get_far_history(mode_id: int, db: AsyncSession = Depends(get_db)):
     return history
 
 @router.post("/modes/{mode_id}/restore/{version}")
-async def restore_far_version(mode_id: int, version: int, db: AsyncSession = Depends(get_db)):
+async def restore_far_version(mode_id: int, version: int, data: dict, db: AsyncSession = Depends(get_db)):
+    try:
+        expected_version, _ = normalize_far_versioned_mutation_request(data)
+    except ValueError as exc:
+        raise HTTPException(422, str(exc))
+
     stmt = select(models.FarHistory).filter(models.FarHistory.far_mode_id == mode_id, models.FarHistory.version == version)
     res = await db.execute(stmt)
     history = res.scalar_one_or_none()
-    if not history: raise HTTPException(404, "History version not found")
-    
-    mode_stmt = select(models.FarFailureMode).filter(models.FarFailureMode.id == mode_id)
-    mode_res = await db.execute(mode_stmt)
-    mode = mode_res.scalar_one()
-    
+    if not history:
+        raise HTTPException(404, "History version not found")
+
+    lock_stmt = (
+        select(models.FarFailureMode)
+        .filter(models.FarFailureMode.id == mode_id)
+        .with_for_update()
+    )
+    mode_res = await db.execute(lock_stmt)
+    mode = mode_res.scalar_one_or_none()
+    if not mode:
+        raise HTTPException(404)
+
+    blocker = get_far_versioned_mutation_precondition(mode, expected_version)
+    if blocker:
+        raise HTTPException(409, detail=blocker)
+
+    relation_stmt = select(models.FarFailureMode).options(
+        joinedload(models.FarFailureMode.affected_assets),
+        joinedload(models.FarFailureMode.causes)
+    ).filter(models.FarFailureMode.id == mode_id)
+    relation_res = await db.execute(relation_stmt)
+    mode = relation_res.unique().scalar_one()
+
     snapshot = history.snapshot
     # Content-version restore must not mutate the independent archive lifecycle.
     for k, v in snapshot.items():
@@ -351,12 +423,17 @@ async def restore_far_version(mode_id: int, version: int, db: AsyncSession = Dep
             continue
         elif hasattr(mode, k):
             setattr(mode, k, v)
-            
-    mode.version = (mode.version or 1) + 1
+
+    mode.version = int(mode.version or 1) + 1
     await db.flush()
     await save_far_history(mode.id, mode.version, db, f"Restored from v{version}")
     await db.commit()
-    return {"status": "success", "new_version": mode.version}
+    return {
+        "status": "success",
+        "restored_from_version": version,
+        "previous_version": expected_version,
+        "new_version": mode.version,
+    }
 
 @router.post("/modes/{mode_id}/archive")
 @router.delete("/modes/{mode_id}", include_in_schema=False)

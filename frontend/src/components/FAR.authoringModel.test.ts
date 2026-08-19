@@ -65,7 +65,20 @@ describe('FAR authoring model', () => {
       status: 'Open',
       metadata_json: { linked_research_ids: [5] },
       affected_assets: [7, 9],
+      expected_version: 4,
     })
+  })
+
+  it('does not add a version lease to a new failure vector', () => {
+    expect(sanitizeFarAuthoringPayload({
+      system_name: 'Payments',
+      failure_type: 'Software',
+      title: 'Timeout',
+      severity: 4,
+      occurrence: 3,
+      detection: 2,
+      affected_assets: [],
+    })).not.toHaveProperty('expected_version')
   })
 
   it('routes required identity and score failures to the correct authoring tabs', () => {

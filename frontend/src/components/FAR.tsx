@@ -92,6 +92,10 @@ import {
   FAR_CONTEXT_DETAIL_TABS,
   type FarDossierTab,
 } from './FAR.rowActions'
+import {
+  readFarMutationFailureMessage,
+  withFarExpectedVersion,
+} from './FAR.mutationIntegrity'
 
 import 'ag-grid-community/styles/ag-grid.css'
 import 'ag-grid-community/styles/ag-theme-alpine.css'
@@ -1455,7 +1459,7 @@ function FARAuthoringModal({ isOpen, initialData, onClose, onComplete }: any) {
         method: data.id ? 'PUT' : 'POST',
         body: JSON.stringify(sanitizeFarAuthoringPayload(data)),
       })
-      if (!res.ok) throw new Error(await res.text())
+      if (!res.ok) throw new Error(await readFarMutationFailureMessage(res))
       return res.json()
     },
     onSuccess: (data: any) => {
@@ -2112,9 +2116,9 @@ function RoadmapTab({ mode, readOnly, onUpdate }: any) {
         const updatedMetadata = { ...mode.metadata_json, linked_research_ids: [...currentLinks, researchId] }
         const res = await apiFetch(`/api/v1/far/modes/${mode.id}`, {
           method: 'PUT',
-          body: JSON.stringify({ metadata_json: updatedMetadata })
+          body: JSON.stringify(withFarExpectedVersion(mode.version, { metadata_json: updatedMetadata }))
         })
-        if (!res.ok) throw new Error(await res.text())
+        if (!res.ok) throw new Error(await readFarMutationFailureMessage(res))
         return res.json()
       },
       onSuccess: () => {
@@ -2136,9 +2140,9 @@ function RoadmapTab({ mode, readOnly, onUpdate }: any) {
         }
         const res = await apiFetch(`/api/v1/far/modes/${mode.id}`, {
           method: 'PUT',
-          body: JSON.stringify({ metadata_json: updatedMetadata })
+          body: JSON.stringify(withFarExpectedVersion(mode.version, { metadata_json: updatedMetadata }))
         })
-        if (!res.ok) throw new Error(await res.text())
+        if (!res.ok) throw new Error(await readFarMutationFailureMessage(res))
         return res.json()
       },
       onSuccess: () => {

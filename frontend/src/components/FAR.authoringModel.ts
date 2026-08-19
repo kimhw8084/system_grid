@@ -1,3 +1,5 @@
+import { withFarExpectedVersion } from './FAR.mutationIntegrity'
+
 export type FarAuthoringTab = 'definition' | 'risk' | 'impact'
 
 export type FarAuthoringErrors = Record<string, string>
@@ -29,6 +31,8 @@ export function buildFarAuthoringDraft(value: any) {
 
 export function sanitizeFarAuthoringPayload(value: any) {
   const payload = { ...value }
+  const isUpdate = Number.isInteger(Number(payload.id)) && Number(payload.id) > 0
+  const currentVersion = payload.version
   payload.affected_assets = (Array.isArray(payload.affected_assets) ? payload.affected_assets : [])
     .map((asset: any) => Number(typeof asset === 'object' ? asset?.id : asset))
     .filter((id: number) => Number.isFinite(id))
@@ -43,7 +47,7 @@ export function sanitizeFarAuthoringPayload(value: any) {
   delete payload.version
   delete payload.is_deleted
 
-  return payload
+  return isUpdate ? withFarExpectedVersion(currentVersion, payload) : payload
 }
 
 const validateScore = (value: any, label: string) => {

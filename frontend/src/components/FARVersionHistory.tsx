@@ -6,6 +6,7 @@ import { toast } from 'react-hot-toast'
 
 import { apiFetch } from '../api/apiClient'
 import { formatAppDate } from '../utils/dateUtils'
+import { readFarMutationFailureMessage, withFarExpectedVersion } from './FAR.mutationIntegrity'
 
 const formatHistoryValue = (value: unknown) => {
   if (value == null || value === '') return '—'
@@ -17,6 +18,7 @@ const formatHistoryValue = (value: unknown) => {
 
 export function FARVersionHistory({ mode, onUpdate }: { mode: any; onUpdate: (type: string) => void }) {
   const queryClient = useQueryClient()
+  const isArchived = Boolean(mode.is_deleted)
   const {
     data: history = [],
     isLoading,
@@ -34,8 +36,11 @@ export function FARVersionHistory({ mode, onUpdate }: { mode: any; onUpdate: (ty
 
   const restoreMutation = useMutation({
     mutationFn: async (version: number) => {
-      const response = await apiFetch(`/api/v1/far/modes/${mode.id}/restore/${version}`, { method: 'POST' })
-      if (!response.ok) throw new Error(await response.text())
+      const response = await apiFetch(`/api/v1/far/modes/${mode.id}/restore/${version}`, {
+        method: 'POST',
+        body: JSON.stringify(withFarExpectedVersion(mode.version)),
+      })
+      if (!response.ok) throw new Error(await readFarMutationFailureMessage(response))
       return response.json()
     },
     onSuccess: async () => {
@@ -100,12 +105,13 @@ export function FARVersionHistory({ mode, onUpdate }: { mode: any; onUpdate: (ty
                 </div>
                 <button
                   type="button"
-                  disabled={isCurrent || restoreMutation.isPending}
+                  disabled={isArchived || isCurrent || restoreMutation.isPending}
+                  title={isArchived ? 'Restore the failure vector lifecycle before restoring historical content' : undefined}
                   onClick={() => restoreMutation.mutate(Number(entry.version))}
                   className="flex shrink-0 items-center gap-2 rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-[9px] font-bold uppercase tracking-widest text-slate-300 transition-all hover:border-blue-500/30 hover:text-white disabled:cursor-not-allowed disabled:opacity-35"
                 >
                   <Undo2 size={12} />
-                  {isCurrent ? 'Current content' : `Restore v${entry.version}`}
+                  {isArchived ? 'Restore lifecycle first' : isCurrent ? 'Current content' : `Restore v${entry.version}`}
                 </button>
               </div>
 
