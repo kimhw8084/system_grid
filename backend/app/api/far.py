@@ -44,6 +44,54 @@ def get_far_versioned_mutation_precondition(mode, expected_version: int):
         }
     return None
 
+FAR_AUTHORING_RELATIONSHIP_FIELDS = ("affected_assets", "cause_ids")
+
+def normalize_far_reference_ids(value, field: str) -> list[int]:
+    if not isinstance(value, list):
+        raise ValueError(f"{field} must be a list")
+    ids = []
+    for item in value:
+        if isinstance(item, bool) or not isinstance(item, int) or item <= 0:
+            raise ValueError(f"{field} must contain positive integer ids")
+        if item in ids:
+            raise ValueError(f"{field} must not contain duplicate ids")
+        ids.append(item)
+    return ids
+
+def normalize_far_authoring_relationships(data: dict) -> dict[str, list[int]]:
+    if not isinstance(data, dict):
+        raise ValueError("FAR authoring payload must be an object")
+    return {
+        field: normalize_far_reference_ids(data[field], field)
+        for field in FAR_AUTHORING_RELATIONSHIP_FIELDS
+        if field in data
+    }
+
+def collect_far_missing_reference_ids(requested_ids: list[int], rows) -> list[int]:
+    found_ids = {int(getattr(row, "id")) for row in rows}
+    return [item for item in requested_ids if item not in found_ids]
+
+async def resolve_far_authoring_relationships(db: AsyncSession, relationship_ids: dict[str, list[int]]):
+    resolved = {}
+    specs = {
+        "affected_assets": (models.Device, "Affected asset"),
+        "cause_ids": (models.FarFailureCause, "Root cause"),
+    }
+    for field, ids in relationship_ids.items():
+        model, label = specs[field]
+        if not ids:
+            resolved[field] = []
+            continue
+        result = await db.execute(select(model).filter(model.id.in_(ids)))
+        rows = list(result.scalars().all())
+        missing_ids = collect_far_missing_reference_ids(ids, rows)
+        if missing_ids:
+            missing = ", ".join(str(item) for item in missing_ids)
+            raise HTTPException(409, f"{label} references are stale or missing: {missing}. Refresh and retry.")
+        by_id = {int(row.id): row for row in rows}
+        resolved[field] = [by_id[item] for item in ids]
+    return resolved
+
 def normalize_far_lifecycle_request(data: dict):
     if not isinstance(data, dict):
         raise ValueError("Lifecycle request must be an object")
@@ -455,9 +503,14 @@ async def get_failure_modes(
 
 @router.post("/modes", response_model=schemas.FarFailureModeResponse)
 async def create_failure_mode(data: dict, db: AsyncSession = Depends(get_db)):
-    # Calculate RPN
+    try:
+        relationship_ids = normalize_far_authoring_relationships(data)
+    except ValueError as exc:
+        raise HTTPException(422, str(exc))
+    resolved_relationships = await resolve_far_authoring_relationships(db, relationship_ids)
+
+    # Calculate RPN only after every requested relationship has been validated.
     rpn = data.get('severity', 1) * data.get('occurrence', 1) * data.get('detection', 1)
-    
     mode = models.FarFailureMode(
         system_name=data.get('system_name'),
         failure_type=data.get('failure_type', 'Design'),
@@ -469,33 +522,16 @@ async def create_failure_mode(data: dict, db: AsyncSession = Depends(get_db)):
         rpn=rpn,
         status="Analyzing",
         version=1,
-        # Initialize relationship collections eagerly so async assignment does not
-        # trigger an implicit lazy load during creation.
-        affected_assets=[],
-        causes=[]
+        metadata_json=normalize_json_object(data.get('metadata_json')),
+        affected_assets=resolved_relationships.get('affected_assets', []),
+        causes=resolved_relationships.get('cause_ids', []),
     )
     db.add(mode)
     await db.flush()
-
-    # Link Assets
-    if data.get('affected_assets'):
-        stmt = select(models.Device).filter(models.Device.id.in_(data['affected_assets']))
-        result = await db.execute(stmt)
-        assets = result.scalars().all()
-        mode.affected_assets = list(assets)
-
-    # Link Causes
-    if data.get('cause_ids'):
-        stmt = select(models.FarFailureCause).filter(models.FarFailureCause.id.in_(data['cause_ids']))
-        result = await db.execute(stmt)
-        causes = result.scalars().all()
-        mode.causes = list(causes)
-
-    await db.flush()
     await save_far_history(mode.id, mode.version, db, "Initial creation")
     await db.commit()
-    
-    # Reload with all relationships to avoid MissingGreenlet during serialization
+
+    # Reload with all relationships to avoid MissingGreenlet during serialization.
     stmt = select(models.FarFailureMode).options(
         selectinload(models.FarFailureMode.causes).selectinload(models.FarFailureCause.resolutions).selectinload(models.FarResolution.knowledge_bkm),
         selectinload(models.FarFailureMode.causes).selectinload(models.FarFailureCause.mitigations),
@@ -537,32 +573,36 @@ async def update_failure_mode(mode_id: int, data: dict, db: AsyncSession = Depen
     relation_result = await db.execute(relation_stmt)
     mode = relation_result.unique().scalar_one()
 
+    # Resolve every relationship request before mutating scalar or relationship state.
+    try:
+        relationship_ids = normalize_far_authoring_relationships(mutation_data)
+    except ValueError as exc:
+        raise HTTPException(422, str(exc))
+    resolved_relationships = await resolve_far_authoring_relationships(db, relationship_ids)
+    change_summary = mutation_data.get("_change_summary") or "Update via API"
+
     # Track if we need to update RPN.
     rpn_fields = {'severity', 'occurrence', 'detection'}
     needs_rpn = False
-
     clean_data = filter_valid_columns(models.FarFailureMode, mutation_data, exclude=IMMUTABLE_FAR_FIELDS)
 
     for k, v in clean_data.items():
-        if k == 'affected_assets' and isinstance(v, list):
-            asset_stmt = select(models.Device).filter(models.Device.id.in_(v))
-            asset_res = await db.execute(asset_stmt)
-            mode.affected_assets = list(asset_res.scalars().all())
-        elif k == 'cause_ids' and isinstance(v, list):
-            cause_stmt = select(models.FarFailureCause).filter(models.FarFailureCause.id.in_(v))
-            cause_res = await db.execute(cause_stmt)
-            mode.causes = list(cause_res.scalars().all())
-        elif hasattr(mode, k):
+        if hasattr(mode, k):
             setattr(mode, k, v)
             if k in rpn_fields:
                 needs_rpn = True
+
+    if 'affected_assets' in resolved_relationships:
+        mode.affected_assets = resolved_relationships['affected_assets']
+    if 'cause_ids' in resolved_relationships:
+        mode.causes = resolved_relationships['cause_ids']
 
     if needs_rpn:
         mode.rpn = mode.severity * mode.occurrence * mode.detection
 
     mode.version = int(mode.version or 1) + 1
     await db.flush()
-    await save_far_history(mode.id, mode.version, db, mutation_data.get("_change_summary", "Update via API"))
+    await save_far_history(mode.id, mode.version, db, change_summary)
     await db.commit()
 
     # Reload with full relations.

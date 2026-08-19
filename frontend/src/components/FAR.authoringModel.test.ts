@@ -65,8 +65,25 @@ describe('FAR authoring model', () => {
       status: 'Open',
       metadata_json: { linked_research_ids: [5] },
       affected_assets: [7, 9],
+      cause_ids: [1],
       expected_version: 4,
     })
+  })
+
+  it('deduplicates positive relationship ids while preserving explicit cause scope', () => {
+    const payload = sanitizeFarAuthoringPayload({
+      id: 9,
+      version: 3,
+      system_name: 'Payments',
+      failure_type: 'Software',
+      title: 'Timeout',
+      affected_assets: [{ id: 7 }, 7, 0, -1, 'bad'],
+      cause_ids: [{ id: 4 }, 4, 6, null],
+    })
+
+    expect(payload.affected_assets).toEqual([7])
+    expect(payload.cause_ids).toEqual([4, 6])
+    expect(payload.expected_version).toBe(3)
   })
 
   it('does not add a version lease to a new failure vector', () => {

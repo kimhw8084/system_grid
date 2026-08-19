@@ -8,6 +8,14 @@ const FAR_REQUIRED_FIELDS = new Set(['system_name', 'failure_type', 'title'])
 
 export const isFarAuthoringFieldRequired = (field: string) => FAR_REQUIRED_FIELDS.has(field)
 
+export function normalizeFarAuthoringReferenceIds(value: any) {
+  if (!Array.isArray(value)) return []
+  const ids = value
+    .map((item: any) => Number(typeof item === 'object' ? item?.id : item))
+    .filter((id: number) => Number.isInteger(id) && id > 0)
+  return Array.from(new Set(ids))
+}
+
 export function buildFarAuthoringDraft(value: any) {
   const base = {
     system_name: '',
@@ -23,9 +31,7 @@ export function buildFarAuthoringDraft(value: any) {
   const affectedAssets = Array.isArray(base.affected_assets) ? base.affected_assets : []
   return {
     ...base,
-    affected_assets: affectedAssets
-      .map((asset: any) => Number(typeof asset === 'object' ? asset?.id : asset))
-      .filter((id: number) => Number.isFinite(id)),
+    affected_assets: normalizeFarAuthoringReferenceIds(affectedAssets),
   }
 }
 
@@ -33,9 +39,14 @@ export function sanitizeFarAuthoringPayload(value: any) {
   const payload = { ...value }
   const isUpdate = Number.isInteger(Number(payload.id)) && Number(payload.id) > 0
   const currentVersion = payload.version
-  payload.affected_assets = (Array.isArray(payload.affected_assets) ? payload.affected_assets : [])
-    .map((asset: any) => Number(typeof asset === 'object' ? asset?.id : asset))
-    .filter((id: number) => Number.isFinite(id))
+  payload.affected_assets = normalizeFarAuthoringReferenceIds(payload.affected_assets)
+  if (Array.isArray(payload.cause_ids) || Array.isArray(payload.causes)) {
+    payload.cause_ids = normalizeFarAuthoringReferenceIds(
+      Array.isArray(payload.cause_ids) ? payload.cause_ids : payload.causes,
+    )
+  } else {
+    delete payload.cause_ids
+  }
 
   delete payload.causes
   delete payload.mitigations
