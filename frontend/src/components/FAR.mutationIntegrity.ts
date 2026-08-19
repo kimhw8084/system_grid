@@ -34,6 +34,18 @@ export function getFarMutationFailureMessage(payload: unknown, status?: number) 
     if (conflict.code === 'far_mode_archived_read_only') {
       return 'Archived failure vectors are read-only. Restore the vector lifecycle before changing content.'
     }
+    if (conflict.code === 'far_lifecycle_precondition_failed') {
+      const versionConflicts = Array.isArray((detail as any).version_conflicts) ? (detail as any).version_conflicts : []
+      const missingIds = Array.isArray((detail as any).missing_ids) ? (detail as any).missing_ids : []
+      if (versionConflicts.length) {
+        const first = versionConflicts[0] || {}
+        return `FAR lifecycle selection changed since preview (${versionConflicts.length} version conflict${versionConflicts.length === 1 ? '' : 's'}; first expected v${first.expected_version ?? '—'}, current v${first.actual_version ?? '—'}). Refresh and retry.`
+      }
+      if (missingIds.length) {
+        return `FAR lifecycle selection is stale (${missingIds.length} record${missingIds.length === 1 ? '' : 's'} no longer available). Refresh and retry.`
+      }
+      return 'FAR lifecycle selection no longer matches current data. Refresh and retry.'
+    }
   }
   if (typeof detail === 'string' && detail.trim()) return detail
   return `FAR mutation failed${status ? ` (${status})` : ''}`

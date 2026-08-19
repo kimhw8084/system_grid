@@ -25,5 +25,12 @@ describe('FAR mutation integrity', () => {
     expect(getFarMutationFailureMessage({
       detail: { code: 'far_mode_archived_read_only', id: 42, actual_version: 4 },
     }, 409)).toContain('Archived failure vectors are read-only')
+    expect(getFarMutationFailureMessage({
+      detail: {
+        code: 'far_lifecycle_precondition_failed',
+        missing_ids: [],
+        version_conflicts: [{ id: 42, expected_version: 4, actual_version: 5 }],
+      },
+    }, 409)).toContain('expected v4, current v5')
   })
 })

@@ -76,7 +76,13 @@ import { getFarDeepLinkNotice, getFarGridDataState, resolveFarDeepLink } from '.
 import DataStatusPill, { DataDiagnosticModal } from './shared/OperationalDataStatus'
 import { buildFarRegistryDiagnosticDetail } from './FAR.diagnostics'
 import { FARDossierShell } from './FAR.dossier'
-import { getFarLifecycleEndpoint, getFarLifecycleRevertAction, isFarLifecycleAction } from './FAR.lifecycleVocabulary'
+import {
+  buildFarLifecycleRequest,
+  buildFarLifecycleRevertPayload,
+  getFarLifecycleEndpoint,
+  getFarLifecycleRevertAction,
+  isFarLifecycleAction,
+} from './FAR.lifecycleVocabulary'
 import {
   buildFarBulkScorePreview,
   buildFarBulkScoreRequest,
@@ -513,13 +519,14 @@ export default function FAR() {
 
         if (!isFarLifecycleAction(action)) throw new Error('Unsupported FAR lifecycle action.')
         const endpoint = getFarLifecycleEndpoint(action)
+        const request = buildFarLifecycleRequest(ids, modes || [], payload?.expected_versions)
         const res = await apiFetch(endpoint, {
           method: 'POST',
-          body: JSON.stringify({ ids }),
+          body: JSON.stringify(request),
         })
-        if (!res.ok) throw new Error(await res.text())
+        if (!res.ok) throw new Error(await readFarMutationFailureMessage(res))
         const result = await res.json()
-        const changedCount = Number(result?.count || 0)
+        const changedCount = Number(result?.changed_count ?? result?.count ?? 0)
         return {
           ...result,
           changed_count: changedCount,
@@ -536,11 +543,13 @@ export default function FAR() {
         const revertPayload = buildFarBulkScoreRevertPayload(changedSnapshots, payload, result?.versions)
         return revertPayload ? { action: 'update', ids: changedIds, payload: revertPayload } : null
       }
-      return action === 'archive'
-        ? { action: getFarLifecycleRevertAction(action), ids: changedIds }
-        : action === 'restore'
-          ? { action: getFarLifecycleRevertAction(action), ids: changedIds }
+      if (action === 'archive' || action === 'restore') {
+        const revertPayload = buildFarLifecycleRevertPayload(changedIds, result?.versions)
+        return revertPayload
+          ? { action: getFarLifecycleRevertAction(action), ids: changedIds, payload: revertPayload }
           : null
+      }
+      return null
     },
     onExecutionSuccess: () => {
       setSelectedIds([])

@@ -44,6 +44,67 @@ def get_far_versioned_mutation_precondition(mode, expected_version: int):
         }
     return None
 
+def normalize_far_lifecycle_request(data: dict):
+    if not isinstance(data, dict):
+        raise ValueError("Lifecycle request must be an object")
+
+    raw_ids = data.get("ids")
+    if not isinstance(raw_ids, list) or not raw_ids:
+        raise ValueError("ids must be a non-empty list")
+    if any(isinstance(item, bool) or not isinstance(item, int) or item <= 0 for item in raw_ids):
+        raise ValueError("ids must contain positive integers")
+    if len(set(raw_ids)) != len(raw_ids):
+        raise ValueError("ids must not contain duplicates")
+    ids = list(raw_ids)
+
+    raw_expected = data.get("expected_versions")
+    if not isinstance(raw_expected, dict):
+        raise ValueError("expected_versions must be an object")
+
+    expected_versions = {}
+    normalized_keys = set()
+    for raw_key, raw_version in raw_expected.items():
+        try:
+            key = int(raw_key)
+        except (TypeError, ValueError):
+            raise ValueError("expected_versions keys must be record ids")
+        if isinstance(raw_version, bool) or not isinstance(raw_version, int) or raw_version <= 0:
+            raise ValueError("expected_versions values must be positive integers")
+        normalized_keys.add(key)
+        expected_versions[key] = raw_version
+
+    if normalized_keys != set(ids):
+        raise ValueError("expected_versions must exactly match ids")
+
+    return ids, expected_versions
+
+def collect_far_lifecycle_preconditions(ids, modes, expected_versions):
+    by_id = {int(mode.id): mode for mode in modes}
+    missing_ids = [mode_id for mode_id in ids if mode_id not in by_id]
+    version_conflicts = [
+        {
+            "id": mode_id,
+            "expected_version": expected_versions[mode_id],
+            "actual_version": int(getattr(by_id[mode_id], "version", 1) or 1),
+        }
+        for mode_id in ids
+        if (
+            mode_id in by_id
+            and int(getattr(by_id[mode_id], "version", 1) or 1) != expected_versions[mode_id]
+        )
+    ]
+    return {
+        "missing_ids": missing_ids,
+        "version_conflicts": version_conflicts,
+    }
+
+def apply_far_lifecycle_state(mode, archived: bool):
+    if bool(getattr(mode, "is_deleted", False)) == archived:
+        return False
+    mode.is_deleted = archived
+    mode.version = int(getattr(mode, "version", 1) or 1) + 1
+    return True
+
 def normalize_far_bulk_score_request(data: dict):
     if not isinstance(data, dict):
         raise ValueError("Bulk score request must be an object")
@@ -437,20 +498,32 @@ async def restore_far_version(mode_id: int, version: int, data: dict, db: AsyncS
 
 @router.post("/modes/{mode_id}/archive")
 @router.delete("/modes/{mode_id}", include_in_schema=False)
-async def archive_failure_mode(mode_id: int, db: AsyncSession = Depends(get_db)):
-    stmt = select(models.FarFailureMode).filter(models.FarFailureMode.id == mode_id)
+async def archive_failure_mode(mode_id: int, data: dict, db: AsyncSession = Depends(get_db)):
+    try:
+        expected_version, _ = normalize_far_versioned_mutation_request(data)
+    except ValueError as exc:
+        raise HTTPException(422, str(exc))
+
+    stmt = (
+        select(models.FarFailureMode)
+        .filter(models.FarFailureMode.id == mode_id)
+        .with_for_update()
+    )
     result = await db.execute(stmt)
     mode = result.scalar_one_or_none()
-    if not mode: raise HTTPException(404)
-    if mode.is_deleted:
-        return {"status": "success", "changed": False, "version": mode.version}
-    
-    mode.is_deleted = True
-    mode.version = (mode.version or 1) + 1
-    await db.flush()
-    await save_far_history(mode.id, mode.version, db, "Archived failure vector")
+    if not mode:
+        raise HTTPException(404)
+
+    blockers = collect_far_lifecycle_preconditions([mode_id], [mode], {mode_id: expected_version})
+    if blockers["version_conflicts"]:
+        raise HTTPException(409, detail={"code": "far_mode_version_conflict", **blockers["version_conflicts"][0]})
+
+    changed = apply_far_lifecycle_state(mode, True)
+    if changed:
+        await db.flush()
+        await save_far_history(mode.id, mode.version, db, "Archived failure vector")
     await db.commit()
-    return {"status": "success", "changed": True, "version": mode.version}
+    return {"status": "success", "changed": changed, "version": mode.version}
 
 @router.post("/modes/bulk-score")
 async def bulk_score_failure_modes(data: dict, db: AsyncSession = Depends(get_db)):
@@ -511,61 +584,119 @@ async def bulk_score_failure_modes(data: dict, db: AsyncSession = Depends(get_db
 @router.post("/modes/bulk-archive")
 @router.post("/modes/bulk-delete", include_in_schema=False)
 async def bulk_archive_failure_modes(data: dict, db: AsyncSession = Depends(get_db)):
-    ids = data.get("ids", [])
-    if not ids: return {"status": "success", "count": 0}
-    
-    stmt = select(models.FarFailureMode).filter(models.FarFailureMode.id.in_(ids))
+    try:
+        ids, expected_versions = normalize_far_lifecycle_request(data)
+    except ValueError as exc:
+        raise HTTPException(422, detail=str(exc))
+
+    stmt = (
+        select(models.FarFailureMode)
+        .filter(models.FarFailureMode.id.in_(ids))
+        .order_by(models.FarFailureMode.id)
+        .with_for_update()
+    )
     result = await db.execute(stmt)
-    modes = result.scalars().all()
-    changed = []
-    for mode in modes:
-        if mode.is_deleted:
+    modes = list(result.scalars().all())
+    blockers = collect_far_lifecycle_preconditions(ids, modes, expected_versions)
+    if blockers["missing_ids"] or blockers["version_conflicts"]:
+        raise HTTPException(409, detail={"code": "far_lifecycle_precondition_failed", **blockers})
+
+    by_id = {int(mode.id): mode for mode in modes}
+    changed_ids = []
+    unchanged_ids = []
+    for mode_id in ids:
+        mode = by_id[mode_id]
+        if not apply_far_lifecycle_state(mode, True):
+            unchanged_ids.append(mode_id)
             continue
-        mode.is_deleted = True
-        mode.version = (mode.version or 1) + 1
         await db.flush()
         await save_far_history(mode.id, mode.version, db, "Archived failure vector")
-        changed.append(mode.id)
-        
+        changed_ids.append(mode_id)
+
     await db.commit()
-    return {"status": "success", "count": len(changed), "changed_ids": changed}
+    return {
+        "status": "success",
+        "action": "archive",
+        "count": len(changed_ids),
+        "selected_count": len(ids),
+        "changed_count": len(changed_ids),
+        "unchanged_count": len(unchanged_ids),
+        "changed_ids": changed_ids,
+        "unchanged_ids": unchanged_ids,
+        "versions": {str(mode_id): int(by_id[mode_id].version or 1) for mode_id in ids},
+    }
 
 @router.post("/modes/{mode_id}/restore")
-async def restore_failure_mode(mode_id: int, db: AsyncSession = Depends(get_db)):
-    stmt = select(models.FarFailureMode).filter(models.FarFailureMode.id == mode_id)
+async def restore_failure_mode(mode_id: int, data: dict, db: AsyncSession = Depends(get_db)):
+    try:
+        expected_version, _ = normalize_far_versioned_mutation_request(data)
+    except ValueError as exc:
+        raise HTTPException(422, str(exc))
+
+    stmt = (
+        select(models.FarFailureMode)
+        .filter(models.FarFailureMode.id == mode_id)
+        .with_for_update()
+    )
     result = await db.execute(stmt)
     mode = result.scalar_one_or_none()
-    if not mode: raise HTTPException(404)
-    if not mode.is_deleted:
-        return {"status": "success", "changed": False, "version": mode.version}
+    if not mode:
+        raise HTTPException(404)
 
-    mode.is_deleted = False
-    mode.version = (mode.version or 1) + 1
-    await db.flush()
-    await save_far_history(mode.id, mode.version, db, "Restored failure vector")
+    blockers = collect_far_lifecycle_preconditions([mode_id], [mode], {mode_id: expected_version})
+    if blockers["version_conflicts"]:
+        raise HTTPException(409, detail={"code": "far_mode_version_conflict", **blockers["version_conflicts"][0]})
+
+    changed = apply_far_lifecycle_state(mode, False)
+    if changed:
+        await db.flush()
+        await save_far_history(mode.id, mode.version, db, "Restored failure vector")
     await db.commit()
-    return {"status": "success", "changed": True, "version": mode.version}
+    return {"status": "success", "changed": changed, "version": mode.version}
 
 @router.post("/modes/bulk-restore")
 async def bulk_restore_failure_modes(data: dict, db: AsyncSession = Depends(get_db)):
-    ids = data.get("ids", [])
-    if not ids: return {"status": "success", "count": 0}
+    try:
+        ids, expected_versions = normalize_far_lifecycle_request(data)
+    except ValueError as exc:
+        raise HTTPException(422, detail=str(exc))
 
-    stmt = select(models.FarFailureMode).filter(models.FarFailureMode.id.in_(ids))
+    stmt = (
+        select(models.FarFailureMode)
+        .filter(models.FarFailureMode.id.in_(ids))
+        .order_by(models.FarFailureMode.id)
+        .with_for_update()
+    )
     result = await db.execute(stmt)
-    modes = result.scalars().all()
-    changed = []
-    for mode in modes:
-        if not mode.is_deleted:
+    modes = list(result.scalars().all())
+    blockers = collect_far_lifecycle_preconditions(ids, modes, expected_versions)
+    if blockers["missing_ids"] or blockers["version_conflicts"]:
+        raise HTTPException(409, detail={"code": "far_lifecycle_precondition_failed", **blockers})
+
+    by_id = {int(mode.id): mode for mode in modes}
+    changed_ids = []
+    unchanged_ids = []
+    for mode_id in ids:
+        mode = by_id[mode_id]
+        if not apply_far_lifecycle_state(mode, False):
+            unchanged_ids.append(mode_id)
             continue
-        mode.is_deleted = False
-        mode.version = (mode.version or 1) + 1
         await db.flush()
         await save_far_history(mode.id, mode.version, db, "Restored failure vector")
-        changed.append(mode.id)
+        changed_ids.append(mode_id)
 
     await db.commit()
-    return {"status": "success", "count": len(changed), "changed_ids": changed}
+    return {
+        "status": "success",
+        "action": "restore",
+        "count": len(changed_ids),
+        "selected_count": len(ids),
+        "changed_count": len(changed_ids),
+        "unchanged_count": len(unchanged_ids),
+        "changed_ids": changed_ids,
+        "unchanged_ids": unchanged_ids,
+        "versions": {str(mode_id): int(by_id[mode_id].version or 1) for mode_id in ids},
+    }
 
 # --- CAUSES ---
 
