@@ -45,7 +45,10 @@ export const FAR_MATURITY_LEVELS: ReadonlyArray<FarMaturityLevelDefinition> = [
 ]
 
 export function getFarMaturityLevel(mode: FarAnalyticalMode) {
-  if (mode.status === 'Prevented') return 8
+  const hasVerifiedPrevention = (mode.prevention_actions || []).some((action: any) =>
+    action?.status === 'Verified' || action?.status === 'Completed'
+  )
+  if (mode.status === 'Prevented' || hasVerifiedPrevention) return 8
   const hasMonitoring = mode.mitigations?.some((mitigation) => mitigation.mitigation_type === 'Monitoring') || false
   const hasWorkaround = mode.mitigations?.some((mitigation) => mitigation.mitigation_type === 'Workaround') || false
   const hasResolution = mode.causes?.some((cause) => (cause.resolutions?.length || 0) > 0) || false

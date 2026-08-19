@@ -1979,6 +1979,23 @@ function RoadmapTab({ mode, readOnly, onUpdate }: any) {
     }
   })
 
+  const updatePreventionMutation = useMutation({
+    mutationFn: async ({ preventionId, status }: { preventionId: number, status: string }) => {
+      const res = await apiFetch(`/api/v1/far/prevention/${preventionId}`, {
+        method: 'PUT',
+        body: JSON.stringify(buildFarContextMutationRequest(mode.id, mode.version, { status })),
+      })
+      if (!res.ok) throw new Error(await readFarMutationFailureMessage(res))
+      return res.json()
+    },
+    onSuccess: () => {
+      toast.success('Prevention status synchronized')
+      queryClient.invalidateQueries({ queryKey: ['far', 'modes'] })
+      onUpdate()
+    },
+    onError: (error: any) => toast.error(error?.message || 'Failed to update prevention status'),
+  })
+
   useEffect(() => {
     if (!selectedCauseId && mode.causes?.length > 0) {
       setSelectedCauseId(mode.causes[0].id)
@@ -2083,6 +2100,53 @@ function RoadmapTab({ mode, readOnly, onUpdate }: any) {
                 </tbody>
              </table>
           </div>
+
+          <div className="bg-black/40 border border-emerald-500/10 rounded-lg overflow-hidden shadow-2xl">
+             <div className="flex items-center justify-between border-b border-white/10 bg-emerald-500/[0.03] px-8 py-4">
+                <div>
+                   <h4 className="text-[10px] font-black uppercase tracking-[0.2em] text-emerald-400">Prevention Execution</h4>
+                   <p className="mt-1 text-[9px] font-bold uppercase text-slate-600">Verified or completed prevention advances this failure vector to maturity Lv8.</p>
+                </div>
+                <span className="text-[9px] font-black uppercase tracking-widest text-slate-500">
+                  {(mode.prevention_actions || []).filter((p: any) => p.cause_id === selectedCauseId).length} linked
+                </span>
+             </div>
+             <table className="w-full text-left border-collapse">
+                <thead className="border-b border-white/10 bg-white/[0.02]">
+                   <tr className="text-[9px] font-bold uppercase tracking-widest text-slate-500">
+                      <th className="px-8 py-3">Prevention Action / Project Objective</th>
+                      <th className="px-8 py-3">Owner</th>
+                      <th className="px-8 py-3">Target</th>
+                      <th className="px-8 py-3 text-right">FAR Status</th>
+                   </tr>
+                </thead>
+                <tbody className="divide-y divide-white/5">
+                   {(mode.prevention_actions || []).filter((p: any) => p.cause_id === selectedCauseId).map((p: any) => (
+                     <tr key={p.id} className="hover:bg-emerald-500/[0.03] transition-colors">
+                        <td className="px-8 py-4 text-[11px] font-bold text-slate-200">{p.prevention_action}</td>
+                        <td className="px-8 py-4 text-[10px] font-bold uppercase text-slate-500">{p.responsible_team || 'UNASSIGNED'}</td>
+                        <td className="px-8 py-4 text-[10px] font-bold uppercase text-slate-500">{p.target_date ? formatAppDate(p.target_date) : 'NO TARGET'}</td>
+                        <td className="px-8 py-4 text-right">
+                           <select
+                             value={p.status || 'Open'}
+                             disabled={readOnly || updatePreventionMutation.isPending}
+                             onChange={(event) => updatePreventionMutation.mutate({ preventionId: Number(p.id), status: event.target.value })}
+                             className="rounded-lg border border-emerald-500/20 bg-slate-950 px-3 py-1.5 text-[9px] font-black uppercase text-emerald-400 outline-none disabled:opacity-40"
+                           >
+                             <option value="Open">Open</option>
+                             <option value="In Progress">In Progress</option>
+                             <option value="Verified">Verified</option>
+                             <option value="Completed">Completed</option>
+                           </select>
+                        </td>
+                     </tr>
+                   ))}
+                   {(mode.prevention_actions || []).filter((p: any) => p.cause_id === selectedCauseId).length === 0 && (
+                     <tr><td colSpan={4} className="py-12 text-center text-[9px] font-bold uppercase tracking-[0.25em] text-slate-700">No prevention execution linked to this cause</td></tr>
+                   )}
+                </tbody>
+             </table>
+          </div>
        </div>
 
        <MitigationFormModal 
@@ -2101,6 +2165,7 @@ function RoadmapTab({ mode, readOnly, onUpdate }: any) {
           isOpen={!readOnly && activePreventionModal?.isOpen}
           onClose={() => setActivePreventionModal(null)}
           modeId={mode.id}
+          modeVersion={mode.version}
           causeId={selectedCauseId}
           onSave={onUpdate}
        />

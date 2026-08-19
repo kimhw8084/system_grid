@@ -1016,19 +1016,161 @@ async def delete_mitigation(mitigation_id: int, data: dict, db: AsyncSession = D
 
 # --- PREVENTION ---
 
-@router.post("/prevention", response_model=schemas.FarPreventionResponse)
+FAR_PREVENTION_STATUSES = {"Open", "In Progress", "Verified", "Completed"}
+
+def normalize_far_prevention_project_request(data: dict):
+    mode_id, expected_version, mutation_data = normalize_far_context_mutation_request(data)
+    cause_id = mutation_data.pop("cause_id", None)
+    if isinstance(cause_id, bool) or not isinstance(cause_id, int) or cause_id <= 0:
+        raise ValueError("cause_id must be a positive integer")
+    project = mutation_data.pop("project", None)
+    if project is not None and not isinstance(project, dict):
+        raise ValueError("project must be an object")
+    return mode_id, expected_version, cause_id, project, mutation_data
+
+def get_far_prevention_status_from_project(project_status):
+    status = str(project_status or "").strip().lower()
+    if status == "completed":
+        return "Completed"
+    if status in {"in progress", "active", "executing"}:
+        return "In Progress"
+    return "Open"
+
+def ensure_far_cause_linked_to_mode(cause_id: int, mode_id: int, parent_ids: list[int]):
+    if mode_id not in parent_ids:
+        raise HTTPException(409, detail={
+            "code": "far_cause_not_linked_to_mode",
+            "cause_id": cause_id,
+            "mode_id": mode_id,
+        })
+
+@router.post("/prevention")
 async def create_prevention(data: dict, db: AsyncSession = Depends(get_db)):
+    try:
+        mode_id, expected_version, cause_id, project_payload, mutation_data = normalize_far_prevention_project_request(data)
+    except ValueError as exc:
+        raise HTTPException(422, str(exc))
+
+    mode = await lock_far_context_mode(mode_id, expected_version, db)
+    parent_ids = await get_far_cause_parent_ids(cause_id, db)
+    ensure_far_cause_linked_to_mode(cause_id, mode_id, parent_ids)
+
+    project = None
+    if project_payload is not None:
+        try:
+            validated_project = schemas.ProjectCreate.model_validate(project_payload)
+        except Exception as exc:
+            raise HTTPException(422, detail=str(exc))
+
+        project_data = validated_project.model_dump()
+        tasks_data = project_data.pop("tasks", [])
+        project_metadata = dict(project_data.get("metadata_json") or {})
+        project_data["metadata_json"] = {
+            **project_metadata,
+            "linked_failure_mode_id": mode_id,
+            "linked_cause_id": cause_id,
+        }
+        project = models.Project(**project_data)
+        db.add(project)
+        await db.flush()
+
+        for task_data in tasks_data:
+            clean_task_data = filter_valid_columns(models.ProjectTask, task_data)
+            clean_task_data.pop("id", None)
+            clean_task_data.pop("project_id", None)
+            db.add(models.ProjectTask(**clean_task_data, project_id=project.id))
+
+        owners = project_data.get("owners") or []
+        prevention_action = (
+            project_data.get("objective")
+            or project_data.get("description")
+            or project_data.get("name")
+        )
+        responsible_team = project_data.get("owner") or (owners[0] if owners else None)
+        prevention_status = get_far_prevention_status_from_project(project_data.get("status"))
+        target_date = project_data.get("end_date")
+    else:
+        prevention_action = mutation_data.get("prevention_action")
+        responsible_team = mutation_data.get("responsible_team")
+        prevention_status = mutation_data.get("status", "Open")
+        target_date = mutation_data.get("target_date")
+
+    if not prevention_action or not str(prevention_action).strip():
+        raise HTTPException(422, "prevention_action is required")
+    if prevention_status not in FAR_PREVENTION_STATUSES:
+        raise HTTPException(422, "status must be Open, In Progress, Verified, or Completed")
+
     prev = models.FarPrevention(
-        failure_mode_id=data.get('failure_mode_id'),
-        cause_id=data.get('cause_id'),
-        prevention_action=data.get('prevention_action'),
-        responsible_team=data.get('responsible_team'),
-        status=data.get('status', 'Open'),
-        target_date=data.get('target_date')
+        failure_mode_id=mode_id,
+        cause_id=cause_id,
+        prevention_action=str(prevention_action).strip(),
+        responsible_team=responsible_team,
+        status=prevention_status,
+        target_date=target_date,
     )
     db.add(prev)
-    await db.commit()
+    await db.flush()
 
-    stmt = select(models.FarPrevention).filter(models.FarPrevention.id == prev.id)
-    result = await db.execute(stmt)
-    return result.scalar_one()
+    if project is not None:
+        project.metadata_json = {
+            **dict(project.metadata_json or {}),
+            "far_prevention_id": prev.id,
+        }
+
+    await advance_far_context_mode(mode, db, f"Prevention project linked: prevention {prev.id}")
+    await db.commit()
+    return {
+        "status": "success",
+        "prevention": {
+            "id": prev.id,
+            "failure_mode_id": prev.failure_mode_id,
+            "cause_id": prev.cause_id,
+            "prevention_action": prev.prevention_action,
+            "responsible_team": prev.responsible_team,
+            "status": prev.status,
+            "target_date": prev.target_date,
+        },
+        "project": None if project is None else {
+            "id": project.id,
+            "name": project.name,
+            "status": project.status,
+        },
+        "parent_version": mode.version,
+    }
+
+@router.put("/prevention/{prevention_id}", response_model=schemas.FarPreventionResponse)
+async def update_prevention(prevention_id: int, data: dict, db: AsyncSession = Depends(get_db)):
+    try:
+        mode_id, expected_version, mutation_data = normalize_far_context_mutation_request(data)
+    except ValueError as exc:
+        raise HTTPException(422, str(exc))
+
+    mode = await lock_far_context_mode(mode_id, expected_version, db)
+    result = await db.execute(
+        select(models.FarPrevention).filter(
+            models.FarPrevention.id == prevention_id,
+            models.FarPrevention.failure_mode_id == mode_id,
+        )
+    )
+    prev = result.scalar_one_or_none()
+    if not prev:
+        raise HTTPException(404, "Prevention record not found")
+
+    changed = False
+    if "status" in mutation_data:
+        status = mutation_data.get("status")
+        if status not in FAR_PREVENTION_STATUSES:
+            raise HTTPException(422, "status must be Open, In Progress, Verified, or Completed")
+        if prev.status != status:
+            prev.status = status
+            changed = True
+    for field in ("prevention_action", "responsible_team", "target_date"):
+        if field in mutation_data and getattr(prev, field) != mutation_data.get(field):
+            setattr(prev, field, mutation_data.get(field))
+            changed = True
+
+    if changed:
+        await advance_far_context_mode(mode, db, f"Prevention updated: prevention {prevention_id}")
+    await db.commit()
+    await db.refresh(prev)
+    return prev

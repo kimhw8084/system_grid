@@ -277,30 +277,30 @@ export function MitigationFormModal({ isOpen, onClose, onSave, modeId, modeVersi
   )
 }
 
-export function PreventionFormModal({ isOpen, onClose, onSave, modeId, causeId }: any) {
+export function PreventionFormModal({ isOpen, onClose, onSave, modeId, modeVersion, causeId }: any) {
   const queryClient = useQueryClient()
 
   const projectMutation = useMutation({
     mutationFn: async (data: any) => {
-       const res = await apiFetch('/api/v1/projects/', {
+       const res = await apiFetch('/api/v1/far/prevention', {
          method: 'POST',
-         body: JSON.stringify({
-           ...data,
-           metadata_json: {
-             linked_failure_mode_id: modeId,
-             linked_cause_id: causeId
-           }
-         })
+         body: JSON.stringify(buildFarContextMutationRequest(modeId, modeVersion, {
+           cause_id: causeId,
+           project: data,
+         })),
        })
+       if (!res.ok) throw new Error(await readFarMutationFailureMessage(res))
        return res.json()
     },
     onSuccess: (data) => {
-       toast.success('Prevention Project Initiated');
+       toast.success('Prevention Project Linked to FAR');
        onSave(data);
        onClose();
        queryClient.invalidateQueries({ queryKey: ['far', 'modes'] })
        queryClient.invalidateQueries({ queryKey: ['far-failure-modes'] })
-    }
+       queryClient.invalidateQueries({ queryKey: ['projects'] })
+    },
+    onError: (error: any) => toast.error(error?.message || 'Prevention project mutation failed')
   })
 
   return (
