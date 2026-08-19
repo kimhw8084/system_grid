@@ -83,6 +83,11 @@ import {
   buildFarBulkScoreRevertPayload,
   type FarBulkScoreField,
 } from './FAR.bulkScore'
+import {
+  FAR_MATURITY_LEVELS,
+  createFarAnalyticalColumns,
+  getFarMaturityLevel,
+} from './FAR.gridColumns'
 
 import 'ag-grid-community/styles/ag-grid.css'
 import 'ag-grid-community/styles/ag-theme-alpine.css'
@@ -157,18 +162,6 @@ const DETECTION_LEVELS = [
   { value: 3, label: 'HIGH', desc: 'Real-time dashboarding and active, automated health checks.' },
   { value: 2, label: 'VERY HIGH', desc: 'Automated self-healing or failsafe systems. Immediate notification.' },
   { value: 1, label: 'ALMOST CERTAIN', desc: 'Predictive analytics prevents failure before it manifests.' },
-]
-
-const maturityLevels = [
-  { lv: 8, label: 'Prevented', desc: 'Eliminated / Design Proofed', color: 'bg-emerald-500', tooltip: 'DESIGN PROOF: Failure mode eliminated by architectural change or permanent hardware/software design proofing.' },
-  { lv: 7, label: 'Triple Shield', desc: 'Monitoring + Resolution + Workaround', color: 'bg-emerald-400', tooltip: 'TRIPLE SHIELD: Full defense-in-depth. Automated detection, immediate workaround, and verified BKM are all active.' },
-  { lv: 6, label: 'Automated Fix', desc: 'Monitoring + Resolution', color: 'bg-sky-500', tooltip: 'STABLE DEFENSE: Monitoring identifies failure and a permanent BKM fix is available. Lacks an immediate temporary workaround.' },
-  { lv: 5, label: 'Hybrid Patch', desc: 'Resolution + Workaround', color: 'bg-sky-400', tooltip: 'HYBRID PATCH: Permanent fix and temporary workaround identified. Lacks automated monitoring to detect onset.' },
-  { lv: 4, label: 'Resolved Only', desc: 'Manual Permanent Fix', color: 'bg-blue-500', tooltip: 'RESOLUTION ONLY: A verified permanent fix exists, but failure is silent (no monitoring) and has no immediate workaround.' },
-  { lv: 3, label: 'Detect & Patch', desc: 'Monitoring + Workaround', color: 'bg-amber-500', tooltip: 'DETECT & PATCH: Monitoring provides visibility and a workaround reduces impact, but no permanent BKM has been identified.' },
-  { lv: 2, label: 'Workaround Only', desc: 'Temporary Patch Only', color: 'bg-amber-400', tooltip: 'WORKAROUND ONLY: A temporary patch exists for recovery, but we are blind to failure onset (no monitoring).' },
-  { lv: 1, label: 'Visibility Only', desc: 'Monitoring Without Action', color: 'bg-rose-400', tooltip: 'MONITORING ONLY: We can see the failure occurring via telemetry, but have no workaround or permanent resolution playbook.' },
-  { lv: 0, label: 'Exposed', desc: 'No Monitoring / No Action', color: 'bg-rose-600', tooltip: 'SYSTEM EXPOSED: Critical blind spot. No telemetry, no workaround, and no permanent resolution identified. High risk.' }
 ]
 
 async function fetchFarList(path: string) {
@@ -603,132 +596,12 @@ export default function FAR() {
       title: 'RPN Definition Matrix',
       hide: hiddenColumns.includes('rpn'),
     }),
-    { 
-      field: "status", 
-      headerName: "Maturity", 
-      width: 164,
-      minWidth: 152,
-      suppressAutoSize: true,
-      cellClass: 'text-center',
-      headerClass: 'text-center',
-      filter: 'agTextColumnFilter',
-      cellRenderer: (p: any) => {
-        const mode = p.data;
-        // Auto-decide status
-        let lv = 0;
-        if (mode.status === 'Prevented') lv = 8;
-        else {
-          const hasM = mode.mitigations?.some((m: any) => m.mitigation_type === 'Monitoring');
-          const hasW = mode.mitigations?.some((m: any) => m.mitigation_type === 'Workaround');
-          const hasR = mode.causes?.some((c: any) => (c.resolutions?.length || 0) > 0);
-          if (hasM && hasR && hasW) lv = 7;
-          else if (hasM && hasR) lv = 6;
-          else if (hasR && hasW) lv = 5;
-          else if (hasR) lv = 4;
-          else if (hasM && hasW) lv = 3;
-          else if (hasW) lv = 2;
-          else if (hasM) lv = 1;
-        }
-        const ml = maturityLevels.find(m => m.lv === lv) || maturityLevels[maturityLevels.length-1];
-        const colorClass = ml.lv >= 6 ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30' : 
-                          ml.lv >= 4 ? 'bg-blue-500/20 text-blue-400 border-blue-500/30' :
-                          ml.lv >= 1 ? 'bg-amber-500/20 text-amber-400 border-amber-500/30' :
-                          'bg-rose-500/20 text-rose-400 border-rose-500/30';
-
-        return (
-          <div className="flex items-center justify-center h-full w-full">
-            <div
-              onClick={() => setShowMaturityHelp(true)}
-              title={`Lv${ml.lv} ${ml.label}`}
-              className={`operational-grid-badge cursor-pointer transition-transform hover:scale-[1.02] ${colorClass}`}
-            >
-              <span style={{ fontSize: `${fontSize}px` }} className="operational-grid-badge-text font-bold uppercase tracking-tight">
-                Lv{ml.lv} {ml.label}
-              </span>
-            </div>
-          </div>
-        )
-      },
-      hide: hiddenColumns.includes("status")
-    },
-    {
-      colId: "vectors",
-      headerName: "Vectors",
-      width: 160,
-      minWidth: 140,
-      suppressAutoSize: true,
-      cellClass: 'text-center',
-      headerClass: 'text-center',
-      cellRenderer: (p: any) => {
-        const m = p.data?.mitigations || [];
-        const c = p.data?.causes || [];
-        const mons = m.filter((i:any) => i.mitigation_type === 'Monitoring').length;
-        const wrks = m.filter((i:any) => i.mitigation_type === 'Workaround').length;
-        const prevs = (p.data?.prevention_actions || []).length;
-        const res = c.flatMap((i:any) => i.resolutions || []).length;
-        
-        const Badge = ({label, value, color}: any) => (
-          <div className="flex flex-col items-center min-w-[24px]">
-             <span className="text-[7px] text-slate-500 font-bold uppercase leading-none mb-0.5">{label}</span>
-             <span className={`text-[10px] font-bold leading-none ${color}`}>{value}</span>
-          </div>
-        )
-
-        return (
-          <div className="flex items-center justify-center gap-2 h-full">
-             <Badge label="C/R" value={`${c.length}/${res}`} color="text-blue-400" />
-             <div className="w-px h-3 bg-white/10" />
-             <Badge label="W" value={wrks} color="text-amber-400" />
-             <div className="w-px h-3 bg-white/10" />
-             <Badge label="M" value={mons} color="text-sky-400" />
-             <div className="w-px h-3 bg-white/10" />
-             <Badge label="P" value={prevs} color="text-emerald-400" />
-          </div>
-        )
-      }
-    },
-    {
-      field: "linked_rcas",
-      headerName: "Incidents",
-      width: 120,
-      minWidth: 112,
-      suppressAutoSize: true,
-      cellClass: 'text-center',
-      headerClass: 'text-center',
-      cellRenderer: (p: any) => {
-        const rcas = p.data?.linked_rcas || [];
-        const count = rcas.length;
-        if (count === 0) return <span className="text-slate-600 font-bold uppercase tracking-widest text-[9px]">None</span>;
-        
-        const color = count >= 5 ? 'bg-rose-500/20 text-rose-500 border-rose-500/30' : 
-                      count >= 2 ? 'bg-amber-500/20 text-amber-500 border-amber-500/30' : 
-                      'bg-purple-500/20 text-purple-400 border-purple-500/30';
-
-        return (
-          <div className="flex items-center justify-center h-full w-full">
-            <div className="group relative">
-              <button 
-                onClick={() => setIncidentListModal({ show: true, rcas })}
-                className={`flex items-center justify-center w-14 h-5 rounded-lg border shadow-sm transition-all hover:scale-105 active:scale-95 cursor-pointer ${color}`}
-              >
-                <span style={{ fontSize: `${fontSize}px` }} className="font-bold leading-none">{count}</span>
-              </button>
-              <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover:block z-[9999] pointer-events-none">
-                <div className="bg-slate-900 border border-white/20 rounded-lg p-3 shadow-2xl min-w-[200px]">
-                   <p className="text-[9px] font-bold uppercase text-purple-400 mb-2 border-b border-white/5 pb-1">Linked RCA Records</p>
-                   <div className="space-y-1">
-                      {rcas.map((r: any) => (
-                        <div key={r.id} className="text-[8px] font-bold text-slate-300 uppercase py-0.5">• {r.title}</div>
-                      ))}
-                   </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        );
-      },
-      hide: hiddenColumns.includes("linked_rcas")
-    },
+    ...createFarAnalyticalColumns({
+      fontSize,
+      hiddenColumns,
+      onOpenMaturity: () => setShowMaturityHelp(true),
+      onOpenIncidents: (rcas) => setIncidentListModal({ show: true, rcas }),
+    }),
     createOperationalGoldenTextColumn({
       field: 'created_by_user_id',
       headerName: 'Created By',
@@ -776,23 +649,8 @@ export default function FAR() {
     const avgRPN = activeModes.length ? totalRPN / activeModes.length : 0
     const sri = Math.max(0, Math.round(100 * (1 - avgRPN / 500))) 
     
-    const getMaturity = (mode: any) => {
-      if (mode.status === 'Prevented') return 8;
-      const hasM = mode.mitigations?.some((m: any) => m.mitigation_type === 'Monitoring');
-      const hasW = mode.mitigations?.some((m: any) => m.mitigation_type === 'Workaround');
-      const hasR = mode.causes?.some((c: any) => (c.resolutions?.length || 0) > 0);
-      if (hasM && hasR && hasW) return 7;
-      if (hasM && hasR) return 6;
-      if (hasR && hasW) return 5;
-      if (hasR) return 4;
-      if (hasM && hasW) return 3;
-      if (hasW) return 2;
-      if (hasM) return 1;
-      return 0;
-    }
-
     const maturityDist = activeModes.reduce((acc: any, mode: any) => {
-      const lv = getMaturity(mode);
+      const lv = getFarMaturityLevel(mode);
       acc[lv] = (acc[lv] || 0) + 1;
       return acc;
     }, {} as Record<number, number>);
@@ -961,7 +819,7 @@ export default function FAR() {
                 </div>
                 <div className="flex items-center gap-3">
                   <div className="flex items-end gap-1 h-8">
-                    {maturityLevels.slice().reverse().map((ml: any) => {
+                    {FAR_MATURITY_LEVELS.slice().reverse().map((ml: any) => {
                       const count = (metrics as any).maturityDist[ml.lv] || 0
                       const pct = filteredModes?.length ? (count / filteredModes.length) * 100 : 0
                       return (
@@ -1153,7 +1011,7 @@ export default function FAR() {
                          </tr>
                       </thead>
                       <tbody className="divide-y divide-white/5">
-                         {[...maturityLevels].reverse().map(ml => (
+                         {[...FAR_MATURITY_LEVELS].reverse().map(ml => (
                            <tr key={ml.lv} className="hover:bg-white/5 transition-colors">
                               <td className="px-4 py-3 text-center"><span className={`px-2 py-1 rounded-lg font-bold text-white shadow-lg ${ml.color}`}>{ml.lv}</span></td>
                               <td className="px-4 py-3 font-bold text-white uppercase ">{ml.label}</td>
@@ -2033,7 +1891,7 @@ function CausalTab({ mode, readOnly, onUpdate, setBkmGuidanceModal, setResolutio
        </div>
 
        <div className="grid grid-cols-2 gap-x-12 gap-y-4">
-         {maturityLevels.map((ml) => (
+         {FAR_MATURITY_LEVELS.map((ml) => (
             <div key={ml.lv} className="flex items-center gap-4 p-4 bg-white/5 rounded-lg border border-white/5">
                <div className="w-12 h-12 rounded-lg bg-blue-600/20 flex items-center justify-center text-blue-400 font-black border border-blue-500/20 shadow-inner">Lv{ml.lv}</div>
                <div>
