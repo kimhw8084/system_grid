@@ -1,5 +1,10 @@
 import pytest
 
+from app.api import workspaces
+
+
+FAR_GROUP_BY_VALUES = ["raw", "system_name", "failure_type", "status", "risk_band"]
+
 
 def headers(user_id: str, tenant_id: int) -> dict[str, str]:
     return {"X-User-Id": user_id, "X-Tenant-Id": str(tenant_id)}
@@ -30,8 +35,13 @@ async def test_far_workspace_definition_exposes_golden_operational_state(seeded_
         "investigation",
         "custom_body",
     }.issubset(set(far["capabilities"]))
-    assert far["state_schema"]["quick_filter_keys"] == ["system_name"]
-    assert far["state_schema"]["group_by"] == ["raw"]
+    assert far["state_schema"]["quick_filter_keys"] == [
+        "system_name",
+        "failure_type",
+        "status",
+        "risk_band",
+    ]
+    assert far["state_schema"]["group_by"] == FAR_GROUP_BY_VALUES
     assert set(far["state_schema"]["column_ids"]) == {
         "id",
         "system_name",
@@ -62,8 +72,15 @@ async def test_far_saved_view_preserves_golden_display_and_grid_state(seeded_adm
                 "fontSize": 99,
                 "rowDensity": -2,
                 "hiddenColumns": ["created_by_user_id", "unknown", "created_by_user_id"],
+                "groupBy": "risk_band",
                 "quickFilter": "  thermal risk  ",
-                "quickFilters": {"system_name": ["Core", "Core"], "unknown": ["drop"]},
+                "quickFilters": {
+                    "system_name": ["Core", "Core"],
+                    "failure_type": ["Timeout"],
+                    "status": ["Analyzing"],
+                    "risk_band": ["Critical"],
+                    "unknown": ["drop"],
+                },
                 "filterModel": {
                     "status": {"filterType": "text", "filter": "Analyzing"},
                     "unknown": {"filterType": "text", "filter": "drop"},
@@ -88,12 +105,26 @@ async def test_far_saved_view_preserves_golden_display_and_grid_state(seeded_adm
     assert saved["definition"] == {
         "fontSize": 18,
         "rowDensity": 0,
-        "groupBy": "raw",
+        "groupBy": "risk_band",
         "showFilterBar": True,
         "hiddenColumns": ["created_by_user_id"],
         "quickFilter": "thermal risk",
-        "quickFilters": {"system_name": ["Core"]},
+        "quickFilters": {
+            "system_name": ["Core"],
+            "failure_type": ["Timeout"],
+            "status": ["Analyzing"],
+            "risk_band": ["Critical"],
+        },
         "filterModel": {"status": {"filterType": "text", "filter": "Analyzing"}},
         "sortModel": [{"colId": "rpn", "sort": "desc"}],
         "columnLayoutState": [{"colId": "title", "pinned": "left", "width": 330}],
     }
+
+
+@pytest.mark.parametrize("group_by", FAR_GROUP_BY_VALUES)
+def test_far_supported_groupings_survive_sanitization(group_by):
+    assert workspaces.sanitize_definition("far", {"groupBy": group_by})["groupBy"] == group_by
+
+
+def test_far_unknown_grouping_falls_back_to_raw():
+    assert workspaces.sanitize_definition("far", {"groupBy": "unknown"})["groupBy"] == "raw"
