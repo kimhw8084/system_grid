@@ -47,6 +47,7 @@ import {
   sanitizeOperationalSortModel,
 } from './shared/OperationalGridSizing'
 import { FAR_PRESERVES_EXPLICIT_COLUMN_WIDTHS, getStableFarManualResizeLayout } from './FAR.gridStability'
+import type { FarBulkScoreField } from './FAR.bulkScore'
 import { useFarWorkspacePreference } from './FAR.workspacePreference'
 import {
   FAR_GROUP_OPTIONS,
@@ -138,6 +139,7 @@ export function useFARGoldenWorkspaceControls({
   onCopySelected,
   onImport,
   onRetireSelected,
+  onBulkScoreSelected,
   onAdd,
   onSettings,
   onRpnHelp,
@@ -170,6 +172,7 @@ export function useFARGoldenWorkspaceControls({
   onCopySelected: () => void
   onImport: () => void
   onRetireSelected: (ids?: number[]) => void
+  onBulkScoreSelected: (field: FarBulkScoreField, value: number) => void
   onAdd: () => void
   onSettings: () => void
   onRpnHelp: () => void
@@ -201,6 +204,7 @@ export function useFARGoldenWorkspaceControls({
   )
   const [showActivity, setShowActivity] = useState(false)
   const [compareOpen, setCompareOpen] = useState(false)
+  const [bulkScoreField, setBulkScoreField] = useState<FarBulkScoreField | null>(null)
   const [rowActionMenu, setRowActionMenu] = useState<{ item: any; point: { x: number; y: number } } | null>(null)
   const lastRequestedViewRef = useRef<string | null>(null)
 
@@ -770,6 +774,38 @@ export function useFARGoldenWorkspaceControls({
           <div className="space-y-2">
             <WorkspaceFlyoutActionCard title="Copy selected" active={false} onClick={() => { dismissOverlays(); onCopySelected() }} />
             <WorkspaceFlyoutActionCard title="Export selected" active={false} onClick={() => { dismissOverlays(); exportSelected() }} />
+            {([
+              ['severity', 'Severity'],
+              ['occurrence', 'Occurrence'],
+              ['detection', 'Detection'],
+            ] as const).map(([field, label]) => (
+              <div key={field} className="space-y-2">
+                <WorkspaceFlyoutActionCard
+                  title={`Set ${label}`}
+                  active={bulkScoreField === field}
+                  onClick={() => setBulkScoreField((current) => current === field ? null : field)}
+                />
+                {bulkScoreField === field ? (
+                  <div className="grid grid-cols-5 gap-1 rounded-lg border border-white/5 bg-black/30 p-2">
+                    {Array.from({ length: 10 }, (_, index) => index + 1).map((value) => (
+                      <button
+                        key={value}
+                        type="button"
+                        onClick={() => {
+                          setBulkScoreField(null)
+                          dismissOverlays()
+                          onBulkScoreSelected(field, value)
+                        }}
+                        className="rounded-lg border border-white/10 bg-white/[0.03] px-2 py-2 text-[10px] font-bold text-slate-200 transition-colors hover:border-rose-500/40 hover:bg-rose-500/10 hover:text-white"
+                        aria-label={`Set ${label} to ${value}`}
+                      >
+                        {value}
+                      </button>
+                    ))}
+                  </div>
+                ) : null}
+              </div>
+            ))}
             <WorkspaceFlyoutActionCard title="Retire selected" active={false} onClick={() => { dismissOverlays(); onRetireSelected() }} />
           </div>
         </WorkspaceFloatingPanel>

@@ -77,6 +77,12 @@ import DataStatusPill, { DataDiagnosticModal } from './shared/OperationalDataSta
 import { buildFarRegistryDiagnosticDetail } from './FAR.diagnostics'
 import { FARDossierShell } from './FAR.dossier'
 import { getFarLifecycleEndpoint, getFarLifecycleRevertAction, isFarLifecycleAction } from './FAR.lifecycleVocabulary'
+import {
+  buildFarBulkScorePreview,
+  buildFarBulkScoreRequest,
+  buildFarBulkScoreRevertPayload,
+  type FarBulkScoreField,
+} from './FAR.bulkScore'
 
 import 'ag-grid-community/styles/ag-grid.css'
 import 'ag-grid-community/styles/ag-theme-alpine.css'
@@ -440,13 +446,20 @@ export default function FAR() {
     setBulkOperationPreview,
   } = useOperationalBulkWorkflow<any>({
     selectedIds,
-    fieldLabels: {},
+    fieldLabels: {
+      severity: 'Severity',
+      occurrence: 'Occurrence',
+      detection: 'Detection',
+    },
     selectionErrorMessage: 'Select at least one failure vector.',
-    previewErrorMessage: 'Unable to prepare the FAR lifecycle preview.',
+    previewErrorMessage: 'Unable to prepare the FAR bulk preview.',
     executionErrorMessage: 'Unable to update the selected failure vectors.',
-    revertErrorMessage: 'Unable to revert the FAR lifecycle change.',
+    revertErrorMessage: 'Unable to revert the FAR bulk change.',
     getSnapshots: (ids) => (modes || []).filter((mode: any) => ids.includes(Number(mode.id))),
-    previewRequest: async ({ action, ids }) => {
+    previewRequest: async ({ action, ids, payload }) => {
+      if (action === 'update') {
+        return buildFarBulkScorePreview(ids, modes || [], payload)
+      }
       if (!isFarLifecycleAction(action)) throw new Error('Unsupported FAR lifecycle action.')
       const current = new Map((modes || []).map((mode: any) => [Number(mode.id), mode]))
       const changedIds = ids.filter((id) => {
@@ -472,10 +485,26 @@ export default function FAR() {
         can_execute: changedIds.length > 0 && missingIds.length === 0,
       }
     },
-    executeRequest: async ({ action, ids }) => {
-      if (!isFarLifecycleAction(action)) throw new Error('Unsupported FAR lifecycle action.')
+    executeRequest: async ({ action, ids, payload }) => {
       operatorIntelligence.beginPending(ids)
       try {
+        if (action === 'update') {
+          const request = buildFarBulkScoreRequest(ids, modes || [], payload)
+          const res = await apiFetch('/api/v1/far/modes/bulk-score', {
+            method: 'POST',
+            body: JSON.stringify(request),
+          })
+          if (!res.ok) throw new Error(await res.text())
+          const result = await res.json()
+          return {
+            ...result,
+            changed_count: Number(result?.changed_count || 0),
+            unchanged_count: Number(result?.unchanged_count || 0),
+            changed_ids: Array.isArray(result?.changed_ids) ? result.changed_ids.map(Number) : [],
+          }
+        }
+
+        if (!isFarLifecycleAction(action)) throw new Error('Unsupported FAR lifecycle action.')
         const endpoint = getFarLifecycleEndpoint(action)
         const res = await apiFetch(endpoint, {
           method: 'POST',
@@ -495,13 +524,17 @@ export default function FAR() {
       }
     },
     refresh: () => queryClient.invalidateQueries({ queryKey: ['far', 'modes'] }),
-    buildRevertRequest: ({ action, changedIds }) => (
-      action === 'archive'
+    buildRevertRequest: ({ action, changedIds, changedSnapshots, payload, result }) => {
+      if (action === 'update') {
+        const revertPayload = buildFarBulkScoreRevertPayload(changedSnapshots, payload, result?.versions)
+        return revertPayload ? { action: 'update', ids: changedIds, payload: revertPayload } : null
+      }
+      return action === 'archive'
         ? { action: getFarLifecycleRevertAction(action), ids: changedIds }
         : action === 'restore'
           ? { action: getFarLifecycleRevertAction(action), ids: changedIds }
           : null
-    ),
+    },
     onExecutionSuccess: () => {
       setSelectedIds([])
       gridRef.current?.api?.deselectAll?.()
@@ -798,6 +831,10 @@ export default function FAR() {
     onCopySelected: handleCopyToClipboard,
     onImport: () => setShowImportModal(true),
     onRetireSelected: (ids) => requestBulkPreview(ids?.length ? { action: 'archive', ids } : { action: 'archive' }),
+    onBulkScoreSelected: (field: FarBulkScoreField, value: number) => requestBulkPreview({
+      action: 'update',
+      payload: { [field]: value },
+    }),
     onAdd: () => { setSelectedModeId(null); setShowWizard(true) },
     onSettings: () => setShowConfig(true),
     onRpnHelp: () => setShowRpnHelp(true),
@@ -1164,7 +1201,13 @@ export default function FAR() {
       <OperationalBulkPreviewModal
         isOpen={Boolean(bulkOperationPreview)}
         workspaceLabel="FAR"
-        actionLabel={bulkOperationPreview?.action === 'restore' ? 'Restore failure vectors' : 'Retire failure vectors'}
+        actionLabel={
+          bulkOperationPreview?.action === 'update'
+            ? bulkOperationPreview.actionLabel
+            : bulkOperationPreview?.action === 'restore'
+              ? 'Restore failure vectors'
+              : 'Retire failure vectors'
+        }
         preview={bulkOperationPreview?.preview || null}
         previewBasis="workspace-snapshot"
         result={bulkOperationPreview?.result || null}
