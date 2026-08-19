@@ -228,6 +228,28 @@ def apply_far_bulk_score_value(mode, field: str, value: int):
     mode.version = int(mode.version or 1) + 1
     return True
 
+FAR_HISTORY_RESTOREABLE_FIELDS = {
+    "system_name",
+    "failure_type",
+    "title",
+    "effect",
+    "severity",
+    "occurrence",
+    "detection",
+    "rpn",
+    "status",
+    "affected_asset_ids",
+    "cause_ids",
+    "has_incident_history",
+    "metadata_json",
+}
+FAR_HISTORY_FORENSIC_FIELDS = {
+    "cause_state",
+    "resolution_state",
+    "mitigation_state",
+    "prevention_state",
+    "linked_rca_ids",
+}
 FAR_HISTORY_FIELD_LABELS = {
     "system_name": "System",
     "failure_type": "Failure type",
@@ -239,14 +261,84 @@ FAR_HISTORY_FIELD_LABELS = {
     "rpn": "RPN",
     "status": "Maturity status",
     "affected_asset_ids": "Affected assets",
-    "cause_ids": "Causes",
+    "cause_ids": "Cause links",
     "has_incident_history": "Incident history",
+    "metadata_json": "FAR metadata",
+    "cause_state": "Root-cause state",
+    "resolution_state": "Resolution state",
+    "mitigation_state": "Mitigation state",
+    "prevention_state": "Prevention state",
+    "linked_rca_ids": "Linked RCA records",
     "is_deleted": "Lifecycle",
 }
 
-def build_far_snapshot(mode: models.FarFailureMode) -> dict:
-    """Creates a forensic snapshot of a Failure Mode."""
+def _far_history_id(value):
+    return int(getattr(value, "id", 0) or 0)
+
+def _far_history_date(value):
+    if value is None:
+        return None
+    if hasattr(value, "isoformat"):
+        return value.isoformat()
+    return str(value)
+
+def build_far_intervention_snapshot(mode) -> dict:
+    causes = sorted(list(getattr(mode, "causes", None) or []), key=_far_history_id)
+    resolutions = []
+    for cause in causes:
+        for resolution in sorted(list(getattr(cause, "resolutions", None) or []), key=_far_history_id):
+            resolutions.append({
+                "cause_id": _far_history_id(cause),
+                "id": _far_history_id(resolution),
+                "knowledge_id": getattr(resolution, "knowledge_id", None),
+                "preventive_follow_up": getattr(resolution, "preventive_follow_up", None),
+                "responsible_team": getattr(resolution, "responsible_team", None),
+                "guidance_notes": getattr(resolution, "guidance_notes", None),
+            })
+
+    mitigations = sorted(list(getattr(mode, "mitigations", None) or []), key=_far_history_id)
+    prevention_actions = sorted(list(getattr(mode, "prevention_actions", None) or []), key=_far_history_id)
+    linked_rcas = sorted(list(getattr(mode, "linked_rcas", None) or []), key=_far_history_id)
     return {
+        "cause_state": [
+            {
+                "id": _far_history_id(cause),
+                "cause_text": getattr(cause, "cause_text", None),
+                "occurrence_level": getattr(cause, "occurrence_level", None),
+                "responsible_team": getattr(cause, "responsible_team", None),
+            }
+            for cause in causes
+        ],
+        "resolution_state": resolutions,
+        "mitigation_state": [
+            {
+                "id": _far_history_id(mitigation),
+                "cause_id": getattr(mitigation, "cause_id", None),
+                "mitigation_type": getattr(mitigation, "mitigation_type", None),
+                "mitigation_steps": getattr(mitigation, "mitigation_steps", None),
+                "responsible_team": getattr(mitigation, "responsible_team", None),
+                "status": getattr(mitigation, "status", None),
+                "monitoring_item_id": getattr(mitigation, "monitoring_item_id", None),
+            }
+            for mitigation in mitigations
+        ],
+        "prevention_state": [
+            {
+                "id": _far_history_id(prevention),
+                "cause_id": getattr(prevention, "cause_id", None),
+                "prevention_action": getattr(prevention, "prevention_action", None),
+                "responsible_team": getattr(prevention, "responsible_team", None),
+                "status": getattr(prevention, "status", None),
+                "target_date": _far_history_date(getattr(prevention, "target_date", None)),
+            }
+            for prevention in prevention_actions
+        ],
+        "linked_rca_ids": [_far_history_id(rca) for rca in linked_rcas],
+    }
+
+def build_far_snapshot(mode: models.FarFailureMode) -> dict:
+    """Creates a core-restorable snapshot plus forensic intervention lineage."""
+    snapshot = {
         "system_name": mode.system_name,
         "failure_type": mode.failure_type,
         "title": mode.title,
@@ -256,11 +348,27 @@ def build_far_snapshot(mode: models.FarFailureMode) -> dict:
         "detection": mode.detection,
         "rpn": mode.rpn,
         "status": mode.status,
-        "affected_asset_ids": [a.id for a in mode.affected_assets],
-        "cause_ids": [c.id for c in mode.causes],
+        "affected_asset_ids": sorted([a.id for a in mode.affected_assets]),
+        "cause_ids": sorted([c.id for c in mode.causes]),
         "has_incident_history": bool(mode.has_incident_history),
+        "metadata_json": normalize_json_object(getattr(mode, "metadata_json", None)),
         "is_deleted": bool(mode.is_deleted),
     }
+    snapshot.update(build_far_intervention_snapshot(mode))
+    return snapshot
+
+def get_far_restoreable_snapshot(snapshot: dict) -> dict:
+    source = snapshot if isinstance(snapshot, dict) else {}
+    return {
+        field: source[field]
+        for field in FAR_HISTORY_RESTOREABLE_FIELDS
+        if field in source
+    }
+
+def far_restoreable_snapshot_differs(target_snapshot: dict, current_snapshot: dict) -> bool:
+    target = get_far_restoreable_snapshot(target_snapshot)
+    current = get_far_restoreable_snapshot(current_snapshot)
+    return any(current.get(field) != value for field, value in target.items())
 
 def build_far_history_delta(previous_snapshot: Optional[dict], current_snapshot: dict) -> list[dict]:
     previous = previous_snapshot or {}
@@ -288,10 +396,20 @@ def build_far_history_delta(previous_snapshot: Optional[dict], current_snapshot:
     return delta
 
 async def save_far_history(mode_id: int, version: int, db: AsyncSession, summary: str = None):
-    stmt = select(models.FarFailureMode).options(
-        joinedload(models.FarFailureMode.affected_assets),
-        joinedload(models.FarFailureMode.causes)
-    ).filter(models.FarFailureMode.id == mode_id)
+    stmt = (
+        select(models.FarFailureMode)
+        .options(
+            selectinload(models.FarFailureMode.affected_assets),
+            selectinload(models.FarFailureMode.causes).selectinload(models.FarFailureCause.resolutions),
+            selectinload(models.FarFailureMode.causes).selectinload(models.FarFailureCause.mitigations),
+            selectinload(models.FarFailureMode.causes).selectinload(models.FarFailureCause.prevention_actions),
+            selectinload(models.FarFailureMode.mitigations),
+            selectinload(models.FarFailureMode.prevention_actions),
+            selectinload(models.FarFailureMode.linked_rcas),
+        )
+        .filter(models.FarFailureMode.id == mode_id)
+        .execution_options(populate_existing=True)
+    )
     res = await db.execute(stmt)
     mode = res.unique().scalar_one()
     
@@ -465,10 +583,15 @@ async def get_far_history(mode_id: int, db: AsyncSession = Depends(get_db)):
     stmt = select(models.FarHistory).filter(models.FarHistory.far_mode_id == mode_id).order_by(models.FarHistory.version.desc())
     res = await db.execute(stmt)
     entries = list(res.scalars().all())
+    current_snapshot = entries[0].snapshot or {} if entries else {}
     history = []
     for index, entry in enumerate(entries):
         previous_entry = entries[index + 1] if index + 1 < len(entries) else None
-        delta = build_far_history_delta(previous_entry.snapshot if previous_entry else None, entry.snapshot or {})
+        snapshot = entry.snapshot or {}
+        delta = build_far_history_delta(previous_entry.snapshot if previous_entry else None, snapshot)
+        changed_fields = [item["field"] for item in delta]
+        restoreable_changed_fields = [field for field in changed_fields if field in FAR_HISTORY_RESTOREABLE_FIELDS]
+        forensic_changed_fields = [field for field in changed_fields if field in FAR_HISTORY_FORENSIC_FIELDS]
         history.append({
             "id": entry.id,
             "far_mode_id": entry.far_mode_id,
@@ -478,8 +601,13 @@ async def get_far_history(mode_id: int, db: AsyncSession = Depends(get_db)):
             "created_at": entry.created_at,
             "previous_version": previous_entry.version if previous_entry else None,
             "delta": delta,
-            "changed_fields": [item["field"] for item in delta],
+            "changed_fields": changed_fields,
             "changed_labels": [item["label"] for item in delta],
+            "restore_scope": "core_content",
+            "core_restore_available": far_restoreable_snapshot_differs(snapshot, current_snapshot),
+            "restoreable_changed_fields": restoreable_changed_fields,
+            "forensic_changed_fields": forensic_changed_fields,
+            "has_forensic_changes": bool(forensic_changed_fields),
         })
     return history
 
@@ -510,35 +638,79 @@ async def restore_far_version(mode_id: int, version: int, data: dict, db: AsyncS
     if blocker:
         raise HTTPException(409, detail=blocker)
 
-    relation_stmt = select(models.FarFailureMode).options(
-        joinedload(models.FarFailureMode.affected_assets),
-        joinedload(models.FarFailureMode.causes)
-    ).filter(models.FarFailureMode.id == mode_id)
+    relation_stmt = (
+        select(models.FarFailureMode)
+        .options(
+            selectinload(models.FarFailureMode.affected_assets),
+            selectinload(models.FarFailureMode.causes).selectinload(models.FarFailureCause.resolutions),
+            selectinload(models.FarFailureMode.causes).selectinload(models.FarFailureCause.mitigations),
+            selectinload(models.FarFailureMode.causes).selectinload(models.FarFailureCause.prevention_actions),
+            selectinload(models.FarFailureMode.mitigations),
+            selectinload(models.FarFailureMode.prevention_actions),
+            selectinload(models.FarFailureMode.linked_rcas),
+        )
+        .filter(models.FarFailureMode.id == mode_id)
+        .execution_options(populate_existing=True)
+    )
     relation_res = await db.execute(relation_stmt)
     mode = relation_res.unique().scalar_one()
 
-    snapshot = history.snapshot
-    # Content-version restore must not mutate the independent archive lifecycle.
-    for k, v in snapshot.items():
-        if k == 'affected_asset_ids' and isinstance(v, list):
-            asset_stmt = select(models.Device).filter(models.Device.id.in_(v))
-            asset_res = await db.execute(asset_stmt)
-            mode.affected_assets = list(asset_res.scalars().all())
-        elif k == 'cause_ids' and isinstance(v, list):
-            cause_stmt = select(models.FarFailureCause).filter(models.FarFailureCause.id.in_(v))
-            cause_res = await db.execute(cause_stmt)
-            mode.causes = list(cause_res.scalars().all())
-        elif k == 'is_deleted':
+    snapshot = history.snapshot or {}
+    current_snapshot = build_far_snapshot(mode)
+    if not far_restoreable_snapshot_differs(snapshot, current_snapshot):
+        raise HTTPException(409, detail={
+            "code": "far_history_no_core_change",
+            "version": version,
+            "restore_scope": "core_content",
+            "message": "This version differs only in lifecycle or forensic intervention state; no core FAR content can be restored.",
+        })
+
+    restoreable_snapshot = get_far_restoreable_snapshot(snapshot)
+    for k, v in restoreable_snapshot.items():
+        # Explicit lifecycle guard is retained in the endpoint contract even though
+        # get_far_restoreable_snapshot excludes lifecycle fields. This keeps the
+        # independent archive lifecycle fail-closed if restore scope changes later.
+        if k == 'is_deleted':
             continue
+        if k == 'affected_asset_ids' and isinstance(v, list):
+            target_ids = list(dict.fromkeys(int(item) for item in v))
+            asset_stmt = select(models.Device).filter(models.Device.id.in_(target_ids))
+            asset_res = await db.execute(asset_stmt)
+            assets = list(asset_res.scalars().all())
+            found_ids = {int(asset.id) for asset in assets}
+            missing_ids = [item for item in target_ids if item not in found_ids]
+            if missing_ids:
+                raise HTTPException(409, detail={
+                    "code": "far_history_restore_missing_assets",
+                    "missing_ids": missing_ids,
+                })
+            mode.affected_assets = assets
+        elif k == 'cause_ids' and isinstance(v, list):
+            target_ids = list(dict.fromkeys(int(item) for item in v))
+            cause_stmt = select(models.FarFailureCause).filter(models.FarFailureCause.id.in_(target_ids))
+            cause_res = await db.execute(cause_stmt)
+            causes = list(cause_res.scalars().all())
+            found_ids = {int(cause.id) for cause in causes}
+            missing_ids = [item for item in target_ids if item not in found_ids]
+            if missing_ids:
+                raise HTTPException(409, detail={
+                    "code": "far_history_restore_missing_causes",
+                    "missing_ids": missing_ids,
+                })
+            mode.causes = causes
+        elif k == 'metadata_json':
+            mode.metadata_json = normalize_json_object(v)
         elif hasattr(mode, k):
             setattr(mode, k, v)
 
     mode.version = int(mode.version or 1) + 1
     await db.flush()
-    await save_far_history(mode.id, mode.version, db, f"Restored from v{version}")
+    await save_far_history(mode.id, mode.version, db, f"Restored core content from v{version}")
     await db.commit()
     return {
         "status": "success",
+        "restore_scope": "core_content",
+        "forensic_intervention_state_preserved": True,
         "restored_from_version": version,
         "previous_version": expected_version,
         "new_version": mode.version,

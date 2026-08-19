@@ -46,6 +46,17 @@ export function getFarMutationFailureMessage(payload: unknown, status?: number) 
       }
       return 'FAR lifecycle selection no longer matches current data. Refresh and retry.'
     }
+    if (conflict.code === 'far_history_no_core_change') {
+      return 'Selected FAR history version has no restorable core-content difference. Lifecycle and intervention lineage remain preserved.'
+    }
+    if (conflict.code === 'far_history_restore_missing_assets') {
+      const missingIds = Array.isArray((detail as any).missing_ids) ? (detail as any).missing_ids : []
+      return `Historical FAR restore cannot be applied because ${missingIds.length || 'referenced'} asset record${missingIds.length === 1 ? '' : 's'} no longer ${missingIds.length === 1 ? 'exists' : 'exist'}. Reconcile the historical references before retrying.`
+    }
+    if (conflict.code === 'far_history_restore_missing_causes') {
+      const missingIds = Array.isArray((detail as any).missing_ids) ? (detail as any).missing_ids : []
+      return `Historical FAR restore cannot be applied because ${missingIds.length || 'referenced'} root-cause record${missingIds.length === 1 ? '' : 's'} no longer ${missingIds.length === 1 ? 'exists' : 'exist'}. Reconcile the historical references before retrying.`
+    }
   }
   if (typeof detail === 'string' && detail.trim()) return detail
   return `FAR mutation failed${status ? ` (${status})` : ''}`
