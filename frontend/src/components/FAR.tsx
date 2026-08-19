@@ -102,6 +102,7 @@ import {
   readFarMutationFailureMessage,
   withFarExpectedVersion,
 } from './FAR.mutationIntegrity'
+import { buildFarContextMutationRequest } from './FAR.causalIntegrity'
 
 import 'ag-grid-community/styles/ag-grid.css'
 import 'ag-grid-community/styles/ag-theme-alpine.css'
@@ -1117,6 +1118,8 @@ export default function FAR() {
           <ResolutionManagerModal 
             isOpen={resolutionManagerModal.show}
             cause={resolutionManagerModal.cause}
+            modeId={selectedModeId}
+            modeVersion={selectedMode?.version}
             onClose={() => setResolutionManagerModal({ show: false, cause: null })}
             onSave={() => queryClient.invalidateQueries({ queryKey: ['far', 'modes'] })}
           />
@@ -1729,8 +1732,11 @@ function CausalTab({ mode, readOnly, onUpdate, setBkmGuidanceModal, setResolutio
   const queryClient = useQueryClient()
   const deleteCauseMutation = useMutation({
     mutationFn: async (causeId: number) => {
-      const res = await apiFetch(`/api/v1/far/causes/${causeId}`, { method: 'DELETE' })
-      if (!res.ok) throw new Error(await res.text())
+      const res = await apiFetch(`/api/v1/far/causes/${causeId}`, {
+        method: 'DELETE',
+        body: JSON.stringify(buildFarContextMutationRequest(mode.id, mode.version)),
+      })
+      if (!res.ok) throw new Error(await readFarMutationFailureMessage(res))
       return res.json()
     },
     onSuccess: () => {
@@ -1845,6 +1851,7 @@ function CausalTab({ mode, readOnly, onUpdate, setBkmGuidanceModal, setResolutio
           isOpen={!readOnly && activeModal?.isOpen}
           onClose={() => setActiveModal(null)}
           modeId={activeModal?.modeId}
+          modeVersion={mode.version}
           initialData={activeModal?.initialData}
           onSave={onUpdate}
        />
@@ -1951,8 +1958,11 @@ function RoadmapTab({ mode, readOnly, onUpdate }: any) {
   const { data: monitoring } = useQuery({ queryKey: ['monitoring-items'], queryFn: async () => (await apiFetch('/api/v1/monitoring/')).json() })
   const deleteMitigationMutation = useMutation({
     mutationFn: async (mitigationId: number) => {
-      const res = await apiFetch(`/api/v1/far/mitigations/${mitigationId}`, { method: 'DELETE' })
-      if (!res.ok) throw new Error(await res.text())
+      const res = await apiFetch(`/api/v1/far/mitigations/${mitigationId}`, {
+        method: 'DELETE',
+        body: JSON.stringify(buildFarContextMutationRequest(mode.id, mode.version)),
+      })
+      if (!res.ok) throw new Error(await readFarMutationFailureMessage(res))
       return res.json()
     },
     onSuccess: () => {
@@ -2079,6 +2089,7 @@ function RoadmapTab({ mode, readOnly, onUpdate }: any) {
           isOpen={!readOnly && activeMitigationModal?.isOpen}
           onClose={() => setActiveMitigationModal(null)}
           modeId={mode.id}
+          modeVersion={mode.version}
           causeId={selectedCauseId}
           type={activeMitigationModal?.type}
           bkms={bkms}

@@ -9,8 +9,13 @@ import { StyledSelect } from './StyledSelect'
 import { MonitoringForm } from '../monitoring/MonitoringForm'
 import { ProjectForm } from '../Projects'
 import { WorkspaceModal } from './WorkspaceModal'
+import {
+  buildFarCauseMutationRequest,
+  buildFarContextMutationRequest,
+} from '../FAR.causalIntegrity'
+import { readFarMutationFailureMessage } from '../FAR.mutationIntegrity'
 
-export function RootCauseFormModal({ isOpen, onClose, onSave, modeId, initialData = null }: any) {
+export function RootCauseFormModal({ isOpen, onClose, onSave, modeId, modeVersion, initialData = null }: any) {
   const [formData, setFormData] = useState({ cause_text: '', occurrence_level: 5, responsible_team: '' })
   const queryClient = useQueryClient()
 
@@ -25,8 +30,9 @@ export function RootCauseFormModal({ isOpen, onClose, onSave, modeId, initialDat
       const method = initialData?.id ? 'PUT' : 'POST'
       const res = await apiFetch(url, {
         method,
-        body: JSON.stringify({ ...data, mode_ids: [modeId] })
+        body: JSON.stringify(buildFarCauseMutationRequest(modeId, modeVersion, data))
       })
+      if (!res.ok) throw new Error(await readFarMutationFailureMessage(res))
       return res.json()
     },
     onSuccess: (data) => {
@@ -35,7 +41,8 @@ export function RootCauseFormModal({ isOpen, onClose, onSave, modeId, initialDat
       onClose();
       queryClient.invalidateQueries({ queryKey: ['far', 'modes'] })
       queryClient.invalidateQueries({ queryKey: ['far-failure-modes'] })
-    }
+    },
+    onError: (error: any) => toast.error(error?.message || 'Root cause mutation failed')
   })
 
   return (
@@ -103,7 +110,7 @@ export function RootCauseFormModal({ isOpen, onClose, onSave, modeId, initialDat
 }
 
 
-export function MitigationFormModal({ isOpen, onClose, onSave, modeId, causeId, type, bkms, monitoring }: any) {
+export function MitigationFormModal({ isOpen, onClose, onSave, modeId, modeVersion, causeId, type, bkms, monitoring }: any) {
   const [formData, setFormData] = useState({ mitigation_type: type || 'Workaround', mitigation_steps: '', status: 'Planned', bkm_mode: 'link', bkm_id: '', bkm_content: '', monitoring_item_id: '' })
   const queryClient = useQueryClient()
 
@@ -130,7 +137,11 @@ export function MitigationFormModal({ isOpen, onClose, onSave, modeId, causeId, 
              payload.metadata_json = { external_bkm_link: data.bkm_content }
           }
        }
-       const res = await apiFetch('/api/v1/far/mitigations', { method: 'POST', body: JSON.stringify(payload) })
+       const res = await apiFetch('/api/v1/far/mitigations', {
+         method: 'POST',
+         body: JSON.stringify(buildFarContextMutationRequest(modeId, modeVersion, payload)),
+       })
+       if (!res.ok) throw new Error(await readFarMutationFailureMessage(res))
        return res.json()
     },
     onSuccess: (data) => {
@@ -139,7 +150,8 @@ export function MitigationFormModal({ isOpen, onClose, onSave, modeId, causeId, 
        onClose();
        queryClient.invalidateQueries({ queryKey: ['far', 'modes'] })
        queryClient.invalidateQueries({ queryKey: ['far-failure-modes'] })
-    }
+    },
+    onError: (error: any) => toast.error(error?.message || 'Mitigation mutation failed')
   })
 
   return (
@@ -321,7 +333,7 @@ export function PreventionFormModal({ isOpen, onClose, onSave, modeId, causeId }
   )
 }
 
-export function ResolutionManagerModal({ isOpen, onClose, cause, onSave }: any) {
+export function ResolutionManagerModal({ isOpen, onClose, cause, modeId, modeVersion, onSave }: any) {
   const [search, setSearch] = useState('')
   const [selectedBkm, setSelectedBkm] = useState<any>(null)
   const [guidanceNotes, setGuidanceNotes] = useState('')
@@ -340,9 +352,9 @@ export function ResolutionManagerModal({ isOpen, onClose, cause, onSave }: any) 
     mutationFn: async (data: any) => {
       const res = await apiFetch('/api/v1/far/resolutions', {
         method: 'POST',
-        body: JSON.stringify({ ...data, cause_ids: [cause.id] })
+        body: JSON.stringify(buildFarContextMutationRequest(modeId, modeVersion, { ...data, cause_ids: [cause.id] }))
       })
-      if (!res.ok) throw new Error(await res.text())
+      if (!res.ok) throw new Error(await readFarMutationFailureMessage(res))
       return res.json()
     },
     onSuccess: () => {
@@ -357,15 +369,19 @@ export function ResolutionManagerModal({ isOpen, onClose, cause, onSave }: any) 
 
   const deleteResolutionMutation = useMutation({
     mutationFn: async (resId: number) => {
-      const res = await apiFetch(`/api/v1/far/resolutions/${resId}`, { method: 'DELETE' })
-      if (!res.ok) throw new Error(await res.text())
+      const res = await apiFetch(`/api/v1/far/resolutions/${resId}`, {
+        method: 'DELETE',
+        body: JSON.stringify(buildFarContextMutationRequest(modeId, modeVersion, { cause_id: Number(cause.id) })),
+      })
+      if (!res.ok) throw new Error(await readFarMutationFailureMessage(res))
       return res.json()
     },
     onSuccess: () => {
       toast.success('BKM Linkage Purged')
       queryClient.invalidateQueries({ queryKey: ['far', 'modes'] })
       if (onSave) onSave()
-    }
+    },
+    onError: (error: any) => toast.error(error?.message || 'Resolution unlink failed')
   })
 
   return (

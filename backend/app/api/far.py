@@ -105,6 +105,54 @@ def apply_far_lifecycle_state(mode, archived: bool):
     mode.version = int(getattr(mode, "version", 1) or 1) + 1
     return True
 
+def normalize_far_context_mutation_request(data: dict):
+    expected_version, mutation_data = normalize_far_versioned_mutation_request(data)
+    mode_id = mutation_data.pop("mode_id", None)
+    if isinstance(mode_id, bool) or not isinstance(mode_id, int) or mode_id <= 0:
+        raise ValueError("mode_id must be a positive integer")
+    return mode_id, expected_version, mutation_data
+
+async def lock_far_context_mode(mode_id: int, expected_version: int, db: AsyncSession):
+    stmt = (
+        select(models.FarFailureMode)
+        .filter(models.FarFailureMode.id == mode_id)
+        .with_for_update()
+    )
+    result = await db.execute(stmt)
+    mode = result.scalar_one_or_none()
+    if not mode:
+        raise HTTPException(404, "Failure vector not found")
+    blocker = get_far_versioned_mutation_precondition(mode, expected_version)
+    if blocker:
+        raise HTTPException(409, detail=blocker)
+    return mode
+
+async def advance_far_context_mode(mode, db: AsyncSession, summary: str):
+    mode.version = int(mode.version or 1) + 1
+    await db.flush()
+    await save_far_history(mode.id, mode.version, db, summary)
+
+async def get_far_cause_parent_ids(cause_id: int, db: AsyncSession):
+    result = await db.execute(
+        select(models.far_mode_causes.c.mode_id)
+        .where(models.far_mode_causes.c.cause_id == cause_id)
+    )
+    return [int(mode_id) for mode_id in result.scalars().all()]
+
+def ensure_far_exclusive_cause_context(cause_id: int, mode_id: int, parent_ids: list[int]):
+    if mode_id not in parent_ids:
+        raise HTTPException(409, detail={
+            "code": "far_cause_not_linked_to_mode",
+            "cause_id": cause_id,
+            "mode_id": mode_id,
+        })
+    if len(parent_ids) != 1:
+        raise HTTPException(409, detail={
+            "code": "far_shared_cause_requires_explicit_scope",
+            "cause_id": cause_id,
+            "mode_ids": parent_ids,
+        })
+
 def normalize_far_bulk_score_request(data: dict):
     if not isinstance(data, dict):
         raise ValueError("Bulk score request must be an object")
@@ -713,10 +761,20 @@ async def get_failure_causes(db: AsyncSession = Depends(get_db)):
 
 @router.post("/causes", response_model=schemas.FarFailureCauseResponse)
 async def create_cause(data: dict, db: AsyncSession = Depends(get_db)):
+    try:
+        mode_id, expected_version, mutation_data = normalize_far_context_mutation_request(data)
+    except ValueError as exc:
+        raise HTTPException(422, str(exc))
+
+    mode = await lock_far_context_mode(mode_id, expected_version, db)
+    requested_mode_ids = mutation_data.get("mode_ids")
+    if requested_mode_ids not in (None, [mode_id]):
+        raise HTTPException(422, "Context-scoped cause creation requires mode_ids to contain only mode_id")
+
     cause = models.FarFailureCause(
-        cause_text=data.get('cause_text'),
-        occurrence_level=data.get('occurrence_level', 1),
-        responsible_team=data.get('responsible_team'),
+        cause_text=mutation_data.get('cause_text'),
+        occurrence_level=mutation_data.get('occurrence_level', 1),
+        responsible_team=mutation_data.get('responsible_team'),
         failure_modes=[],
         resolutions=[],
         mitigations=[],
@@ -724,15 +782,10 @@ async def create_cause(data: dict, db: AsyncSession = Depends(get_db)):
     )
     db.add(cause)
     await db.flush()
-    
-    if data.get('mode_ids'):
-        stmt = select(models.FarFailureMode).filter(models.FarFailureMode.id.in_(data['mode_ids']))
-        result = await db.execute(stmt)
-        modes = result.scalars().all()
-        cause.failure_modes = list(modes)
-        
+    await db.execute(models.far_mode_causes.insert().values(mode_id=mode_id, cause_id=cause.id))
+    await advance_far_context_mode(mode, db, f"Root cause linked: cause {cause.id}")
     await db.commit()
-    
+
     stmt = select(models.FarFailureCause).options(
         selectinload(models.FarFailureCause.failure_modes),
         selectinload(models.FarFailureCause.resolutions).selectinload(models.FarResolution.knowledge_bkm),
@@ -742,71 +795,186 @@ async def create_cause(data: dict, db: AsyncSession = Depends(get_db)):
     result = await db.execute(stmt)
     return result.unique().scalar_one()
 
-@router.delete("/causes/{cause_id}")
-async def delete_cause(cause_id: int, db: AsyncSession = Depends(get_db)):
-    stmt = select(models.FarFailureCause).filter(models.FarFailureCause.id == cause_id)
-    result = await db.execute(stmt)
+@router.put("/causes/{cause_id}", response_model=schemas.FarFailureCauseResponse)
+async def update_cause(cause_id: int, data: dict, db: AsyncSession = Depends(get_db)):
+    try:
+        mode_id, expected_version, mutation_data = normalize_far_context_mutation_request(data)
+    except ValueError as exc:
+        raise HTTPException(422, str(exc))
+
+    mode = await lock_far_context_mode(mode_id, expected_version, db)
+    parent_ids = await get_far_cause_parent_ids(cause_id, db)
+    ensure_far_exclusive_cause_context(cause_id, mode_id, parent_ids)
+
+    result = await db.execute(select(models.FarFailureCause).filter(models.FarFailureCause.id == cause_id))
     cause = result.scalar_one_or_none()
     if not cause:
-        raise HTTPException(404)
+        raise HTTPException(404, "Root cause not found")
 
-    await db.delete(cause)
+    if 'cause_text' in mutation_data:
+        cause.cause_text = mutation_data.get('cause_text')
+    if 'occurrence_level' in mutation_data:
+        cause.occurrence_level = mutation_data.get('occurrence_level')
+    if 'responsible_team' in mutation_data:
+        cause.responsible_team = mutation_data.get('responsible_team')
+
+    await advance_far_context_mode(mode, db, f"Root cause updated: cause {cause_id}")
     await db.commit()
-    return {"status": "success"}
+
+    stmt = select(models.FarFailureCause).options(
+        selectinload(models.FarFailureCause.failure_modes),
+        selectinload(models.FarFailureCause.resolutions).selectinload(models.FarResolution.knowledge_bkm),
+        selectinload(models.FarFailureCause.mitigations).selectinload(models.FarMitigation.monitoring_item),
+        selectinload(models.FarFailureCause.prevention_actions)
+    ).filter(models.FarFailureCause.id == cause_id)
+    result = await db.execute(stmt)
+    return result.unique().scalar_one()
+
+@router.delete("/causes/{cause_id}")
+async def delete_cause(cause_id: int, data: dict, db: AsyncSession = Depends(get_db)):
+    try:
+        mode_id, expected_version, _ = normalize_far_context_mutation_request(data)
+    except ValueError as exc:
+        raise HTTPException(422, str(exc))
+
+    mode = await lock_far_context_mode(mode_id, expected_version, db)
+    parent_ids = await get_far_cause_parent_ids(cause_id, db)
+    if mode_id not in parent_ids:
+        raise HTTPException(409, detail={"code": "far_cause_not_linked_to_mode", "cause_id": cause_id, "mode_id": mode_id})
+
+    result = await db.execute(select(models.FarFailureCause).filter(models.FarFailureCause.id == cause_id))
+    cause = result.scalar_one_or_none()
+    if not cause:
+        raise HTTPException(404, "Root cause not found")
+
+    await db.execute(
+        delete(models.far_mode_causes).where(
+            models.far_mode_causes.c.mode_id == mode_id,
+            models.far_mode_causes.c.cause_id == cause_id,
+        )
+    )
+    deleted = len(parent_ids) == 1
+    if deleted:
+        await db.delete(cause)
+    await advance_far_context_mode(mode, db, f"Root cause unlinked: cause {cause_id}")
+    await db.commit()
+    return {"status": "success", "unlinked": True, "deleted": deleted, "parent_version": mode.version}
 
 # --- RESOLUTIONS ---
 
 @router.post("/resolutions", response_model=schemas.FarResolutionResponse)
 async def create_resolution(data: dict, db: AsyncSession = Depends(get_db)):
+    try:
+        mode_id, expected_version, mutation_data = normalize_far_context_mutation_request(data)
+    except ValueError as exc:
+        raise HTTPException(422, str(exc))
+
+    mode = await lock_far_context_mode(mode_id, expected_version, db)
+    cause_ids = mutation_data.get('cause_ids') or []
+    if len(cause_ids) != 1 or isinstance(cause_ids[0], bool) or not isinstance(cause_ids[0], int):
+        raise HTTPException(422, "Resolution mutation requires exactly one cause_id")
+    cause_id = int(cause_ids[0])
+    parent_ids = await get_far_cause_parent_ids(cause_id, db)
+    ensure_far_exclusive_cause_context(cause_id, mode_id, parent_ids)
+
+    cause_result = await db.execute(select(models.FarFailureCause).filter(models.FarFailureCause.id == cause_id))
+    if not cause_result.scalar_one_or_none():
+        raise HTTPException(404, "Root cause not found")
+
     res = models.FarResolution(
-        knowledge_id=data.get('knowledge_id'),
-        preventive_follow_up=data.get('preventive_follow_up'),
-        responsible_team=data.get('responsible_team'),
-        guidance_notes=data.get('guidance_notes')
+        knowledge_id=mutation_data.get('knowledge_id'),
+        preventive_follow_up=mutation_data.get('preventive_follow_up'),
+        responsible_team=mutation_data.get('responsible_team'),
+        guidance_notes=mutation_data.get('guidance_notes')
     )
     db.add(res)
     await db.flush()
-    
-    if data.get('cause_ids'):
-        stmt = select(models.FarFailureCause).filter(models.FarFailureCause.id.in_(data['cause_ids']))
-        result = await db.execute(stmt)
-        causes = result.scalars().all()
-        # Handle join table linkage (far_cause_resolutions)
-        for cause in causes:
-            cause.resolutions.append(res)
-            
+    await db.execute(models.far_cause_resolutions.insert().values(cause_id=cause_id, resolution_id=res.id))
+    await advance_far_context_mode(mode, db, f"Resolution linked: cause {cause_id}, resolution {res.id}")
     await db.commit()
-    
+
     stmt = select(models.FarResolution).options(joinedload(models.FarResolution.knowledge_bkm)).filter(models.FarResolution.id == res.id)
     result = await db.execute(stmt)
     return result.scalar_one()
+
+@router.delete("/resolutions/{resolution_id}")
+async def delete_resolution(resolution_id: int, data: dict, db: AsyncSession = Depends(get_db)):
+    try:
+        mode_id, expected_version, mutation_data = normalize_far_context_mutation_request(data)
+    except ValueError as exc:
+        raise HTTPException(422, str(exc))
+
+    cause_id = mutation_data.get('cause_id')
+    if isinstance(cause_id, bool) or not isinstance(cause_id, int) or cause_id <= 0:
+        raise HTTPException(422, "cause_id must be a positive integer")
+
+    mode = await lock_far_context_mode(mode_id, expected_version, db)
+    parent_ids = await get_far_cause_parent_ids(cause_id, db)
+    ensure_far_exclusive_cause_context(cause_id, mode_id, parent_ids)
+
+    link_result = await db.execute(
+        select(models.far_cause_resolutions.c.cause_id).where(
+            models.far_cause_resolutions.c.cause_id == cause_id,
+            models.far_cause_resolutions.c.resolution_id == resolution_id,
+        )
+    )
+    if link_result.scalar_one_or_none() is None:
+        raise HTTPException(404, "Resolution linkage not found")
+
+    resolution_result = await db.execute(select(models.FarResolution).filter(models.FarResolution.id == resolution_id))
+    resolution = resolution_result.scalar_one_or_none()
+    if not resolution:
+        raise HTTPException(404, "Resolution not found")
+
+    await db.execute(
+        delete(models.far_cause_resolutions).where(
+            models.far_cause_resolutions.c.cause_id == cause_id,
+            models.far_cause_resolutions.c.resolution_id == resolution_id,
+        )
+    )
+    remaining_result = await db.execute(
+        select(models.far_cause_resolutions.c.cause_id).where(models.far_cause_resolutions.c.resolution_id == resolution_id)
+    )
+    orphaned = not list(remaining_result.scalars().all())
+    if orphaned:
+        await db.delete(resolution)
+    await advance_far_context_mode(mode, db, f"Resolution unlinked: cause {cause_id}, resolution {resolution_id}")
+    await db.commit()
+    return {"status": "success", "unlinked": True, "deleted": orphaned, "parent_version": mode.version}
 
 # --- MITIGATIONS ---
 
 @router.post("/mitigations", response_model=schemas.FarMitigationResponse)
 async def create_mitigation(data: dict, db: AsyncSession = Depends(get_db)):
+    try:
+        mode_id, expected_version, mutation_data = normalize_far_context_mutation_request(data)
+    except ValueError as exc:
+        raise HTTPException(422, str(exc))
+
+    mode = await lock_far_context_mode(mode_id, expected_version, db)
+    requested_mode_ids = mutation_data.get('mode_ids')
+    if requested_mode_ids not in (None, [mode_id]):
+        raise HTTPException(422, "Context-scoped mitigation creation requires mode_ids to contain only mode_id")
+    cause_id = mutation_data.get('cause_id')
+    if isinstance(cause_id, bool) or not isinstance(cause_id, int) or cause_id <= 0:
+        raise HTTPException(422, "cause_id must be a positive integer")
+    parent_ids = await get_far_cause_parent_ids(cause_id, db)
+    ensure_far_exclusive_cause_context(cause_id, mode_id, parent_ids)
+
     mit = models.FarMitigation(
-        mitigation_type=data.get('mitigation_type'),
-        mitigation_steps=data.get('mitigation_steps'),
-        responsible_team=data.get('responsible_team'),
-        status=data.get('status', 'Not Started'),
-        cause_id=data.get('cause_id'),
-        monitoring_item_id=data.get('monitoring_item_id')
+        mitigation_type=mutation_data.get('mitigation_type'),
+        mitigation_steps=mutation_data.get('mitigation_steps'),
+        responsible_team=mutation_data.get('responsible_team'),
+        status=mutation_data.get('status', 'Not Started'),
+        cause_id=cause_id,
+        monitoring_item_id=mutation_data.get('monitoring_item_id')
     )
     db.add(mit)
     await db.flush()
-    
-    if data.get('mode_ids'):
-        stmt = select(models.FarFailureMode).options(
-            joinedload(models.FarFailureMode.mitigations)
-        ).filter(models.FarFailureMode.id.in_(data['mode_ids']))
-        result = await db.execute(stmt)
-        modes = result.unique().scalars().all()
-        for mode in modes:
-            mode.mitigations.append(mit)
-            
+    await db.execute(models.far_mode_mitigations.insert().values(mode_id=mode_id, mitigation_id=mit.id))
+    await advance_far_context_mode(mode, db, f"Mitigation linked: cause {cause_id}, mitigation {mit.id}")
     await db.commit()
-    
+
     stmt = select(models.FarMitigation).options(
         selectinload(models.FarMitigation.monitoring_item)
     ).filter(models.FarMitigation.id == mit.id)
@@ -814,16 +982,37 @@ async def create_mitigation(data: dict, db: AsyncSession = Depends(get_db)):
     return result.scalar_one()
 
 @router.delete("/mitigations/{mitigation_id}")
-async def delete_mitigation(mitigation_id: int, db: AsyncSession = Depends(get_db)):
-    stmt = select(models.FarMitigation).filter(models.FarMitigation.id == mitigation_id)
-    result = await db.execute(stmt)
-    mitigation = result.scalar_one_or_none()
-    if not mitigation:
-        raise HTTPException(404)
+async def delete_mitigation(mitigation_id: int, data: dict, db: AsyncSession = Depends(get_db)):
+    try:
+        mode_id, expected_version, _ = normalize_far_context_mutation_request(data)
+    except ValueError as exc:
+        raise HTTPException(422, str(exc))
 
+    mode = await lock_far_context_mode(mode_id, expected_version, db)
+    link_result = await db.execute(
+        select(models.far_mode_mitigations.c.mode_id).where(models.far_mode_mitigations.c.mitigation_id == mitigation_id)
+    )
+    parent_ids = [int(parent_id) for parent_id in link_result.scalars().all()]
+    if mode_id not in parent_ids:
+        raise HTTPException(409, detail={"code": "far_mitigation_not_linked_to_mode", "mitigation_id": mitigation_id, "mode_id": mode_id})
+    if len(parent_ids) != 1:
+        raise HTTPException(409, detail={"code": "far_shared_mitigation_requires_explicit_scope", "mitigation_id": mitigation_id, "mode_ids": parent_ids})
+
+    mitigation_result = await db.execute(select(models.FarMitigation).filter(models.FarMitigation.id == mitigation_id))
+    mitigation = mitigation_result.scalar_one_or_none()
+    if not mitigation:
+        raise HTTPException(404, "Mitigation not found")
+
+    await db.execute(
+        delete(models.far_mode_mitigations).where(
+            models.far_mode_mitigations.c.mode_id == mode_id,
+            models.far_mode_mitigations.c.mitigation_id == mitigation_id,
+        )
+    )
     await db.delete(mitigation)
+    await advance_far_context_mode(mode, db, f"Mitigation removed: mitigation {mitigation_id}")
     await db.commit()
-    return {"status": "success"}
+    return {"status": "success", "deleted": True, "parent_version": mode.version}
 
 # --- PREVENTION ---
 
@@ -839,7 +1028,7 @@ async def create_prevention(data: dict, db: AsyncSession = Depends(get_db)):
     )
     db.add(prev)
     await db.commit()
-    
+
     stmt = select(models.FarPrevention).filter(models.FarPrevention.id == prev.id)
     result = await db.execute(stmt)
     return result.scalar_one()
