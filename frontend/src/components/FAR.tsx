@@ -1956,6 +1956,8 @@ function RoadmapTab({ mode, readOnly, onUpdate }: any) {
   const queryClient = useQueryClient()
   const { data: bkms } = useQuery({ queryKey: ['knowledge', 'bkms'], queryFn: async () => (await apiFetch('/api/v1/knowledge/?category=BKM')).json() })
   const { data: monitoring } = useQuery({ queryKey: ['monitoring-items'], queryFn: async () => (await apiFetch('/api/v1/monitoring/')).json() })
+  const bkmById = useMemo(() => new Map((bkms || []).map((item: any) => [Number(item.id), item])), [bkms])
+  const monitoringById = useMemo(() => new Map((monitoring || []).map((item: any) => [Number(item.id), item])), [monitoring])
   const deleteMitigationMutation = useMutation({
     mutationFn: async (mitigationId: number) => {
       const res = await apiFetch(`/api/v1/far/mitigations/${mitigationId}`, {
@@ -2046,23 +2048,49 @@ function RoadmapTab({ mode, readOnly, onUpdate }: any) {
                    </tr>
                 </thead>
                 <tbody className="divide-y divide-white/5 font-bold uppercase  text-[11px]">
-                   {mode.mitigations?.filter((m: any) => m.cause_id === selectedCauseId).map((m: any) => (
+                   {mode.mitigations?.filter((m: any) => m.cause_id === selectedCauseId).map((m: any) => {
+                     const linkedBkm = bkmById.get(Number(m.knowledge_bkm_id)) as any
+                     const linkedMonitor = monitoringById.get(Number(m.monitoring_item_id)) as any
+                     const completed = m.status === 'Completed'
+                     return (
                      <tr key={m.id} className="hover:bg-white/[0.02] transition-colors group">
                         <td className="px-8 py-5">
-                           <span className={`px-3 py-1 rounded-lg text-[9px] font-black ${m.mitigation_type === 'Monitoring' ? 'bg-sky-500/20 text-sky-400 border border-sky-500/30' : 'bg-amber-500/20 text-amber-400 border border-amber-500/30'}`}>{m.mitigation_type}</span>
+                           <span className={`px-3 py-1 rounded-lg text-[9px] font-black ${m.mitigation_type === 'Monitoring' ? 'bg-sky-500/20 text-sky-400 border border-sky-500/30' : m.mitigation_type === 'Process Change' ? 'bg-violet-500/20 text-violet-300 border border-violet-500/30' : 'bg-amber-500/20 text-amber-400 border border-amber-500/30'}`}>{m.mitigation_type}</span>
                         </td>
-                        <td className="px-8 py-5 text-white  max-w-xl">
-                           <div className="space-y-1">
+                        <td className="px-8 py-5 text-white max-w-xl">
+                           <div className="space-y-2">
                               {m.mitigation_steps?.split('\n').map((line: string, i: number) => (
                                 <div key={i} className="flex gap-3">
                                    <span className="text-slate-600 text-[9px] font-black">{i + 1}.</span>
                                    <span className="normal-case font-medium text-slate-300 uppercase">{line}</span>
                                 </div>
                               ))}
-                              {m.monitoring_item && (
+                              {m.responsible_team && (
+                                <div className="flex items-center gap-2 text-[9px] font-black uppercase tracking-wide text-slate-500">
+                                  <User size={12} className="text-slate-600" /> Owner: {m.responsible_team}
+                                </div>
+                              )}
+                              {linkedBkm && (
+                                 <div className="flex items-center gap-3 p-3 bg-emerald-500/5 border border-emerald-500/20 rounded-lg mt-2">
+                                    <Book size={14} className="text-emerald-400" />
+                                    <span className="text-emerald-400 tracking-tight normal-case font-black uppercase">Linked BKM: {linkedBkm.title}</span>
+                                 </div>
+                              )}
+                              {m.external_bkm_url && (
+                                 <a
+                                   href={m.external_bkm_url}
+                                   target="_blank"
+                                   rel="noreferrer noopener"
+                                   className="flex items-center gap-3 p-3 bg-blue-500/5 border border-blue-500/20 rounded-lg mt-2 text-blue-400 hover:bg-blue-500/10 transition-all"
+                                 >
+                                    <ExternalLink size={14} />
+                                    <span className="tracking-tight normal-case font-black uppercase truncate">External BKM: {m.external_bkm_url}</span>
+                                 </a>
+                              )}
+                              {linkedMonitor && (
                                  <div className="flex items-center gap-3 p-3 bg-sky-500/5 border border-sky-500/20 rounded-lg mt-2 group/item hover:bg-sky-500/10 transition-all">
                                     <Monitor size={14} className="text-sky-400" />
-                                    <span className="text-sky-400 tracking-tight normal-case font-black uppercase">Linked Monitor: {m.monitoring_item.title}</span>
+                                    <span className="text-sky-400 tracking-tight normal-case font-black uppercase">Linked Monitor: {linkedMonitor.title}</span>
                                  </div>
                               )}
                            </div>
@@ -2073,27 +2101,41 @@ function RoadmapTab({ mode, readOnly, onUpdate }: any) {
                            </div>
                         </td>
                         <td className="px-8 py-5 text-center">
-                           <span className={`px-3 py-1 rounded-lg text-[9px] font-black border ${m.status === 'Completed' ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' : 'bg-slate-800 text-slate-400 border-white/10'}`}>
-                              {m.status?.toUpperCase() || 'PLANNED'}
+                           <span className={`px-3 py-1 rounded-lg text-[9px] font-black border ${completed ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' : 'bg-slate-800 text-slate-400 border-white/10'}`}>
+                              {m.status?.toUpperCase() || 'NOT STARTED'}
                            </span>
                         </td>
                         <td className="px-8 py-5 text-right opacity-0 group-hover:opacity-100 transition-opacity">
-                           <button
-                             onClick={() => {
-                               if (deletingMitigationIdRef.current !== null) return
-                               deletingMitigationIdRef.current = m.id
-                               setDeletingMitigationId(m.id)
-                               deleteMitigationMutation.mutate(m.id)
-                             }}
-                             disabled={readOnly || deletingMitigationId !== null}
-                             className="p-2 text-slate-600 hover:text-rose-500 transition-colors disabled:cursor-not-allowed disabled:opacity-40"
-                             title="Delete Mitigation"
-                           >
-                             <Trash2 size={16}/>
-                           </button>
+                           <div className="flex items-center justify-end gap-1">
+                             <button
+                               onClick={() => {
+                                 setSelectedCauseId(Number(m.cause_id))
+                                 setActiveMitigationModal({ isOpen: true, type: m.mitigation_type, initialData: m })
+                               }}
+                               disabled={readOnly}
+                               className="p-2 text-slate-600 hover:text-blue-400 transition-colors disabled:cursor-not-allowed disabled:opacity-40"
+                               title="Edit mitigation"
+                             >
+                               <Edit2 size={16}/>
+                             </button>
+                             <button
+                               onClick={() => {
+                                 if (deletingMitigationIdRef.current !== null) return
+                                 deletingMitigationIdRef.current = m.id
+                                 setDeletingMitigationId(m.id)
+                                 deleteMitigationMutation.mutate(m.id)
+                               }}
+                               disabled={readOnly || completed || deletingMitigationId !== null}
+                               className="p-2 text-slate-600 hover:text-rose-500 transition-colors disabled:cursor-not-allowed disabled:opacity-40"
+                               title={completed ? 'Completed mitigations cannot be deleted' : 'Delete Mitigation'}
+                             >
+                               <Trash2 size={16}/>
+                             </button>
+                           </div>
                         </td>
                      </tr>
-                   ))}
+                     )
+                   })}
                    {mode.mitigations?.filter((m: any) => m.cause_id === selectedCauseId).length === 0 && (
                       <tr><td colSpan={5} className="py-20 text-center opacity-20 font-bold uppercase tracking-[0.3em]">No mitigation shields active for this cause</td></tr>
                    )}
@@ -2150,12 +2192,14 @@ function RoadmapTab({ mode, readOnly, onUpdate }: any) {
        </div>
 
        <MitigationFormModal 
+          key={activeMitigationModal?.initialData?.id ? `edit-${activeMitigationModal.initialData.id}` : `new-${activeMitigationModal?.type || 'mitigation'}`}
           isOpen={!readOnly && activeMitigationModal?.isOpen}
           onClose={() => setActiveMitigationModal(null)}
           modeId={mode.id}
           modeVersion={mode.version}
-          causeId={selectedCauseId}
+          causeId={activeMitigationModal?.initialData?.cause_id ?? selectedCauseId}
           type={activeMitigationModal?.type}
+          initialData={activeMitigationModal?.initialData}
           bkms={bkms}
           monitoring={monitoring}
           onSave={onUpdate}
@@ -2172,7 +2216,6 @@ function RoadmapTab({ mode, readOnly, onUpdate }: any) {
     </motion.div>
   )
 }
-
   function HistoryTab({ mode, readOnly, onUpdate }: any) {
     const [isLinking, setIsLinking] = useState(false)
     const [search, setSearch] = useState('')

@@ -18,7 +18,7 @@ describe('FAR archived read-only integrity', () => {
     expect(farSource).toContain('disabled={readOnly || (deleteCauseMutation.isPending && deleteCauseMutation.variables === c.id)}')
     expect(farSource).toContain('isOpen={!readOnly && activeModal?.isOpen}')
     expect(farSource).toContain('disabled={readOnly || !selectedCauseId}')
-    expect(farSource).toContain('disabled={readOnly || deletingMitigationId !== null}')
+    expect(farSource).toContain('disabled={readOnly || completed || deletingMitigationId !== null}')
     expect(farSource).toContain('isOpen={!readOnly && activeMitigationModal?.isOpen}')
     expect(farSource).toContain('isOpen={!readOnly && activePreventionModal?.isOpen}')
     expect(farSource).toContain('+ Link Research Artifact</button>')
@@ -28,6 +28,6 @@ describe('FAR archived read-only integrity', () => {
 
   it('keeps the patched TSX syntactically valid', () => {
     const parsed = ts.createSourceFile(farPath, farSource, ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX)
-    expect(parsed.parseDiagnostics, 'FAR.tsx parse diagnostics').toHaveLength(0)
+    expect((parsed as any).parseDiagnostics, 'FAR.tsx parse diagnostics').toHaveLength(0)
   })
 })

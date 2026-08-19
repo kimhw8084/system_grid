@@ -14,6 +14,12 @@ import {
   buildFarContextMutationRequest,
 } from '../FAR.causalIntegrity'
 import { readFarMutationFailureMessage } from '../FAR.mutationIntegrity'
+import {
+  buildFarMitigationFormState,
+  buildFarMitigationPayload,
+  getFarMitigationStatusOptions,
+  type FarMitigationFormState,
+} from '../FAR.mitigationModel'
 
 export function RootCauseFormModal({ isOpen, onClose, onSave, modeId, modeVersion, initialData = null }: any) {
   const [formData, setFormData] = useState({ cause_text: '', occurrence_level: 5, responsible_team: '' })
@@ -110,75 +116,67 @@ export function RootCauseFormModal({ isOpen, onClose, onSave, modeId, modeVersio
 }
 
 
-export function MitigationFormModal({ isOpen, onClose, onSave, modeId, modeVersion, causeId, type, bkms, monitoring }: any) {
-  const [formData, setFormData] = useState({ mitigation_type: type || 'Workaround', mitigation_steps: '', status: 'Planned', bkm_mode: 'link', bkm_id: '', bkm_content: '', monitoring_item_id: '' })
+export function MitigationFormModal({ isOpen, onClose, onSave, modeId, modeVersion, causeId, type, bkms, monitoring, initialData = null }: any) {
+  const [formData, setFormData] = useState(() => buildFarMitigationFormState(type, initialData))
   const queryClient = useQueryClient()
+  const isEditing = Boolean(initialData?.id)
+  const isMonitoring = formData.mitigation_type === 'Monitoring'
+  const isWorkaround = formData.mitigation_type === 'Workaround'
 
   useEffect(() => {
-    setFormData(prev => ({ ...prev, mitigation_type: type === 'MONITORING' ? 'Monitoring' : 'Workaround' }))
-  }, [type, isOpen])
+    if (isOpen) setFormData(buildFarMitigationFormState(type, initialData))
+  }, [type, initialData, isOpen])
 
   const mutation = useMutation({
-    mutationFn: async (data: any) => {
-       const payload: any = {
-          mitigation_type: data.mitigation_type,
-          mitigation_steps: data.mitigation_steps,
-          status: data.status,
-          mode_ids: [modeId],
-          cause_id: causeId
-       }
-       if (data.mitigation_type === 'Monitoring' && data.monitoring_item_id) {
-          payload.monitoring_item_id = parseInt(data.monitoring_item_id)
-       }
-       if (data.mitigation_type === 'Workaround') {
-          if (data.bkm_mode === 'link' && data.bkm_id) {
-             payload.knowledge_bkm_id = parseInt(data.bkm_id)
-          } else if (data.bkm_mode === 'input' && data.bkm_content) {
-             payload.metadata_json = { external_bkm_link: data.bkm_content }
-          }
-       }
-       const res = await apiFetch('/api/v1/far/mitigations', {
-         method: 'POST',
+    mutationFn: async (data: FarMitigationFormState) => {
+       const payload = buildFarMitigationPayload(data, modeId, causeId)
+       const url = isEditing ? `/api/v1/far/mitigations/${initialData.id}` : '/api/v1/far/mitigations'
+       const res = await apiFetch(url, {
+         method: isEditing ? 'PUT' : 'POST',
          body: JSON.stringify(buildFarContextMutationRequest(modeId, modeVersion, payload)),
        })
        if (!res.ok) throw new Error(await readFarMutationFailureMessage(res))
        return res.json()
     },
     onSuccess: (data) => {
-       toast.success(`${type} Synchronized`);
-       onSave(data);
-       onClose();
+       toast.success(isEditing ? 'Mitigation Updated' : 'Mitigation Synchronized')
+       onSave(data)
+       onClose()
        queryClient.invalidateQueries({ queryKey: ['far', 'modes'] })
        queryClient.invalidateQueries({ queryKey: ['far-failure-modes'] })
     },
     onError: (error: any) => toast.error(error?.message || 'Mitigation mutation failed')
   })
 
+  const statusOptions = getFarMitigationStatusOptions(isEditing ? initialData?.status : undefined)
+  const validBkms = (bkms || []).filter((b: any) => !b.is_deleted && b.status === 'Published')
+  const validMonitoring = (monitoring || []).filter((m: any) => !m.is_deleted && ['Existing', 'Planned'].includes(m.status))
+
   return (
     <WorkspaceModal
       isOpen={isOpen}
       onClose={onClose}
       size="standard"
-      title={`New ${type === 'MONITORING' ? 'Monitoring Shield' : 'Response Protocol'}`}
+      title={isEditing ? `Edit ${formData.mitigation_type}` : `New ${isMonitoring ? 'Monitoring Shield' : 'Response Protocol'}`}
       subtitle="Defensive Strategy Deployment"
-      icon={type === 'MONITORING' ? <Monitor size={24} className="text-blue-400" /> : <ShieldCheck size={24} className="text-blue-400" />}
+      icon={isMonitoring ? <Monitor size={24} className="text-blue-400" /> : <ShieldCheck size={24} className="text-blue-400" />}
       footerRight={(
         <>
-          <button 
+          <button
             type="button"
-            onClick={onClose} 
+            onClick={onClose}
             className="rounded-lg border border-white/10 bg-black/20 px-4 py-2 text-[10px] font-black uppercase text-slate-300 transition-colors hover:text-white"
           >
             Cancel
           </button>
-          <button 
+          <button
             type="button"
-            onClick={() => mutation.mutate(formData)} 
-            disabled={!formData.mitigation_steps || mutation.isPending}
-            className={`inline-flex items-center gap-2 rounded-lg px-6 py-2 text-[10px] font-black uppercase text-white transition-colors disabled:opacity-50 shadow-lg ${type === 'MONITORING' ? 'bg-sky-600 hover:bg-sky-500 shadow-sky-600/20' : 'bg-blue-600 hover:bg-blue-500 shadow-blue-600/20'}`}
+            onClick={() => mutation.mutate(formData)}
+            disabled={!formData.mitigation_steps.trim() || mutation.isPending}
+            className={`inline-flex items-center gap-2 rounded-lg px-6 py-2 text-[10px] font-black uppercase text-white transition-colors disabled:opacity-50 shadow-lg ${isMonitoring ? 'bg-sky-600 hover:bg-sky-500 shadow-sky-600/20' : 'bg-blue-600 hover:bg-blue-500 shadow-blue-600/20'}`}
           >
             {mutation.isPending ? <Activity size={12} className="animate-spin" /> : <Save size={12} />}
-            Commit Strategic Action
+            {isEditing ? 'Save Strategic Action' : 'Commit Strategic Action'}
           </button>
         </>
       )}
@@ -186,53 +184,49 @@ export function MitigationFormModal({ isOpen, onClose, onSave, modeId, modeVersi
       <div className="space-y-6">
         <div className="space-y-2">
           <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest px-1">Deployment Narrative / Steps</label>
-          <textarea 
-            value={formData.mitigation_steps} 
-            onChange={e => setFormData({...formData, mitigation_steps: e.target.value})} 
-            className="w-full bg-black/40 border border-white/10 rounded-lg p-4 text-sm font-bold text-white outline-none focus:border-blue-500 min-h-[120px] custom-scrollbar resize-y" 
-            placeholder="Describe the deployment protocol..." 
+          <textarea
+            value={formData.mitigation_steps}
+            onChange={e => setFormData({...formData, mitigation_steps: e.target.value})}
+            className="w-full bg-black/40 border border-white/10 rounded-lg p-4 text-sm font-bold text-white outline-none focus:border-blue-500 min-h-[120px] custom-scrollbar resize-y"
+            placeholder="Describe the deployment protocol..."
           />
         </div>
 
         <div className="grid grid-cols-2 gap-4">
           <div className="space-y-2">
             <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest px-1">Owner Team</label>
-            <input 
-              value={(formData as any).team || ''} 
-              onChange={e => setFormData({...formData, team: e.target.value} as any)} 
-              placeholder="e.g. SRE" 
-              className="w-full bg-black/40 border border-white/10 rounded-lg px-4 py-3 text-[12px] font-bold text-white outline-none focus:border-white/20" 
+            <input
+              value={formData.responsible_team}
+              onChange={e => setFormData({...formData, responsible_team: e.target.value})}
+              placeholder="e.g. SRE"
+              className="w-full bg-black/40 border border-white/10 rounded-lg px-4 py-3 text-[12px] font-bold text-white outline-none focus:border-white/20"
             />
           </div>
           <div className="space-y-2">
             <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest px-1">Status</label>
-            <StyledSelect 
-              options={[
-                { value: 'Not Started', label: 'NOT STARTED' },
-                { value: 'In Progress', label: 'IN PROGRESS' },
-                { value: 'Completed', label: 'COMPLETED' },
-              ]}
-              value={formData.status} 
-              onChange={(e: any) => setFormData({...formData, status: e.target.value})} 
+            <StyledSelect
+              options={statusOptions.map(status => ({ value: status, label: status.toUpperCase() }))}
+              value={formData.status}
+              onChange={(e: any) => setFormData({...formData, status: e.target.value})}
             />
           </div>
         </div>
 
-        {type === 'WORKAROUND' && (
+        {isWorkaround && (
           <div className="bg-black/20 p-6 rounded-lg border border-white/5 space-y-5 shadow-inner">
             <div className="flex items-center justify-between">
               <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">BKM Alignment</label>
               <div className="flex bg-black/40 p-1 rounded-lg border border-white/5">
-                <button 
+                <button
                   type="button"
-                  onClick={() => setFormData({...formData, bkm_mode: 'input'})} 
+                  onClick={() => setFormData({...formData, bkm_mode: 'input', bkm_id: ''})}
                   className={`px-4 py-1.5 rounded-lg text-[9px] font-bold uppercase transition-all ${formData.bkm_mode === 'input' ? 'bg-blue-600 text-white shadow-lg' : 'text-slate-600 hover:text-slate-400'}`}
                 >
                   Paste Link
                 </button>
-                <button 
+                <button
                   type="button"
-                  onClick={() => setFormData({...formData, bkm_mode: 'link'})} 
+                  onClick={() => setFormData({...formData, bkm_mode: 'link', external_bkm_url: ''})}
                   className={`px-4 py-1.5 rounded-lg text-[9px] font-bold uppercase transition-all ${formData.bkm_mode === 'link' ? 'bg-blue-600 text-white shadow-lg' : 'text-slate-600 hover:text-slate-400'}`}
                 >
                   Direct Link
@@ -240,43 +234,48 @@ export function MitigationFormModal({ isOpen, onClose, onSave, modeId, modeVersi
               </div>
             </div>
             {formData.bkm_mode === 'input' ? (
-              <input 
-                value={formData.bkm_content} 
-                onChange={e => setFormData({...formData, bkm_content: e.target.value})} 
-                placeholder="Paste external BKM link..." 
-                className="w-full bg-black/40 border border-white/10 rounded-lg px-4 py-3 text-[11px] font-bold text-blue-400 outline-none focus:border-white/20" 
+              <input
+                value={formData.external_bkm_url}
+                onChange={e => setFormData({...formData, external_bkm_url: e.target.value})}
+                placeholder="Paste external BKM link..."
+                className="w-full bg-black/40 border border-white/10 rounded-lg px-4 py-3 text-[11px] font-bold text-blue-400 outline-none focus:border-white/20"
               />
             ) : (
-              <StyledSelect 
+              <StyledSelect
                 options={[
                   { value: '', label: 'SELECT BKM ARTIFACT...' },
-                  ...(bkms || []).map((b: any) => ({ value: b.id.toString(), label: b.title }))
+                  ...validBkms.map((b: any) => ({ value: b.id.toString(), label: b.title }))
                 ]}
-                value={formData.bkm_id} 
-                onChange={(e: any) => setFormData({...formData, bkm_id: e.target.value})} 
+                value={formData.bkm_id}
+                onChange={(e: any) => setFormData({...formData, bkm_id: e.target.value})}
               />
             )}
           </div>
         )}
 
-        {type === 'MONITORING' && (
+        {isMonitoring && (
           <div className="bg-black/20 p-6 rounded-lg border border-white/5 space-y-4 shadow-inner">
             <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Active Monitor Linkage</label>
-            <StyledSelect 
+            <StyledSelect
               options={[
                 { value: '', label: 'SELECT MONITOR...' },
-                ...(monitoring || []).map((m: any) => ({ value: m.id.toString(), label: m.title }))
+                ...validMonitoring.map((m: any) => ({ value: m.id.toString(), label: m.title }))
               ]}
-              value={formData.monitoring_item_id} 
-              onChange={(e: any) => setFormData({...formData, monitoring_item_id: e.target.value})} 
+              value={formData.monitoring_item_id}
+              onChange={(e: any) => setFormData({...formData, monitoring_item_id: e.target.value})}
             />
+          </div>
+        )}
+
+        {formData.mitigation_type === 'Process Change' && (
+          <div className="rounded-lg border border-violet-500/20 bg-violet-500/5 px-4 py-3 text-[10px] font-bold text-violet-300">
+            Process Change mitigations preserve their type and do not carry BKM or Monitoring provenance.
           </div>
         )}
       </div>
     </WorkspaceModal>
   )
 }
-
 export function PreventionFormModal({ isOpen, onClose, onSave, modeId, modeVersion, causeId }: any) {
   const queryClient = useQueryClient()
 

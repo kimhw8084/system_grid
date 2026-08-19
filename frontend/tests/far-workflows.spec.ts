@@ -11,6 +11,22 @@ import {
   updateFarMode,
 } from './helpers/sysgrid'
 
+const farApiBase = process.env.PW_API_BASE || 'http://127.0.0.1:8000/api/v1'
+
+async function getCurrentFarMode(request: any, modeId: number) {
+  const response = await request.get(`${farApiBase}/far/modes?include_deleted=true`)
+  expect(response.ok()).toBeTruthy()
+  const modes = await response.json()
+  const mode = modes.find((candidate: any) => Number(candidate.id) === Number(modeId))
+  expect(mode, `Expected FAR mode ${modeId}`).toBeTruthy()
+  return mode
+}
+
+async function getFarHistory(request: any, modeId: number) {
+  const response = await request.get(`${farApiBase}/far/modes/${modeId}/history`)
+  expect(response.ok()).toBeTruthy()
+  return response.json()
+}
 test.describe('FAR workflows', () => {
   test('opens deep links and refreshes the wizard when the selected mode changes', async ({ page, sysApi: request }) => {
     await resetBrowserState(page)
@@ -75,40 +91,179 @@ test.describe('FAR workflows', () => {
     await expect(centerRow).toBeVisible()
   })
 
-  test('removes causes and mitigations from the active FAR detail view', async ({ page, sysApi: request }) => {
+  test('edits mitigation provenance and preserves FAR version history invariants', async ({ page, sysApi: request }) => {
     await resetBrowserState(page)
     const { far } = await seedOperationalScenario(request)
-    const cause = await createFarCause(request, {
-      cause_text: 'Transient dependency fault',
-      occurrence_level: 4,
-      responsible_team: 'Operations',
-      mode_ids: [far.id],
+    let current = await getCurrentFarMode(request, far.id)
+    const initialVersion = Number(current.version)
+
+    const causeResponse = await request.post(`${farApiBase}/far/causes`, {
+      data: {
+        mode_id: far.id,
+        expected_version: current.version,
+        mode_ids: [far.id],
+        cause_text: 'Transient dependency fault',
+        occurrence_level: 4,
+        responsible_team: 'Operations',
+      },
     })
-    await createFarMitigation(request, {
-      mitigation_type: 'Monitoring',
-      mitigation_steps: 'Watch the service and alert on regression',
-      responsible_team: 'Operations',
-      status: 'Not Started',
-      cause_id: cause.id,
-      mode_ids: [far.id],
+    expect(causeResponse.ok()).toBeTruthy()
+    const cause = await causeResponse.json()
+    current = await getCurrentFarMode(request, far.id)
+    expect(Number(current.version)).toBe(initialVersion + 1)
+
+    const bkmTitle = `PW-BKM-${Date.now()}`
+    const bkmResponse = await request.post(`${farApiBase}/knowledge`, {
+      data: {
+        category: 'BKM',
+        title: bkmTitle,
+        content: 'Focused mitigation runbook',
+        status: 'Published',
+      },
     })
+    expect(bkmResponse.ok()).toBeTruthy()
+    const bkm = await bkmResponse.json()
+
+    const externalSteps = 'Use temporary external runbook'
+    const externalUrl = 'https://example.com/runbooks/far-mitigation'
+    const externalResponse = await request.post(`${farApiBase}/far/mitigations`, {
+      data: {
+        mode_id: far.id,
+        expected_version: current.version,
+        mode_ids: [far.id],
+        mitigation_type: 'Workaround',
+        mitigation_steps: externalSteps,
+        responsible_team: 'SRE',
+        status: 'Not Started',
+        cause_id: cause.id,
+        external_bkm_url: externalUrl,
+      },
+    })
+    expect(externalResponse.ok()).toBeTruthy()
+    const externalMitigation = await externalResponse.json()
+    current = await getCurrentFarMode(request, far.id)
+    expect(Number(current.version)).toBe(initialVersion + 2)
+
+    const directSteps = 'Use published direct BKM'
+    const directResponse = await request.post(`${farApiBase}/far/mitigations`, {
+      data: {
+        mode_id: far.id,
+        expected_version: current.version,
+        mode_ids: [far.id],
+        mitigation_type: 'Workaround',
+        mitigation_steps: directSteps,
+        responsible_team: 'Operations',
+        status: 'Not Started',
+        cause_id: cause.id,
+        knowledge_bkm_id: bkm.id,
+      },
+    })
+    expect(directResponse.ok()).toBeTruthy()
+    current = await getCurrentFarMode(request, far.id)
+    expect(Number(current.version)).toBe(initialVersion + 3)
 
     await page.goto(`/far?id=${far.id}`)
     const roadmapTab = page.getByRole('button', { name: /Strategic Roadmap/i })
     await expect(roadmapTab).toBeVisible()
     await roadmapTab.click()
-    const mitigationRow = page.locator('tr', { hasText: 'Watch the service and alert on regression' })
-    await mitigationRow.hover()
-    await mitigationRow.getByRole('button').click()
-    await expect(page.getByText('No mitigation shields active for this cause')).toBeVisible()
 
-    await clickResilientButton(page, /Causal Forensics/i)
-    const causeRow = page.locator('tr', { hasText: 'Transient dependency fault' })
-    await causeRow.hover()
-    await causeRow.getByTitle('Purge Attribution').click()
-    await expect(page.getByText('No attribution traces linked to this vector')).toBeVisible()
+    const externalRow = page.locator('tr', { hasText: externalSteps })
+    await expect(externalRow).toContainText('Owner: SRE')
+    const externalLink = externalRow.getByRole('link', { name: /External BKM/i })
+    await expect(externalLink).toHaveAttribute('href', externalUrl)
+    await expect(externalLink).toHaveAttribute('rel', /noopener/)
+
+    const directRow = page.locator('tr', { hasText: directSteps })
+    await expect(directRow).toContainText(`Linked BKM: ${bkmTitle}`)
+
+    await externalRow.hover()
+    await externalRow.getByTitle('Edit mitigation').click()
+    const dialog = page.getByRole('dialog').filter({ hasText: 'Edit Workaround' })
+    await expect(dialog).toContainText('Edit Workaround')
+    const deploymentNarrative = dialog.getByPlaceholder('Describe the deployment protocol...')
+    await expect(deploymentNarrative).toHaveValue(externalSteps)
+    await dialog.getByPlaceholder('e.g. SRE').fill('Reliability Engineering')
+    await dialog.locator('select').first().selectOption('In Progress')
+    const saveAction = dialog.getByRole('button', { name: 'Save Strategic Action' })
+    await expect(saveAction).toBeEnabled()
+    await saveAction.click()
+
+    await expect(externalRow).toContainText('Owner: Reliability Engineering')
+    await expect(externalRow).toContainText('IN PROGRESS')
+    current = await getCurrentFarMode(request, far.id)
+    expect(Number(current.version)).toBe(initialVersion + 4)
+
+    const completedResponse = await request.put(`${farApiBase}/far/mitigations/${externalMitigation.id}`, {
+      data: {
+        mode_id: far.id,
+        expected_version: current.version,
+        mode_ids: [far.id],
+        mitigation_type: 'Workaround',
+        mitigation_steps: externalSteps,
+        responsible_team: 'Reliability Engineering',
+        status: 'Completed',
+        cause_id: cause.id,
+        external_bkm_url: externalUrl,
+      },
+    })
+    expect(completedResponse.ok()).toBeTruthy()
+    current = await getCurrentFarMode(request, far.id)
+    expect(Number(current.version)).toBe(initialVersion + 5)
+
+    const blockedDelete = await request.delete(`${farApiBase}/far/mitigations/${externalMitigation.id}`, {
+      data: { mode_id: far.id, expected_version: current.version },
+    })
+    expect(blockedDelete.status()).toBe(409)
+    const blockedPayload = await blockedDelete.json()
+    expect(blockedPayload.detail.code).toBe('far_mitigation_completed_read_only')
+    const afterBlockedDelete = await getCurrentFarMode(request, far.id)
+    expect(Number(afterBlockedDelete.version)).toBe(Number(current.version))
+
+    const processChangeResponse = await request.post(`${farApiBase}/far/mitigations`, {
+      data: {
+        mode_id: far.id,
+        expected_version: current.version,
+        mode_ids: [far.id],
+        mitigation_type: 'Process Change',
+        mitigation_steps: 'Require peer review before production changes',
+        responsible_team: 'Platform',
+        status: 'Not Started',
+        cause_id: cause.id,
+      },
+    })
+    expect(processChangeResponse.ok()).toBeTruthy()
+    const processChange = await processChangeResponse.json()
+    expect(processChange.mitigation_type).toBe('Process Change')
+    expect(processChange.knowledge_bkm_id ?? null).toBeNull()
+    expect(processChange.external_bkm_url ?? null).toBeNull()
+    expect(processChange.monitoring_item_id ?? null).toBeNull()
+    current = await getCurrentFarMode(request, far.id)
+    expect(Number(current.version)).toBe(initialVersion + 6)
+
+    const deletedProcessChange = await request.delete(`${farApiBase}/far/mitigations/${processChange.id}`, {
+      data: { mode_id: far.id, expected_version: current.version },
+    })
+    expect(deletedProcessChange.ok()).toBeTruthy()
+    current = await getCurrentFarMode(request, far.id)
+    expect(Number(current.version)).toBe(initialVersion + 7)
+
+    const history = await getFarHistory(request, far.id)
+    expect(history[0].version).toBe(current.version)
+    const latestMitigations = history[0].snapshot.mitigation_state
+    expect(latestMitigations).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        id: externalMitigation.id,
+        external_bkm_url: externalUrl,
+        responsible_team: 'Reliability Engineering',
+        status: 'Completed',
+      }),
+      expect.objectContaining({
+        knowledge_bkm_id: bkm.id,
+        mitigation_steps: directSteps,
+      }),
+    ]))
+    expect(latestMitigations.some((item: any) => Number(item.id) === Number(processChange.id))).toBe(false)
   })
-
   test('navigates to Research and can unlink linked research artifacts', async ({ page, sysApi: request }) => {
     await resetBrowserState(page)
     const { far } = await seedOperationalScenario(request)

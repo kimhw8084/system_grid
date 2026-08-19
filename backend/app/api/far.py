@@ -201,6 +201,148 @@ def ensure_far_exclusive_cause_context(cause_id: int, mode_id: int, parent_ids: 
             "mode_ids": parent_ids,
         })
 
+FAR_MITIGATION_TYPES = ("Monitoring", "Workaround", "Process Change")
+FAR_MITIGATION_STATUSES = ("Not Started", "In Progress", "Completed")
+FAR_USABLE_MONITORING_STATUSES = {"Existing", "Planned"}
+
+
+def _normalize_far_mitigation_optional_text(value, field: str):
+    if value is None:
+        return None
+    if not isinstance(value, str):
+        raise ValueError(f"{field} must be a string")
+    normalized = value.strip()
+    return normalized or None
+
+
+def _normalize_far_mitigation_optional_id(value, field: str):
+    if value is None or value == "":
+        return None
+    if isinstance(value, bool) or not isinstance(value, int) or value <= 0:
+        raise ValueError(f"{field} must be a positive integer")
+    return value
+
+
+def normalize_far_mitigation_status(value):
+    if value is None:
+        value = "Not Started"
+    if not isinstance(value, str):
+        raise ValueError("status must be a string")
+    normalized = value.strip()
+    if normalized not in FAR_MITIGATION_STATUSES:
+        raise ValueError("status must be Not Started, In Progress, or Completed")
+    return normalized
+
+
+def ensure_far_mitigation_transition(current_status, requested_status):
+    current = normalize_far_mitigation_status(current_status)
+    requested = normalize_far_mitigation_status(requested_status)
+    current_index = FAR_MITIGATION_STATUSES.index(current)
+    requested_index = FAR_MITIGATION_STATUSES.index(requested)
+    if requested_index not in {current_index, current_index + 1}:
+        raise ValueError("Mitigation status may stay the same or advance exactly one step")
+
+
+def normalize_far_external_bkm_url(value):
+    normalized = _normalize_far_mitigation_optional_text(value, "external_bkm_url")
+    if normalized is None:
+        return None
+    if len(normalized) > 2048:
+        raise ValueError("external_bkm_url is too long")
+    from urllib.parse import urlparse
+    parsed = urlparse(normalized)
+    if parsed.scheme.lower() not in {"http", "https"} or not parsed.hostname:
+        raise ValueError("external_bkm_url must be a valid HTTP(S) URL")
+    if parsed.username or parsed.password:
+        raise ValueError("external_bkm_url must not contain embedded credentials")
+    return normalized
+
+
+def normalize_far_mitigation_payload(data: dict, existing=None):
+    if not isinstance(data, dict):
+        raise ValueError("Mitigation payload must be an object")
+
+    mitigation_type = data.get("mitigation_type", getattr(existing, "mitigation_type", None))
+    if mitigation_type not in FAR_MITIGATION_TYPES:
+        raise ValueError("mitigation_type must be Monitoring, Workaround, or Process Change")
+    if existing is not None and mitigation_type != getattr(existing, "mitigation_type", None):
+        raise ValueError("Mitigation type is immutable after creation")
+
+    mitigation_steps = _normalize_far_mitigation_optional_text(data.get("mitigation_steps"), "mitigation_steps")
+    if not mitigation_steps:
+        raise ValueError("mitigation_steps is required")
+    responsible_team = _normalize_far_mitigation_optional_text(data.get("responsible_team"), "responsible_team")
+
+    cause_id = _normalize_far_mitigation_optional_id(data.get("cause_id", getattr(existing, "cause_id", None)), "cause_id")
+    if not cause_id:
+        raise ValueError("cause_id must be a positive integer")
+    if existing is not None and cause_id != getattr(existing, "cause_id", None):
+        raise ValueError("Mitigation cause cannot be changed after creation")
+
+    status = normalize_far_mitigation_status(data.get("status", getattr(existing, "status", None)))
+    if existing is not None:
+        ensure_far_mitigation_transition(getattr(existing, "status", None), status)
+
+    monitoring_item_id = _normalize_far_mitigation_optional_id(data.get("monitoring_item_id"), "monitoring_item_id")
+    knowledge_bkm_id = _normalize_far_mitigation_optional_id(data.get("knowledge_bkm_id"), "knowledge_bkm_id")
+    external_bkm_url = normalize_far_external_bkm_url(data.get("external_bkm_url"))
+
+    if mitigation_type == "Monitoring":
+        if monitoring_item_id is None:
+            raise ValueError("Monitoring reference is required")
+        if knowledge_bkm_id is not None or external_bkm_url is not None:
+            raise ValueError("Monitoring mitigation cannot carry BKM provenance")
+    elif mitigation_type == "Workaround":
+        if monitoring_item_id is not None:
+            raise ValueError("Workaround mitigation cannot carry Monitoring provenance")
+        if knowledge_bkm_id is not None and external_bkm_url is not None:
+            raise ValueError("Direct and external BKM provenance are mutually exclusive")
+    else:
+        if monitoring_item_id is not None or knowledge_bkm_id is not None or external_bkm_url is not None:
+            raise ValueError("Process Change mitigation cannot carry BKM or Monitoring provenance")
+
+    return {
+        "mitigation_type": mitigation_type,
+        "mitigation_steps": mitigation_steps,
+        "responsible_team": responsible_team,
+        "status": status,
+        "cause_id": cause_id,
+        "monitoring_item_id": monitoring_item_id,
+        "knowledge_bkm_id": knowledge_bkm_id,
+        "external_bkm_url": external_bkm_url,
+    }
+
+
+async def resolve_far_mitigation_references(db: AsyncSession, payload: dict):
+    knowledge_bkm_id = payload.get("knowledge_bkm_id")
+    if knowledge_bkm_id is not None:
+        result = await db.execute(select(models.KnowledgeEntry).filter(models.KnowledgeEntry.id == knowledge_bkm_id))
+        knowledge = result.scalar_one_or_none()
+        if (
+            not knowledge
+            or bool(getattr(knowledge, "is_deleted", False))
+            or getattr(knowledge, "category", None) != "BKM"
+            or getattr(knowledge, "status", None) != "Published"
+        ):
+            raise HTTPException(409, detail={
+                "code": "far_mitigation_bkm_reference_unusable",
+                "knowledge_bkm_id": knowledge_bkm_id,
+            })
+
+    monitoring_item_id = payload.get("monitoring_item_id")
+    if monitoring_item_id is not None:
+        result = await db.execute(select(models.MonitoringItem).filter(models.MonitoringItem.id == monitoring_item_id))
+        monitoring = result.scalar_one_or_none()
+        if (
+            not monitoring
+            or bool(getattr(monitoring, "is_deleted", False))
+            or getattr(monitoring, "status", None) not in FAR_USABLE_MONITORING_STATUSES
+        ):
+            raise HTTPException(409, detail={
+                "code": "far_mitigation_monitor_reference_unusable",
+                "monitoring_item_id": monitoring_item_id,
+            })
+
 def normalize_far_bulk_score_request(data: dict):
     if not isinstance(data, dict):
         raise ValueError("Bulk score request must be an object")
@@ -367,6 +509,8 @@ def build_far_intervention_snapshot(mode) -> dict:
                 "responsible_team": getattr(mitigation, "responsible_team", None),
                 "status": getattr(mitigation, "status", None),
                 "monitoring_item_id": getattr(mitigation, "monitoring_item_id", None),
+                "knowledge_bkm_id": getattr(mitigation, "knowledge_bkm_id", None),
+                "external_bkm_url": getattr(mitigation, "external_bkm_url", None),
             }
             for mitigation in mitigations
         ],
@@ -1164,34 +1308,88 @@ async def create_mitigation(data: dict, db: AsyncSession = Depends(get_db)):
         raise HTTPException(422, str(exc))
 
     mode = await lock_far_context_mode(mode_id, expected_version, db)
-    requested_mode_ids = mutation_data.get('mode_ids')
+    requested_mode_ids = mutation_data.pop("mode_ids", None)
     if requested_mode_ids not in (None, [mode_id]):
         raise HTTPException(422, "Context-scoped mitigation creation requires mode_ids to contain only mode_id")
-    cause_id = mutation_data.get('cause_id')
-    if isinstance(cause_id, bool) or not isinstance(cause_id, int) or cause_id <= 0:
-        raise HTTPException(422, "cause_id must be a positive integer")
-    parent_ids = await get_far_cause_parent_ids(cause_id, db)
-    ensure_far_exclusive_cause_context(cause_id, mode_id, parent_ids)
 
-    mit = models.FarMitigation(
-        mitigation_type=mutation_data.get('mitigation_type'),
-        mitigation_steps=mutation_data.get('mitigation_steps'),
-        responsible_team=mutation_data.get('responsible_team'),
-        status=mutation_data.get('status', 'Not Started'),
-        cause_id=cause_id,
-        monitoring_item_id=mutation_data.get('monitoring_item_id')
-    )
+    try:
+        payload = normalize_far_mitigation_payload(mutation_data)
+    except ValueError as exc:
+        raise HTTPException(422, str(exc))
+
+    parent_ids = await get_far_cause_parent_ids(payload["cause_id"], db)
+    ensure_far_exclusive_cause_context(payload["cause_id"], mode_id, parent_ids)
+    await resolve_far_mitigation_references(db, payload)
+
+    mit = models.FarMitigation(**payload)
     db.add(mit)
     await db.flush()
     await db.execute(models.far_mode_mitigations.insert().values(mode_id=mode_id, mitigation_id=mit.id))
-    await advance_far_context_mode(mode, db, f"Mitigation linked: cause {cause_id}, mitigation {mit.id}")
+    await advance_far_context_mode(mode, db, f"Mitigation linked: cause {payload['cause_id']}, mitigation {mit.id}")
     await db.commit()
+    await db.refresh(mit)
+    return mit
 
-    stmt = select(models.FarMitigation).options(
-        selectinload(models.FarMitigation.monitoring_item)
-    ).filter(models.FarMitigation.id == mit.id)
-    result = await db.execute(stmt)
-    return result.scalar_one()
+
+@router.put("/mitigations/{mitigation_id}", response_model=schemas.FarMitigationResponse)
+async def update_mitigation(mitigation_id: int, data: dict, db: AsyncSession = Depends(get_db)):
+    try:
+        mode_id, expected_version, mutation_data = normalize_far_context_mutation_request(data)
+    except ValueError as exc:
+        raise HTTPException(422, str(exc))
+
+    mode = await lock_far_context_mode(mode_id, expected_version, db)
+    requested_mode_ids = mutation_data.pop("mode_ids", None)
+    if requested_mode_ids not in (None, [mode_id]):
+        raise HTTPException(422, "Context-scoped mitigation update requires mode_ids to contain only mode_id")
+
+    link_result = await db.execute(
+        select(models.far_mode_mitigations.c.mode_id).where(models.far_mode_mitigations.c.mitigation_id == mitigation_id)
+    )
+    parent_ids = [int(parent_id) for parent_id in link_result.scalars().all()]
+    if mode_id not in parent_ids:
+        raise HTTPException(409, detail={"code": "far_mitigation_not_linked_to_mode", "mitigation_id": mitigation_id, "mode_id": mode_id})
+    if len(parent_ids) != 1:
+        raise HTTPException(409, detail={"code": "far_shared_mitigation_requires_explicit_scope", "mitigation_id": mitigation_id, "mode_ids": parent_ids})
+
+    mitigation_result = await db.execute(select(models.FarMitigation).filter(models.FarMitigation.id == mitigation_id))
+    mitigation = mitigation_result.scalar_one_or_none()
+    if not mitigation:
+        raise HTTPException(404, "Mitigation not found")
+
+    try:
+        payload = normalize_far_mitigation_payload(mutation_data, existing=mitigation)
+    except ValueError as exc:
+        raise HTTPException(422, str(exc))
+
+    cause_parent_ids = await get_far_cause_parent_ids(payload["cause_id"], db)
+    ensure_far_exclusive_cause_context(payload["cause_id"], mode_id, cause_parent_ids)
+    await resolve_far_mitigation_references(db, payload)
+
+    mutable_fields = (
+        "mitigation_steps",
+        "responsible_team",
+        "status",
+        "monitoring_item_id",
+        "knowledge_bkm_id",
+        "external_bkm_url",
+    )
+    changes = {
+        field: value
+        for field in mutable_fields
+        if getattr(mitigation, field, None) != (value := payload[field])
+    }
+    if not changes:
+        await db.commit()
+        return mitigation
+
+    for field, value in changes.items():
+        setattr(mitigation, field, value)
+    await advance_far_context_mode(mode, db, f"Mitigation updated: mitigation {mitigation_id}")
+    await db.commit()
+    await db.refresh(mitigation)
+    return mitigation
+
 
 @router.delete("/mitigations/{mitigation_id}")
 async def delete_mitigation(mitigation_id: int, data: dict, db: AsyncSession = Depends(get_db)):
@@ -1214,6 +1412,11 @@ async def delete_mitigation(mitigation_id: int, data: dict, db: AsyncSession = D
     mitigation = mitigation_result.scalar_one_or_none()
     if not mitigation:
         raise HTTPException(404, "Mitigation not found")
+    if normalize_far_mitigation_status(mitigation.status) == "Completed":
+        raise HTTPException(409, detail={
+            "code": "far_mitigation_completed_read_only",
+            "mitigation_id": mitigation_id,
+        })
 
     await db.execute(
         delete(models.far_mode_mitigations).where(

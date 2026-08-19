@@ -9,16 +9,11 @@ import {
 const readSource = (path: string) => readFileSync(path, 'utf8')
 
 const syntaxErrors = (source: string, fileName: string) => {
-  const result = ts.transpileModule(source, {
-    compilerOptions: {
-      jsx: ts.JsxEmit.ReactJSX,
-      module: ts.ModuleKind.ESNext,
-      target: ts.ScriptTarget.ES2022,
-    },
-    fileName,
-    reportDiagnostics: true,
-  })
-  return (result.diagnostics || [])
+  const parsed = ts.createSourceFile(fileName, source, ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX)
+  const diagnostics = (
+    parsed as unknown as { parseDiagnostics?: readonly ts.Diagnostic[] }
+  ).parseDiagnostics ?? []
+  return diagnostics
     .filter((diagnostic) => diagnostic.category === ts.DiagnosticCategory.Error)
     .map((diagnostic) => ts.flattenDiagnosticMessageText(diagnostic.messageText, '\n'))
 }

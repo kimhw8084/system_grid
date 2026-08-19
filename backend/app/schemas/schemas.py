@@ -774,7 +774,8 @@ class FarMitigationResponse(BaseSchema):
     status: Optional[str] = "Not Started"
     cause_id: Optional[int] = None
     monitoring_item_id: Optional[int] = None
-
+    knowledge_bkm_id: Optional[int] = None
+    external_bkm_url: Optional[str] = None
 class FarPreventionResponse(BaseSchema):
     failure_mode_id: int
     cause_id: Optional[int] = None
