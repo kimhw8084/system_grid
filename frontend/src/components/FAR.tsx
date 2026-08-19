@@ -88,6 +88,10 @@ import {
   createFarAnalyticalColumns,
   getFarMaturityLevel,
 } from './FAR.gridColumns'
+import {
+  FAR_CONTEXT_DETAIL_TABS,
+  type FarDossierTab,
+} from './FAR.rowActions'
 
 import 'ag-grid-community/styles/ag-grid.css'
 import 'ag-grid-community/styles/ag-theme-alpine.css'
@@ -237,6 +241,7 @@ export default function FAR() {
 
   const [showWizard, setShowWizard] = useState(false)
   const [selectedModeId, setSelectedModeId] = useState<number | null>(null)
+  const [selectedDetailTab, setSelectedDetailTab] = useState<FarDossierTab>(FAR_CONTEXT_DETAIL_TABS.detail)
   const [searchTerm, setSearchTerm] = useState('')
   const [groupBy, setGroupBy] = useState<FarGroupBy>('raw')
   const [quickFilters, setQuickFilters] = useState<FarQuickFilters>(() => createDefaultFarQuickFilters())
@@ -298,6 +303,7 @@ export default function FAR() {
 
     setLifecycleScope(targetLifecycleScope)
     setSearchTerm(mode.title)
+    setSelectedDetailTab(FAR_CONTEXT_DETAIL_TABS.detail)
     setSelectedModeId(targetId)
 
     if (!gridRef.current?.api) return
@@ -363,7 +369,11 @@ export default function FAR() {
     groupBy,
     searchTerm,
     quickFilters,
-    onOpenDetail: (mode) => mode?.id && setSelectedModeId(Number(mode.id)),
+    onOpenDetail: (mode) => {
+      if (!mode?.id) return
+      setSelectedDetailTab(FAR_CONTEXT_DETAIL_TABS.detail)
+      setSelectedModeId(Number(mode.id))
+    },
     gridRef,
   })
   const displayedModes = operatorIntelligence.rows
@@ -616,7 +626,7 @@ export default function FAR() {
     createOperationalActionColumnDefinition({
       width: OPERATIONAL_GRID_WIDTHS.standardAction,
       renderActions: (row: any) => renderOperationalActionButtons([
-        <button key="detail" onClick={() => row?.id && setSelectedModeId(row.id)} title="Matrix Detail" className="text-blue-400 hover:text-blue-200 transition-all"><Eye size={14}/></button>,
+        <button key="detail" onClick={() => { if (!row?.id) return; setSelectedDetailTab(FAR_CONTEXT_DETAIL_TABS.detail); setSelectedModeId(row.id) }} title="Matrix Detail" className="text-blue-400 hover:text-blue-200 transition-all"><Eye size={14}/></button>,
         ...(row?.is_deleted ? [
           <button
             key="restore"
@@ -696,7 +706,8 @@ export default function FAR() {
     onAdd: () => { setSelectedModeId(null); setShowWizard(true) },
     onSettings: () => setShowConfig(true),
     onRpnHelp: () => setShowRpnHelp(true),
-    onOpenDetail: (id) => setSelectedModeId(id),
+    onOpenDetailTab: (id, tab) => { setSelectedDetailTab(tab); setSelectedModeId(id) },
+    onOpenIncidents: (rcas) => setIncidentListModal({ show: true, rcas }),
     onEdit: (id) => { setSelectedModeId(id); setShowWizard(true) },
   })
 
@@ -893,7 +904,8 @@ export default function FAR() {
           {selectedModeId && selectedMode && (
             <FailureDetailView
               mode={selectedMode}
-              onClose={() => setSelectedModeId(null)}
+              initialTab={selectedDetailTab}
+              onClose={() => { setSelectedModeId(null); setSelectedDetailTab(FAR_CONTEXT_DETAIL_TABS.detail) }}
               onUpdate={(type: string) => {
                 if (type === 'edit') {
                   setShowWizard(true);
@@ -1201,10 +1213,14 @@ function StatCard({ id, label, value, suffix, color, onHelp }: any) {
   )
 }
 
-function FailureDetailView({ mode, onClose, onUpdate, onRestore, setBkmGuidanceModal, setResolutionManagerModal }: { mode: any, onClose: () => void, onUpdate: (type: string) => void, onRestore: () => void, setBkmGuidanceModal: any, setResolutionManagerModal: any }) {
-  const [activeTab, setActiveTab] = useState('causal')
+function FailureDetailView({ mode, initialTab, onClose, onUpdate, onRestore, setBkmGuidanceModal, setResolutionManagerModal }: { mode: any, initialTab: FarDossierTab, onClose: () => void, onUpdate: (type: string) => void, onRestore: () => void, setBkmGuidanceModal: any, setResolutionManagerModal: any }) {
+  const [activeTab, setActiveTab] = useState<FarDossierTab>(initialTab)
   const [showAllAssets, setShowAllAssets] = useState(false)
   const queryClient = useQueryClient()
+
+  useEffect(() => {
+    setActiveTab(initialTab)
+  }, [initialTab, mode.id])
   
   const { data: allModes } = useQuery({ 
     queryKey: ['far', 'modes'], 
@@ -1293,8 +1309,13 @@ function FailureDetailView({ mode, onClose, onUpdate, onRestore, setBkmGuidanceM
             {/* TABS ON OWN ROW */}
             <div className="mt-6 flex items-center relative z-10">
                <div className="flex space-x-1 bg-black/60 p-0.5 rounded-lg border border-white/5">
-                 {[{ id: 'causal', label: 'Causal Forensics', icon: Zap }, { id: 'roadmap', label: 'Strategic Roadmap', icon: ShieldCheck }, { id: 'versions', label: 'Version History', icon: Clock }, { id: 'history', label: 'Research History', icon: Activity }].map(t => (
-                   <button key={t.id} onClick={() => setActiveTab(t.id)} className={`px-6 py-1.5 rounded-lg text-[9px] font-bold uppercase tracking-widest transition-all flex items-center gap-2 ${activeTab === t.id ? 'bg-rose-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'}`}><t.icon size={12} /> {t.label}</button>
+                 {([
+                   { id: 'causal', label: 'Causal Forensics', icon: Zap },
+                   { id: 'roadmap', label: 'Strategic Roadmap', icon: ShieldCheck },
+                   { id: 'versions', label: 'Version History', icon: Clock },
+                   { id: 'history', label: 'Research History', icon: Activity },
+                 ] as const).map((tab) => (
+                   <button key={tab.id} onClick={() => setActiveTab(tab.id)} className={`px-6 py-1.5 rounded-lg text-[9px] font-bold uppercase tracking-widest transition-all flex items-center gap-2 ${activeTab === tab.id ? 'bg-rose-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'}`}><tab.icon size={12} /> {tab.label}</button>
                  ))}
                </div>
             </div>

@@ -3,6 +3,7 @@ import { AnimatePresence, motion } from 'framer-motion'
 import {
   Activity,
   Clipboard,
+  Clock,
   Copy,
   Download,
   Edit2,
@@ -12,6 +13,7 @@ import {
   GitCompare,
   HelpCircle,
   LayoutGrid,
+  Link2,
   Settings,
   ShieldAlert,
   Sliders,
@@ -56,6 +58,11 @@ import {
   type FarGroupBy,
   type FarQuickFilters,
 } from './FAR.workspaceModel'
+import {
+  FAR_CONTEXT_DETAIL_TABS,
+  getFarContextActionState,
+  type FarDossierTab,
+} from './FAR.rowActions'
 import {
   isRemoteWorkspaceViewId,
   useCollaborativeWorkspaceViews,
@@ -143,7 +150,8 @@ export function useFARGoldenWorkspaceControls({
   onAdd,
   onSettings,
   onRpnHelp,
-  onOpenDetail,
+  onOpenDetailTab,
+  onOpenIncidents,
   onEdit,
 }: {
   gridRef: React.RefObject<any>
@@ -176,7 +184,8 @@ export function useFARGoldenWorkspaceControls({
   onAdd: () => void
   onSettings: () => void
   onRpnHelp: () => void
-  onOpenDetail: (id: number) => void
+  onOpenDetailTab: (id: number, tab: FarDossierTab) => void
+  onOpenIncidents: (rcas: any[]) => void
   onEdit: (id: number) => void
 }) {
   const [savedViews, setSavedViews] = usePersistentJsonState<FarSavedView[]>(FAR_VIEW_STORAGE_KEY, [])
@@ -559,14 +568,36 @@ export function useFARGoldenWorkspaceControls({
   const rowActionSections = useMemo<OperationalRowActionSectionModel[]>(() => {
     if (!rowActionMenu?.item) return []
     const item = rowActionMenu.item
+    const contextActions = getFarContextActionState(item)
     return [
       {
         id: 'quickAccess',
         columns: 3,
         items: [
-          { id: 'detail', label: 'Open details', icon: Eye, tone: 'info', onClick: () => { setRowActionMenu(null); onOpenDetail(Number(item.id)) } },
+          { id: 'detail', label: 'Open details', icon: Eye, tone: 'info', onClick: () => { setRowActionMenu(null); onOpenDetailTab(Number(item.id), FAR_CONTEXT_DETAIL_TABS.detail) } },
           { id: 'edit', label: 'Edit', icon: Edit2, tone: 'warning', onClick: () => { setRowActionMenu(null); onEdit(Number(item.id)) } },
           { id: 'copy', label: 'Copy row', icon: Copy, onClick: () => { setRowActionMenu(null); void copyRow(item) } },
+        ],
+      },
+      {
+        id: 'followOptions',
+        columns: 3,
+        items: [
+          { id: 'versions', label: 'Version history', icon: Clock, tone: 'info', onClick: () => { setRowActionMenu(null); onOpenDetailTab(Number(item.id), FAR_CONTEXT_DETAIL_TABS.versionHistory) } },
+          { id: 'research', label: 'Research history', icon: Activity, tone: 'info', onClick: () => { setRowActionMenu(null); onOpenDetailTab(Number(item.id), FAR_CONTEXT_DETAIL_TABS.researchHistory) } },
+          {
+            id: 'incidents',
+            label: `Linked incidents (${contextActions.linkedIncidentCount})`,
+            icon: Link2,
+            tone: contextActions.canOpenLinkedIncidents ? 'info' : 'neutral',
+            disabled: !contextActions.canOpenLinkedIncidents,
+            disabledReason: 'No linked incidents',
+            onClick: () => {
+              if (!contextActions.canOpenLinkedIncidents) return
+              setRowActionMenu(null)
+              onOpenIncidents(contextActions.linkedIncidents)
+            },
+          },
         ],
       },
       {
@@ -577,7 +608,7 @@ export function useFARGoldenWorkspaceControls({
         ],
       },
     ]
-  }, [copyRow, onEdit, onOpenDetail, onRetireSelected, rowActionMenu])
+  }, [copyRow, onEdit, onOpenDetailTab, onOpenIncidents, onRetireSelected, rowActionMenu])
 
   const filterChips = useMemo(() => {
     const chips: Array<{ id: string; label: string; onRemove: () => void }> = []
