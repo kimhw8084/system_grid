@@ -4,6 +4,10 @@ import {
   OPERATIONAL_GRID_BADGE_TEXT_CLASS,
   OPERATIONAL_GRID_CLASSES,
 } from './shared/OperationalGridContract'
+import {
+  OperationalLinkedCountCell,
+  getOperationalHeaderSafeMinWidth,
+} from './shared/OperationalGoldenColumns'
 
 export type FarAnalyticalIncident = {
   id?: string | number
@@ -100,7 +104,7 @@ function createFarOperationalRendererColumn({
     ...(colId ? { colId } : {}),
     headerName,
     width,
-    minWidth,
+    minWidth: getOperationalHeaderSafeMinWidth({ headerName, minWidth }),
     suppressAutoSize: true,
     operationalSkipAutoSize: true,
     resizable: true,
@@ -208,32 +212,17 @@ export function createFarIncidentsColumn({
     hide: hidden,
     cellRenderer: (params: any) => {
       const incidents: FarAnalyticalIncident[] = params.data?.linked_rcas || []
-      const count = incidents.length
-      if (count === 0) {
-        return <span className="text-[9px] font-bold uppercase tracking-widest text-slate-600">None</span>
-      }
-
       return (
-        <div className="flex h-full w-full items-center justify-center">
-          <div className="group relative">
-            <button
-              onClick={() => onOpenIncidents(incidents)}
-              className={`flex h-5 w-14 cursor-pointer items-center justify-center rounded-lg border shadow-sm transition-all hover:scale-105 active:scale-95 ${getFarIncidentToneClass(count)}`}
-            >
-              <span style={{ fontSize: `${fontSize}px` }} className="font-bold leading-none">{count}</span>
-            </button>
-            <div className="pointer-events-none absolute bottom-full left-1/2 z-[9999] mb-2 hidden -translate-x-1/2 group-hover:block">
-              <div className="min-w-[200px] rounded-lg border border-white/20 bg-slate-900 p-3 shadow-2xl">
-                <p className="mb-2 border-b border-white/5 pb-1 text-[9px] font-bold uppercase text-purple-400">Linked RCA Records</p>
-                <div className="space-y-1">
-                  {incidents.map((incident) => (
-                    <div key={incident.id} className="py-0.5 text-[8px] font-bold uppercase text-slate-300">• {incident.title}</div>
-                  ))}
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
+        <OperationalLinkedCountCell
+          items={incidents}
+          fontSize={fontSize}
+          emptyLabel="None"
+          previewTitle="Linked RCA Records"
+          getItemKey={(incident, index) => incident.id ?? `incident-${index}`}
+          getItemLabel={(incident) => incident.title}
+          getToneClass={getFarIncidentToneClass}
+          onActivate={onOpenIncidents}
+        />
       )
     },
   })

@@ -9,6 +9,7 @@ import {
   getFarVectorSummary,
 } from './FAR.gridColumns'
 import { OPERATIONAL_GRID_CLASSES } from './shared/OperationalGridContract'
+import { OperationalLinkedCountCell } from './shared/OperationalGoldenColumns'
 
 const monitoring = { mitigation_type: 'Monitoring' }
 const workaround = { mitigation_type: 'Workaround' }
@@ -79,6 +80,7 @@ describe('FAR analytical grid convergence', () => {
     expect(columns[0].hide).toBe(true)
     expect(columns[1]).not.toHaveProperty('hide')
     expect(columns[2].hide).toBe(true)
+    expect(columns.map((column) => column.minWidth)).toEqual([152, 140, 112])
   })
 
   it('preserves maturity and incident activation callbacks', () => {
@@ -97,7 +99,8 @@ describe('FAR analytical grid convergence', () => {
 
     const incidents = [{ id: 12, title: 'Power event' }]
     const incidentCell = incidentColumn.cellRenderer({ data: { linked_rcas: incidents } }) as any
-    incidentCell.props.children.props.children[0].props.onClick()
+    expect(incidentCell.type).toBe(OperationalLinkedCountCell)
+    incidentCell.props.onActivate(incidents)
     expect(openIncidents).toHaveBeenCalledWith(incidents)
   })
 

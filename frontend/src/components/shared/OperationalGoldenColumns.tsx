@@ -17,6 +17,21 @@ const OPERATIONAL_METRIC_TONE_CLASSES: Record<OperationalMetricTone, string> = {
   neutral: 'bg-white/5 text-slate-400 border-white/10',
 }
 
+export function getOperationalHeaderSafeMinWidth({
+  headerName,
+  minWidth,
+  characterWidth = 7,
+  chromeWidth = 48,
+}: {
+  headerName: string
+  minWidth: number
+  characterWidth?: number
+  chromeWidth?: number
+}) {
+  const labelLength = String(headerName || '').trim().length
+  return Math.max(minWidth, chromeWidth + labelLength * characterWidth)
+}
+
 export function getOperationalContentAwareWidth({
   headerName,
   values,
@@ -38,7 +53,8 @@ export function getOperationalContentAwareWidth({
     .map((value) => String(value ?? '').trim().length)
     .reduce((maximum, length) => Math.max(maximum, length), 0)
   const estimatedWidth = chromeWidth + longest * characterWidth
-  return Math.max(minWidth, Math.min(maxDefaultWidth, Math.max(fallbackWidth, estimatedWidth)))
+  const headerSafeMinWidth = getOperationalHeaderSafeMinWidth({ headerName, minWidth, characterWidth, chromeWidth })
+  return Math.max(headerSafeMinWidth, Math.min(maxDefaultWidth, Math.max(fallbackWidth, estimatedWidth)))
 }
 
 export function createOperationalGoldenTextColumn({
@@ -76,7 +92,7 @@ export function createOperationalGoldenTextColumn({
     field,
     headerName,
     width,
-    minWidth,
+    minWidth: getOperationalHeaderSafeMinWidth({ headerName, minWidth }),
     filter,
     resizable: true,
     operationalSkipAutoSize: true,
@@ -119,7 +135,7 @@ export function createOperationalMetricBadgeColumn({
     field,
     headerName,
     width,
-    minWidth,
+    minWidth: getOperationalHeaderSafeMinWidth({ headerName, minWidth }),
     filter: 'agNumberColumnFilter',
     resizable: true,
     operationalSkipAutoSize: true,
@@ -149,4 +165,58 @@ export function createOperationalMetricBadgeColumn({
     },
     hide,
   }
+}
+
+export type OperationalLinkedCountCellProps<T> = {
+  items: readonly T[] | null | undefined
+  fontSize: number
+  emptyLabel?: string
+  previewTitle: string
+  getItemKey: (item: T, index: number) => React.Key
+  getItemLabel: (item: T, index: number) => React.ReactNode
+  getToneClass: (count: number) => string
+  onActivate: (items: T[]) => void
+}
+
+export function OperationalLinkedCountCell<T>({
+  items,
+  fontSize,
+  emptyLabel = 'None',
+  previewTitle,
+  getItemKey,
+  getItemLabel,
+  getToneClass,
+  onActivate,
+}: OperationalLinkedCountCellProps<T>) {
+  const normalizedItems: T[] = Array.isArray(items) ? [...items] : []
+  const count = normalizedItems.length
+  if (count === 0) {
+    return <span className="text-[9px] font-bold uppercase tracking-widest text-slate-600">{emptyLabel}</span>
+  }
+
+  return (
+    <div className="flex h-full w-full items-center justify-center">
+      <div className="group relative">
+        <button
+          type="button"
+          onClick={() => onActivate(normalizedItems)}
+          className={`flex h-5 w-14 cursor-pointer items-center justify-center rounded-lg border shadow-sm transition-all hover:scale-105 active:scale-95 ${getToneClass(count)}`}
+        >
+          <span style={{ fontSize: `${fontSize}px` }} className="font-bold leading-none">{count}</span>
+        </button>
+        <div className="pointer-events-none absolute bottom-full left-1/2 z-[9999] mb-2 hidden -translate-x-1/2 group-hover:block">
+          <div className="min-w-[200px] rounded-lg border border-white/20 bg-slate-900 p-3 shadow-2xl">
+            <p className="mb-2 border-b border-white/5 pb-1 text-[9px] font-bold uppercase text-purple-400">{previewTitle}</p>
+            <div className="space-y-1">
+              {normalizedItems.map((item, index) => (
+                <div key={getItemKey(item, index)} className="py-0.5 text-[8px] font-bold uppercase text-slate-300">
+                  • {getItemLabel(item, index)}
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
 }
