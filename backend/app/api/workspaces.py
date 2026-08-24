@@ -131,7 +131,7 @@ VENDOR_COLUMNS = [
 ]
 FAR_COLUMNS = [
     "id", "system_name", "failure_type", "title", "severity", "occurrence", "detection",
-    "rpn", "status", "linked_rcas", "created_by_user_id",
+    "rpn", "status", "vectors", "linked_rcas", "created_by_user_id",
 ]
 
 TABLE_STATE_KEYS = [

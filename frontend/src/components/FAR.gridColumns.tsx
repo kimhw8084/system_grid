@@ -175,12 +175,13 @@ export function createFarMaturityColumn({
   })
 }
 
-export function createFarVectorsColumn() {
+export function createFarVectorsColumn({ hidden }: { hidden: boolean }) {
   return createFarOperationalRendererColumn({
     colId: 'vectors',
     headerName: 'Vectors',
     width: 160,
     minWidth: 140,
+    hide: hidden,
     cellRenderer: (params: any) => {
       const summary = getFarVectorSummary(params.data || {})
       return (
@@ -248,7 +249,7 @@ export function createFarAnalyticalColumns({
       hidden: hiddenColumns.includes('status'),
       onOpenMaturity,
     }),
-    createFarVectorsColumn(),
+    createFarVectorsColumn({ hidden: hiddenColumns.includes('vectors') }),
     createFarIncidentsColumn({
       fontSize,
       hidden: hiddenColumns.includes('linked_rcas'),

@@ -61,7 +61,7 @@ describe('FAR analytical grid convergence', () => {
     const openIncidents = vi.fn()
     const columns = createFarAnalyticalColumns({
       fontSize: 11,
-      hiddenColumns: ['status', 'linked_rcas'],
+      hiddenColumns: ['status', 'vectors', 'linked_rcas'],
       onOpenMaturity: openMaturity,
       onOpenIncidents: openIncidents,
     }) as any[]
@@ -78,7 +78,7 @@ describe('FAR analytical grid convergence', () => {
     expect(columns.every((column) => column.headerClass === OPERATIONAL_GRID_CLASSES.centeredHeader)).toBe(true)
     expect(columns[0].filter).toBe('agTextColumnFilter')
     expect(columns[0].hide).toBe(true)
-    expect(columns[1]).not.toHaveProperty('hide')
+    expect(columns[1].hide).toBe(true)
     expect(columns[2].hide).toBe(true)
     expect(columns.map((column) => column.minWidth)).toEqual([152, 140, 112])
   })

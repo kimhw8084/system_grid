@@ -52,6 +52,7 @@ async def test_far_workspace_definition_exposes_golden_operational_state(seeded_
         "detection",
         "rpn",
         "status",
+        "vectors",
         "linked_rcas",
         "created_by_user_id",
     }
@@ -71,7 +72,7 @@ async def test_far_saved_view_preserves_golden_display_and_grid_state(seeded_adm
             "definition": {
                 "fontSize": 99,
                 "rowDensity": -2,
-                "hiddenColumns": ["created_by_user_id", "unknown", "created_by_user_id"],
+                "hiddenColumns": ["created_by_user_id", "vectors", "unknown", "created_by_user_id"],
                 "groupBy": "risk_band",
                 "quickFilter": "  thermal risk  ",
                 "quickFilters": {
@@ -91,6 +92,7 @@ async def test_far_saved_view_preserves_golden_display_and_grid_state(seeded_adm
                 ],
                 "columnLayoutState": [
                     {"colId": "title", "width": 330, "pinned": "left"},
+                    {"colId": "vectors", "width": 180, "hide": True},
                     {"colId": "missing", "width": 900},
                 ],
                 "unknownTopLevel": "drop",
@@ -107,7 +109,7 @@ async def test_far_saved_view_preserves_golden_display_and_grid_state(seeded_adm
         "rowDensity": 0,
         "groupBy": "risk_band",
         "showFilterBar": True,
-        "hiddenColumns": ["created_by_user_id"],
+        "hiddenColumns": ["created_by_user_id", "vectors"],
         "quickFilter": "thermal risk",
         "quickFilters": {
             "system_name": ["Core"],
@@ -117,7 +119,10 @@ async def test_far_saved_view_preserves_golden_display_and_grid_state(seeded_adm
         },
         "filterModel": {"status": {"filterType": "text", "filter": "Analyzing"}},
         "sortModel": [{"colId": "rpn", "sort": "desc"}],
-        "columnLayoutState": [{"colId": "title", "pinned": "left", "width": 330}],
+        "columnLayoutState": [
+            {"colId": "title", "pinned": "left", "width": 330},
+            {"colId": "vectors", "hide": True, "width": 180},
+        ],
     }
 
 
