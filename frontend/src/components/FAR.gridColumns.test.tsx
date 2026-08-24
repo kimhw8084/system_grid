@@ -106,6 +106,10 @@ describe('FAR analytical grid convergence', () => {
 
   it('wires the full FAR source to the builders without leaving handwritten analytical column blocks', () => {
     const source = readFileSync('src/components/FAR.tsx', 'utf8')
+    expect(source).toContain('(c.field || c.colId) && !c.lockVisible')
+    expect(source).toContain('key={col.field || col.colId}')
+    expect(source).toContain('hiddenColumns.includes(col.field || col.colId)')
+    expect(source).toContain('{col.headerName || col.field || col.colId}')
     expect(source).toContain("from './FAR.gridColumns'")
     expect(source).toContain('...createFarAnalyticalColumns({')
     expect(source).toContain('const lv = getFarMaturityLevel(mode)')
