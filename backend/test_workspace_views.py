@@ -236,6 +236,77 @@ async def test_saved_view_owner_and_tenant_isolation(seeded_admin_tenant, setup_
 
 
 @pytest.mark.anyio
+async def test_saved_view_favorite_and_single_default_metadata(seeded_admin_tenant):
+    client = seeded_admin_tenant["client"]
+    tenant_id = seeded_admin_tenant["tenant_id"]
+    request_headers = headers("admin_root", tenant_id)
+
+    first_response = await client.post(
+        "/api/v1/workspaces/monitoring/views",
+        json={**MONITORING_VIEW, "name": "Primary", "is_favorite": True, "is_default": True},
+        headers=request_headers,
+    )
+    assert first_response.status_code == 201, first_response.text
+    first = first_response.json()
+    assert first["is_favorite"] is True
+    assert first["is_default"] is True
+
+    compatibility_update = await client.put(
+        f"/api/v1/workspaces/views/{first['id']}",
+        json={**MONITORING_VIEW, "name": "Primary renamed", "revision": 1},
+        headers=request_headers,
+    )
+    assert compatibility_update.status_code == 200, compatibility_update.text
+    first = compatibility_update.json()
+    assert first["revision"] == 2
+    assert first["is_favorite"] is True
+    assert first["is_default"] is True
+
+    second_response = await client.post(
+        "/api/v1/workspaces/monitoring/views",
+        json={**MONITORING_VIEW, "name": "Secondary", "is_default": True},
+        headers=request_headers,
+    )
+    assert second_response.status_code == 201, second_response.text
+    second = second_response.json()
+    assert second["is_default"] is True
+
+    listed = await client.get("/api/v1/workspaces/monitoring/views", headers=request_headers)
+    assert listed.status_code == 200, listed.text
+    by_id = {entry["id"]: entry for entry in listed.json()["views"]}
+    assert by_id[first["id"]]["is_default"] is False
+    assert by_id[first["id"]]["is_favorite"] is True
+    assert by_id[first["id"]]["revision"] == 3
+    assert by_id[second["id"]]["is_default"] is True
+    assert sum(1 for entry in by_id.values() if entry["is_default"]) == 1
+
+    promote_first = await client.put(
+        f"/api/v1/workspaces/views/{first['id']}",
+        json={
+            **MONITORING_VIEW,
+            "name": "Primary renamed",
+            "revision": 3,
+            "is_favorite": False,
+            "is_default": True,
+        },
+        headers=request_headers,
+    )
+    assert promote_first.status_code == 200, promote_first.text
+    promoted = promote_first.json()
+    assert promoted["revision"] == 4
+    assert promoted["is_favorite"] is False
+    assert promoted["is_default"] is True
+
+    relisted = await client.get("/api/v1/workspaces/monitoring/views", headers=request_headers)
+    assert relisted.status_code == 200, relisted.text
+    by_id = {entry["id"]: entry for entry in relisted.json()["views"]}
+    assert by_id[first["id"]]["is_default"] is True
+    assert by_id[second["id"]]["is_default"] is False
+    assert by_id[second["id"]]["revision"] == 2
+    assert sum(1 for entry in by_id.values() if entry["is_default"]) == 1
+
+
+@pytest.mark.anyio
 async def test_atomic_revision_allows_only_one_writer(seeded_admin_tenant):
     client = seeded_admin_tenant["client"]
     tenant_id = seeded_admin_tenant["tenant_id"]

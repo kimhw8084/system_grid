@@ -1099,3 +1099,5 @@ class WorkspaceSavedView(Base, BaseMixin):
     definition_json = Column(JSON, nullable=False, default=dict)
     schema_version = Column(Integer, nullable=False, default=1)
     revision = Column(Integer, nullable=False, default=1)
+    is_favorite = Column(Boolean, nullable=False, default=False)
+    is_default = Column(Boolean, nullable=False, default=False)

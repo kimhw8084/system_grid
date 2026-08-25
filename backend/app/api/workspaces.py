@@ -57,6 +57,8 @@ class SavedViewBase(BaseModel):
     team_id: int | None = Field(default=None, ge=1)
     definition: dict[str, Any] = Field(default_factory=dict)
     schema_version: int = Field(default=1, ge=1)
+    is_favorite: bool | None = None
+    is_default: bool | None = None
 
     @field_validator("name")
     @classmethod
@@ -85,6 +87,8 @@ class SavedViewResponse(BaseModel):
     definition: dict[str, Any]
     schema_version: int
     revision: int
+    is_favorite: bool
+    is_default: bool
     created_at: datetime | None
     updated_at: datetime | None
 
@@ -413,6 +417,8 @@ def view_payload(view: models.WorkspaceSavedView) -> SavedViewResponse:
         definition=view.definition_json or {},
         schema_version=view.schema_version,
         revision=view.revision,
+        is_favorite=bool(view.is_favorite),
+        is_default=bool(view.is_default),
         created_at=view.created_at,
         updated_at=view.updated_at,
     )
@@ -436,6 +442,30 @@ def validate_schema_version(definition: WorkspaceDefinition, supplied_version: i
                 "current_schema_version": definition.schema_version,
             },
         )
+
+
+async def clear_other_personal_defaults(
+    db: AsyncSession,
+    *,
+    user_id: str,
+    workspace_key: str,
+    exclude_view_id: int | None = None,
+) -> None:
+    statement = update(models.WorkspaceSavedView).where(
+        models.WorkspaceSavedView.owner_user_id == user_id,
+        models.WorkspaceSavedView.workspace_key == workspace_key,
+        models.WorkspaceSavedView.scope == "personal",
+        models.WorkspaceSavedView.is_default.is_(True),
+    )
+    if exclude_view_id is not None:
+        statement = statement.where(models.WorkspaceSavedView.id != exclude_view_id)
+    await db.execute(
+        statement.values(
+            is_default=False,
+            revision=models.WorkspaceSavedView.revision + 1,
+            updated_at=func.now(),
+        )
+    )
 
 
 async def owned_view(view_id: int, request: Request, db: AsyncSession) -> models.WorkspaceSavedView:
@@ -500,6 +530,10 @@ async def create_view(
     validate_schema_version(definition, body.schema_version)
     user_id = get_current_user_id(request)
     normalized = sanitize_definition(workspace_key, body.definition)
+    is_favorite = bool(body.is_favorite)
+    is_default = bool(body.is_default)
+    if is_default:
+        await clear_other_personal_defaults(db, user_id=user_id, workspace_key=workspace_key)
     view = models.WorkspaceSavedView(
         workspace_key=workspace_key,
         name=body.name,
@@ -508,6 +542,8 @@ async def create_view(
         definition_json=normalized,
         schema_version=definition.schema_version,
         revision=1,
+        is_favorite=is_favorite,
+        is_default=is_default,
         created_by_user_id=user_id,
     )
     db.add(view)
@@ -542,8 +578,13 @@ async def update_view(
     validate_schema_version(definition, body.schema_version)
     normalized = sanitize_definition(current.workspace_key, body.definition)
     user_id = get_current_user_id(request)
+    next_is_favorite = bool(current.is_favorite) if body.is_favorite is None else body.is_favorite
+    next_is_default = bool(current.is_default) if body.is_default is None else body.is_default
 
     try:
+        # First win the optimistic revision race while temporarily demoting this
+        # view. This avoids violating the single-default index before the prior
+        # default is atomically demoted in the same transaction.
         result = await db.execute(
             update(models.WorkspaceSavedView)
             .where(
@@ -557,6 +598,8 @@ async def update_view(
                 definition_json=normalized,
                 schema_version=definition.schema_version,
                 revision=body.revision + 1,
+                is_favorite=next_is_favorite,
+                is_default=False,
                 updated_at=func.now(),
             )
         )
@@ -564,6 +607,27 @@ async def update_view(
             await db.rollback()
             latest = await owned_view(view_id, request, db)
             raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=conflict_detail(latest))
+        if next_is_default:
+            await clear_other_personal_defaults(
+                db,
+                user_id=user_id,
+                workspace_key=current.workspace_key,
+                exclude_view_id=view_id,
+            )
+            promoted = await db.execute(
+                update(models.WorkspaceSavedView)
+                .where(
+                    models.WorkspaceSavedView.id == view_id,
+                    models.WorkspaceSavedView.owner_user_id == user_id,
+                    models.WorkspaceSavedView.scope == "personal",
+                    models.WorkspaceSavedView.revision == body.revision + 1,
+                )
+                .values(is_default=True)
+            )
+            if promoted.rowcount != 1:
+                await db.rollback()
+                latest = await owned_view(view_id, request, db)
+                raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=conflict_detail(latest))
         await db.commit()
     except IntegrityError as exc:
         await db.rollback()
