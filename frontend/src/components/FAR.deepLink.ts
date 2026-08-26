@@ -1,3 +1,5 @@
+import { FAR_CONTEXT_DETAIL_TABS, type FarDossierTab } from './FAR.rowActions'
+
 export type FarDeepLinkRecord = {
   id: number
   is_deleted?: boolean
@@ -29,6 +31,32 @@ export type FarGridDataState = {
 const STRICT_POSITIVE_INTEGER = /^[1-9]\d*$/
 const INVALID_MESSAGE = 'The FAR deep link is invalid. Use a positive whole-number record ID.'
 const UNAVAILABLE_MESSAGE = 'This failure vector was not found or is unavailable in your scope.'
+const FAR_DOSSIER_DEEP_LINK_TABS = new Set<FarDossierTab>(['causal', 'roadmap', 'versions', 'history'])
+
+export function parseFarDossierTab(value: string | null): FarDossierTab {
+  return value && FAR_DOSSIER_DEEP_LINK_TABS.has(value as FarDossierTab)
+    ? value as FarDossierTab
+    : FAR_CONTEXT_DETAIL_TABS.detail
+}
+
+export function buildFarDossierSearchParams(
+  current: URLSearchParams,
+  targetId: number | null,
+  tab: FarDossierTab = FAR_CONTEXT_DETAIL_TABS.detail,
+): URLSearchParams {
+  const next = new URLSearchParams(current)
+  if (targetId === null) {
+    next.delete('id')
+    next.delete('tab')
+    return next
+  }
+
+  next.set('id', String(targetId))
+  if (tab === FAR_CONTEXT_DETAIL_TABS.detail) next.delete('tab')
+  else next.set('tab', tab)
+  return next
+}
+
 
 export function parseFarDeepLinkId(value: string | null):
   | { kind: 'absent' }

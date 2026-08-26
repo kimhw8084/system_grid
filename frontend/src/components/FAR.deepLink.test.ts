@@ -1,8 +1,10 @@
 import { describe, expect, it, vi } from 'vitest'
 import {
+  buildFarDossierSearchParams,
   getFarDeepLinkNotice,
   getFarGridDataState,
   parseFarDeepLinkId,
+  parseFarDossierTab,
   resolveFarDeepLink,
 } from './FAR.deepLink'
 
@@ -27,6 +29,30 @@ describe('FAR deep-link resolution', () => {
       kind: 'valid',
       targetId: Number.MAX_SAFE_INTEGER,
     })
+  })
+
+  it('sanitizes dossier tab query state while keeping causal as the backward-compatible default', () => {
+    expect(parseFarDossierTab(null)).toBe('causal')
+    expect(parseFarDossierTab('')).toBe('causal')
+    expect(parseFarDossierTab('causal')).toBe('causal')
+    expect(parseFarDossierTab('roadmap')).toBe('roadmap')
+    expect(parseFarDossierTab('versions')).toBe('versions')
+    expect(parseFarDossierTab('history')).toBe('history')
+    expect(parseFarDossierTab('VERSIONS')).toBe('causal')
+    expect(parseFarDossierTab('unknown')).toBe('causal')
+  })
+
+  it('updates only FAR dossier query keys so collaborative view state survives open, tab, and close', () => {
+    const base = new URLSearchParams('view=team-17&filter=critical')
+    const opened = buildFarDossierSearchParams(base, 8, 'versions')
+    expect(opened.toString()).toBe('view=team-17&filter=critical&id=8&tab=versions')
+
+    const causal = buildFarDossierSearchParams(opened, 8, 'causal')
+    expect(causal.toString()).toBe('view=team-17&filter=critical&id=8')
+
+    const closed = buildFarDossierSearchParams(opened, null)
+    expect(closed.toString()).toBe('view=team-17&filter=critical')
+    expect(base.toString()).toBe('view=team-17&filter=critical')
   })
 
   it('waits for the already-authorized FAR list before resolving a valid id', () => {

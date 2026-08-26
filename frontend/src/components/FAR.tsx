@@ -72,7 +72,7 @@ import {
   sanitizeFarAuthoringPayload,
   type FarAuthoringTab,
 } from './FAR.authoringModel'
-import { getFarDeepLinkNotice, getFarGridDataState, resolveFarDeepLink } from './FAR.deepLink'
+import { buildFarDossierSearchParams, getFarDeepLinkNotice, getFarGridDataState, parseFarDossierTab, resolveFarDeepLink } from './FAR.deepLink'
 import DataStatusPill, { DataDiagnosticModal } from './shared/OperationalDataStatus'
 import { buildFarRegistryDiagnosticDetail } from './FAR.diagnostics'
 import { FARDossierShell } from './FAR.dossier'
@@ -245,10 +245,13 @@ function MetricHelpModal({ metric, onClose }: { metric: string | null, onClose: 
 export default function FAR() {
   const [showImportModal, setShowImportModal] = useState(false)
   const queryClient = useQueryClient()
-  const [searchParams] = useSearchParams()
+  const [searchParams, setSearchParams] = useSearchParams()
   const gridRef = React.useRef<any>(null)
+  const lastDeepLinkedModeIdRef = React.useRef<number | null>(null)
   
   const idParam = searchParams.get('id')
+  const tabParam = searchParams.get('tab')
+  const requestedDossierTab = useMemo(() => parseFarDossierTab(tabParam), [tabParam])
 
   const [showWizard, setShowWizard] = useState(false)
   const [selectedModeId, setSelectedModeId] = useState<number | null>(null)
@@ -279,6 +282,30 @@ export default function FAR() {
   
   const [bkmGuidanceModal, setBkmGuidanceModal] = useState<{show: boolean, cause: any}>({ show: false, cause: null })
 
+  const syncFarDossierLink = React.useCallback((
+    targetId: number | null,
+    tab: FarDossierTab = FAR_CONTEXT_DETAIL_TABS.detail,
+    replace = false,
+  ) => {
+    setSearchParams(buildFarDossierSearchParams(searchParams, targetId, tab), { replace })
+  }, [searchParams, setSearchParams])
+
+  const openFarDossier = React.useCallback((
+    targetId: number,
+    tab: FarDossierTab = FAR_CONTEXT_DETAIL_TABS.detail,
+  ) => {
+    setSelectedDetailTab(tab)
+    setSelectedModeId(targetId)
+    syncFarDossierLink(targetId, tab)
+  }, [syncFarDossierLink])
+
+  const closeFarDossier = React.useCallback((replace = false) => {
+    lastDeepLinkedModeIdRef.current = null
+    setSelectedModeId(null)
+    setSelectedDetailTab(FAR_CONTEXT_DETAIL_TABS.detail)
+    syncFarDossierLink(null, FAR_CONTEXT_DETAIL_TABS.detail, replace)
+  }, [syncFarDossierLink])
+
   // Queries
   const { data: modes, isLoading: modesLoading, isError: modesError, error: modesQueryError } = useQuery({
     queryKey: ['far', 'modes'], 
@@ -306,15 +333,23 @@ export default function FAR() {
   useEffect(() => {
     if (deepLinkResolution.kind !== 'resolved') {
       if (deepLinkResolution.kind === 'invalid' || deepLinkResolution.kind === 'unavailable') {
+        lastDeepLinkedModeIdRef.current = null
         setSelectedModeId(null)
+        setSelectedDetailTab(FAR_CONTEXT_DETAIL_TABS.detail)
+      } else if (deepLinkResolution.kind === 'absent' && lastDeepLinkedModeIdRef.current !== null) {
+        const previousDeepLinkId = lastDeepLinkedModeIdRef.current
+        lastDeepLinkedModeIdRef.current = null
+        setSelectedModeId((current) => current === previousDeepLinkId ? null : current)
+        setSelectedDetailTab(FAR_CONTEXT_DETAIL_TABS.detail)
       }
       return
     }
     const { targetId, mode, lifecycleScope: targetLifecycleScope } = deepLinkResolution
 
+    lastDeepLinkedModeIdRef.current = targetId
     setLifecycleScope(targetLifecycleScope)
     setSearchTerm(mode.title)
-    setSelectedDetailTab(FAR_CONTEXT_DETAIL_TABS.detail)
+    setSelectedDetailTab(requestedDossierTab)
     setSelectedModeId(targetId)
 
     if (!gridRef.current?.api) return
@@ -326,7 +361,7 @@ export default function FAR() {
         }
       })
     })
-  }, [deepLinkResolution])
+  }, [deepLinkResolution, requestedDossierTab])
 
   const { data: options } = useQuery({ queryKey: ['settings-options'], queryFn: async () => (await apiFetch('/api/v1/settings/options')).json() })
   const availableSystems = useMemo(() => Array.from(new Set([
@@ -382,8 +417,7 @@ export default function FAR() {
     quickFilters,
     onOpenDetail: (mode) => {
       if (!mode?.id) return
-      setSelectedDetailTab(FAR_CONTEXT_DETAIL_TABS.detail)
-      setSelectedModeId(Number(mode.id))
+      openFarDossier(Number(mode.id))
     },
     gridRef,
   })
@@ -640,7 +674,7 @@ export default function FAR() {
     createOperationalActionColumnDefinition({
       width: OPERATIONAL_GRID_WIDTHS.standardAction,
       renderActions: (row: any) => renderOperationalActionButtons([
-        <button key="detail" onClick={() => { if (!row?.id) return; setSelectedDetailTab(FAR_CONTEXT_DETAIL_TABS.detail); setSelectedModeId(row.id) }} title="Matrix Detail" className="text-blue-400 hover:text-blue-200 transition-all"><Eye size={14}/></button>,
+        <button key="detail" onClick={() => { if (!row?.id) return; openFarDossier(Number(row.id)) }} title="Matrix Detail" className="text-blue-400 hover:text-blue-200 transition-all"><Eye size={14}/></button>,
         ...(row?.is_deleted ? [
           <button
             key="restore"
@@ -664,7 +698,7 @@ export default function FAR() {
         ]),
       ]),
     })
-  ], [farDefaultWidths, fontSize, hiddenColumns, operatorIntelligence.utilityColumnsConfig, requestBulkPreview]) as any
+  ], [farDefaultWidths, fontSize, hiddenColumns, openFarDossier, operatorIntelligence.utilityColumnsConfig, requestBulkPreview]) as any
 
   // Advanced Metrics Calculation
   const metrics = useMemo(() => {
@@ -720,7 +754,7 @@ export default function FAR() {
     onAdd: () => { setSelectedModeId(null); setShowWizard(true) },
     onSettings: () => setShowConfig(true),
     onRpnHelp: () => setShowRpnHelp(true),
-    onOpenDetailTab: (id, tab) => { setSelectedDetailTab(tab); setSelectedModeId(id) },
+    onOpenDetailTab: (id, tab) => openFarDossier(id, tab),
     onOpenIncidents: (rcas) => setIncidentListModal({ show: true, rcas }),
     onEdit: (id) => { setSelectedModeId(id); setShowWizard(true) },
   })
@@ -755,7 +789,7 @@ export default function FAR() {
               onChange={(next) => {
                 setLifecycleScope(next as 'active' | 'archived')
                 setSelectedIds([])
-                setSelectedModeId(null)
+                closeFarDossier(true)
                 gridRef.current?.api?.deselectAll?.()
               }}
               options={[
@@ -919,7 +953,11 @@ export default function FAR() {
             <FailureDetailView
               mode={selectedMode}
               initialTab={selectedDetailTab}
-              onClose={() => { setSelectedModeId(null); setSelectedDetailTab(FAR_CONTEXT_DETAIL_TABS.detail) }}
+              onTabChange={(tab) => {
+                setSelectedDetailTab(tab)
+                syncFarDossierLink(Number(selectedMode.id), tab)
+              }}
+              onClose={() => closeFarDossier()}
               onUpdate={(type: string) => {
                 if (type === 'edit') {
                   setShowWizard(true);
@@ -928,7 +966,7 @@ export default function FAR() {
                 }
               }}
               onRestore={() => {
-                setSelectedModeId(null)
+                closeFarDossier(true)
                 requestBulkPreview({ action: 'restore', ids: [Number(selectedMode.id)] })
               }}
               setBkmGuidanceModal={setBkmGuidanceModal}
@@ -1229,7 +1267,7 @@ function StatCard({ id, label, value, suffix, color, onHelp }: any) {
   )
 }
 
-function FailureDetailView({ mode, initialTab, onClose, onUpdate, onRestore, setBkmGuidanceModal, setResolutionManagerModal }: { mode: any, initialTab: FarDossierTab, onClose: () => void, onUpdate: (type: string) => void, onRestore: () => void, setBkmGuidanceModal: any, setResolutionManagerModal: any }) {
+function FailureDetailView({ mode, initialTab, onTabChange, onClose, onUpdate, onRestore, setBkmGuidanceModal, setResolutionManagerModal }: { mode: any, initialTab: FarDossierTab, onTabChange: (tab: FarDossierTab) => void, onClose: () => void, onUpdate: (type: string) => void, onRestore: () => void, setBkmGuidanceModal: any, setResolutionManagerModal: any }) {
   const [activeTab, setActiveTab] = useState<FarDossierTab>(initialTab)
   const [showAllAssets, setShowAllAssets] = useState(false)
   const queryClient = useQueryClient()
@@ -1331,7 +1369,7 @@ function FailureDetailView({ mode, initialTab, onClose, onUpdate, onRestore, set
                    { id: 'versions', label: 'Version History', icon: Clock },
                    { id: 'history', label: 'Research History', icon: Activity },
                  ] as const).map((tab) => (
-                   <button key={tab.id} onClick={() => setActiveTab(tab.id)} className={`px-6 py-1.5 rounded-lg text-[9px] font-bold uppercase tracking-widest transition-all flex items-center gap-2 ${activeTab === tab.id ? 'bg-rose-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'}`}><tab.icon size={12} /> {tab.label}</button>
+                   <button key={tab.id} onClick={() => { setActiveTab(tab.id); onTabChange(tab.id) }} className={`px-6 py-1.5 rounded-lg text-[9px] font-bold uppercase tracking-widest transition-all flex items-center gap-2 ${activeTab === tab.id ? 'bg-rose-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'}`}><tab.icon size={12} /> {tab.label}</button>
                  ))}
                </div>
             </div>
