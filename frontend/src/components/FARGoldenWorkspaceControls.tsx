@@ -81,6 +81,7 @@ import {
   normalizeFarSavedViews,
   sanitizeFarWorkspaceViewConfig,
 } from './FAR.workspaceState'
+import { describeFarSavedViewConfig } from './FAR.savedViewPresentation'
 
 const selectedRows = (modes: any[] | undefined, selectedIds: number[]) => {
   const selected = new Set(selectedIds.map(Number))
@@ -264,10 +265,7 @@ export function useFARGoldenWorkspaceControls({
   })), [normalizedViews])
   const describeSavedView = useCallback((view: FarSavedViewPanelModel) => {
     const farView = normalizedViews.find((entry) => entry.id === view.id)
-    if (!farView) return 'FAR view'
-    const groupLabel = FAR_GROUP_OPTIONS.find((option) => option.value === farView.config.groupBy)?.label || 'Raw Rows'
-    const quickFilterCount = Object.values(farView.config.quickFilters).reduce((total, values) => total + values.length, 0)
-    return `${groupLabel} · ${quickFilterCount} quick filters · ${farView.config.hiddenColumns.length} hidden`
+    return farView ? describeFarSavedViewConfig(farView.config) : 'FAR view'
   }, [normalizedViews])
 
   const collaborativeViews = useCollaborativeWorkspaceViews<FarWorkspaceViewConfig, FarSavedView>({
