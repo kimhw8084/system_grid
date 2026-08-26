@@ -13,6 +13,8 @@ export interface CollaborativeSavedView<TConfig = Record<string, unknown>> {
   teamId?: number | null
   revision?: number
   schemaVersion?: number
+  isFavorite?: boolean
+  isDefault?: boolean
   source?: 'system' | 'remote' | 'local'
 }
 
@@ -26,6 +28,8 @@ export interface WorkspaceViewApiRecord<TConfig = Record<string, unknown>> {
   definition: TConfig
   schema_version: number
   revision: number
+  is_favorite?: boolean
+  is_default?: boolean
   created_at?: string | null
   updated_at?: string | null
 }
@@ -131,6 +135,18 @@ export function readWorkspaceViewId(href: string): string | null {
   }
 }
 
+export function buildWorkspaceViewsListPath(
+  workspaceKey: string,
+  scope: CollaborativeViewScope = 'personal',
+  teamId: number | null = null,
+): string {
+  const path = `/api/v1/workspaces/${workspaceKey}/views`
+  if (scope === 'personal') return path
+  const params = new URLSearchParams({ scope: 'team' })
+  if (teamId !== null) params.set('team_id', String(teamId))
+  return `${path}?${params.toString()}`
+}
+
 export function mapWorkspaceViewRecord<TConfig>(
   record: WorkspaceViewApiRecord<TConfig>,
   sanitizeDefinition: (definition: unknown) => TConfig = (definition) => definition as TConfig,
@@ -144,6 +160,8 @@ export function mapWorkspaceViewRecord<TConfig>(
     teamId: record.team_id,
     revision: record.revision,
     schemaVersion: record.schema_version,
+    isFavorite: record.is_favorite,
+    isDefault: record.is_default,
     source: 'remote',
   }
 }
@@ -196,6 +214,8 @@ export function useCollaborativeWorkspaceViews<
 >({
   workspaceKey,
   migrationKey,
+  scope = 'personal',
+  teamId = null,
   systemViewIds,
   currentViews,
   setCurrentViews,
@@ -207,6 +227,8 @@ export function useCollaborativeWorkspaceViews<
 }: {
   workspaceKey: string
   migrationKey: string
+  scope?: CollaborativeViewScope
+  teamId?: number | null
   systemViewIds: ReadonlySet<string>
   currentViews: TView[]
   setCurrentViews: Dispatch<SetStateAction<TView[]>>
@@ -240,18 +262,18 @@ export function useCollaborativeWorkspaceViews<
   const createRemote = useCallback(async (name: string, config: TConfig) => {
     const response = await apiClient.post(`/api/v1/workspaces/${workspaceKey}/views`, {
       name,
-      scope: 'personal',
-      team_id: null,
+      scope,
+      team_id: scope === 'team' ? teamId : null,
       definition: canonicalizeWorkspaceDefinition(config, sanitizeDefinition),
       schema_version: 1,
     }) as WorkspaceViewApiRecord<TConfig>
     return mapWorkspaceViewRecord(response, sanitizeDefinition) as TView
-  }, [sanitizeDefinition, workspaceKey])
+  }, [sanitizeDefinition, scope, teamId, workspaceKey])
 
   const hydrate = useCallback(async () => {
     setBaseStatus('loading')
     try {
-      const payload = await apiClient.get(`/api/v1/workspaces/${workspaceKey}/views`) as { views?: WorkspaceViewApiRecord<TConfig>[] }
+      const payload = await apiClient.get(buildWorkspaceViewsListPath(workspaceKey, scope, teamId)) as { views?: WorkspaceViewApiRecord<TConfig>[] }
       let remoteViews = Array.isArray(payload?.views)
         ? payload.views.map((record) => mapWorkspaceViewRecord(record, sanitizeDefinition) as TView)
         : []
@@ -268,7 +290,7 @@ export function useCollaborativeWorkspaceViews<
         if (matchingRemote) migratedActiveViewId = matchingRemote.id
       }
 
-      const migrationComplete = typeof window !== 'undefined' && window.localStorage.getItem(migrationKey) === '1'
+      const migrationComplete = scope === 'team' || (typeof window !== 'undefined' && window.localStorage.getItem(migrationKey) === '1')
       if (!migrationComplete) {
         const existingNames = new Set(remoteViews.map((view) => view.name.trim().toLocaleLowerCase()))
         const candidates = currentViewsRef.current
@@ -282,7 +304,7 @@ export function useCollaborativeWorkspaceViews<
           if (candidate.id === activeId) migratedActiveViewId = migratedView.id
         }
         remoteViews = [...remoteViews, ...migrated]
-        if (typeof window !== 'undefined') window.localStorage.setItem(migrationKey, '1')
+        if (scope === 'personal' && typeof window !== 'undefined') window.localStorage.setItem(migrationKey, '1')
       }
 
       setMergedViews(remoteViews)
@@ -296,7 +318,7 @@ export function useCollaborativeWorkspaceViews<
       setLastError(workspaceViewErrorMessage(error))
       setBaseStatus(isWorkspaceViewOfflineError(error) ? 'offline' : 'synced')
     }
-  }, [createRemote, migrationKey, onActiveViewIdChange, setMergedViews, systemViewIds, workspaceKey])
+  }, [createRemote, migrationKey, onActiveViewIdChange, scope, setMergedViews, systemViewIds, teamId, workspaceKey])
 
   useEffect(() => {
     void hydrate()
@@ -323,6 +345,10 @@ export function useCollaborativeWorkspaceViews<
       setLastError(message)
       if (!isWorkspaceViewOfflineError(error)) {
         setBaseStatus('synced')
+        return { persisted: false, error: message }
+      }
+      if (scope === 'team') {
+        setBaseStatus('offline')
         return { persisted: false, error: message }
       }
       const fallback = localFallbackView(name, canonicalizeWorkspaceDefinition(config, sanitizeDefinition)) as TView
@@ -362,6 +388,10 @@ export function useCollaborativeWorkspaceViews<
           setBaseStatus('synced')
           return { persisted: false, error: message }
         }
+        if (scope === 'team') {
+          setBaseStatus('offline')
+          return { persisted: false, error: message }
+        }
         const local = { ...existing, name, config: canonicalizeWorkspaceDefinition(config, sanitizeDefinition), source: 'local' } as TView
         setCurrentViews((current) => normalizeViews(current.map((view) => view.id === id ? local : view)))
         setBaseStatus('offline')
@@ -371,10 +401,12 @@ export function useCollaborativeWorkspaceViews<
 
     setBaseStatus('saving')
     try {
+      const targetScope = existing.scope || scope
+      const targetTeamId = targetScope === 'team' ? (existing.teamId ?? teamId) : null
       const response = await apiClient.put(`/api/v1/workspaces/views/${id}`, {
         name,
-        scope: 'personal',
-        team_id: null,
+        scope: targetScope,
+        team_id: targetTeamId,
         definition: canonicalizeWorkspaceDefinition(config, sanitizeDefinition),
         schema_version: existing.schemaVersion || 1,
         revision: existing.revision,
@@ -398,7 +430,7 @@ export function useCollaborativeWorkspaceViews<
       setBaseStatus(isWorkspaceViewOfflineError(error) ? 'offline' : 'synced')
       return { persisted: false, error: message }
     }
-  }, [createRemote, normalizeViews, sanitizeDefinition, setCurrentViews, systemViewIds])
+  }, [createRemote, normalizeViews, sanitizeDefinition, scope, setCurrentViews, systemViewIds, teamId])
 
   const deleteView = useCallback(async (id: string): Promise<CollaborativeViewMutationResult<TView>> => {
     const existing = currentViewsRef.current.find((view) => view.id === id)

@@ -424,12 +424,42 @@ def view_payload(view: models.WorkspaceSavedView) -> SavedViewResponse:
     )
 
 
-def validate_scope(body: SavedViewBase) -> None:
-    if body.scope == "team" or body.team_id is not None:
+def validate_scope_shape(scope: WorkspaceScope, team_id: int | None) -> None:
+    if scope == "personal" and team_id is not None:
         raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Team saved views are unavailable until authoritative team authorization semantics are unified.",
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="Personal saved views cannot have a team_id.",
         )
+    if scope == "team" and team_id is None:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="Team saved views require a team_id.",
+        )
+
+
+async def require_team_membership(
+    db: AsyncSession,
+    *,
+    user_id: str,
+    team_id: int,
+    conceal: bool = False,
+) -> models.Team:
+    result = await db.execute(
+        select(models.Team)
+        .join(models.Operator, models.Operator.team_id == models.Team.id)
+        .where(
+            models.Team.id == team_id,
+            models.Team.is_archived.is_(False),
+            models.Operator.username == user_id,
+        )
+    )
+    team = result.scalars().first()
+    if team is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND if conceal else status.HTTP_403_FORBIDDEN,
+            detail="Saved view not found." if conceal else "You are not a member of this team.",
+        )
+    return team
 
 
 def validate_schema_version(definition: WorkspaceDefinition, supplied_version: int) -> None:
@@ -444,19 +474,24 @@ def validate_schema_version(definition: WorkspaceDefinition, supplied_version: i
         )
 
 
-async def clear_other_personal_defaults(
+async def clear_other_defaults(
     db: AsyncSession,
     *,
+    scope: WorkspaceScope,
     user_id: str,
+    team_id: int | None,
     workspace_key: str,
     exclude_view_id: int | None = None,
 ) -> None:
     statement = update(models.WorkspaceSavedView).where(
-        models.WorkspaceSavedView.owner_user_id == user_id,
         models.WorkspaceSavedView.workspace_key == workspace_key,
-        models.WorkspaceSavedView.scope == "personal",
+        models.WorkspaceSavedView.scope == scope,
         models.WorkspaceSavedView.is_default.is_(True),
     )
+    if scope == "personal":
+        statement = statement.where(models.WorkspaceSavedView.owner_user_id == user_id)
+    else:
+        statement = statement.where(models.WorkspaceSavedView.team_id == team_id)
     if exclude_view_id is not None:
         statement = statement.where(models.WorkspaceSavedView.id != exclude_view_id)
     await db.execute(
@@ -468,17 +503,20 @@ async def clear_other_personal_defaults(
     )
 
 
-async def owned_view(view_id: int, request: Request, db: AsyncSession) -> models.WorkspaceSavedView:
+async def accessible_view(view_id: int, request: Request, db: AsyncSession) -> models.WorkspaceSavedView:
     user_id = get_current_user_id(request)
     result = await db.execute(
-        select(models.WorkspaceSavedView).where(
-            models.WorkspaceSavedView.id == view_id,
-            models.WorkspaceSavedView.scope == "personal",
-            models.WorkspaceSavedView.owner_user_id == user_id,
-        )
+        select(models.WorkspaceSavedView).where(models.WorkspaceSavedView.id == view_id)
     )
     view = result.scalar_one_or_none()
     if view is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Saved view not found.")
+    if view.scope == "personal":
+        if view.owner_user_id != user_id:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Saved view not found.")
+    elif view.scope == "team" and view.team_id is not None:
+        await require_team_membership(db, user_id=user_id, team_id=view.team_id, conceal=True)
+    else:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Saved view not found.")
     return view
 
@@ -500,20 +538,23 @@ async def list_views(
     workspace_key: str,
     request: Request,
     scope: WorkspaceScope = Query(default="personal"),
+    team_id: int | None = Query(default=None, ge=1),
     db: AsyncSession = Depends(get_db),
 ) -> SavedViewListResponse:
     definition_for(workspace_key)
-    if scope != "personal":
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Team saved views are not enabled.")
+    validate_scope_shape(scope, team_id)
     user_id = get_current_user_id(request)
+    statement = select(models.WorkspaceSavedView).where(
+        models.WorkspaceSavedView.workspace_key == workspace_key,
+        models.WorkspaceSavedView.scope == scope,
+    )
+    if scope == "personal":
+        statement = statement.where(models.WorkspaceSavedView.owner_user_id == user_id)
+    else:
+        await require_team_membership(db, user_id=user_id, team_id=team_id)
+        statement = statement.where(models.WorkspaceSavedView.team_id == team_id)
     rows = await db.execute(
-        select(models.WorkspaceSavedView)
-        .where(
-            models.WorkspaceSavedView.workspace_key == workspace_key,
-            models.WorkspaceSavedView.owner_user_id == user_id,
-            models.WorkspaceSavedView.scope == "personal",
-        )
-        .order_by(models.WorkspaceSavedView.updated_at.desc(), models.WorkspaceSavedView.id.desc())
+        statement.order_by(models.WorkspaceSavedView.updated_at.desc(), models.WorkspaceSavedView.id.desc())
     )
     return SavedViewListResponse(views=[view_payload(row) for row in rows.scalars().all()])
 
@@ -526,19 +567,28 @@ async def create_view(
     db: AsyncSession = Depends(get_db),
 ) -> SavedViewResponse:
     definition = definition_for(workspace_key)
-    validate_scope(body)
+    validate_scope_shape(body.scope, body.team_id)
     validate_schema_version(definition, body.schema_version)
     user_id = get_current_user_id(request)
+    if body.scope == "team":
+        await require_team_membership(db, user_id=user_id, team_id=body.team_id)
     normalized = sanitize_definition(workspace_key, body.definition)
     is_favorite = bool(body.is_favorite)
     is_default = bool(body.is_default)
     if is_default:
-        await clear_other_personal_defaults(db, user_id=user_id, workspace_key=workspace_key)
+        await clear_other_defaults(
+            db,
+            scope=body.scope,
+            user_id=user_id,
+            team_id=body.team_id,
+            workspace_key=workspace_key,
+        )
     view = models.WorkspaceSavedView(
         workspace_key=workspace_key,
         name=body.name,
-        scope="personal",
+        scope=body.scope,
         owner_user_id=user_id,
+        team_id=body.team_id,
         definition_json=normalized,
         schema_version=definition.schema_version,
         revision=1,
@@ -562,7 +612,7 @@ async def get_view(
     request: Request,
     db: AsyncSession = Depends(get_db),
 ) -> SavedViewResponse:
-    return view_payload(await owned_view(view_id, request, db))
+    return view_payload(await accessible_view(view_id, request, db))
 
 
 @router.put("/views/{view_id}", response_model=SavedViewResponse)
@@ -572,14 +622,24 @@ async def update_view(
     request: Request,
     db: AsyncSession = Depends(get_db),
 ) -> SavedViewResponse:
-    validate_scope(body)
-    current = await owned_view(view_id, request, db)
+    current = await accessible_view(view_id, request, db)
+    validate_scope_shape(body.scope, body.team_id)
+    if body.scope != current.scope or body.team_id != current.team_id:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="Saved view scope and team cannot be changed.",
+        )
     definition = definition_for(current.workspace_key)
     validate_schema_version(definition, body.schema_version)
     normalized = sanitize_definition(current.workspace_key, body.definition)
     user_id = get_current_user_id(request)
     next_is_favorite = bool(current.is_favorite) if body.is_favorite is None else body.is_favorite
     next_is_default = bool(current.is_default) if body.is_default is None else body.is_default
+    identity_predicate = (
+        models.WorkspaceSavedView.owner_user_id == user_id
+        if current.scope == "personal"
+        else models.WorkspaceSavedView.team_id == current.team_id
+    )
 
     try:
         # First win the optimistic revision race while temporarily demoting this
@@ -589,8 +649,8 @@ async def update_view(
             update(models.WorkspaceSavedView)
             .where(
                 models.WorkspaceSavedView.id == view_id,
-                models.WorkspaceSavedView.owner_user_id == user_id,
-                models.WorkspaceSavedView.scope == "personal",
+                models.WorkspaceSavedView.scope == current.scope,
+                identity_predicate,
                 models.WorkspaceSavedView.revision == body.revision,
             )
             .values(
@@ -605,12 +665,14 @@ async def update_view(
         )
         if result.rowcount != 1:
             await db.rollback()
-            latest = await owned_view(view_id, request, db)
+            latest = await accessible_view(view_id, request, db)
             raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=conflict_detail(latest))
         if next_is_default:
-            await clear_other_personal_defaults(
+            await clear_other_defaults(
                 db,
+                scope=current.scope,
                 user_id=user_id,
+                team_id=current.team_id,
                 workspace_key=current.workspace_key,
                 exclude_view_id=view_id,
             )
@@ -618,22 +680,22 @@ async def update_view(
                 update(models.WorkspaceSavedView)
                 .where(
                     models.WorkspaceSavedView.id == view_id,
-                    models.WorkspaceSavedView.owner_user_id == user_id,
-                    models.WorkspaceSavedView.scope == "personal",
+                    models.WorkspaceSavedView.scope == current.scope,
+                    identity_predicate,
                     models.WorkspaceSavedView.revision == body.revision + 1,
                 )
                 .values(is_default=True)
             )
             if promoted.rowcount != 1:
                 await db.rollback()
-                latest = await owned_view(view_id, request, db)
+                latest = await accessible_view(view_id, request, db)
                 raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=conflict_detail(latest))
         await db.commit()
     except IntegrityError as exc:
         await db.rollback()
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="A saved view with this name already exists.") from exc
 
-    updated = await owned_view(view_id, request, db)
+    updated = await accessible_view(view_id, request, db)
     return view_payload(updated)
 
 
@@ -644,19 +706,24 @@ async def delete_view(
     revision: int = Query(ge=1),
     db: AsyncSession = Depends(get_db),
 ) -> DeleteSavedViewResponse:
-    current = await owned_view(view_id, request, db)
+    current = await accessible_view(view_id, request, db)
     user_id = get_current_user_id(request)
+    identity_predicate = (
+        models.WorkspaceSavedView.owner_user_id == user_id
+        if current.scope == "personal"
+        else models.WorkspaceSavedView.team_id == current.team_id
+    )
     result = await db.execute(
         delete(models.WorkspaceSavedView).where(
             models.WorkspaceSavedView.id == view_id,
-            models.WorkspaceSavedView.owner_user_id == user_id,
-            models.WorkspaceSavedView.scope == "personal",
+            models.WorkspaceSavedView.scope == current.scope,
+            identity_predicate,
             models.WorkspaceSavedView.revision == revision,
         )
     )
     if result.rowcount != 1:
         await db.rollback()
-        latest = await owned_view(view_id, request, db)
+        latest = await accessible_view(view_id, request, db)
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=conflict_detail(latest))
     await db.commit()
     return DeleteSavedViewResponse(status="deleted", id=current.id, revision=revision)

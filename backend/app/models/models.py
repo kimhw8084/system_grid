@@ -1081,7 +1081,6 @@ class WorkspaceSavedView(Base, BaseMixin):
     """Tenant-scoped durable workspace views; transient UI state stays in user preferences."""
     __tablename__ = "workspace_saved_views"
     __table_args__ = (
-        UniqueConstraint("workspace_key", "owner_user_id", "name", name="uq_workspace_saved_view_owner_name"),
         CheckConstraint("scope IN ('personal', 'team')", name="workspace_saved_view_scope"),
         CheckConstraint("revision >= 1", name="workspace_saved_view_revision_positive"),
         CheckConstraint("schema_version >= 1", name="workspace_saved_view_schema_version_positive"),
