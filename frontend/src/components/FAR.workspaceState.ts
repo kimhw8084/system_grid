@@ -34,7 +34,10 @@ export const FAR_PERSISTED_COLUMN_IDS = new Set([
   'created_by_user_id',
 ])
 
+export type FarLifecycleScope = 'active' | 'archived'
+
 export type FarWorkspaceViewConfig = {
+  lifecycleScope: FarLifecycleScope
   fontSize: number
   rowDensity: number
   hiddenColumns: string[]
@@ -103,6 +106,7 @@ export function sanitizeFarWorkspaceViewConfig(value: unknown): FarWorkspaceView
     : 'raw'
 
   return {
+    lifecycleScope: source.lifecycleScope === 'archived' ? 'archived' : 'active',
     fontSize: clampNumber(source.fontSize, 8, 14, 11),
     rowDensity: clampNumber(source.rowDensity, 0, 20, 8),
     hiddenColumns: normalizeStrings(source.hiddenColumns)

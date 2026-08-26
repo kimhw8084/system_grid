@@ -48,6 +48,8 @@ import { useOperationalBulkWorkflow } from './shared/useOperationalBulkWorkflow'
 import { HeaderScopeSwitch, ToolbarButton, ToolbarGroup, ToolbarIconButton, ToolbarSearch } from './shared/LayoutPrimitives'
 import { FARVersionHistory } from './FARVersionHistory'
 import { useFARGoldenWorkspaceControls } from './FARGoldenWorkspaceControls'
+import type { FarLifecycleScope } from './FAR.workspaceState'
+import { buildFarLifecycleWorkspaceTransition } from './FAR.lifecycleWorkspace'
 import { OPERATIONAL_GRID_WIDTHS } from './shared/OperationalGridContract'
 import {
   createOperationalActionColumnDefinition,
@@ -305,6 +307,23 @@ export default function FAR() {
     setSelectedDetailTab(FAR_CONTEXT_DETAIL_TABS.detail)
     syncFarDossierLink(null, FAR_CONTEXT_DETAIL_TABS.detail, replace)
   }, [syncFarDossierLink])
+
+  const transitionFarLifecycleScope = React.useCallback((
+    nextScope: FarLifecycleScope,
+    preserveExplicitDossierLink = false,
+  ) => {
+    const transition = buildFarLifecycleWorkspaceTransition(nextScope, preserveExplicitDossierLink)
+    if (transition.applyLifecycleScope) setLifecycleScope(transition.lifecycleScope)
+    if (transition.clearSelection) {
+      setSelectedIds([])
+      gridRef.current?.api?.deselectAll?.()
+    }
+    if (transition.clearDossier) closeFarDossier(true)
+  }, [closeFarDossier])
+
+  const restoreFarLifecycleScope = React.useCallback((nextScope: FarLifecycleScope) => {
+    transitionFarLifecycleScope(nextScope, Boolean(idParam))
+  }, [idParam, transitionFarLifecycleScope])
 
   // Queries
   const { data: modes, isLoading: modesLoading, isError: modesError, error: modesQueryError } = useQuery({
@@ -725,6 +744,8 @@ export default function FAR() {
     modes: lifecycleModes,
     selectedIds: lifecycleScope === 'active' ? selectedIds : [],
     readOnly: lifecycleScope === 'archived',
+    lifecycleScope,
+    onLifecycleScopeChange: restoreFarLifecycleScope,
     fontSize,
     setFontSize,
     rowDensity,
@@ -786,12 +807,7 @@ export default function FAR() {
               label="Registry Scope"
               summary={`${lifecycleCounts.active} active · ${lifecycleCounts.archived} archived`}
               value={lifecycleScope}
-              onChange={(next) => {
-                setLifecycleScope(next as 'active' | 'archived')
-                setSelectedIds([])
-                closeFarDossier(true)
-                gridRef.current?.api?.deselectAll?.()
-              }}
+              onChange={(next) => transitionFarLifecycleScope(next as FarLifecycleScope)}
               options={[
                 { label: 'Active', value: 'active' },
                 { label: 'Archived', value: 'archived' },

@@ -12,8 +12,16 @@ import {
 } from './FAR.workspaceState'
 
 describe('FAR golden workspace view state', () => {
+  it('sanitizes lifecycle scope with active as the backward-compatible legacy default', () => {
+    expect(sanitizeFarWorkspaceViewConfig({ lifecycleScope: 'archived' }).lifecycleScope).toBe('archived')
+    expect(sanitizeFarWorkspaceViewConfig({ lifecycleScope: 'active' }).lifecycleScope).toBe('active')
+    expect(sanitizeFarWorkspaceViewConfig({ lifecycleScope: 'ARCHIVED' }).lifecycleScope).toBe('active')
+    expect(sanitizeFarWorkspaceViewConfig({}).lifecycleScope).toBe('active')
+  })
+
   it('preserves golden display, filter, sort, and system-filter state while rejecting unknown columns', () => {
     const result = sanitizeFarWorkspaceViewConfig({
+      lifecycleScope: 'archived',
       fontSize: 99,
       rowDensity: -5,
       hiddenColumns: ['rpn', 'unknown', 'rpn'],
@@ -33,6 +41,7 @@ describe('FAR golden workspace view state', () => {
       ],
     })
 
+    expect(result.lifecycleScope).toBe('archived')
     expect(result.fontSize).toBe(14)
     expect(result.rowDensity).toBe(0)
     expect(result.hiddenColumns).toEqual(['rpn'])
@@ -61,6 +70,7 @@ describe('FAR golden workspace view state', () => {
 
     expect(FAR_WORKSPACE_PREFERENCE_ENDPOINT).toBe('/api/v1/settings/user/settings')
     expect(preference.version).toBe(FAR_WORKSPACE_PREFERENCE_VERSION)
+    expect(preference.workingDefinition.lifecycleScope).toBe('active')
     expect(preference.workingDefinition.groupBy).toBe('risk_band')
     expect(preference.workingDefinition.hiddenColumns).toEqual(['status'])
     expect(preference.workingDefinition.quickFilter).toBe('power loss')
@@ -75,7 +85,7 @@ describe('FAR golden workspace view state', () => {
 
   it('normalizes collaborative FAR views without duplicating ids', () => {
     const result = normalizeFarSavedViews([
-      { id: '17', name: ' High risk ', config: { rpn: 1 } as any, source: 'remote' },
+      { id: '17', name: ' High risk ', config: { lifecycleScope: 'archived', rpn: 1 } as any, source: 'remote' },
       { id: '17', name: 'Duplicate', config: {} as any, source: 'remote' },
       { id: 'local-1', name: ' Local fallback ', config: { hiddenColumns: ['status'] } as any, source: 'local' },
     ])
@@ -84,6 +94,8 @@ describe('FAR golden workspace view state', () => {
       ['17', 'High risk'],
       ['local-1', 'Local fallback'],
     ])
+    expect(result[0].config.lifecycleScope).toBe('archived')
+    expect(result[1].config.lifecycleScope).toBe('active')
     expect(result[1].config.hiddenColumns).toEqual(['status'])
   })
 })

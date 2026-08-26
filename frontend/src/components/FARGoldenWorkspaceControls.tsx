@@ -75,6 +75,7 @@ import {
   FAR_SYSTEM_VIEW_IDS,
   FAR_VIEW_STORAGE_KEY,
   FAR_WORKING_STATE_KEY,
+  type FarLifecycleScope,
   type FarSavedView,
   type FarWorkspaceViewConfig,
   normalizeFarSavedViews,
@@ -124,6 +125,8 @@ export function useFARGoldenWorkspaceControls({
   modes,
   selectedIds,
   readOnly,
+  lifecycleScope,
+  onLifecycleScopeChange,
   fontSize,
   setFontSize,
   rowDensity,
@@ -158,6 +161,8 @@ export function useFARGoldenWorkspaceControls({
   modes: any[] | undefined
   selectedIds: number[]
   readOnly: boolean
+  lifecycleScope: FarLifecycleScope
+  onLifecycleScopeChange: (scope: FarLifecycleScope) => void
   fontSize: number
   setFontSize: React.Dispatch<React.SetStateAction<number>>
   rowDensity: number
@@ -232,6 +237,7 @@ export function useFARGoldenWorkspaceControls({
   const { triggerRef: bulkMenuButtonRef, panelRef: bulkMenuPanelRef, panelStyle: bulkMenuStyle } = useWorkspaceAnchoredLayer(showBulkMenu, { minWidth: 340 })
 
   const currentDefinition = useMemo<FarWorkspaceViewConfig>(() => sanitizeFarWorkspaceViewConfig({
+    lifecycleScope,
     fontSize,
     rowDensity,
     hiddenColumns,
@@ -242,7 +248,7 @@ export function useFARGoldenWorkspaceControls({
     filterModel: gridFilterModel,
     sortModel: gridSortModel,
     columnLayoutState,
-  }), [columnLayoutState, fontSize, gridFilterModel, gridSortModel, groupBy, hiddenColumns, quickFilters, rowDensity, searchTerm, showFilterBar])
+  }), [columnLayoutState, fontSize, gridFilterModel, gridSortModel, groupBy, hiddenColumns, lifecycleScope, quickFilters, rowDensity, searchTerm, showFilterBar])
   const {
     remoteWorkingDefinition,
     userSettingsReady,
@@ -332,6 +338,7 @@ export function useFARGoldenWorkspaceControls({
   const applyViewConfig = useCallback((raw: unknown) => {
     const config = sanitizeFarWorkspaceViewConfig(raw)
     const preserveRequestedWidths = hasExplicitColumnSizing(config.columnLayoutState)
+    onLifecycleScopeChange(config.lifecycleScope)
     setFontSize(config.fontSize)
     setRowDensity(config.rowDensity)
     setHiddenColumns(config.hiddenColumns)
@@ -354,7 +361,7 @@ export function useFARGoldenWorkspaceControls({
       applyOrder: false,
     })
     scheduleGridOperabilityCheck(api, config.columnLayoutState)
-  }, [applyColumnLayoutState, gridRef, scheduleGridOperabilityCheck, setColumnLayoutState, setFontSize, setGroupBy, setHiddenColumns, setQuickFilters, setRowDensity, setSearchTerm, setShowFilterBar, setTransientManualColumnWidths])
+  }, [applyColumnLayoutState, gridRef, onLifecycleScopeChange, scheduleGridOperabilityCheck, setColumnLayoutState, setFontSize, setGroupBy, setHiddenColumns, setQuickFilters, setRowDensity, setSearchTerm, setShowFilterBar, setTransientManualColumnWidths])
 
   useEffect(() => {
     if (workingStateReady) return
