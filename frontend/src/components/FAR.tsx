@@ -78,6 +78,14 @@ import {
 import { buildFarDossierSearchParams, getFarDeepLinkNotice, getFarGridDataState, parseFarDossierTab, resolveFarDeepLink } from './FAR.deepLink'
 import DataStatusPill, { DataDiagnosticModal } from './shared/OperationalDataStatus'
 import { buildFarRegistryDiagnosticDetail } from './FAR.diagnostics'
+import {
+  buildFarOperatorLoopReceipt,
+  buildFarOperatorLoopSnapshot,
+  shouldDismissFarOperatorLoop,
+  startFarOperatorLoop,
+  type FarOperatorSurface,
+  type FarOperatorLoopSession,
+} from './FAR.operatorLoop'
 import { FARDossierShell } from './FAR.dossier'
 import {
   buildFarLifecycleRequest,
@@ -246,7 +254,7 @@ function MetricHelpModal({ metric, onClose }: { metric: string | null, onClose: 
 }
 
 export default function FAR() {
-  const [showImportModal, setShowImportModal] = useState(false)
+  const [operatorLoopSession, setOperatorLoopSession] = useState<FarOperatorLoopSession | null>(null)
   const queryClient = useQueryClient()
   const [searchParams, setSearchParams] = useSearchParams()
   const gridRef = React.useRef<any>(null)
@@ -281,9 +289,64 @@ export default function FAR() {
   const [showConfig, setShowConfig] = useState(false)
   const [selectedIds, setSelectedIds] = useState<number[]>([])
   const [lifecycleScope, setLifecycleScope] = useState<'active' | 'archived'>('active')
-  const [showDataDiagnostic, setShowDataDiagnostic] = useState(false)
+  const operatorLoopSnapshotRef = React.useRef<ReturnType<typeof buildFarOperatorLoopSnapshot> | null>(null)
+  const lastOperatorLoopReceiptRef = React.useRef<ReturnType<typeof buildFarOperatorLoopReceipt> | null>(null)
   
   const [bkmGuidanceModal, setBkmGuidanceModal] = useState<{show: boolean, cause: any}>({ show: false, cause: null })
+
+  const operatorLoopSnapshot = useMemo(() => buildFarOperatorLoopSnapshot({
+    lifecycleScope,
+    groupBy,
+    searchTerm,
+    quickFilters,
+    selectedIds,
+    selectedModeId,
+    selectedDetailTab,
+    hiddenColumns,
+    fontSize,
+    rowDensity,
+    routeQuery: searchParams.toString(),
+  }), [
+    lifecycleScope,
+    groupBy,
+    searchTerm,
+    quickFilters,
+    selectedIds,
+    selectedModeId,
+    selectedDetailTab,
+    hiddenColumns,
+    fontSize,
+    rowDensity,
+    searchParams,
+  ])
+  operatorLoopSnapshotRef.current = operatorLoopSnapshot
+
+  const beginFarOperatorSurface = React.useCallback((surface: FarOperatorSurface) => {
+    const session = startFarOperatorLoop(surface, operatorLoopSnapshotRef.current || operatorLoopSnapshot)
+    setOperatorLoopSession(session)
+    return session
+  }, [operatorLoopSnapshot])
+
+  const openFarOperatorSurface = React.useCallback((surface: Exclude<FarOperatorSurface, 'round_trip_export'>) => {
+    beginFarOperatorSurface(surface)
+  }, [beginFarOperatorSurface])
+
+  const closeFarOperatorSurface = React.useCallback((surface: FarOperatorSurface) => {
+    setOperatorLoopSession((current) => {
+      if (!current || current.surface !== surface) return current
+      const latest = operatorLoopSnapshotRef.current || current.snapshot
+      lastOperatorLoopReceiptRef.current = buildFarOperatorLoopReceipt(current, latest)
+      return null
+    })
+  }, [])
+
+  useEffect(() => {
+    setOperatorLoopSession((current) => {
+      if (!current || !shouldDismissFarOperatorLoop(current, operatorLoopSnapshot)) return current
+      lastOperatorLoopReceiptRef.current = buildFarOperatorLoopReceipt(current, operatorLoopSnapshot)
+      return null
+    })
+  }, [operatorLoopSnapshot])
 
   const syncFarDossierLink = React.useCallback((
     targetId: number | null,
@@ -358,6 +421,11 @@ export default function FAR() {
     () => buildFarRegistryDiagnosticDetail(modesQueryError),
     [modesQueryError],
   )
+
+  useEffect(() => {
+    if (operatorLoopSession?.surface !== 'diagnostics' || modesError) return
+    closeFarOperatorSurface('diagnostics')
+  }, [closeFarOperatorSurface, modesError, operatorLoopSession?.surface])
 
   useEffect(() => {
     if (deepLinkResolution.kind !== 'resolved') {
@@ -463,6 +531,7 @@ export default function FAR() {
   }
 
   const handleExportRoundTrip = async () => {
+    const exportSession = beginFarOperatorSurface('round_trip_export')
     try {
       const result = await downloadOperationalImportFile({
         tableName: FAR_IMPORT_PROFILE,
@@ -481,6 +550,10 @@ export default function FAR() {
       toast.success(`FAR round-trip snapshot exported (${result.schemaVersion || FAR_IMPORT_SCHEMA_VERSION})`)
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Unable to export FAR round-trip snapshot')
+    } finally {
+      const latest = operatorLoopSnapshotRef.current || exportSession.snapshot
+      lastOperatorLoopReceiptRef.current = buildFarOperatorLoopReceipt(exportSession, latest)
+      setOperatorLoopSession((current) => current === exportSession ? null : current)
     }
   }
 
@@ -766,7 +839,7 @@ export default function FAR() {
     onExport: handleExportCSV,
     onRoundTripExport: handleExportRoundTrip,
     onCopySelected: handleCopyToClipboard,
-    onImport: () => setShowImportModal(true),
+    onImport: () => openFarOperatorSurface('import'),
     onRetireSelected: (ids) => requestBulkPreview(ids?.length ? { action: 'archive', ids } : { action: 'archive' }),
     onBulkScoreSelected: (field: FarBulkScoreField, value: number) => requestBulkPreview({
       action: 'update',
@@ -812,7 +885,7 @@ export default function FAR() {
               <DataStatusPill
                 status="error"
                 errorDetail={farRegistryDiagnosticDetail}
-                onClick={() => setShowDataDiagnostic(true)}
+                onClick={() => openFarOperatorSurface('diagnostics')}
               />
             )}
             <HeaderScopeSwitch
@@ -1125,15 +1198,15 @@ export default function FAR() {
       <MetricHelpModal metric={activeMetricHelp} onClose={() => setActiveMetricHelp(null)} />
 
       <DataDiagnosticModal
-        isOpen={showDataDiagnostic}
-        onClose={() => setShowDataDiagnostic(false)}
+        isOpen={operatorLoopSession?.surface === 'diagnostics'}
+        onClose={() => closeFarOperatorSurface('diagnostics')}
         errorDetail={farRegistryDiagnosticDetail}
       />
 
       <ConfigRegistryModal isOpen={showConfig} onClose={() => setShowConfig(false)} title="Reliability Matrix Registry" sections={[{ title: "Systems", category: "LogicalSystem", icon: LayoutGrid }, { title: "Risk Cats", category: "RiskCategory", icon: Target }, { title: "Teams", category: "BusinessUnit", icon: User }]} />
       <OperationalImportModal
-        isOpen={showImportModal}
-        onClose={() => setShowImportModal(false)}
+        isOpen={operatorLoopSession?.surface === 'import'}
+        onClose={() => closeFarOperatorSurface('import')}
         tableName={FAR_IMPORT_PROFILE}
         displayName="Failure Modes & Risk Matrix"
       />
