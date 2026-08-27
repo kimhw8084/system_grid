@@ -14,6 +14,7 @@ import {
   HelpCircle,
   LayoutGrid,
   Link2,
+  RotateCcw,
   Settings,
   ShieldAlert,
   Sliders,
@@ -82,6 +83,15 @@ import {
   sanitizeFarWorkspaceViewConfig,
 } from './FAR.workspaceState'
 import { describeFarSavedViewConfig } from './FAR.savedViewPresentation'
+import { buildFarGoldenGeometryResetState } from './FAR.columnGeometry'
+import {
+  buildFarWorkspaceRestorationPlan,
+  farRestorationDossierKey,
+  projectFarDurableWorkspaceDefinition,
+  selectFarRestorationBase,
+  type FarRestorationDossierContext,
+  type FarWorkspaceRestorationSource,
+} from './FAR.restoration'
 
 const selectedRows = (modes: any[] | undefined, selectedIds: number[]) => {
   const selected = new Set(selectedIds.map(Number))
@@ -127,6 +137,7 @@ export function useFARGoldenWorkspaceControls({
   selectedIds,
   readOnly,
   lifecycleScope,
+  restorationDossier,
   onLifecycleScopeChange,
   fontSize,
   setFontSize,
@@ -163,6 +174,7 @@ export function useFARGoldenWorkspaceControls({
   selectedIds: number[]
   readOnly: boolean
   lifecycleScope: FarLifecycleScope
+  restorationDossier: FarRestorationDossierContext | null
   onLifecycleScopeChange: (scope: FarLifecycleScope) => void
   fontSize: number
   setFontSize: React.Dispatch<React.SetStateAction<number>>
@@ -221,7 +233,10 @@ export function useFARGoldenWorkspaceControls({
   const [compareOpen, setCompareOpen] = useState(false)
   const [bulkScoreField, setBulkScoreField] = useState<FarBulkScoreField | null>(null)
   const [rowActionMenu, setRowActionMenu] = useState<{ item: any; point: { x: number; y: number } } | null>(null)
-  const lastRequestedViewRef = useRef<string | null>(null)
+  const lastRequestedViewRef = useRef<string | null | undefined>(undefined)
+  const lastRestorationDossierKeyRef = useRef<string | null>(null)
+  const dossierBaseDefinitionRef = useRef<FarWorkspaceViewConfig | null>(null)
+  const lastRestorationPlanRef = useRef<ReturnType<typeof buildFarWorkspaceRestorationPlan> | null>(null)
 
   const {
     activeOverlay,
@@ -250,10 +265,15 @@ export function useFARGoldenWorkspaceControls({
     sortModel: gridSortModel,
     columnLayoutState,
   }), [columnLayoutState, fontSize, gridFilterModel, gridSortModel, groupBy, hiddenColumns, lifecycleScope, quickFilters, rowDensity, searchTerm, showFilterBar])
+  const durableCurrentDefinition = useMemo(() => projectFarDurableWorkspaceDefinition({
+    currentDefinition,
+    dossierBaseDefinition: dossierBaseDefinitionRef.current,
+    dossierActive: Boolean(restorationDossier) || lastRestorationDossierKeyRef.current !== null,
+  }), [currentDefinition, restorationDossier])
   const {
     remoteWorkingDefinition,
     userSettingsReady,
-  } = useFarWorkspacePreference(currentDefinition, workingStateReady)
+  } = useFarWorkspacePreference(durableCurrentDefinition, workingStateReady)
 
   const normalizedViews = useMemo(() => normalizeFarSavedViews(savedViews), [savedViews])
   const savedViewPanelModels = useMemo<FarSavedViewPanelModel[]>(() => normalizedViews.map((view) => ({
@@ -278,7 +298,7 @@ export function useFARGoldenWorkspaceControls({
     sanitizeDefinition: sanitizeFarWorkspaceViewConfig,
     activeViewId,
     onActiveViewIdChange: setActiveViewId,
-    currentDefinition,
+    currentDefinition: durableCurrentDefinition,
   })
 
   const scheduleGridOperabilityCheck = useCallback((api: any, requestedLayout: any[] = []) => {
@@ -333,8 +353,18 @@ export function useFARGoldenWorkspaceControls({
     })
   }, [setColumnLayoutState, setHiddenColumns, setTransientManualColumnWidths])
 
-  const applyViewConfig = useCallback((raw: unknown) => {
-    const config = sanitizeFarWorkspaceViewConfig(raw)
+  const applyViewConfig = useCallback((
+    raw: unknown,
+    workspaceSource: FarWorkspaceRestorationSource = 'current-workspace',
+  ) => {
+    const plan = buildFarWorkspaceRestorationPlan({
+      definition: raw,
+      workspaceSource,
+      dossier: restorationDossier,
+    })
+    lastRestorationPlanRef.current = plan
+    if (restorationDossier) dossierBaseDefinitionRef.current = plan.baseConfig
+    const config = plan.config
     const preserveRequestedWidths = hasExplicitColumnSizing(config.columnLayoutState)
     onLifecycleScopeChange(config.lifecycleScope)
     setFontSize(config.fontSize)
@@ -359,88 +389,114 @@ export function useFARGoldenWorkspaceControls({
       applyOrder: false,
     })
     scheduleGridOperabilityCheck(api, config.columnLayoutState)
-  }, [applyColumnLayoutState, gridRef, onLifecycleScopeChange, scheduleGridOperabilityCheck, setColumnLayoutState, setFontSize, setGroupBy, setHiddenColumns, setQuickFilters, setRowDensity, setSearchTerm, setShowFilterBar, setTransientManualColumnWidths])
+  }, [applyColumnLayoutState, gridRef, onLifecycleScopeChange, restorationDossier, scheduleGridOperabilityCheck, setColumnLayoutState, setFontSize, setGroupBy, setHiddenColumns, setQuickFilters, setRowDensity, setSearchTerm, setShowFilterBar, setTransientManualColumnWidths])
+
+  const selectCurrentRestorationBase = useCallback(() => {
+    const requestedId = collaborativeViews.requestedViewId
+    const requestedView = requestedId
+      ? normalizedViews.find((entry) => entry.id === requestedId) || null
+      : null
+    return selectFarRestorationBase({
+      requestedViewId: requestedId,
+      requestedViewConfig: requestedView?.config ?? null,
+      collaborativeStatus: collaborativeViews.status,
+      userSettingsReady,
+      remoteWorkingDefinition,
+      localWorkingDefinition: workingDefinition,
+    })
+  }, [collaborativeViews.requestedViewId, collaborativeViews.status, normalizedViews, remoteWorkingDefinition, userSettingsReady, workingDefinition])
+
+  const applyRestorationBase = useCallback((selection: ReturnType<typeof selectFarRestorationBase>) => {
+    if (selection.kind !== 'ready') return false
+    applyViewConfig(selection.definition, selection.source)
+    if (selection.activeViewId !== undefined) setActiveViewId(selection.activeViewId)
+    if (selection.clearRequestedView) collaborativeViews.setViewLink(null)
+    lastRequestedViewRef.current = selection.clearRequestedView ? null : collaborativeViews.requestedViewId
+    return true
+  }, [applyViewConfig, collaborativeViews, setActiveViewId])
 
   useEffect(() => {
     if (workingStateReady) return
-    const requestedId = collaborativeViews.requestedViewId
-    if (requestedId) {
-      const requestedView = normalizedViews.find((entry) => entry.id === requestedId)
-      if (!requestedView) {
-        if (collaborativeViews.status === 'loading' || !userSettingsReady) return
-        applyViewConfig(remoteWorkingDefinition ?? workingDefinition)
-        setActiveViewId(null)
-        collaborativeViews.setViewLink(null)
-      } else {
-        lastRequestedViewRef.current = requestedId
-        applyViewConfig(requestedView.config)
-        setActiveViewId(requestedView.id)
-      }
-    } else {
-      if (!userSettingsReady) return
-      applyViewConfig(remoteWorkingDefinition ?? workingDefinition)
-    }
+    const selection = selectCurrentRestorationBase()
+    if (!applyRestorationBase(selection)) return
+    lastRestorationDossierKeyRef.current = farRestorationDossierKey(restorationDossier)
     setWorkingStateReady(true)
-  }, [
-    applyViewConfig,
-    collaborativeViews.requestedViewId,
-    collaborativeViews.status,
-    normalizedViews,
-    remoteWorkingDefinition,
-    setActiveViewId,
-    userSettingsReady,
-    workingDefinition,
-    workingStateReady,
-  ])
+  }, [applyRestorationBase, restorationDossier, selectCurrentRestorationBase, workingStateReady])
 
   useEffect(() => {
     if (!workingStateReady) return
-    setWorkingDefinition(currentDefinition)
-  }, [currentDefinition, setWorkingDefinition, workingStateReady])
+    setWorkingDefinition(durableCurrentDefinition)
+  }, [durableCurrentDefinition, setWorkingDefinition, workingStateReady])
 
   const applyView = useCallback((id: string) => {
     const view = normalizedViews.find((entry) => entry.id === id)
     if (!view) return
-    applyViewConfig(view.config)
+    applyViewConfig(view.config, 'shared-view')
     setActiveViewId(view.id)
-    collaborativeViews.setViewLink(isRemoteWorkspaceViewId(view.id) ? view.id : null)
+    const linkedViewId = isRemoteWorkspaceViewId(view.id) ? view.id : null
+    lastRequestedViewRef.current = linkedViewId
+    collaborativeViews.setViewLink(linkedViewId)
   }, [applyViewConfig, collaborativeViews, normalizedViews, setActiveViewId])
 
   useEffect(() => {
+    if (!workingStateReady) return
     const requestedId = collaborativeViews.requestedViewId
-    if (!requestedId || requestedId === lastRequestedViewRef.current) return
-    const view = normalizedViews.find((entry) => entry.id === requestedId)
-    if (!view) return
-    lastRequestedViewRef.current = requestedId
-    applyViewConfig(view.config)
-    setActiveViewId(view.id)
-  }, [applyViewConfig, collaborativeViews.requestedViewId, normalizedViews, setActiveViewId])
+    if (requestedId === lastRequestedViewRef.current) return
+    const selection = selectCurrentRestorationBase()
+    applyRestorationBase(selection)
+  }, [applyRestorationBase, collaborativeViews.requestedViewId, selectCurrentRestorationBase, workingStateReady])
+
+  useEffect(() => {
+    if (!workingStateReady) return
+    const nextKey = farRestorationDossierKey(restorationDossier)
+    const previousKey = lastRestorationDossierKeyRef.current
+    if (nextKey === previousKey) return
+
+    if (nextKey) {
+      lastRestorationDossierKeyRef.current = nextKey
+      if (previousKey) {
+        applyViewConfig(durableCurrentDefinition, 'current-workspace')
+        return
+      }
+      applyViewConfig(durableCurrentDefinition, 'current-workspace')
+      return
+    }
+
+    if (previousKey) {
+      const restoreDefinition = durableCurrentDefinition
+      lastRestorationDossierKeyRef.current = null
+      dossierBaseDefinitionRef.current = null
+      applyViewConfig(restoreDefinition, 'current-workspace')
+    }
+  }, [applyRestorationBase, applyViewConfig, durableCurrentDefinition, restorationDossier, selectCurrentRestorationBase, workingStateReady])
 
   const createView = useCallback(async () => {
     const name = newViewName.trim()
     if (!name) return
-    const result = await collaborativeViews.createView(name, currentDefinition)
+    const result = await collaborativeViews.createView(name, durableCurrentDefinition)
     if (!result.view) {
       toast.error(result.error || 'Unable to save FAR view')
       return
     }
     setActiveViewId(result.view.id)
-    collaborativeViews.setViewLink(isRemoteWorkspaceViewId(result.view.id) ? result.view.id : null)
+    const linkedViewId = isRemoteWorkspaceViewId(result.view.id) ? result.view.id : null
+    lastRequestedViewRef.current = linkedViewId
+    collaborativeViews.setViewLink(linkedViewId)
     setNewViewName('')
     toast.success(result.persisted ? `Saved ${result.view.name}` : `Saved local fallback ${result.view.name}`)
-  }, [collaborativeViews, currentDefinition, newViewName, setActiveViewId])
+  }, [collaborativeViews, durableCurrentDefinition, newViewName, setActiveViewId])
 
   const overwriteView = useCallback(async (id: string) => {
     const view = normalizedViews.find((entry) => entry.id === id)
     if (!view) return
-    const result = await collaborativeViews.updateView(id, view.name, currentDefinition)
+    const result = await collaborativeViews.updateView(id, view.name, durableCurrentDefinition)
     if (result.conflict) return
     if (!result.view) {
       toast.error(result.error || 'Unable to update FAR view')
       return
     }
     toast.success(result.persisted ? `Updated ${result.view.name}` : `Updated local fallback ${result.view.name}`)
-  }, [collaborativeViews, currentDefinition, normalizedViews])
+  }, [collaborativeViews, durableCurrentDefinition, normalizedViews])
 
   const renameView = useCallback(async (id: string, name: string) => {
     const view = normalizedViews.find((entry) => entry.id === id)
@@ -461,13 +517,14 @@ export function useFARGoldenWorkspaceControls({
     if (result.conflict) return
     if (activeViewId === id) {
       setActiveViewId(null)
+      lastRequestedViewRef.current = null
       collaborativeViews.setViewLink(null)
     }
     toast.success(result.persisted ? `Deleted ${view.name}` : `Removed local fallback ${view.name}`)
   }, [activeViewId, collaborativeViews, normalizedViews, setActiveViewId])
 
   const handleGridReady = useCallback((params: any) => {
-    const config = currentDefinition
+    const config = durableCurrentDefinition
     const preserveRequestedWidths = hasExplicitColumnSizing(config.columnLayoutState)
     setTransientManualColumnWidths(preserveRequestedWidths)
     if (config.columnLayoutState.length) applyColumnLayoutState(params.api, config.columnLayoutState, preserveRequestedWidths)
@@ -478,7 +535,7 @@ export function useFARGoldenWorkspaceControls({
       applyOrder: false,
     })
     scheduleGridOperabilityCheck(params.api, config.columnLayoutState)
-  }, [applyColumnLayoutState, currentDefinition, scheduleGridOperabilityCheck, setTransientManualColumnWidths])
+  }, [applyColumnLayoutState, durableCurrentDefinition, scheduleGridOperabilityCheck, setTransientManualColumnWidths])
 
   const handleStableColumnResized = useCallback((event: any) => {
     const nextLayout = getStableFarManualResizeLayout(event)
@@ -486,6 +543,40 @@ export function useFARGoldenWorkspaceControls({
     setTransientManualColumnWidths(true)
     setColumnLayoutState(nextLayout)
   }, [setColumnLayoutState, setTransientManualColumnWidths])
+
+  const resetFarLayoutToGolden = useCallback(() => {
+    setHiddenColumns([])
+    setColumnLayoutState([])
+    setTransientManualColumnWidths(false)
+
+    const api = gridRef.current?.api
+    if (api) {
+      const resetState = buildFarGoldenGeometryResetState(columnDefs).map((column) => (
+        FAR_PERSISTED_COLUMN_IDS.has(column.colId)
+          ? {
+              ...column,
+              hide: false,
+              pinned: FAR_DEFAULT_LEFT_PINNED_COLUMN_IDS.has(column.colId) ? 'left' : null,
+            }
+          : column
+      ))
+      api.applyColumnState?.({
+        state: resetState,
+        applyOrder: true,
+      })
+      api.setColumnsVisible?.([...FAR_PERSISTED_COLUMN_IDS], true)
+      scheduleGridOperabilityCheck(api, [])
+    }
+
+    toast.success('FAR layout reset to current golden geometry')
+  }, [
+    columnDefs,
+    gridRef,
+    scheduleGridOperabilityCheck,
+    setColumnLayoutState,
+    setHiddenColumns,
+    setTransientManualColumnWidths,
+  ])
 
   const gridRuntime = useMemo(() => ({
     preserveExplicitColumnWidths: FAR_PRESERVES_EXPLICIT_COLUMN_WIDTHS,
@@ -695,6 +786,9 @@ export function useFARGoldenWorkspaceControls({
             <Sliders size={14} /> Display
           </ToolbarButton>
         </div>
+        <ToolbarIconButton onClick={resetFarLayoutToGolden} title="Reset FAR Layout to Golden">
+          <RotateCcw size={16} />
+        </ToolbarIconButton>
         <ToolbarIconButton onClick={onExport} title="Export CSV"><FileText size={16} /></ToolbarIconButton>
         <ToolbarIconButton onClick={onRoundTripExport} title="Export Round-Trip Snapshot"><Download size={16} /></ToolbarIconButton>
         <ToolbarIconButton onClick={onCopySelected} disabled={selectedIds.length === 0} title="Copy to Clipboard"><Clipboard size={16} /></ToolbarIconButton>
@@ -750,8 +844,9 @@ export function useFARGoldenWorkspaceControls({
         onNewViewNameChange={setNewViewName}
         onCreateView={() => { void createView() }}
         onApplySystemDefault={() => {
-          applyViewConfig(DEFAULT_FAR_VIEW_CONFIG)
+          applyViewConfig(DEFAULT_FAR_VIEW_CONFIG, 'default')
           setActiveViewId(null)
+          lastRequestedViewRef.current = null
           collaborativeViews.setViewLink(null)
         }}
         savedViews={savedViewPanelModels}
@@ -769,7 +864,7 @@ export function useFARGoldenWorkspaceControls({
           const serverView = collaborativeViews.conflict?.current
           collaborativeViews.reloadConflict()
           if (serverView) {
-            applyViewConfig(serverView.config)
+            applyViewConfig(serverView.config, 'shared-view')
             setActiveViewId(serverView.id)
           }
         }}
@@ -950,6 +1045,7 @@ export function useFARGoldenWorkspaceControls({
     filterChips,
     floatingPanels,
     workingStateReady,
+    restorationMetadata: lastRestorationPlanRef.current?.fieldSources ?? null,
     activityPanel,
     compareModal,
     gridRuntime,

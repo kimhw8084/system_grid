@@ -10,6 +10,7 @@ import {
   type FarGroupBy,
   type FarQuickFilters,
 } from './FAR.workspaceModel'
+import { sanitizeFarPersistedColumnGeometry } from './FAR.columnGeometry'
 
 export const FAR_VIEW_STORAGE_KEY = 'sysgrid_far_views_v2'
 export const FAR_ACTIVE_VIEW_KEY = 'sysgrid_far_active_view_v2'
@@ -70,11 +71,13 @@ const normalizeStrings = (value: unknown) => {
 const FAR_RECOVERY_COLUMN_IDS = new Set(['system_name', 'title', 'rpn', 'status'])
 
 const sanitizeFarColumnLayout = (value: unknown) => {
-  const layout = sanitizeOperationalColumnLayout(
+  const normalizedLayout = sanitizeOperationalColumnLayout(
     Array.isArray(value) ? value : [],
     FAR_PERSISTED_COLUMN_IDS,
     true,
   )
+  const geometry = sanitizeFarPersistedColumnGeometry(normalizedLayout)
+  const layout = geometry.layout
   const recoveryCoreFullyPinned = Array.from(FAR_RECOVERY_COLUMN_IDS).every((colId) => {
     const column = layout.find((entry: any) => entry?.colId === colId)
     return column?.pinned === 'left' || column?.pinned === 'right'

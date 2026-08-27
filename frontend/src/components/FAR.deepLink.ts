@@ -39,22 +39,58 @@ export function parseFarDossierTab(value: string | null): FarDossierTab {
     : FAR_CONTEXT_DETAIL_TABS.detail
 }
 
+export type FarWorkspaceSearchPatch = {
+  viewId?: string | null
+  targetId?: number | null
+  tab?: FarDossierTab | null
+}
+
+export function buildFarWorkspaceSearchParams(
+  current: URLSearchParams,
+  patch: FarWorkspaceSearchPatch,
+): URLSearchParams {
+  const next = new URLSearchParams(current)
+
+  if (patch.viewId !== undefined) {
+    const viewId = patch.viewId?.trim() || ''
+    if (viewId) next.set('view', viewId)
+    else next.delete('view')
+  }
+
+  if (patch.targetId !== undefined) {
+    if (patch.targetId === null) {
+      next.delete('id')
+      next.delete('tab')
+      return next
+    }
+    if (!Number.isSafeInteger(patch.targetId) || patch.targetId <= 0) {
+      throw new Error('FAR workspace links require a positive safe-integer record ID.')
+    }
+    next.set('id', String(patch.targetId))
+  }
+
+  if (patch.tab !== undefined || patch.targetId !== undefined) {
+    const hasRecordId = parseFarDeepLinkId(next.get('id')).kind === 'valid'
+    const requestedTab = patch.tab ?? FAR_CONTEXT_DETAIL_TABS.detail
+    if (!hasRecordId || requestedTab === FAR_CONTEXT_DETAIL_TABS.detail) next.delete('tab')
+    else next.set('tab', parseFarDossierTab(requestedTab))
+  }
+
+  return next
+}
+
+export function buildFarWorkspaceLink(href: string, patch: FarWorkspaceSearchPatch): string {
+  const url = new URL(href)
+  url.search = buildFarWorkspaceSearchParams(url.searchParams, patch).toString()
+  return url.toString()
+}
+
 export function buildFarDossierSearchParams(
   current: URLSearchParams,
   targetId: number | null,
   tab: FarDossierTab = FAR_CONTEXT_DETAIL_TABS.detail,
 ): URLSearchParams {
-  const next = new URLSearchParams(current)
-  if (targetId === null) {
-    next.delete('id')
-    next.delete('tab')
-    return next
-  }
-
-  next.set('id', String(targetId))
-  if (tab === FAR_CONTEXT_DETAIL_TABS.detail) next.delete('tab')
-  else next.set('tab', tab)
-  return next
+  return buildFarWorkspaceSearchParams(current, { targetId, tab })
 }
 
 

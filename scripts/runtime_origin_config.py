@@ -5,9 +5,14 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
+import pathlib
 import shlex
+import sys
 from dataclasses import asdict, dataclass
 from urllib.parse import urlparse
+
+from source_integrity_gate import SourceIntegrityError, enforce_current_main, render_source_banner
 
 
 DEFAULT_ALLOWED_HOSTS = ("localhost", "127.0.0.1", "test", "testserver")
@@ -156,6 +161,15 @@ def build_parser() -> argparse.ArgumentParser:
 
 def main() -> int:
     args = build_parser().parse_args()
+    repo_root = pathlib.Path(__file__).resolve().parents[1]
+    try:
+        source_result = enforce_current_main(repo_root)
+    except SourceIntegrityError as exc:
+        raise SystemExit(f"SYSGRID_SOURCE_INTEGRITY_FAIL status={exc.status}: {exc}") from exc
+    print(render_source_banner(source_result), file=sys.stderr)
+    if source_result.fast_forwarded and os.environ.get("SYSGRID_SOURCE_GATE_REEXECUTED") != "1":
+        os.environ["SYSGRID_SOURCE_GATE_REEXECUTED"] = "1"
+        os.execv(sys.executable, [sys.executable, str(pathlib.Path(__file__).resolve()), *sys.argv[1:]])
     try:
         runtime = resolve_runtime_origins(
             api_base_url=args.api_base_url,

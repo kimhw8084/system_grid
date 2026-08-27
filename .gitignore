@@ -66,3 +66,6 @@ playwright-report/
 **/llm-report.json
 COMMAND_OUTPUTS/_SHIP_AI_REVIEW/
 # END SYSGRID SHIP-AI GENERATED ARTIFACT FIREWALL
+
+# Generated local runtime environment
+backend/.env.local.runtime

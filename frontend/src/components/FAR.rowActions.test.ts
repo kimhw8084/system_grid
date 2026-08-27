@@ -62,7 +62,7 @@ describe('FAR linked/history row actions', () => {
     expect(controls).toContain('onOpenDetailTab(Number(item.id), FAR_CONTEXT_DETAIL_TABS.detail)')
     expect(controls).toContain('onOpenDetailTab(Number(item.id), FAR_CONTEXT_DETAIL_TABS.versionHistory)')
     expect(controls).toContain('onOpenDetailTab(Number(item.id), FAR_CONTEXT_DETAIL_TABS.researchHistory)')
-    expect(far).toContain('onOpenDetailTab: (id, tab) => { setSelectedDetailTab(tab); setSelectedModeId(id) }')
+    expect(far).toContain('onOpenDetailTab: (id, tab) => openFarDossier(id, tab)')
     expect(far).toContain('initialTab={selectedDetailTab}')
     expect(far).toContain('const [activeTab, setActiveTab] = useState<FarDossierTab>(initialTab)')
     expect(far).toContain('setActiveTab(initialTab)')

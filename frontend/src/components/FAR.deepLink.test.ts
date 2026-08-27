@@ -1,6 +1,8 @@
 import { describe, expect, it, vi } from 'vitest'
 import {
   buildFarDossierSearchParams,
+  buildFarWorkspaceLink,
+  buildFarWorkspaceSearchParams,
   getFarDeepLinkNotice,
   getFarGridDataState,
   parseFarDeepLinkId,
@@ -53,6 +55,33 @@ describe('FAR deep-link resolution', () => {
     const closed = buildFarDossierSearchParams(opened, null)
     expect(closed.toString()).toBe('view=team-17&filter=critical')
     expect(base.toString()).toBe('view=team-17&filter=critical')
+  })
+
+  it('builds canonical combined view/id/tab links while preserving unrelated query state', () => {
+    const base = new URLSearchParams('filter=critical&panel=signals')
+    const combined = buildFarWorkspaceSearchParams(base, {
+      viewId: ' 17 ',
+      targetId: 82,
+      tab: 'history',
+    })
+    expect(combined.toString()).toBe('filter=critical&panel=signals&view=17&id=82&tab=history')
+
+    const viewOnly = buildFarWorkspaceSearchParams(combined, { targetId: null })
+    expect(viewOnly.toString()).toBe('filter=critical&panel=signals&view=17')
+
+    const noView = buildFarWorkspaceSearchParams(combined, { viewId: null })
+    expect(noView.toString()).toBe('filter=critical&panel=signals&id=82&tab=history')
+    expect(base.toString()).toBe('filter=critical&panel=signals')
+  })
+
+  it('produces refresh/share-safe absolute FAR links and rejects unsafe record ids', () => {
+    expect(buildFarWorkspaceLink(
+      'https://sysgrid.example/far?tenant=alpha&view=9',
+      { viewId: '17', targetId: 82, tab: 'versions' },
+    )).toBe('https://sysgrid.example/far?tenant=alpha&view=17&id=82&tab=versions')
+
+    expect(() => buildFarWorkspaceSearchParams(new URLSearchParams(), { targetId: 0 }))
+      .toThrow('positive safe-integer record ID')
   })
 
   it('waits for the already-authorized FAR list before resolving a valid id', () => {

@@ -50,6 +50,7 @@ import { FARVersionHistory } from './FARVersionHistory'
 import { useFARGoldenWorkspaceControls } from './FARGoldenWorkspaceControls'
 import type { FarLifecycleScope } from './FAR.workspaceState'
 import { buildFarLifecycleWorkspaceTransition } from './FAR.lifecycleWorkspace'
+import type { FarRestorationDossierContext } from './FAR.restoration'
 import { OPERATIONAL_GRID_WIDTHS } from './shared/OperationalGridContract'
 import {
   createOperationalActionColumnDefinition,
@@ -344,6 +345,15 @@ export default function FAR() {
   }), [modes])
   const deepLinkResolution = useMemo(() => resolveFarDeepLink(idParam, modes), [idParam, modes])
   const deepLinkNotice = useMemo(() => getFarDeepLinkNotice(deepLinkResolution), [deepLinkResolution])
+  const restorationDossier = useMemo<FarRestorationDossierContext | null>(() => {
+    if (deepLinkResolution.kind !== 'resolved') return null
+    return {
+      targetId: deepLinkResolution.targetId,
+      lifecycleScope: deepLinkResolution.lifecycleScope,
+      title: String(deepLinkResolution.mode.title || ''),
+      tab: requestedDossierTab,
+    }
+  }, [deepLinkResolution, requestedDossierTab])
   const farRegistryDiagnosticDetail = useMemo(
     () => buildFarRegistryDiagnosticDetail(modesQueryError),
     [modesQueryError],
@@ -363,23 +373,12 @@ export default function FAR() {
       }
       return
     }
-    const { targetId, mode, lifecycleScope: targetLifecycleScope } = deepLinkResolution
+    const { targetId, lifecycleScope: targetLifecycleScope } = deepLinkResolution
 
     lastDeepLinkedModeIdRef.current = targetId
     setLifecycleScope(targetLifecycleScope)
-    setSearchTerm(mode.title)
     setSelectedDetailTab(requestedDossierTab)
     setSelectedModeId(targetId)
-
-    if (!gridRef.current?.api) return
-    requestAnimationFrame(() => {
-      gridRef.current.api.forEachNode((node: any) => {
-        if (node.data.id === targetId) {
-          node.setSelected(true)
-          gridRef.current.api.ensureNodeVisible(node, 'middle')
-        }
-      })
-    })
   }, [deepLinkResolution, requestedDossierTab])
 
   const { data: options } = useQuery({ queryKey: ['settings-options'], queryFn: async () => (await apiFetch('/api/v1/settings/options')).json() })
@@ -745,6 +744,7 @@ export default function FAR() {
     selectedIds: lifecycleScope === 'active' ? selectedIds : [],
     readOnly: lifecycleScope === 'archived',
     lifecycleScope,
+    restorationDossier,
     onLifecycleScopeChange: restoreFarLifecycleScope,
     fontSize,
     setFontSize,
@@ -779,6 +779,18 @@ export default function FAR() {
     onOpenIncidents: (rcas) => setIncidentListModal({ show: true, rcas }),
     onEdit: (id) => { setSelectedModeId(id); setShowWizard(true) },
   })
+
+  useEffect(() => {
+    if (!goldenWorkspace.workingStateReady || deepLinkResolution.kind !== 'resolved' || !gridRef.current?.api) return
+    const targetId = deepLinkResolution.targetId
+    requestAnimationFrame(() => {
+      gridRef.current?.api?.forEachNode?.((node: any) => {
+        if (Number(node?.data?.id) !== targetId) return
+        node.setSelected?.(true)
+        gridRef.current?.api?.ensureNodeVisible?.(node, 'middle')
+      })
+    })
+  }, [deepLinkResolution, goldenWorkspace.workingStateReady])
 
   return (
     <OperationalWorkspaceShell
