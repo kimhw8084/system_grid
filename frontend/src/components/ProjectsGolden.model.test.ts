@@ -2,6 +2,8 @@ import { describe, expect, it } from 'vitest'
 import {
   PROJECT_GOLDEN_VIEWS,
   PROJECT_GOVERNANCE_KEY,
+  PROJECT_PRIMARY_VIEWS,
+  PROJECT_RAIL_SCOPES,
   PROJECT_TASK_STATUSES,
   appendProjectAudit,
   buildCrossProjectDependencies,
@@ -9,6 +11,9 @@ import {
   buildPortfolioMetrics,
   buildProjectAttentionItems,
   buildProjectChangeIntelligence,
+  buildProjectOverview,
+  buildProjectRailRows,
+  buildProjectReportSummary,
   captureProjectReviewSnapshot,
   createProjectTask,
   diversifyAttentionItems,
@@ -28,6 +33,8 @@ import {
   normalizeTaskStatus,
   projectFingerprint,
   resolveProjectGoldenView,
+  resolveProjectInsightSection,
+  resolveProjectPortfolioSection,
   setProjectBenefitTargets,
   simulateProjectScenario,
   toggleStageGateEvidence,
@@ -63,11 +70,18 @@ const govern = (project: any) => {
 }
 
 describe('Projects governance and forecasting model', () => {
-  it('keeps seven approved management views and the canonical five task states', () => {
-    expect(PROJECT_GOLDEN_VIEWS).toEqual(['portfolio', 'board', 'roadmap', 'owners', 'review', 'governance', 'workspace'])
+  it('defines the member-first Project workbench views and preserves legacy deep-link aliases', () => {
+    expect(PROJECT_GOLDEN_VIEWS).toEqual(['overview', 'tasks', 'timeline', 'board', 'files', 'updates', 'reports', 'insights', 'portfolio'])
+    expect(PROJECT_PRIMARY_VIEWS).toEqual(['overview', 'tasks', 'timeline', 'board', 'files', 'updates', 'reports', 'insights'])
+    expect(PROJECT_RAIL_SCOPES).toEqual(['recent', 'watched', 'active', 'all'])
     expect(PROJECT_TASK_STATUSES).toEqual(['To Do', 'In Progress', 'Blocked', 'Review', 'Completed'])
-    expect(resolveProjectGoldenView('governance')).toBe('governance')
-    expect(resolveProjectGoldenView('unknown')).toBe('portfolio')
+    expect(resolveProjectGoldenView('workspace')).toBe('timeline')
+    expect(resolveProjectGoldenView('review')).toBe('insights')
+    expect(resolveProjectGoldenView('governance')).toBe('insights')
+    expect(resolveProjectGoldenView('unknown')).toBe('overview')
+    expect(resolveProjectPortfolioSection(null, 'roadmap')).toBe('roadmap')
+    expect(resolveProjectPortfolioSection(null, 'owners')).toBe('owners')
+    expect(resolveProjectInsightSection(null, 'governance')).toBe('governance')
   })
 
   it('normalizes ALL filters and preserves unknown task states for diagnostics', () => {
@@ -197,6 +211,32 @@ describe('Projects governance and forecasting model', () => {
     const governed = upsertRaidItem(projects[0], { title: 'Risk', type: 'Risk' }, NOW)
     expect(projectFingerprint(governed)).not.toBe(base)
     expect(projectFingerprint(projects[0])).toBe(projectFingerprint({ ...projects[0] }))
+  })
+
+  it('builds recent/watched/active project rail scopes deterministically', () => {
+    expect(buildProjectRailRows(projects, 'recent', '', [], ['2', '1']).map((row) => row.id)).toEqual([2, 1])
+    expect(buildProjectRailRows(projects, 'watched', '', ['2'], []).map((row) => row.id)).toEqual([2])
+    expect(buildProjectRailRows(projects, 'active', '', [], []).map((row) => row.id)).toEqual([1, 2])
+    expect(buildProjectRailRows(projects, 'all', 'beta', [], []).map((row) => row.id)).toEqual([2])
+  })
+
+  it('derives an execution-first overview from the same task, schedule, health and governance truth', () => {
+    const overview = buildProjectOverview(projects[0], NOW)
+    expect(overview.progress).toBe(40)
+    expect(overview.blockers.map((task) => task.id)).toContain(11)
+    expect(overview.nextActions.map((task) => task.id)).toEqual(expect.arrayContaining([11, 12, 13]))
+    expect(overview.nextMilestone?.id).toBe(12)
+    expect(overview.forecast.forecastFinish).toBe('2026-09-09')
+  })
+
+  it('builds the live report summary from canonical project execution truth without duplicate report state', () => {
+    const report = buildProjectReportSummary(govern(projects[0]), NOW)
+    expect(report.name).toBe('Alpha')
+    expect(report.progress).toBe(40)
+    expect(report.forecastFinish).toBe('2026-09-09')
+    expect(report.blockers[0].id).toBe(11)
+    expect(report.evidence.evidencePercent).toBe(50)
+    expect(report.benefits.find((row) => row.key === 'manHoursSaved')?.percent).toBe(60)
   })
 
   it('retains project execution progress compatibility', () => {

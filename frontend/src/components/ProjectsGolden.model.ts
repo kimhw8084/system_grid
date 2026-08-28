@@ -1,5 +1,13 @@
-export const PROJECT_GOLDEN_VIEWS = ['portfolio', 'board', 'roadmap', 'owners', 'review', 'governance', 'workspace'] as const
+export const PROJECT_GOLDEN_VIEWS = ['overview', 'tasks', 'timeline', 'board', 'files', 'updates', 'reports', 'insights', 'portfolio'] as const
 export type ProjectGoldenView = (typeof PROJECT_GOLDEN_VIEWS)[number]
+export const PROJECT_PRIMARY_VIEWS = ['overview', 'tasks', 'timeline', 'board', 'files', 'updates', 'reports', 'insights'] as const
+export type ProjectPrimaryView = (typeof PROJECT_PRIMARY_VIEWS)[number]
+export const PROJECT_PORTFOLIO_SECTIONS = ['control', 'roadmap', 'owners'] as const
+export type ProjectPortfolioSection = (typeof PROJECT_PORTFOLIO_SECTIONS)[number]
+export const PROJECT_INSIGHT_SECTIONS = ['review', 'governance'] as const
+export type ProjectInsightSection = (typeof PROJECT_INSIGHT_SECTIONS)[number]
+export const PROJECT_RAIL_SCOPES = ['recent', 'watched', 'active', 'all'] as const
+export type ProjectRailScope = (typeof PROJECT_RAIL_SCOPES)[number]
 
 export const PROJECT_TASK_STATUSES = ['To Do', 'In Progress', 'Blocked', 'Review', 'Completed'] as const
 export type ProjectTaskStatus = (typeof PROJECT_TASK_STATUSES)[number]
@@ -33,9 +41,33 @@ const DAY_MS = 86_400_000
 const PROJECT_PRIORITY_RANK: Record<string, number> = { Highest: 4, High: 3, Medium: 2, Low: 1 }
 const HEALTH_RANK: Record<ProjectHealth, number> = { red: 3, amber: 2, green: 1 }
 
-export const resolveProjectGoldenView = (value?: string | null): ProjectGoldenView => (
-  PROJECT_GOLDEN_VIEWS.includes(value as ProjectGoldenView) ? value as ProjectGoldenView : 'portfolio'
-)
+const LEGACY_PROJECT_VIEW_ALIASES: Record<string, ProjectGoldenView> = {
+  workspace: 'timeline',
+  roadmap: 'portfolio',
+  owners: 'portfolio',
+  review: 'insights',
+  governance: 'insights',
+}
+
+export const resolveProjectGoldenView = (value?: string | null): ProjectGoldenView => {
+  const normalized = String(value || '').trim().toLowerCase()
+  if (PROJECT_GOLDEN_VIEWS.includes(normalized as ProjectGoldenView)) return normalized as ProjectGoldenView
+  return LEGACY_PROJECT_VIEW_ALIASES[normalized] || 'overview'
+}
+
+export const resolveProjectPortfolioSection = (value?: string | null, legacyView?: string | null): ProjectPortfolioSection => {
+  const normalized = String(value || '').trim().toLowerCase()
+  if (PROJECT_PORTFOLIO_SECTIONS.includes(normalized as ProjectPortfolioSection)) return normalized as ProjectPortfolioSection
+  if (legacyView === 'roadmap') return 'roadmap'
+  if (legacyView === 'owners') return 'owners'
+  return 'control'
+}
+
+export const resolveProjectInsightSection = (value?: string | null, legacyView?: string | null): ProjectInsightSection => {
+  const normalized = String(value || '').trim().toLowerCase()
+  if (PROJECT_INSIGHT_SECTIONS.includes(normalized as ProjectInsightSection)) return normalized as ProjectInsightSection
+  return legacyView === 'governance' ? 'governance' : 'review'
+}
 
 export const normalizeProjectFilterValue = (value?: string | null) => {
   const normalized = String(value ?? '').trim()
@@ -714,6 +746,100 @@ export const buildProjectChangeIntelligence = (project: any, now: Date = new Dat
   const snapshotForecast = calendarOrdinal(snapshot.forecast_finish)
   const forecastDeltaDays = snapshotForecast == null || forecast.forecastFinishOrdinal == null ? null : forecast.forecastFinishOrdinal - snapshotForecast
   return { hasSnapshot: true, snapshot, changes, progressDelta, forecastDeltaDays }
+}
+
+
+export const buildProjectRailRows = (
+  projects: any[],
+  scope: ProjectRailScope,
+  search: string,
+  watchedIds: Array<number | string> = [],
+  recentIds: Array<number | string> = [],
+) => {
+  const query = String(search || '').trim().toLowerCase()
+  const watched = new Set(watchedIds.map(String))
+  const recentOrder = new Map(recentIds.map((id, index) => [String(id), index]))
+  const rows = (projects || []).filter((project: any) => {
+    const searchable = [project?.name, project?.objective, project?.problem_statement, project?.owner, ...(project?.owners || [])]
+      .filter(Boolean).join(' ').toLowerCase()
+    if (query && !searchable.includes(query)) return false
+    if (scope === 'watched' && !watched.has(String(project?.id))) return false
+    if (scope === 'recent' && !recentOrder.has(String(project?.id))) return false
+    if (scope === 'active' && !isOpenProject(project)) return false
+    return true
+  })
+  if (scope === 'recent') return rows.sort((a: any, b: any) => (recentOrder.get(String(a.id)) ?? 9999) - (recentOrder.get(String(b.id)) ?? 9999))
+  return rows.sort((a: any, b: any) => {
+    const aOpen = isOpenProject(a) ? 0 : 1; const bOpen = isOpenProject(b) ? 0 : 1
+    if (aOpen !== bOpen) return aOpen - bOpen
+    return (a?.order_index || 0) - (b?.order_index || 0) || String(a?.name || '').localeCompare(String(b?.name || ''))
+  })
+}
+
+export const buildProjectOverview = (project: any, now: Date = new Date()) => {
+  const tasks = Array.isArray(project?.tasks) ? project.tasks : []
+  const openTasks = tasks.filter((task: any) => task?.status !== 'Completed')
+  const criticalIds = getCriticalTaskIds(project)
+  const health = getProjectHealth(project, now)
+  const milestones = getProjectMilestones(project, now)
+  const nextMilestone = milestones.find((milestone) => milestone.status !== 'Completed') || null
+  const forecast = getProjectForecast(project, now)
+  const evidence = getEvidenceReadiness(project)
+  const blockers = openTasks
+    .filter((task: any) => task?.status === 'Blocked' || (getDaysToDue(task?.end_date, now) ?? 0) < 0)
+    .sort((a: any, b: any) => {
+      if (a.status === 'Blocked' && b.status !== 'Blocked') return -1
+      if (b.status === 'Blocked' && a.status !== 'Blocked') return 1
+      return (getDaysToDue(a?.end_date, now) ?? 9999) - (getDaysToDue(b?.end_date, now) ?? 9999)
+    })
+  const nextActions = openTasks
+    .slice()
+    .sort((a: any, b: any) => {
+      const aCritical = criticalIds.has(a.id) ? 0 : 1; const bCritical = criticalIds.has(b.id) ? 0 : 1
+      if (aCritical !== bCritical) return aCritical - bCritical
+      const aDue = getDaysToDue(a?.end_date, now); const bDue = getDaysToDue(b?.end_date, now)
+      return (aDue == null ? 9999 : aDue) - (bDue == null ? 9999 : bDue)
+    })
+  const governance = getProjectGovernance(project)
+  const recentChanges = governance.audit.slice(0, 8)
+  return {
+    progress: getProjectExecutionProgress(project),
+    health,
+    forecast,
+    evidence,
+    milestones,
+    nextMilestone,
+    blockers,
+    nextActions,
+    recentChanges,
+    openTasks: openTasks.length,
+    completedTasks: tasks.length - openTasks.length,
+    criticalTasks: criticalIds.size,
+  }
+}
+
+export const buildProjectReportSummary = (project: any, now: Date = new Date()) => {
+  const overview = buildProjectOverview(project, now)
+  const change = buildProjectChangeIntelligence(project, now)
+  const benefits = getBenefitRealization(project)
+  return {
+    projectId: project?.id,
+    name: project?.name || 'Untitled project',
+    objective: project?.objective || project?.problem_statement || '',
+    status: project?.status || 'Not Started',
+    priority: project?.priority || 'Medium',
+    progress: overview.progress,
+    health: overview.health,
+    plannedFinish: overview.forecast.plannedFinish,
+    forecastFinish: overview.forecast.forecastFinish,
+    varianceDays: overview.forecast.varianceVsPlanDays,
+    nextMilestone: overview.nextMilestone,
+    blockers: overview.blockers.slice(0, 8),
+    nextActions: overview.nextActions.slice(0, 8),
+    recentChanges: change.hasSnapshot ? change.changes.slice(0, 8) : overview.recentChanges,
+    evidence: overview.evidence,
+    benefits,
+  }
 }
 
 export const getMyWork = (projects: any[], owner: string, now: Date = new Date()) => {
