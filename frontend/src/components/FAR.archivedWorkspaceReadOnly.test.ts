@@ -1,3 +1,4 @@
+// SYSGRID_ALLOW_SOURCE_OWNERSHIP_ASSERTION
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import * as ts from 'typescript'
@@ -15,9 +16,9 @@ describe('FAR archived workspace read-only integrity', () => {
   })
 
   it('disables only FAR data/config mutation entry points while Archived', () => {
-    expect(controlsSource).toContain('<ToolbarIconButton onClick={onSettings} disabled={readOnly} title="Matrix Registry Enums">')
-    expect(controlsSource).toContain('<ToolbarButton onClick={onImport} disabled={readOnly} title="Import Bulk Risk Data">')
-    expect(controlsSource).toContain('<ToolbarButton variant="primary" onClick={onAdd} disabled={readOnly} ariaLabel="Add Failure Mode">')
+    expect(controlsSource).toContain('<ToolbarIconButton onClick={onSettings} disabled={readOnly} title="Registry configuration">')
+    expect(controlsSource).toContain('<ToolbarButton onClick={onImport} disabled={readOnly} title="Import failure modes">')
+    expect(controlsSource).toContain('variant="primary" className="px-6 py-2" onClick={onAdd} disabled={readOnly} ariaLabel="Add Failure Mode"')
     expect(controlsSource).toContain('<ToolbarIconButton onClick={onExport} title="Export CSV">')
     expect(controlsSource).toContain('active={showFilterBar}')
     expect(controlsSource).toContain('active={showInsights}')

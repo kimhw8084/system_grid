@@ -1,3 +1,4 @@
+// SYSGRID_ALLOW_SOURCE_OWNERSHIP_ASSERTION
 import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
 import {
@@ -81,6 +82,6 @@ describe('FAR golden column geometry', () => {
     expect(resetSource).not.toContain('setQuickFilters(')
     expect(resetSource).not.toContain('setGroupBy(')
     expect(resetSource).not.toContain('setActiveViewId(')
-    expect(source).toContain('title="Reset FAR Layout to Golden"')
+    expect(source).toContain('WorkspaceFlyoutActionCard title="Reset layout"')
   })
 })

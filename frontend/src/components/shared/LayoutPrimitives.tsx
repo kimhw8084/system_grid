@@ -1,5 +1,6 @@
 import React, { ReactNode } from 'react'
-import { Search } from 'lucide-react'
+import { Maximize2, Minimize2, Search } from 'lucide-react'
+import { isGoldenActivityColumnsTitle } from './OperationalGoldenToolbarContract'
 
 const join = (...parts: Array<string | false | null | undefined>) => parts.filter(Boolean).join(' ')
 
@@ -143,6 +144,12 @@ export const ToolbarButton = React.forwardRef<HTMLButtonElement, {
           : active
             ? 'bg-white/10 text-blue-400 border border-blue-500/20'
             : 'bg-white/5 text-slate-400 border border-white/5 hover:border-white/10 hover:text-white'
+  const activityColumnsToggle = isGoldenActivityColumnsTitle(title)
+  const resolvedChildren = activityColumnsToggle ? (
+    <>
+      {active ? <Minimize2 size={14} /> : <Maximize2 size={14} />} Activity
+    </>
+  ) : children
 
   return (
     <button
@@ -151,14 +158,14 @@ export const ToolbarButton = React.forwardRef<HTMLButtonElement, {
       onClick={onClick}
       disabled={disabled}
       title={title}
-      aria-label={ariaLabel}
+      aria-label={ariaLabel || title}
       className={join(
         `${TOOLBAR_CONTROL_HEIGHT} inline-flex items-center justify-center gap-2 rounded-lg px-3 py-0 text-[10px] font-bold uppercase tracking-widest whitespace-nowrap shrink-0 transition-all active:scale-95 disabled:cursor-not-allowed disabled:opacity-40`,
         variantClass,
         className
       )}
     >
-      {children}
+      {resolvedChildren}
     </button>
   )
 })
@@ -185,6 +192,7 @@ export const ToolbarIconButton = React.forwardRef<HTMLButtonElement, {
     onClick={onClick}
     disabled={disabled}
     title={title}
+    aria-label={title}
     className={join(
       `${TOOLBAR_CONTROL_HEIGHT} rounded-lg px-2.5 py-0 transition-all active:scale-95 disabled:cursor-not-allowed disabled:opacity-40`,
       tone === 'danger'

@@ -1,3 +1,4 @@
+// SYSGRID_ALLOW_SOURCE_OWNERSHIP_ASSERTION
 import { spawnSync } from 'node:child_process'
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
@@ -27,7 +28,7 @@ describe('FAR operational data exchange', () => {
     expect(farSource).toContain('expectedSchemaVersion: FAR_IMPORT_SCHEMA_VERSION')
     expect(farSource).toContain('manifestEndpoint: `/api/v1/import/snapshot/${FAR_IMPORT_PROFILE}/manifest`')
     expect(controlsSource).toContain('onRoundTripExport: () => void')
-    expect(controlsSource).toContain('title="Export Round-Trip Snapshot"')
+    expect(controlsSource).toContain('WorkspaceFlyoutActionCard title="Export round-trip snapshot"')
   })
 
   it('promotes far_records out of the generic import path with a writable-only schema', () => {

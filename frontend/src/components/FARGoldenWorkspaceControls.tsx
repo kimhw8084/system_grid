@@ -5,21 +5,19 @@ import {
   Clipboard,
   Clock,
   Copy,
-  Download,
   Edit2,
   Eye,
   EyeOff,
   FileText,
   GitCompare,
-  HelpCircle,
   LayoutGrid,
   Link2,
-  RotateCcw,
+  MoreHorizontal,
   Settings,
-  ShieldAlert,
   Sliders,
   Trash2,
   Upload,
+  X,
   Zap,
 } from 'lucide-react'
 import { toast } from 'react-hot-toast'
@@ -241,16 +239,19 @@ export function useFARGoldenWorkspaceControls({
   const {
     activeOverlay,
     isOverlayOpen,
+    openOverlay,
     toggleOverlay,
     dismissOverlays,
   } = useWorkspaceOverlayController()
   const showViewsMenu = isOverlayOpen('views')
   const showDisplayMenu = isOverlayOpen('display')
   const showBulkMenu = isOverlayOpen('bulk')
+  const showToolsMenu = isOverlayOpen('surface')
 
   const { triggerRef: viewsMenuButtonRef, panelRef: viewsMenuPanelRef, panelStyle: viewsMenuStyle } = useWorkspaceAnchoredLayer(showViewsMenu, { minWidth: 420 })
   const { triggerRef: displayMenuButtonRef, panelRef: displayMenuPanelRef, panelStyle: displayMenuStyle } = useWorkspaceAnchoredLayer(showDisplayMenu, { minWidth: 320 })
   const { triggerRef: bulkMenuButtonRef, panelRef: bulkMenuPanelRef, panelStyle: bulkMenuStyle } = useWorkspaceAnchoredLayer(showBulkMenu, { minWidth: 340 })
+  const { triggerRef: toolsMenuButtonRef, panelRef: toolsMenuPanelRef, panelStyle: toolsMenuStyle } = useWorkspaceAnchoredLayer(showToolsMenu, { minWidth: 320 })
 
   const currentDefinition = useMemo<FarWorkspaceViewConfig>(() => sanitizeFarWorkspaceViewConfig({
     lifecycleScope,
@@ -618,32 +619,39 @@ export function useFARGoldenWorkspaceControls({
 
   const { handleCellContextMenu } = useOperationalContextMenu({
     onOpenRowActionMenu: (item, point) => {
-      dismissOverlays()
       setRowActionMenu({ item, point })
+      openOverlay('rowAction')
     },
   })
 
   useEffect(() => {
-    if (activeOverlay !== 'rowAction' && rowActionMenu && activeOverlay !== null) setRowActionMenu(null)
+    if (activeOverlay !== 'rowAction' && rowActionMenu) setRowActionMenu(null)
   }, [activeOverlay, rowActionMenu])
 
+  useEffect(() => {
+    if (activeOverlay === 'rowAction' && !rowActionMenu) dismissOverlays()
+  }, [activeOverlay, dismissOverlays, rowActionMenu])
+
   useOperationalDismissController({
-    active: showBulkMenu || showDisplayMenu || showViewsMenu || Boolean(rowActionMenu),
+    active: showBulkMenu || showDisplayMenu || showViewsMenu || showToolsMenu || Boolean(rowActionMenu),
     onDismiss: () => {
       dismissOverlays()
       setRowActionMenu(null)
     },
-    allTriggerRefs: [bulkMenuButtonRef, displayMenuButtonRef, viewsMenuButtonRef],
+    allTriggerRefs: [bulkMenuButtonRef, displayMenuButtonRef, viewsMenuButtonRef, toolsMenuButtonRef],
     bulkMenuButtonRef,
     bulkMenuPanelRef,
     displayMenuButtonRef,
     displayMenuPanelRef,
     viewsMenuButtonRef,
     viewsMenuPanelRef,
+    surfaceMenuButtonRef: toolsMenuButtonRef,
+    surfaceMenuPanelRef: toolsMenuPanelRef,
     showBulkMenu,
     showDisplayMenu,
     showViewsMenu,
-    hasRowActionMenu: Boolean(rowActionMenu),
+    showSurfaceMenu: showToolsMenu,
+    hasRowActionMenu: activeOverlay === 'rowAction' && Boolean(rowActionMenu),
   })
 
   const scopedActivityItems = useMemo(() => {
@@ -786,26 +794,19 @@ export function useFARGoldenWorkspaceControls({
             <Sliders size={14} /> Display
           </ToolbarButton>
         </div>
-        <ToolbarIconButton onClick={resetFarLayoutToGolden} title="Reset FAR Layout to Golden">
-          <RotateCcw size={16} />
-        </ToolbarIconButton>
         <ToolbarIconButton onClick={onExport} title="Export CSV"><FileText size={16} /></ToolbarIconButton>
-        <ToolbarIconButton onClick={onRoundTripExport} title="Export Round-Trip Snapshot"><Download size={16} /></ToolbarIconButton>
-        <ToolbarIconButton onClick={onCopySelected} disabled={selectedIds.length === 0} title="Copy to Clipboard"><Clipboard size={16} /></ToolbarIconButton>
-        <ToolbarIconButton onClick={onSettings} disabled={readOnly} title="Matrix Registry Enums"><Settings size={16} /></ToolbarIconButton>
+        <ToolbarIconButton onClick={onCopySelected} disabled={selectedIds.length === 0} title="Copy to clipboard"><Clipboard size={16} /></ToolbarIconButton>
+        <ToolbarIconButton onClick={onSettings} disabled={readOnly} title="Registry configuration"><Settings size={16} /></ToolbarIconButton>
       </ToolbarGroup>
       <ToolbarGroup>
-        <ToolbarButton onClick={onImport} disabled={readOnly} title="Import Bulk Risk Data"><Upload size={14} /> Import</ToolbarButton>
-        <ToolbarButton active={showFilterBar} onClick={() => setShowFilterBar((current) => !current)} title="Workspace filters">
+        <ToolbarButton onClick={onImport} disabled={readOnly} title="Import failure modes"><Upload size={14} /> Import</ToolbarButton>
+        <ToolbarButton
+          active={showFilterBar}
+          onClick={() => setShowFilterBar((current) => !current)}
+          title={showFilterBar ? 'Hide filters' : 'Show filters'}
+        >
           {showFilterBar ? <EyeOff size={14} /> : <Eye size={14} />} Filters
         </ToolbarButton>
-        <ToolbarButton active={showInsights} onClick={() => setShowInsights((current) => !current)} title="Reliability insights">
-          <Activity size={14} /> Insights
-        </ToolbarButton>
-        <ToolbarButton active={showActivity} onClick={() => setShowActivity((current) => !current)} title="FAR activity summary">
-          <Activity size={14} /> Activity
-        </ToolbarButton>
-        <ToolbarIconButton onClick={onRpnHelp} title="RPN Definition Matrix"><HelpCircle size={16} /></ToolbarIconButton>
       </ToolbarGroup>
     </>
   )
@@ -823,10 +824,20 @@ export function useFARGoldenWorkspaceControls({
           title="Bulk actions"
           ref={bulkMenuButtonRef as any}
         >
-          <Zap size={14} /> Bulk Actions{selectedIds.length ? ` (${selectedIds.length})` : ''}
+          <Zap size={14} /> Bulk Actions
         </ToolbarButton>
       </div>
-      <ToolbarButton variant="primary" onClick={onAdd} disabled={readOnly} ariaLabel="Add Failure Mode"><ShieldAlert size={14} /> Add Failure Mode</ToolbarButton>
+      <ToolbarButton variant="primary" className="px-6 py-2" onClick={onAdd} disabled={readOnly} ariaLabel="Add Failure Mode">+ Add Failure Mode</ToolbarButton>
+      <div className="far-tools-menu-container">
+        <ToolbarButton
+          active={showToolsMenu}
+          onClick={() => toggleOverlay('surface')}
+          title="FAR domain tools"
+          ref={toolsMenuButtonRef as any}
+        >
+          <MoreHorizontal size={14} /> FAR Tools
+        </ToolbarButton>
+      </div>
     </ToolbarGroup>
   )
 
@@ -888,6 +899,34 @@ export function useFARGoldenWorkspaceControls({
         hiddenColumns={hiddenColumns}
         onToggleColumn={toggleColumn}
       />
+
+      <OperationalAnchoredPanel
+        isOpen={showToolsMenu}
+        panelKey="surface"
+        panelRef={toolsMenuPanelRef}
+        style={toolsMenuStyle}
+        className="far-tools-menu-container"
+        yOffset={10}
+      >
+        <WorkspaceFloatingPanel kind="menu" className="p-3">
+          <div className="mb-3 flex items-start justify-between gap-3 rounded-lg border border-white/5 bg-black/20 px-4 py-3">
+            <div>
+              <p className="text-[10px] font-semibold text-slate-300">FAR tools</p>
+              <p className="pt-1 text-[10px] text-slate-500">Domain-only controls kept outside the Monitoring-golden primary command set.</p>
+            </div>
+            <button type="button" onClick={dismissOverlays} aria-label="Close FAR tools" className="text-slate-500 transition-colors hover:text-white">
+              <X size={14} />
+            </button>
+          </div>
+          <div className="space-y-2">
+            <WorkspaceFlyoutActionCard title="Reset layout" active={false} onClick={() => { dismissOverlays(); resetFarLayoutToGolden() }} />
+            <WorkspaceFlyoutActionCard title="Export round-trip snapshot" active={false} onClick={() => { dismissOverlays(); onRoundTripExport() }} />
+            <WorkspaceFlyoutActionCard title="Reliability insights" active={showInsights} onClick={() => setShowInsights((current) => !current)} />
+            <WorkspaceFlyoutActionCard title="FAR activity summary" active={showActivity} onClick={() => setShowActivity((current) => !current)} />
+            <WorkspaceFlyoutActionCard title="RPN definition matrix" active={false} onClick={() => { dismissOverlays(); onRpnHelp() }} />
+          </div>
+        </WorkspaceFloatingPanel>
+      </OperationalAnchoredPanel>
 
       <OperationalAnchoredPanel
         isOpen={showBulkMenu}

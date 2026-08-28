@@ -1,3 +1,4 @@
+// SYSGRID_ALLOW_SOURCE_OWNERSHIP_ASSERTION
 import { readFileSync } from 'node:fs'
 import * as ts from 'typescript'
 import { describe, expect, it } from 'vitest'
@@ -49,7 +50,7 @@ describe('PC-48 exact 20-row FAR operator-loop batch contract', () => {
     expect(far).toContain("isOpen={operatorLoopSession?.surface === 'import'}")
     expect(far).toContain("closeFarOperatorSurface('import')")
     expect(controls).toContain('onRoundTripExport: () => void')
-    expect(controls).toContain('title="Export Round-Trip Snapshot"')
+    expect(controls).toContain('WorkspaceFlyoutActionCard title="Export round-trip snapshot"')
   })
 
   it('keeps transient diagnose/import/export state from mutating durable workspace controls', () => {
@@ -77,7 +78,7 @@ describe('PC-48 exact 20-row FAR operator-loop batch contract', () => {
     expect(far).toContain('farDefaultWidthsRef')
     expect(controls).toContain('handleStableColumnResized')
     expect(controls).toContain('setColumnLayoutState(nextLayout)')
-    expect(controls).toContain('Reset FAR Layout to Golden')
+    expect(controls).toContain('WorkspaceFlyoutActionCard title="Reset layout"')
   })
 
   it('retains G35–G42 grouping, filters, chips, clear-state, and full-domain search contracts', () => {

@@ -1,3 +1,4 @@
+// SYSGRID_ALLOW_SOURCE_OWNERSHIP_ASSERTION
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { describe, expect, it } from 'vitest'
@@ -87,13 +88,13 @@ describe('PC-50 FAR operational workspace core + saved-view continuity exact G b
     expectAll(controlsSource, [
       '<LayoutGrid size={14} /> Views',
       '<Sliders size={14} /> Display',
-      'title="Reset FAR Layout to Golden"',
+      'WorkspaceFlyoutActionCard title="Reset layout"',
       'title="Export CSV"',
-      'title="Export Round-Trip Snapshot"',
-      'title="Copy to Clipboard"',
-      'title="Import Bulk Risk Data"',
-      '> Import</ToolbarButton>',
-      'title="Workspace filters"',
+      'WorkspaceFlyoutActionCard title="Export round-trip snapshot"',
+      'title="Copy to clipboard"',
+      'title="Import failure modes"',
+      '<Upload size={14} /> Import</ToolbarButton>',
+      "title={showFilterBar ? 'Hide filters' : 'Show filters'}",
       'title="Reliability insights"',
       'title="FAR activity summary"',
       'title="Compare 2 to 5 selected failure modes"',
