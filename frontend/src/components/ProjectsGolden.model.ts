@@ -1,4 +1,4 @@
-export const PROJECT_GOLDEN_VIEWS = ['portfolio', 'board', 'roadmap', 'owners', 'review', 'workspace'] as const
+export const PROJECT_GOLDEN_VIEWS = ['portfolio', 'board', 'roadmap', 'owners', 'review', 'governance', 'workspace'] as const
 export type ProjectGoldenView = (typeof PROJECT_GOLDEN_VIEWS)[number]
 
 export const PROJECT_TASK_STATUSES = ['To Do', 'In Progress', 'Blocked', 'Review', 'Completed'] as const
@@ -11,6 +11,23 @@ export type ProjectSwimlane = (typeof PROJECT_SWIMLANES)[number]
 export type ProjectHealth = 'green' | 'amber' | 'red'
 export type ProjectAttentionKind = 'blocked' | 'overdue' | 'due-soon' | 'unassigned' | 'high-priority' | 'review-congestion' | 'unknown-status'
 export type ProjectAttentionTone = 'rose' | 'amber' | 'blue' | 'slate'
+
+export const PROJECT_GOVERNANCE_KEY = 'project_governance_v1'
+export type ProjectRaidType = 'Risk' | 'Assumption' | 'Issue' | 'Dependency'
+export type ProjectRaidStatus = 'Open' | 'Mitigating' | 'Closed'
+export type ProjectImpactLevel = 'Low' | 'Medium' | 'High' | 'Critical'
+export type ProjectDecisionKind = 'Decision' | 'Change'
+export type ProjectDecisionStatus = 'Proposed' | 'Approved' | 'Rejected' | 'Superseded'
+export type ProjectGateStatus = 'Not Ready' | 'Ready' | 'Approved' | 'Blocked'
+
+export interface ProjectGovernanceState {
+  raid: any[]
+  decisions: any[]
+  stageGates: any[]
+  reviewSnapshots: any[]
+  benefitTargets: { manHoursSaved: number | null; stoplossMinutesSaved: number | null; wafersGained: number | null }
+  audit: any[]
+}
 
 const DAY_MS = 86_400_000
 const PROJECT_PRIORITY_RANK: Record<string, number> = { Highest: 4, High: 3, Medium: 2, Low: 1 }
@@ -341,7 +358,15 @@ export const projectFingerprint = (project: any): string => {
     updated_at: project?.updated_at || project?.updatedAt || null,
     status: project?.status,
     priority: project?.priority,
-    tasks: (project?.tasks || []).map((task: any) => ({ id: task?.id, status: task?.status, progress: task?.progress, owner: task?.owner, end_date: task?.end_date, name: task?.name })),
+    owner: project?.owner,
+    start_date: project?.start_date,
+    end_date: project?.end_date,
+    target_date: project?.target_date,
+    man_hours_saved: project?.man_hours_saved,
+    stoploss_minutes_saved: project?.stoploss_minutes_saved,
+    wafers_gained: project?.wafers_gained,
+    governance: project?.metadata_json?.[PROJECT_GOVERNANCE_KEY] || null,
+    tasks: (project?.tasks || []).map((task: any) => ({ id: task?.id, status: task?.status, progress: task?.progress, owner: task?.owner, start_date: task?.start_date, end_date: task?.end_date, name: task?.name, priority: task?.priority, dependencies_json: task?.dependencies_json })),
   }
   return JSON.stringify(payload)
 }
@@ -432,6 +457,7 @@ export const buildRoadmapRows = (projects: any[], now: Date = new Date()) => (pr
   const taskDates = (project?.tasks || []).flatMap((task: any) => [task?.start_date, task?.end_date]).filter((value: any) => calendarOrdinal(value) != null)
   const ordinals = taskDates.map((value: any) => calendarOrdinal(value) as number)
   const milestones = getProjectMilestones(project, now)
+  const forecast = getProjectForecast(project, now)
   return {
     projectId: project.id,
     projectName: project.name,
@@ -439,6 +465,8 @@ export const buildRoadmapRows = (projects: any[], now: Date = new Date()) => (pr
     progress: getProjectExecutionProgress(project),
     startOrdinal: calendarOrdinal(project?.start_date) ?? (ordinals.length ? Math.min(...ordinals) : null),
     endOrdinal: calendarOrdinal(project?.end_date) ?? (ordinals.length ? Math.max(...ordinals) : null),
+    forecastEndOrdinal: forecast.forecastFinishOrdinal,
+    forecastVarianceDays: forecast.varianceVsPlanDays,
     milestones,
   }
 })
@@ -463,6 +491,229 @@ export const buildCrossProjectDependencies = (projects: any[]) => {
     })
   }))
   return rows
+}
+
+
+const ordinalToDate = (ordinal: number | null): string | null => ordinal == null ? null : new Date(ordinal * DAY_MS).toISOString().slice(0, 10)
+const numericOrNull = (value: any): number | null => {
+  if (value === '' || value == null) return null
+  const number = Number(value)
+  return Number.isFinite(number) ? number : null
+}
+
+export const getProjectGovernance = (project: any): ProjectGovernanceState => {
+  const raw = project?.metadata_json?.[PROJECT_GOVERNANCE_KEY] || {}
+  const targets = raw?.benefitTargets || {}
+  return {
+    raid: Array.isArray(raw?.raid) ? raw.raid : [],
+    decisions: Array.isArray(raw?.decisions) ? raw.decisions : [],
+    stageGates: Array.isArray(raw?.stageGates) ? raw.stageGates : [],
+    reviewSnapshots: Array.isArray(raw?.reviewSnapshots) ? raw.reviewSnapshots : [],
+    benefitTargets: {
+      manHoursSaved: numericOrNull(targets?.manHoursSaved),
+      stoplossMinutesSaved: numericOrNull(targets?.stoplossMinutesSaved),
+      wafersGained: numericOrNull(targets?.wafersGained),
+    },
+    audit: Array.isArray(raw?.audit) ? raw.audit : [],
+  }
+}
+
+const withGovernanceState = (project: any, governance: ProjectGovernanceState) => ({
+  ...project,
+  metadata_json: { ...(project?.metadata_json || {}), [PROJECT_GOVERNANCE_KEY]: governance },
+})
+
+const auditGovernance = (governance: ProjectGovernanceState, action: string, detail: string, at: string) => ({
+  ...governance,
+  audit: [{ id: `${at}-${action}`, at, action, detail }, ...governance.audit].slice(0, 80),
+})
+
+export const appendProjectAudit = (project: any, action: string, detail: string, now: Date = new Date()) => {
+  const at = now.toISOString()
+  return withGovernanceState(project, auditGovernance(getProjectGovernance(project), action, detail, at))
+}
+
+export const upsertRaidItem = (project: any, item: any, now: Date = new Date()) => {
+  const governance = getProjectGovernance(project); const at = now.toISOString(); const id = String(item?.id || `raid-${now.getTime()}`)
+  const next = { ...item, id, type: item?.type || 'Risk', status: item?.status || 'Open', impact: item?.impact || 'Medium', updated_at: at, created_at: item?.created_at || at }
+  const raid = governance.raid.some((row) => String(row.id) === id) ? governance.raid.map((row) => String(row.id) === id ? next : row) : [next, ...governance.raid]
+  return withGovernanceState(project, auditGovernance({ ...governance, raid }, 'RAID updated', `${next.type}: ${next.title || 'Untitled'}`, at))
+}
+
+export const upsertDecisionRecord = (project: any, item: any, now: Date = new Date()) => {
+  const governance = getProjectGovernance(project); const at = now.toISOString(); const id = String(item?.id || `decision-${now.getTime()}`)
+  const next = { ...item, id, kind: item?.kind || 'Decision', status: item?.status || 'Proposed', updated_at: at, created_at: item?.created_at || at }
+  const decisions = governance.decisions.some((row) => String(row.id) === id) ? governance.decisions.map((row) => String(row.id) === id ? next : row) : [next, ...governance.decisions]
+  return withGovernanceState(project, auditGovernance({ ...governance, decisions }, `${next.kind} updated`, next.title || 'Untitled', at))
+}
+
+export const upsertStageGate = (project: any, item: any, now: Date = new Date()) => {
+  const governance = getProjectGovernance(project); const at = now.toISOString(); const id = String(item?.id || `gate-${now.getTime()}`)
+  const evidence = Array.isArray(item?.evidence) ? item.evidence.map((row: any, index: number) => ({ id: String(row?.id || `${id}-e${index + 1}`), label: row?.label || String(row || ''), complete: Boolean(row?.complete) })).filter((row: any) => row.label) : []
+  const next = { ...item, id, status: item?.status || 'Not Ready', evidence, updated_at: at, created_at: item?.created_at || at }
+  const stageGates = governance.stageGates.some((row) => String(row.id) === id) ? governance.stageGates.map((row) => String(row.id) === id ? next : row) : [next, ...governance.stageGates]
+  return withGovernanceState(project, auditGovernance({ ...governance, stageGates }, 'Stage gate updated', next.name || 'Untitled gate', at))
+}
+
+export const toggleStageGateEvidence = (project: any, gateId: string, evidenceId: string, complete: boolean, now: Date = new Date()) => {
+  const governance = getProjectGovernance(project); const at = now.toISOString()
+  const stageGates = governance.stageGates.map((gate) => String(gate.id) !== String(gateId) ? gate : { ...gate, evidence: (gate.evidence || []).map((row: any) => String(row.id) === String(evidenceId) ? { ...row, complete } : row), updated_at: at })
+  return withGovernanceState(project, auditGovernance({ ...governance, stageGates }, 'Gate evidence changed', `${gateId}:${evidenceId}=${complete ? 'complete' : 'open'}`, at))
+}
+
+export const setProjectBenefitTargets = (project: any, targets: any, now: Date = new Date()) => {
+  const governance = getProjectGovernance(project); const at = now.toISOString()
+  const benefitTargets = {
+    manHoursSaved: numericOrNull(targets?.manHoursSaved),
+    stoplossMinutesSaved: numericOrNull(targets?.stoplossMinutesSaved),
+    wafersGained: numericOrNull(targets?.wafersGained),
+  }
+  return withGovernanceState(project, auditGovernance({ ...governance, benefitTargets }, 'Benefit targets updated', 'Target vs realized benefits refreshed', at))
+}
+
+export const getEvidenceReadiness = (project: any) => {
+  const governance = getProjectGovernance(project); const gates = governance.stageGates
+  const evidence = gates.flatMap((gate: any) => Array.isArray(gate?.evidence) ? gate.evidence : [])
+  const completedEvidence = evidence.filter((row: any) => Boolean(row?.complete)).length
+  const approvedGates = gates.filter((gate: any) => gate?.status === 'Approved').length
+  const blockedGates = gates.filter((gate: any) => gate?.status === 'Blocked').length
+  return {
+    gates: gates.length,
+    approvedGates,
+    blockedGates,
+    evidence: evidence.length,
+    completedEvidence,
+    evidencePercent: evidence.length ? Math.round((completedEvidence / evidence.length) * 100) : (gates.length ? 0 : 100),
+  }
+}
+
+export const getBenefitRealization = (project: any) => {
+  const targets = getProjectGovernance(project).benefitTargets
+  const rows = [
+    { key: 'manHoursSaved', label: 'Hours saved', target: targets.manHoursSaved, realized: Number(project?.man_hours_saved) || 0 },
+    { key: 'stoplossMinutesSaved', label: 'Stoploss min', target: targets.stoplossMinutesSaved, realized: Number(project?.stoploss_minutes_saved) || 0 },
+    { key: 'wafersGained', label: 'Wafers gained', target: targets.wafersGained, realized: Number(project?.wafers_gained) || 0 },
+  ]
+  return rows.map((row) => ({ ...row, percent: row.target != null && row.target > 0 ? Math.round((row.realized / row.target) * 100) : null, variance: row.target == null ? null : row.realized - row.target }))
+}
+
+export interface ProjectForecastTask {
+  id: number | string
+  name: string
+  plannedEndOrdinal: number | null
+  forecastStartOrdinal: number
+  forecastEndOrdinal: number
+  delayDays: number
+  critical: boolean
+}
+
+export const getProjectForecast = (project: any, now: Date = new Date(), slipByTask: Record<string, number> = {}) => {
+  const tasks = Array.isArray(project?.tasks) ? project.tasks : []
+  const today = calendarOrdinal(now) ?? 0
+  const taskById = new Map(tasks.map((task: any) => [String(task?.id), task]))
+  const critical = getCriticalTaskIds(project)
+  const memo = new Map<string, ProjectForecastTask>()
+  const visiting = new Set<string>()
+  const calculate = (task: any): ProjectForecastTask => {
+    const key = String(task?.id)
+    const cached = memo.get(key); if (cached) return cached
+    const plannedStart = calendarOrdinal(task?.start_date)
+    const plannedEnd = calendarOrdinal(task?.end_date)
+    const duration = plannedStart != null && plannedEnd != null ? Math.max(1, plannedEnd - plannedStart + 1) : 1
+    const remainingRatio = task?.status === 'Completed' ? 0 : Math.max(0.05, (100 - getTaskProgress(task)) / 100)
+    const remainingDays = task?.status === 'Completed' ? 0 : Math.max(1, Math.ceil(duration * remainingRatio))
+    if (visiting.has(key)) {
+      const fallbackEnd = plannedEnd ?? today
+      const fallback = { id: task.id, name: task?.name || 'Unnamed task', plannedEndOrdinal: plannedEnd, forecastStartOrdinal: plannedStart ?? today, forecastEndOrdinal: fallbackEnd, delayDays: plannedEnd == null ? 0 : Math.max(0, fallbackEnd - plannedEnd), critical: critical.has(task.id) }
+      memo.set(key, fallback); return fallback
+    }
+    visiting.add(key)
+    const deps = (Array.isArray(task?.dependencies_json) ? task.dependencies_json : []).map((dep: any) => taskById.get(String(dep?.id ?? dep?.task_id ?? dep))).filter(Boolean) as any[]
+    const dependencyEnd = deps.length ? Math.max(...deps.map((dep) => calculate(dep).forecastEndOrdinal)) : null
+    let forecastStart = Math.max(today, plannedStart ?? today, dependencyEnd == null ? -Infinity : dependencyEnd + 1)
+    if (task?.status === 'Completed') forecastStart = plannedStart ?? plannedEnd ?? today
+    let forecastEnd = task?.status === 'Completed' ? (plannedEnd ?? forecastStart) : forecastStart + remainingDays - 1
+    if (plannedEnd != null) forecastEnd = Math.max(plannedEnd, forecastEnd)
+    forecastEnd += Math.max(0, Math.round(Number(slipByTask[key]) || 0))
+    const row = { id: task.id, name: task?.name || 'Unnamed task', plannedEndOrdinal: plannedEnd, forecastStartOrdinal: forecastStart, forecastEndOrdinal: forecastEnd, delayDays: plannedEnd == null ? 0 : Math.max(0, forecastEnd - plannedEnd), critical: critical.has(task.id) }
+    visiting.delete(key); memo.set(key, row); return row
+  }
+  const taskForecasts = tasks.map(calculate)
+  const plannedFinishOrdinal = calendarOrdinal(project?.end_date || project?.target_date) ?? (taskForecasts.length ? Math.max(...taskForecasts.map((row) => row.plannedEndOrdinal ?? row.forecastEndOrdinal)) : null)
+  const baselineFinishOrdinal = calendarOrdinal(project?.metadata_json?.baseline_end_date || project?.baseline_end_date)
+  const forecastFinishOrdinal = taskForecasts.length ? Math.max(...taskForecasts.map((row) => row.forecastEndOrdinal)) : plannedFinishOrdinal
+  const drivers = [...taskForecasts].filter((row) => row.delayDays > 0).sort((a, b) => (Number(b.critical) - Number(a.critical)) || b.delayDays - a.delayDays).slice(0, 5)
+  return {
+    plannedFinishOrdinal,
+    baselineFinishOrdinal,
+    forecastFinishOrdinal,
+    plannedFinish: ordinalToDate(plannedFinishOrdinal),
+    baselineFinish: ordinalToDate(baselineFinishOrdinal),
+    forecastFinish: ordinalToDate(forecastFinishOrdinal),
+    varianceVsPlanDays: plannedFinishOrdinal == null || forecastFinishOrdinal == null ? null : forecastFinishOrdinal - plannedFinishOrdinal,
+    varianceVsBaselineDays: baselineFinishOrdinal == null || forecastFinishOrdinal == null ? null : forecastFinishOrdinal - baselineFinishOrdinal,
+    tasks: taskForecasts,
+    drivers,
+  }
+}
+
+export const simulateProjectScenario = (project: any, taskId: number | string, slipDays: number, now: Date = new Date()) => {
+  const base = getProjectForecast(project, now)
+  const scenario = getProjectForecast(project, now, { [String(taskId)]: Math.max(0, Math.round(Number(slipDays) || 0)) })
+  const baseById = new Map<string, ProjectForecastTask>(base.tasks.map((row: ProjectForecastTask) => [String(row.id), row]))
+  const affected = scenario.tasks.filter((row) => row.forecastEndOrdinal > (baseById.get(String(row.id))?.forecastEndOrdinal ?? row.forecastEndOrdinal)).map((row) => ({ ...row, additionalDelayDays: row.forecastEndOrdinal - (baseById.get(String(row.id))?.forecastEndOrdinal ?? row.forecastEndOrdinal) }))
+  return {
+    baseForecastFinish: base.forecastFinish,
+    scenarioForecastFinish: scenario.forecastFinish,
+    finishDeltaDays: base.forecastFinishOrdinal == null || scenario.forecastFinishOrdinal == null ? 0 : scenario.forecastFinishOrdinal - base.forecastFinishOrdinal,
+    affected,
+  }
+}
+
+const compactSnapshotTask = (task: any) => ({ id: task?.id, name: task?.name || 'Unnamed task', status: task?.status || '', owner: getTaskOwnerLabel(task), end_date: task?.end_date || null, priority: task?.priority || 'Medium', progress: getTaskProgress(task) })
+
+export const captureProjectReviewSnapshot = (project: any, note = '', now: Date = new Date()) => {
+  const governance = getProjectGovernance(project); const at = now.toISOString(); const forecast = getProjectForecast(project, now); const health = getProjectHealth(project, now)
+  const snapshot = {
+    id: `review-${now.getTime()}`,
+    captured_at: at,
+    note,
+    status: project?.status || '',
+    priority: project?.priority || '',
+    progress: getProjectExecutionProgress(project),
+    health: health.level,
+    forecast_finish: forecast.forecastFinish,
+    evidence_readiness: getEvidenceReadiness(project).evidencePercent,
+    benefits: { man_hours_saved: Number(project?.man_hours_saved) || 0, stoploss_minutes_saved: Number(project?.stoploss_minutes_saved) || 0, wafers_gained: Number(project?.wafers_gained) || 0 },
+    tasks: (project?.tasks || []).map(compactSnapshotTask),
+  }
+  const reviewSnapshots = [snapshot, ...governance.reviewSnapshots].slice(0, 24)
+  return withGovernanceState(project, auditGovernance({ ...governance, reviewSnapshots }, 'Review snapshot captured', note || 'Weekly project review baseline', at))
+}
+
+export const buildProjectChangeIntelligence = (project: any, now: Date = new Date()) => {
+  const governance = getProjectGovernance(project); const snapshot = governance.reviewSnapshots[0]
+  if (!snapshot) return { hasSnapshot: false, snapshot: null, changes: [] as any[], progressDelta: null as number | null, forecastDeltaDays: null as number | null }
+  const changes: any[] = []
+  const previousTasks = new Map((snapshot.tasks || []).map((task: any) => [String(task.id), task]))
+  const currentTasks = new Map((project?.tasks || []).map((task: any) => [String(task.id), compactSnapshotTask(task)]))
+  currentTasks.forEach((task: any, id) => {
+    const before: any = previousTasks.get(id)
+    if (!before) { changes.push({ kind: 'added', tone: 'blue', label: `Added task · ${task.name}` }); return }
+    if (before.status !== task.status) changes.push({ kind: task.status === 'Blocked' ? 'newly-blocked' : before.status === 'Completed' && task.status !== 'Completed' ? 'reopened' : 'status', tone: task.status === 'Blocked' || before.status === 'Completed' ? 'rose' : task.status === 'Completed' ? 'emerald' : 'blue', label: `${task.name} · ${before.status || 'blank'} → ${task.status || 'blank'}` })
+    if (before.owner !== task.owner) changes.push({ kind: 'owner', tone: 'slate', label: `${task.name} · owner ${before.owner} → ${task.owner}` })
+    if (before.end_date !== task.end_date) changes.push({ kind: 'date', tone: 'amber', label: `${task.name} · due ${before.end_date || 'none'} → ${task.end_date || 'none'}` })
+    if (before.priority !== task.priority) changes.push({ kind: 'priority', tone: 'amber', label: `${task.name} · priority ${before.priority} → ${task.priority}` })
+  })
+  previousTasks.forEach((task: any, id) => { if (!currentTasks.has(id)) changes.push({ kind: 'removed', tone: 'slate', label: `Removed task · ${task.name}` }) })
+  if (snapshot.status !== project?.status) changes.push({ kind: 'project-status', tone: 'blue', label: `Project status · ${snapshot.status} → ${project?.status}` })
+  if (snapshot.priority !== project?.priority) changes.push({ kind: 'project-priority', tone: 'amber', label: `Project priority · ${snapshot.priority} → ${project?.priority}` })
+  const progress = getProjectExecutionProgress(project)
+  const progressDelta = progress - Number(snapshot.progress || 0)
+  const forecast = getProjectForecast(project, now)
+  const snapshotForecast = calendarOrdinal(snapshot.forecast_finish)
+  const forecastDeltaDays = snapshotForecast == null || forecast.forecastFinishOrdinal == null ? null : forecast.forecastFinishOrdinal - snapshotForecast
+  return { hasSnapshot: true, snapshot, changes, progressDelta, forecastDeltaDays }
 }
 
 export const getMyWork = (projects: any[], owner: string, now: Date = new Date()) => {

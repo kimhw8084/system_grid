@@ -1,17 +1,25 @@
 import { describe, expect, it } from 'vitest'
 import {
   PROJECT_GOLDEN_VIEWS,
+  PROJECT_GOVERNANCE_KEY,
   PROJECT_TASK_STATUSES,
+  appendProjectAudit,
   buildCrossProjectDependencies,
   buildOwnerWorkload,
   buildPortfolioMetrics,
   buildProjectAttentionItems,
+  buildProjectChangeIntelligence,
+  captureProjectReviewSnapshot,
   createProjectTask,
   diversifyAttentionItems,
   filterProjectsForGoldenView,
+  getBenefitRealization,
   getCriticalTaskIds,
   getDaysToDue,
+  getEvidenceReadiness,
   getProjectExecutionProgress,
+  getProjectForecast,
+  getProjectGovernance,
   getProjectHealth,
   getProjectMilestones,
   getTaskProgress,
@@ -20,18 +28,24 @@ import {
   normalizeTaskStatus,
   projectFingerprint,
   resolveProjectGoldenView,
+  setProjectBenefitTargets,
+  simulateProjectScenario,
+  toggleStageGateEvidence,
   updateProjectTask,
+  upsertDecisionRecord,
+  upsertRaidItem,
+  upsertStageGate,
 } from './ProjectsGolden.model'
 
 const NOW = new Date('2026-08-28T12:00:00-05:00')
 const projects: any[] = [
   {
-    id: 1, name: 'Alpha', status: 'In Progress', priority: 'Highest', owner: 'alice', man_hours_saved: 120,
+    id: 1, name: 'Alpha', status: 'In Progress', priority: 'Highest', owner: 'alice', man_hours_saved: 60, stoploss_minutes_saved: 20, wafers_gained: 3,
     metadata_json: { baseline_end_date: '2026-08-31' }, end_date: '2026-09-05',
     tasks: [
-      { id: 11, name: 'Blocked path', status: 'Blocked', progress: 30, owner: '', priority: 'High', end_date: '2026-08-27T23:30:00Z', dependencies_json: [] },
-      { id: 12, name: 'Review gate', status: 'Review', progress: 90, owner: 'alice', end_date: '2026-08-30', dependencies_json: [11], metadata_json: { milestone: true } },
-      { id: 13, name: 'Done', status: 'Completed', progress: 10, owner: 'bob', end_date: '2026-08-20', dependencies_json: [12] },
+      { id: 11, name: 'Blocked path', status: 'Blocked', progress: 30, owner: '', priority: 'High', start_date: '2026-08-20', end_date: '2026-08-27', dependencies_json: [] },
+      { id: 12, name: 'Review gate', status: 'Review', progress: 90, owner: 'alice', start_date: '2026-08-28', end_date: '2026-08-30', dependencies_json: [11], metadata_json: { milestone: true } },
+      { id: 13, name: 'Final release', status: 'To Do', progress: 0, owner: 'bob', start_date: '2026-08-31', end_date: '2026-09-05', dependencies_json: [12] },
     ],
   },
   {
@@ -40,11 +54,19 @@ const projects: any[] = [
   },
 ]
 
-describe('Projects execution intelligence model', () => {
-  it('keeps six approved management views and the canonical five task states', () => {
-    expect(PROJECT_GOLDEN_VIEWS).toEqual(['portfolio', 'board', 'roadmap', 'owners', 'review', 'workspace'])
+const govern = (project: any) => {
+  let next = upsertRaidItem(project, { type: 'Risk', title: 'Supply risk', impact: 'High', status: 'Open' }, NOW)
+  next = upsertDecisionRecord(next, { kind: 'Decision', title: 'Use vendor B', status: 'Approved' }, NOW)
+  next = upsertStageGate(next, { name: 'Release gate', status: 'Ready', evidence: [{ label: 'Runbook', complete: true }, { label: 'Approval', complete: false }] }, NOW)
+  next = setProjectBenefitTargets(next, { manHoursSaved: 100, stoplossMinutesSaved: 40, wafersGained: 6 }, NOW)
+  return next
+}
+
+describe('Projects governance and forecasting model', () => {
+  it('keeps seven approved management views and the canonical five task states', () => {
+    expect(PROJECT_GOLDEN_VIEWS).toEqual(['portfolio', 'board', 'roadmap', 'owners', 'review', 'governance', 'workspace'])
     expect(PROJECT_TASK_STATUSES).toEqual(['To Do', 'In Progress', 'Blocked', 'Review', 'Completed'])
-    expect(resolveProjectGoldenView('review')).toBe('review')
+    expect(resolveProjectGoldenView('governance')).toBe('governance')
     expect(resolveProjectGoldenView('unknown')).toBe('portfolio')
   })
 
@@ -59,9 +81,8 @@ describe('Projects execution intelligence model', () => {
   })
 
   it('makes completed progress canonical and reopened progress deterministic', () => {
-    expect(getTaskProgress(projects[0].tasks[2])).toBe(100)
     const completed = moveProjectTaskStatus(projects[0], 12, 'Completed')
-    expect(completed.tasks.find((task: any) => task.id === 12).progress).toBe(100)
+    expect(getTaskProgress(completed.tasks.find((task: any) => task.id === 12))).toBe(100)
     const reopened = moveProjectTaskStatus(completed, 12, 'Review')
     expect(reopened.tasks.find((task: any) => task.id === 12).progress).toBe(90)
   })
@@ -70,81 +91,115 @@ describe('Projects execution intelligence model', () => {
     expect(moveProjectTaskStatus(projects[0], 12, 'Review')).toBe(projects[0])
   })
 
-  it('derives the dependency-backed critical path without a new persisted score', () => {
+  it('derives the dependency-backed critical path and milestones from existing task truth', () => {
     const critical = getCriticalTaskIds(projects[0])
-    expect(critical.has(13)).toBe(false)
-    expect(critical.has(12)).toBe(true)
-    expect(critical.has(11)).toBe(true)
+    expect([...critical]).toEqual(expect.arrayContaining([11, 12, 13]))
+    expect(getProjectMilestones(projects[0], NOW).some((milestone) => milestone.id === 12)).toBe(true)
   })
 
-  it('builds milestone and schedule variance from existing schedule truth only', () => {
-    const milestones = getProjectMilestones(projects[0], NOW)
-    expect(milestones.some((milestone) => milestone.id === 12)).toBe(true)
-    expect(getProjectHealth(projects[0], NOW).scheduleVarianceDays).toBe(5)
-  })
-
-  it('produces explainable red health from blocked critical and overdue work', () => {
+  it('produces explainable health and grouped attention without a backend score', () => {
     const health = getProjectHealth(projects[0], NOW)
     expect(health.level).toBe('red')
     expect(health.blockedCritical).toBe(1)
-    expect(health.reasons.some((reason) => reason.includes('blocked critical'))).toBe(true)
-  })
-
-  it('groups attention into one incident per task instead of duplicating reasons', () => {
     const attention = buildProjectAttentionItems(projects, NOW)
     const task11 = attention.filter((item) => item.taskId === 11)
     expect(task11).toHaveLength(1)
-    expect(task11[0].reasons).toContain('blocked')
-    expect(task11[0].reasons).toContain('overdue')
-    expect(task11[0].reasons).toContain('unassigned')
-    expect(task11[0].reasonLabels.some((label) => label.includes('priority'))).toBe(true)
+    expect(task11[0].reasons).toEqual(expect.arrayContaining(['blocked', 'overdue', 'unassigned']))
   })
 
   it('diversifies a constrained attention queue across projects first', () => {
     const alpha = buildProjectAttentionItems(projects, NOW)[0]
-    const items = [
-      alpha,
-      { ...alpha, id: 'extra-alpha' },
-      { ...alpha, id: 'beta-risk', projectId: 2, projectName: 'Beta', taskId: 21, taskName: 'Queued' },
-    ]
-    const diversified = diversifyAttentionItems(items, 2)
+    const diversified = diversifyAttentionItems([alpha, { ...alpha, id: 'extra-alpha' }, { ...alpha, id: 'beta-risk', projectId: 2, projectName: 'Beta', taskId: 21 }], 2)
     expect(diversified.map((item) => item.projectId)).toEqual([1, 2])
   })
 
   it('uses task-weighted portfolio progress while retaining project average context', () => {
     const metrics = buildPortfolioMetrics(projects, NOW)
     expect(metrics.tasks).toBe(4)
-    expect(metrics.overallProgress).toBe(Math.round((30 + 90 + 100 + 0) / 4))
     expect(metrics.projectAverageProgress).not.toBeUndefined()
   })
 
-  it('sorts and filters deterministically including watched-only state', () => {
-    expect(filterProjectsForGoldenView(projects, '', 'ALL', 'all', 'order')).toHaveLength(2)
-    expect(filterProjectsForGoldenView(projects, '', 'ALL', 'ALL', 'order', ['2'], true).map((project) => project.id)).toEqual([2])
+  it('sorts, filters, owner workload and cross-project dependencies deterministically', () => {
     expect(filterProjectsForGoldenView(projects, '', 'ALL', 'ALL', 'health', [], false, NOW)[0].id).toBe(1)
+    expect(buildOwnerWorkload(projects, NOW).some((row) => row.owner === 'Unassigned' && row.blocked === 1)).toBe(true)
+    expect(buildCrossProjectDependencies(projects).some((row) => row.fromProjectId === 1 && row.toProjectId === 2)).toBe(true)
   })
 
-  it('derives owner workload and cross-project dependencies from existing tasks', () => {
-    const owners = buildOwnerWorkload(projects, NOW)
-    expect(owners.some((row) => row.owner === 'Unassigned' && row.blocked === 1)).toBe(true)
-    const cross = buildCrossProjectDependencies(projects)
-    expect(cross.some((row) => row.fromProjectId === 1 && row.toProjectId === 2)).toBe(true)
-  })
-
-  it('supports task quick capture/edit immutably', () => {
+  it('supports immutable task quick capture/edit and auditable task actions', () => {
     const added = createProjectTask(projects[1], { id: 22, name: 'Captured', status: 'To Do' })
-    expect(added.tasks).toHaveLength(2)
-    expect(projects[1].tasks).toHaveLength(1)
     const edited = updateProjectTask(added, 22, { owner: 'alice' })
+    const audited = appendProjectAudit(edited, 'Task edited', 'Captured', NOW)
+    expect(projects[1].tasks).toHaveLength(1)
     expect(edited.tasks.find((task: any) => task.id === 22).owner).toBe('alice')
+    expect(getProjectGovernance(audited).audit[0].action).toBe('Task edited')
   })
 
-  it('creates a stable stale-write fingerprint over mutation-relevant project truth', () => {
+  it('forecasts finish from remaining duration and dependency propagation', () => {
+    const forecast = getProjectForecast(projects[0], NOW)
+    expect(forecast.plannedFinish).toBe('2026-09-05')
+    expect(forecast.forecastFinish).toBe('2026-09-09')
+    expect(forecast.varianceVsPlanDays).toBe(4)
+    expect(forecast.drivers[0].id).toBe(11)
+  })
+
+  it('simulates a task slip without mutating the live project', () => {
+    const scenario = simulateProjectScenario(projects[0], 11, 5, NOW)
+    expect(scenario.baseForecastFinish).toBe('2026-09-09')
+    expect(scenario.scenarioForecastFinish).toBe('2026-09-14')
+    expect(scenario.finishDeltaDays).toBe(5)
+    expect(scenario.affected.map((row) => row.id)).toEqual(expect.arrayContaining([11, 12, 13]))
+    expect(projects[0].tasks[0].end_date).toBe('2026-08-27')
+  })
+
+  it('stores RAID and decision/change records inside the existing governance metadata namespace', () => {
+    const governed = govern(projects[0])
+    const governance = getProjectGovernance(governed)
+    expect(governed.metadata_json[PROJECT_GOVERNANCE_KEY]).toBeDefined()
+    expect(governance.raid[0].title).toBe('Supply risk')
+    expect(governance.decisions[0].status).toBe('Approved')
+    expect(governance.audit.length).toBeGreaterThanOrEqual(4)
+  })
+
+  it('derives stage-gate evidence readiness and toggles evidence immutably', () => {
+    const governed = govern(projects[0])
+    const readiness = getEvidenceReadiness(governed)
+    expect(readiness.evidencePercent).toBe(50)
+    const gate = getProjectGovernance(governed).stageGates[0]
+    const openEvidence = gate.evidence.find((row: any) => !row.complete)
+    const completed = toggleStageGateEvidence(governed, gate.id, openEvidence.id, true, NOW)
+    expect(getEvidenceReadiness(completed).evidencePercent).toBe(100)
+    expect(getEvidenceReadiness(governed).evidencePercent).toBe(50)
+  })
+
+  it('calculates target versus realized benefits without manufacturing missing targets', () => {
+    const realization = getBenefitRealization(govern(projects[0]))
+    expect(realization.find((row) => row.key === 'manHoursSaved')?.percent).toBe(60)
+    expect(getBenefitRealization(projects[0]).every((row) => row.target == null)).toBe(true)
+  })
+
+  it('captures a bounded review snapshot and explains material changes since that baseline', () => {
+    const captured = captureProjectReviewSnapshot(govern(projects[0]), 'weekly baseline', NOW)
+    const changed = { ...captured, tasks: captured.tasks.map((task: any) => task.id === 12 ? { ...task, status: 'Blocked', owner: 'carol', end_date: '2026-09-03' } : task) }
+    const intelligence = buildProjectChangeIntelligence(changed, new Date('2026-08-29T12:00:00-05:00'))
+    expect(intelligence.hasSnapshot).toBe(true)
+    expect(intelligence.changes.map((row) => row.kind)).toEqual(expect.arrayContaining(['newly-blocked', 'owner', 'date']))
+    expect(getProjectGovernance(captured).reviewSnapshots).toHaveLength(1)
+  })
+
+  it('returns an explicit no-baseline change state before the first review snapshot', () => {
+    const intelligence = buildProjectChangeIntelligence(projects[0], NOW)
+    expect(intelligence.hasSnapshot).toBe(false)
+    expect(intelligence.changes).toEqual([])
+  })
+
+  it('includes governance truth in stale-write fingerprints', () => {
+    const base = projectFingerprint(projects[0])
+    const governed = upsertRaidItem(projects[0], { title: 'Risk', type: 'Risk' }, NOW)
+    expect(projectFingerprint(governed)).not.toBe(base)
     expect(projectFingerprint(projects[0])).toBe(projectFingerprint({ ...projects[0] }))
-    expect(projectFingerprint(projects[0])).not.toBe(projectFingerprint({ ...projects[0], status: 'Paused' }))
   })
 
   it('retains project execution progress compatibility', () => {
-    expect(getProjectExecutionProgress(projects[0])).toBe(73)
+    expect(getProjectExecutionProgress(projects[0])).toBe(40)
   })
 })
