@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import fs from 'node:fs'
 import path from 'node:path'
+// SYSGRID_ALLOW_SOURCE_OWNERSHIP_ASSERTION — textual ownership is the contract under test.
 
 const root = path.resolve(__dirname, '..')
 const read = (relative: string) => fs.readFileSync(path.join(root, relative), 'utf8')
@@ -11,6 +12,7 @@ const views = [
   ['ServicesReal.tsx', 'table'],
   ['External.tsx', 'table'],
   ['NetworkReal.tsx', 'hybrid'],
+  ['ProjectsGolden.tsx', 'hybrid'],
   ['FAR.tsx', 'analytical'],
   ['Research.tsx', 'analytical'],
   ['vendors/VendorGoldenOperationalWorkspace.tsx', 'table'],
