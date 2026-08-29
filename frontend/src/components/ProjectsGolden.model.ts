@@ -1167,6 +1167,13 @@ export const buildProjectReportSummary = (project: any, now: Date = new Date()) 
     blockers: overview.blockers.slice(0, 8),
     nextActions: overview.nextActions.slice(0, 8),
     recentChanges: change.hasSnapshot ? change.changes.slice(0, 8) : overview.recentChanges,
+    latestUpdates: getProjectUpdates(project).slice(0, 6).map((update: any) => ({
+      id: update?.id || null,
+      content: String(update?.content || update?.text || ''),
+      author: update?.author || null,
+      mentions: Array.isArray(update?.mentions) ? [...update.mentions] : [],
+      created_at: update?.created_at || update?.timestamp || null,
+    })),
     evidence: overview.evidence,
     benefits,
   }

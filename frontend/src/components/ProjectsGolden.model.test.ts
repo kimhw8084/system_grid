@@ -499,4 +499,22 @@ describe('Projects governance and forecasting model', () => {
   })
 
 
+  it('integrates latest canonical human updates into the live Project report summary', () => {
+    const withUpdate = addProjectUpdate(projects[0], { id: 'update-report-1', content: 'Release review with @alice', author: 'Bob', created_at: '2026-08-28T16:00:00Z' }, NOW)
+    const report = buildProjectReportSummary(withUpdate, NOW)
+    expect(report.latestUpdates).toHaveLength(1)
+    expect(report.latestUpdates[0]).toMatchObject({ id: 'update-report-1', content: 'Release review with @alice', author: 'Bob', mentions: ['@alice'], created_at: '2026-08-28T16:00:00Z' })
+  })
+
+  it('freezes collaboration updates inside immutable report snapshots while later live updates continue independently', () => {
+    const first = addProjectUpdate(projects[0], { id: 'update-frozen-1', content: 'Snapshot update for @alice', created_at: '2026-08-28T16:00:00Z' }, NOW)
+    const captured = captureProjectReportSnapshot(first, new Date('2026-08-28T16:05:00Z'))
+    const later = addProjectUpdate(captured, { id: 'update-live-2', content: 'Later update for @bob', created_at: '2026-08-28T17:00:00Z' }, NOW)
+    const snapshot = getProjectReportHistory(later)[0]
+    expect(snapshot.summary.latestUpdates.map((row: any) => row.id)).toEqual(['update-frozen-1'])
+    expect(snapshot.summary.latestUpdates[0].mentions).toEqual(['@alice'])
+    expect(buildProjectReportSummary(later, NOW).latestUpdates.map((row: any) => row.id)).toEqual(['update-live-2', 'update-frozen-1'])
+  })
+
+
 })

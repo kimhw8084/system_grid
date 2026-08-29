@@ -191,3 +191,49 @@ test.describe('Projects Iteration 4C native project updates collaboration', () =
   })
 })
 
+
+
+test.describe('Projects Iteration 4D collaboration reporting integration', () => {
+  const operators = [
+    { id: 11, username: 'alice', name: 'Alice Nguyen', email: 'alice@example.test', is_active: true },
+    { id: 13, username: 'bob', name: 'Bob Stone', email: 'bob@example.test', is_active: true },
+  ]
+
+  test('Iteration 4D report snapshot freezes the canonical human update and mention evidence', async ({ page }) => {
+    await page.setViewportSize({ width: 1680, height: 1050 })
+    const state = await supportProjectApis(page, baseProject(), operators)
+    await page.goto('/projects?id=1001&view=updates')
+    const composer = page.getByLabel('Add project update')
+    await composer.fill('Report context ready for @ali')
+    await page.getByRole('option', { name: 'Update mention @alice · Alice Nguyen', exact: true }).click()
+    await composer.fill('Report context ready for @alice review')
+    await page.getByRole('button', { name: 'Post update', exact: true }).click()
+    await expect.poll(() => state.getLastPut()?.metadata_json?.project_updates_v1?.updates?.[0]?.mentions).toEqual(['@alice'])
+    await page.goto('/projects?id=1001&view=reports')
+    await expect(page.locator('[data-project-report-collaboration="true"]')).toContainText('Report context ready for @alice review')
+    await page.getByRole('button', { name: 'Capture snapshot', exact: true }).click()
+    await expect.poll(() => state.getLastPut()?.metadata_json?.project_reporting_v1?.snapshots?.[0]?.summary?.latestUpdates?.[0]?.content).toBe('Report context ready for @alice review')
+    await expect.poll(() => state.getLastPut()?.metadata_json?.project_reporting_v1?.snapshots?.[0]?.summary?.latestUpdates?.[0]?.mentions).toEqual(['@alice'])
+    await expect(page.locator('[data-project-report-collaboration="true"]')).toContainText('Frozen with this report snapshot')
+  })
+
+  test('Iteration 4D captured report remains immutable after a later live Project update', async ({ page }) => {
+    await page.setViewportSize({ width: 1680, height: 1050 })
+    const seeded = baseProject()
+    seeded.metadata_json = { project_updates_v1: { updates: [{ id: 'seed-update', content: 'Frozen release context for @alice', text: 'Frozen release context for @alice', mentions: ['@alice'], created_at: '2026-08-29T18:00:00Z', timestamp: '2026-08-29T18:00:00Z' }] } }
+    const state = await supportProjectApis(page, seeded, operators)
+    await page.goto('/projects?id=1001&view=reports')
+    await page.getByRole('button', { name: 'Capture snapshot', exact: true }).click()
+    await expect.poll(() => state.getLastPut()?.metadata_json?.project_reporting_v1?.snapshots?.length).toBe(1)
+    const snapshotId = state.getLastPut().metadata_json.project_reporting_v1.snapshots[0].id
+    await page.goto('/projects?id=1001&view=updates')
+    await page.getByLabel('Add project update').fill('Later live context for @bob')
+    await page.getByRole('button', { name: 'Post update', exact: true }).click()
+    await expect.poll(() => state.getLastPut()?.metadata_json?.project_updates_v1?.updates?.[0]?.content).toBe('Later live context for @bob')
+    await page.goto(`/projects?id=1001&view=reports&report=${encodeURIComponent(snapshotId)}`)
+    const frozen = page.locator('[data-project-report-collaboration="true"]')
+    await expect(frozen).toContainText('Frozen release context for @alice')
+    await expect(frozen).not.toContainText('Later live context for @bob')
+    expect(state.getProject().metadata_json.project_reporting_v1.snapshots[0].summary.latestUpdates.map((row: any) => row.content)).toEqual(['Frozen release context for @alice'])
+  })
+})

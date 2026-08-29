@@ -354,4 +354,21 @@ describe('Projects complete planning and execution golden contract', () => {
   })
 
 
+  it('integrates canonical collaboration updates into live and immutable Project report summaries', () => {
+    expect(model).toContain('latestUpdates: getProjectUpdates(project).slice(0, 6)')
+    expect(model).toContain('mentions: Array.isArray(update?.mentions) ? [...update.mentions] : []')
+    expect(source).toContain('data-project-report-collaboration="true"')
+    expect(source).toContain("const reportUpdates = Array.isArray(report?.latestUpdates) ? report.latestUpdates : []")
+    expect(source).toContain("selectedSnapshot ? 'Frozen with this report snapshot' : 'Live canonical Project collaboration'")
+    expect(source).not.toContain('/api/v1/project-report-updates')
+  })
+
+  it('keeps report collaboration read-only and preserves canonical Project PUT ownership', () => {
+    expect(source).toContain('data-project-report-update={String(update.id || index)}')
+    expect(source).toContain("scope: { id: 'projects-authoritative-write' }")
+    expect(source).toContain('data-project-updates-native="true"')
+    expect(source).toContain('data-project-report-history="true"')
+  })
+
+
 })
