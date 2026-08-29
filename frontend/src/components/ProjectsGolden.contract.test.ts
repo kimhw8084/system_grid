@@ -371,4 +371,13 @@ describe('Projects complete planning and execution golden contract', () => {
   })
 
 
+
+  it('reconciles the externally published Iteration 4D integration before terminal certification', () => {
+    expect(model).toContain('latestUpdates: getProjectUpdates(project).slice(0, 6)')
+    expect(source).toContain('data-project-report-collaboration="true"')
+    expect(source).toContain("selectedSnapshot ? 'Frozen with this report snapshot' : 'Live canonical Project collaboration'")
+    expect(source).toContain("scope: { id: 'projects-authoritative-write' }")
+  })
+
+
 })
