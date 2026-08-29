@@ -20,6 +20,7 @@ export const PROJECT_TIMELINE_ZOOMS = ['day', 'week', 'month', 'quarter'] as con
 export type ProjectTimelineZoom = (typeof PROJECT_TIMELINE_ZOOMS)[number]
 export const PROJECT_EXECUTION_CONFIG_KEY = 'project_execution_config_v1'
 export const PROJECT_REPORTING_KEY = 'project_reporting_v1'
+export const PROJECT_UPDATES_KEY = 'project_updates_v1'
 export type ProjectHealth = 'green' | 'amber' | 'red'
 export type ProjectAttentionKind = 'blocked' | 'overdue' | 'due-soon' | 'unassigned' | 'high-priority' | 'review-congestion' | 'unknown-status'
 export type ProjectAttentionTone = 'rose' | 'amber' | 'blue' | 'slate'
@@ -1257,6 +1258,26 @@ export const addProjectMaterial = (project: any, input: any, now: Date = new Dat
   if (rows.some((row: any) => String(row?.id) === id)) return project
   const material = { id, title, name: title, url, href: url, type: kind, created_at: createdAt }
   return { ...project, metadata_json: { ...metadata, [key]: [...rows, material].slice(-80) } }
+}
+
+export const getProjectUpdates = (project: any): any[] => {
+  const metadata = project?.metadata_json && typeof project.metadata_json === 'object' ? project.metadata_json : {}
+  const collaboration = metadata[PROJECT_UPDATES_KEY] && typeof metadata[PROJECT_UPDATES_KEY] === 'object' ? metadata[PROJECT_UPDATES_KEY] : {}
+  return Array.isArray(collaboration.updates) ? collaboration.updates : []
+}
+
+export const addProjectUpdate = (project: any, input: any, now: Date = new Date()) => {
+  const content = String(input?.content ?? input?.text ?? '').trim()
+  if (!content) return project
+  const metadata = project?.metadata_json && typeof project.metadata_json === 'object' ? project.metadata_json : {}
+  const collaboration = metadata[PROJECT_UPDATES_KEY] && typeof metadata[PROJECT_UPDATES_KEY] === 'object' ? metadata[PROJECT_UPDATES_KEY] : {}
+  const updates = getProjectUpdates(project)
+  const createdAt = String(input?.created_at || input?.timestamp || now.toISOString())
+  const id = String(input?.id || `update-${now.getTime()}`)
+  if (updates.some((update: any) => String(update?.id) === id)) return project
+  const author = String(input?.author || '').trim() || null
+  const update = { id, content, text: content, author, mentions: extractProjectMentions(content), created_at: createdAt, timestamp: createdAt }
+  return { ...project, metadata_json: { ...metadata, [PROJECT_UPDATES_KEY]: { ...collaboration, updates: [update, ...updates].slice(0, 80) } } }
 }
 
 export const getProjectReportHistory = (project: any): any[] => {

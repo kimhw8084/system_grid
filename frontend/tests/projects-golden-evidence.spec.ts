@@ -140,3 +140,54 @@ test.describe('Projects Iteration 4B authoritative mention interaction', () => {
     await expect(page.getByText('Escalate to @bob today', { exact: true })).toBeVisible()
   })
 })
+
+test.describe('Projects Iteration 4C native project updates collaboration', () => {
+  const operators = [
+    { id: 11, username: 'alice', name: 'Alice Nguyen', email: 'alice@example.test', is_active: true },
+    { id: 12, username: 'alicia', name: 'Alicia Park', email: 'apark@example.test', is_active: true },
+    { id: 13, username: 'bob', name: 'Bob Stone', email: 'bob@example.test', is_active: true },
+  ]
+
+  test('Iteration 4C project update click selection posts one canonical human update through Project PUT', async ({ page }) => {
+    await page.setViewportSize({ width: 1680, height: 1050 })
+    const state = await supportProjectApis(page, baseProject(), operators)
+
+    await page.goto('/projects?id=1001&view=updates')
+    await expect(page.locator('[data-project-updates-native="true"]')).toBeVisible()
+    const composer = page.getByLabel('Add project update')
+    await composer.fill('Release status ready for @ali')
+    await expect(page.getByRole('listbox', { name: 'Project update mention suggestions' })).toBeVisible()
+    await page.getByRole('option', { name: 'Update mention @alice · Alice Nguyen', exact: true }).click()
+    await expect(composer).toHaveValue('Release status ready for @alice ')
+    expect(state.getLastPut()).toBeNull()
+    await composer.fill('Release status ready for @alice review')
+    await page.getByRole('button', { name: 'Post update', exact: true }).click()
+
+    await expect.poll(() => state.getLastPut()?.metadata_json?.project_updates_v1?.updates?.[0]?.content).toBe('Release status ready for @alice review')
+    await expect.poll(() => state.getLastPut()?.metadata_json?.project_updates_v1?.updates?.[0]?.mentions).toEqual(['@alice'])
+    await expect(page.locator('[data-project-update-feed="true"]').getByText('Release status ready for @alice review', { exact: true })).toBeVisible()
+    await expect(page.locator('[data-project-system-activity="true"]')).toContainText('Project update posted')
+  })
+
+  test('Iteration 4C project update keyboard selection persists and restores from canonical Project truth', async ({ page }) => {
+    await page.setViewportSize({ width: 1680, height: 1050 })
+    const state = await supportProjectApis(page, baseProject(), operators)
+
+    await page.goto('/projects?id=1001&view=updates')
+    const composer = page.getByLabel('Add project update')
+    await composer.fill('Escalation owner @bo')
+    await expect(page.getByRole('option', { name: 'Update mention @bob · Bob Stone', exact: true })).toBeVisible()
+    await composer.press('Enter')
+    await expect(composer).toHaveValue('Escalation owner @bob ')
+    expect(state.getLastPut()).toBeNull()
+    await composer.fill('Escalation owner @bob confirmed')
+    await page.getByRole('button', { name: 'Post update', exact: true }).click()
+
+    await expect.poll(() => state.getLastPut()?.metadata_json?.project_updates_v1?.updates?.[0]?.mentions).toEqual(['@bob'])
+    await page.reload()
+    await expect(page.locator('[data-project-updates-native="true"]')).toBeVisible()
+    await expect(page.locator('[data-project-update-feed="true"]').getByText('Escalation owner @bob confirmed', { exact: true })).toBeVisible()
+    expect(state.getProject().metadata_json.project_updates_v1.updates[0].content).toBe('Escalation owner @bob confirmed')
+  })
+})
+

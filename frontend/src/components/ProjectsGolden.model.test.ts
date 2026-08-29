@@ -4,11 +4,13 @@ import {
   PROJECT_GOVERNANCE_KEY,
   PROJECT_PRIMARY_VIEWS,
   PROJECT_REPORTING_KEY,
+  PROJECT_UPDATES_KEY,
   PROJECT_RAIL_SCOPES,
   PROJECT_TASK_STATUSES,
   PROJECT_TIMELINE_ZOOMS,
   addProjectMaterial,
   addProjectTaskComment,
+  addProjectUpdate,
   appendProjectAudit,
   buildCrossProjectDependencies,
   buildProjectTaskHierarchy,
@@ -46,6 +48,7 @@ import {
   applyProjectMentionCandidate,
   getProjectReportHistory,
   getProjectReportSharePath,
+  getProjectUpdates,
   getProjectTimelineRange,
   getProjectWipLimits,
   getMyWork,
@@ -479,6 +482,20 @@ describe('Projects governance and forecasting model', () => {
     expect(applyProjectMentionCandidate('Coordinate with @ali', 'alice')).toBe('Coordinate with @alice ')
     expect(applyProjectMentionCandidate('(@bo', '@bob')).toBe('(@bob ')
     expect(applyProjectMentionCandidate('No active token', 'alice')).toBe('No active token')
+  })
+
+  it('authors bounded project-level updates with canonical mention extraction on existing Project metadata', () => {
+    const changed = addProjectUpdate(projects[0], { id: 'update-1', content: 'Status is ready for @Alice and @bob', author: 'operator' }, NOW)
+    expect(getProjectUpdates(changed)[0]).toMatchObject({ id: 'update-1', content: 'Status is ready for @Alice and @bob', author: 'operator', mentions: ['@Alice', '@bob'] })
+    expect(changed.metadata_json[PROJECT_UPDATES_KEY].updates[0].id).toBe('update-1')
+    expect(projectFingerprint(changed)).not.toBe(projectFingerprint(projects[0]))
+    expect(addProjectUpdate(changed, { id: 'update-1', content: 'duplicate' }, NOW)).toBe(changed)
+    expect(addProjectUpdate(projects[0], { content: '   ' }, NOW)).toBe(projects[0])
+    let bounded = projects[0]
+    for (let index = 0; index < 85; index += 1) bounded = addProjectUpdate(bounded, { id: `update-${index}`, content: `Update ${index}` }, new Date(NOW.getTime() + index))
+    expect(getProjectUpdates(bounded)).toHaveLength(80)
+    expect(getProjectUpdates(bounded)[0].id).toBe('update-84')
+    expect(getProjectUpdates(bounded).at(-1)?.id).toBe('update-5')
   })
 
 
