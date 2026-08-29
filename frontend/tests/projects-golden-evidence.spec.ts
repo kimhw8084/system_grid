@@ -237,3 +237,53 @@ test.describe('Projects Iteration 4D collaboration reporting integration', () =>
     expect(state.getProject().metadata_json.project_reporting_v1.snapshots[0].summary.latestUpdates.map((row: any) => row.content)).toEqual(['Frozen release context for @alice'])
   })
 })
+
+test.describe('Projects Iteration 4E collaboration and reporting certification smoke', () => {
+  const operators = [
+    { id: 11, username: 'alice', name: 'Alice Nguyen', email: 'alice@example.test', is_active: true },
+    { id: 13, username: 'bob', name: 'Bob Stone', email: 'bob@example.test', is_active: true },
+  ]
+
+  test('Iteration 4E certification preserves the canonical collaboration chain through immutable report review', async ({ page }) => {
+    await page.setViewportSize({ width: 1680, height: 1050 })
+    const state = await supportProjectApis(page, baseProject(), operators)
+
+    await page.goto('/projects?id=1001&view=tasks&task=101')
+    const taskComposer = page.getByLabel('Add task comment')
+    await taskComposer.fill('Certification review with @ali')
+    await page.getByRole('option', { name: 'Mention @alice · Alice Nguyen', exact: true }).click()
+    await taskComposer.fill('Certification review with @alice')
+    await page.getByRole('button', { name: 'Post comment', exact: true }).click()
+    await expect.poll(() => state.getLastPut()?.tasks?.find((task: any) => task.id === 101)?.metadata_json?.comments?.at(-1)?.mentions).toEqual(['@alice'])
+
+    await page.goto('/projects?id=1001&view=files')
+    await page.getByLabel('Project material title').fill('Iteration 4 certification brief')
+    await page.getByLabel('Project material URL').fill('https://example.test/iteration-4/certification')
+    await page.getByRole('button', { name: 'Add material', exact: true }).click()
+    await expect.poll(() => state.getLastPut()?.metadata_json?.links?.at(-1)?.title).toBe('Iteration 4 certification brief')
+
+    await page.goto('/projects?id=1001&view=updates')
+    const updateComposer = page.getByLabel('Add project update')
+    await updateComposer.fill('Certification context for @bo')
+    await updateComposer.press('Enter')
+    await updateComposer.fill('Certification context for @bob')
+    await page.getByRole('button', { name: 'Post update', exact: true }).click()
+    await expect.poll(() => state.getLastPut()?.metadata_json?.project_updates_v1?.updates?.[0]?.mentions).toEqual(['@bob'])
+
+    await page.goto('/projects?id=1001&view=reports')
+    await expect(page.locator('[data-project-report-collaboration="true"]')).toContainText('Certification context for @bob')
+    await page.getByRole('button', { name: 'Capture snapshot', exact: true }).click()
+    await expect.poll(() => state.getLastPut()?.metadata_json?.project_reporting_v1?.snapshots?.length).toBe(1)
+    const snapshotId = state.getLastPut().metadata_json.project_reporting_v1.snapshots[0].id
+
+    expect(state.getProject().tasks.find((task: any) => task.id === 101).metadata_json.comments.at(-1).mentions).toEqual(['@alice'])
+    expect(state.getProject().metadata_json.links.at(-1)).toMatchObject({ title: 'Iteration 4 certification brief', url: 'https://example.test/iteration-4/certification' })
+    expect(state.getProject().metadata_json.project_updates_v1.updates[0].mentions).toEqual(['@bob'])
+    expect(state.getProject().metadata_json.project_reporting_v1.snapshots[0].summary.latestUpdates[0]).toMatchObject({ content: 'Certification context for @bob', mentions: ['@bob'] })
+
+    await page.goto(`/projects?id=1001&view=reports&report=${encodeURIComponent(snapshotId)}`)
+    await expect(page.locator('[data-project-report-collaboration="true"]')).toContainText('Frozen with this report snapshot')
+    await expect(page.locator('[data-project-report-collaboration="true"]')).toContainText('Certification context for @bob')
+  })
+})
+
