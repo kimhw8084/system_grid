@@ -1,6 +1,6 @@
 import { test, expect, Page } from '@playwright/test'
 
-const supportProjectApis = async (page: Page, initialProject: any) => {
+const supportProjectApis = async (page: Page, initialProject: any, operators: any[] = []) => {
   let project = structuredClone(initialProject)
   let lastPut: any = null
   await page.route('**/api/v1/projects', async (route) => {
@@ -18,6 +18,7 @@ const supportProjectApis = async (page: Page, initialProject: any) => {
   for (const path of ['devices', 'logical-services', 'settings/options']) {
     await page.route(`**/api/v1/${path}`, (route) => route.fulfill({ status: 200, contentType: 'application/json', body: '[]' }))
   }
+  await page.route('**/api/v1/settings/operators', (route) => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(operators) }))
   return { getProject: () => project, getLastPut: () => lastPut }
 }
 
@@ -90,5 +91,52 @@ test.describe('Projects Iteration 4A collaboration and reporting foundation', ()
     await expect(page.locator(`[data-project-report-snapshot="${snapshotId}"]`)).toBeVisible()
     await expect(page.getByText(/Report Snapshot ·/)).toBeVisible()
     expect(state.getProject().metadata_json.project_reporting_v1.snapshots[0].id).toBe(snapshotId)
+  })
+})
+
+
+test.describe('Projects Iteration 4B authoritative mention interaction', () => {
+  const operators = [
+    { id: 11, username: 'alice', name: 'Alice Nguyen', email: 'alice@example.test', is_active: true },
+    { id: 12, username: 'alicia', name: 'Alicia Park', email: 'apark@example.test', is_active: true },
+    { id: 13, username: 'bob', name: 'Bob Stone', email: 'bob@example.test', is_active: true },
+  ]
+
+  test('Iteration 4B mention click selection persists the exact canonical operator username', async ({ page }) => {
+    await page.setViewportSize({ width: 1680, height: 1050 })
+    const state = await supportProjectApis(page, baseProject(), operators)
+
+    await page.goto('/projects?id=1001&view=tasks&task=101')
+    const composer = page.getByLabel('Add task comment')
+    await composer.fill('Coordinate with @ali')
+    const suggestions = page.getByRole('listbox', { name: 'Mention suggestions' })
+    await expect(suggestions).toBeVisible()
+    await expect(page.getByRole('option', { name: 'Mention @alice · Alice Nguyen', exact: true })).toBeVisible()
+    await expect(page.getByRole('option', { name: 'Mention @alicia · Alicia Park', exact: true })).toBeVisible()
+    await page.getByRole('option', { name: 'Mention @alice · Alice Nguyen', exact: true }).click()
+    await expect(composer).toHaveValue('Coordinate with @alice ')
+    await composer.fill('Coordinate with @alice before release')
+    await page.getByRole('button', { name: 'Post comment', exact: true }).click()
+
+    await expect.poll(() => state.getLastPut()?.tasks?.find((task: any) => task.id === 101)?.metadata_json?.comments?.at(-1)?.content).toBe('Coordinate with @alice before release')
+    await expect.poll(() => state.getLastPut()?.tasks?.find((task: any) => task.id === 101)?.metadata_json?.comments?.at(-1)?.mentions).toEqual(['@alice'])
+  })
+
+  test('Iteration 4B mention keyboard selection inserts one canonical handle before persistence', async ({ page }) => {
+    await page.setViewportSize({ width: 1680, height: 1050 })
+    const state = await supportProjectApis(page, baseProject(), operators)
+
+    await page.goto('/projects?id=1001&view=tasks&task=101')
+    const composer = page.getByLabel('Add task comment')
+    await composer.fill('Escalate to @bo')
+    await expect(page.getByRole('option', { name: 'Mention @bob · Bob Stone', exact: true })).toBeVisible()
+    await composer.press('Enter')
+    await expect(composer).toHaveValue('Escalate to @bob ')
+    expect(state.getLastPut()).toBeNull()
+    await composer.fill('Escalate to @bob today')
+    await page.getByRole('button', { name: 'Post comment', exact: true }).click()
+
+    await expect.poll(() => state.getLastPut()?.tasks?.find((task: any) => task.id === 101)?.metadata_json?.comments?.at(-1)?.mentions).toEqual(['@bob'])
+    await expect(page.getByText('Escalate to @bob today', { exact: true })).toBeVisible()
   })
 })

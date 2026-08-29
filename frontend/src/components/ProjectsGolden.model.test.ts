@@ -41,6 +41,9 @@ import {
   getProjectTaskDescendantIds,
   getProjectTaskParentId,
   getProjectNeedsUpdate,
+  getProjectMentionCandidates,
+  getProjectMentionQuery,
+  applyProjectMentionCandidate,
   getProjectReportHistory,
   getProjectReportSharePath,
   getProjectTimelineRange,
@@ -455,6 +458,27 @@ describe('Projects governance and forecasting model', () => {
     const changedAfterCapture = updateProjectTask(captured, 11, { status: 'Completed' })
     expect(getProjectReportHistory(changedAfterCapture)[0].summary.progress).toBe(history[0].summary.progress)
     expect(getProjectReportSharePath('alpha/1', history[0].id)).toBe(`/projects?id=alpha%2F1&view=reports&report=${encodeURIComponent(history[0].id)}`)
+  })
+
+  it('resolves authoritative mention candidates by stable username while matching name and email', () => {
+    const operators = [
+      { id: 1, username: 'alice', name: 'Alice Nguyen', email: 'alice@example.test', is_active: true },
+      { id: 2, username: 'alicia', name: 'Alicia Park', email: 'apark@example.test', is_active: true },
+      { id: 3, username: 'disabled', name: 'Disabled User', is_active: false },
+      { id: 4, username: 'ALICE', name: 'Duplicate Alice', is_active: true },
+      { id: 5, username: 'bad handle', name: 'Invalid Handle', is_active: true },
+    ]
+    expect(getProjectMentionCandidates(operators, 'ali').map((row: any) => row.mention)).toEqual(['@alice', '@alicia'])
+    expect(getProjectMentionCandidates(operators, 'park').map((row: any) => row.mention)).toEqual(['@alicia'])
+    expect(getProjectMentionCandidates(operators, 'example.test').map((row: any) => row.mention)).toEqual(['@alice', '@alicia'])
+  })
+
+  it('detects the active mention token and replaces only that token with the canonical username', () => {
+    expect(getProjectMentionQuery('Coordinate with @ali')).toBe('ali')
+    expect(getProjectMentionQuery('Coordinate with @alice before')).toBeNull()
+    expect(applyProjectMentionCandidate('Coordinate with @ali', 'alice')).toBe('Coordinate with @alice ')
+    expect(applyProjectMentionCandidate('(@bo', '@bob')).toBe('(@bob ')
+    expect(applyProjectMentionCandidate('No active token', 'alice')).toBe('No active token')
   })
 
 

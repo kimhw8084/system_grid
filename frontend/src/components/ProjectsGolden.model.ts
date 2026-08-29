@@ -1188,6 +1188,47 @@ export const extractProjectMentions = (value?: string | null): string[] => {
   return mentions
 }
 
+export const getProjectMentionQuery = (value?: string | null, cursor?: number | null): string | null => {
+  const text = String(value || '')
+  const end = Math.max(0, Math.min(cursor == null ? text.length : cursor, text.length))
+  const prefix = text.slice(0, end)
+  const match = prefix.match(/(?:^|[\s(\[{])@([A-Za-z0-9_.-]{0,64})$/)
+  return match ? match[1] : null
+}
+
+export const getProjectMentionCandidates = (operators: any[], query?: string | null) => {
+  const needle = String(query || '').trim().replace(/^@/, '').toLowerCase()
+  const seen = new Set<string>()
+  return (Array.isArray(operators) ? operators : []).flatMap((operator: any) => {
+    if (operator?.active === false || operator?.is_active === false || operator?.disabled === true) return []
+    const username = String(operator?.username || '').trim()
+    if (!/^[A-Za-z0-9][A-Za-z0-9_.-]{0,63}$/.test(username)) return []
+    const key = username.toLowerCase()
+    if (seen.has(key)) return []
+    const label = String(operator?.display_name || operator?.full_name || operator?.name || username).trim() || username
+    const email = String(operator?.email || '').trim()
+    const haystack = `${username} ${label} ${email}`.toLowerCase()
+    if (needle && !haystack.includes(needle)) return []
+    seen.add(key)
+    return [{ id: String(operator?.id ?? key), username, mention: `@${username}`, label, email: email || null }]
+  }).slice(0, 8)
+}
+
+export const applyProjectMentionCandidate = (value: string, username: string, cursor?: number | null) => {
+  const text = String(value || '')
+  const handle = String(username || '').trim().replace(/^@/, '')
+  if (!/^[A-Za-z0-9][A-Za-z0-9_.-]{0,63}$/.test(handle)) return text
+  const end = Math.max(0, Math.min(cursor == null ? text.length : cursor, text.length))
+  const prefix = text.slice(0, end)
+  const match = prefix.match(/(?:^|[\s(\[{])@([A-Za-z0-9_.-]{0,64})$/)
+  if (!match) return text
+  const token = `@${match[1]}`
+  const start = prefix.length - token.length
+  const suffix = text.slice(end)
+  const spacer = suffix.startsWith(' ') ? '' : ' '
+  return `${text.slice(0, start)}@${handle}${spacer}${suffix}`
+}
+
 export const addProjectTaskComment = (project: any, taskId: number | string, input: any, now: Date = new Date()) => {
   const content = String(input?.content ?? input?.text ?? '').trim()
   if (!content) return project

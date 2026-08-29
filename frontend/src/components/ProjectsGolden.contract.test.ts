@@ -304,5 +304,26 @@ describe('Projects complete planning and execution golden contract', () => {
     expect(model).toContain("PROJECT_EXECUTION_CONFIG_KEY = 'project_execution_config_v1'")
   })
 
+  it('adds Iteration 4B authoritative operator-backed mention autocomplete without a notification API', () => {
+    for (const marker of ['getProjectMentionCandidates', 'getProjectMentionQuery', 'applyProjectMentionCandidate']) expect(model).toContain(marker)
+    expect(source).toContain("useSafeListQuery('operators', '/api/v1/settings/operators')")
+    expect(source).toContain('data-project-mention-autocomplete="true"')
+    expect(source).toContain('data-project-mention-suggestions="true"')
+    expect(source).toContain('aria-label="Mention suggestions"')
+    expect(source).toContain('aria-label={`Mention ${candidate.mention} · ${candidate.label}`}')
+    expect(source).not.toContain('/api/v1/project-mentions')
+    expect(source).not.toContain('/api/v1/project-notifications')
+  })
+
+  it('keeps mention selection canonical and additive to the accepted PC60 comment persistence path', () => {
+    expect(source).toContain('const chooseMention = (candidate: any)')
+    expect(source).toContain('applyProjectMentionCandidate(commentText, candidate.username)')
+    expect(source).toContain("commit(next, 'Task comment added'")
+    expect(model).toContain('mentions: extractProjectMentions(content)')
+    expect(source).toContain("scope: { id: 'projects-authoritative-write' }")
+    expect(source).toContain('data-project-report-history="true"')
+    expect(source).toContain('data-project-material-authoring="true"')
+  })
+
 
 })
