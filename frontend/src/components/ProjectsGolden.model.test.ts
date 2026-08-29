@@ -5,9 +5,11 @@ import {
   PROJECT_PRIMARY_VIEWS,
   PROJECT_RAIL_SCOPES,
   PROJECT_TASK_STATUSES,
+  PROJECT_TIMELINE_ZOOMS,
   appendProjectAudit,
   buildCrossProjectDependencies,
   buildProjectTaskHierarchy,
+  buildProjectTimelineRows,
   bulkUpdateProjectTasks,
   buildOwnerWorkload,
   buildPortfolioMetrics,
@@ -17,6 +19,7 @@ import {
   buildProjectRailRows,
   buildProjectReportSummary,
   captureProjectReviewSnapshot,
+  captureProjectScheduleBaseline,
   createProjectTask,
   deleteProjectTasks,
   diversifyAttentionItems,
@@ -33,22 +36,32 @@ import {
   getProjectMilestones,
   getProjectTaskDescendantIds,
   getProjectTaskParentId,
+  getProjectNeedsUpdate,
+  getProjectTimelineRange,
+  getProjectWipLimits,
+  getMyWork,
   getTaskProgress,
   indentProjectTask,
   moveProjectTaskStatus,
+  moveProjectTaskSchedule,
   normalizeProjectFilterValue,
   outdentProjectTask,
   parseProjectTaskPaste,
   normalizeTaskStatus,
   projectFingerprint,
   reorderProjectTaskBefore,
+  resizeProjectTaskSchedule,
   resolveProjectGoldenView,
   resolveProjectInsightSection,
   resolveProjectPortfolioSection,
   setProjectBenefitTargets,
   setProjectTaskMilestone,
+  setProjectTaskDependency,
+  setProjectWipLimit,
+  shiftProjectTaskSchedules,
   setProjectTaskParent,
   simulateProjectScenario,
+  wouldCreateProjectTaskDependencyCycle,
   toggleStageGateEvidence,
   updateProjectTask,
   upsertDecisionRecord,
@@ -87,6 +100,7 @@ describe('Projects governance and forecasting model', () => {
     expect(PROJECT_PRIMARY_VIEWS).toEqual(['overview', 'tasks', 'timeline', 'board', 'files', 'updates', 'reports', 'insights'])
     expect(PROJECT_RAIL_SCOPES).toEqual(['recent', 'watched', 'active', 'all'])
     expect(PROJECT_TASK_STATUSES).toEqual(['To Do', 'In Progress', 'Blocked', 'Review', 'Completed'])
+    expect(PROJECT_TIMELINE_ZOOMS).toEqual(['day', 'week', 'month', 'quarter'])
     expect(resolveProjectGoldenView('workspace')).toBe('timeline')
     expect(resolveProjectGoldenView('review')).toBe('insights')
     expect(resolveProjectGoldenView('governance')).toBe('insights')
@@ -334,6 +348,76 @@ describe('Projects governance and forecasting model', () => {
     const changed = setProjectTaskMilestone(projects[0], 13, true)
     expect(changed.tasks.find((task: any) => task.id === 13).metadata_json.is_milestone).toBe(true)
     expect(getProjectMilestones(changed, NOW).some((row) => row.id === 13)).toBe(true)
+  })
+
+
+  it('builds synchronized timeline rows with hierarchy, baseline, forecast, milestones and critical-path truth', () => {
+    const baselined = captureProjectScheduleBaseline(projects[0], NOW)
+    const rows = buildProjectTimelineRows(baselined, NOW)
+    expect(rows.map((row) => row.id)).toEqual(buildProjectTaskHierarchy(baselined).map((row) => row.id))
+    expect(rows.find((row) => row.id === 12)?.milestone).toBe(true)
+    expect(rows.find((row) => row.id === 13)?.dependencyIds).toEqual(['12'])
+    expect(rows.find((row) => row.id === 11)?.baselineEndOrdinal).not.toBeNull()
+    expect(rows.some((row) => row.critical)).toBe(true)
+    expect(rows.every((row) => row.forecastEndOrdinal != null)).toBe(true)
+    const range = getProjectTimelineRange(baselined, NOW)
+    expect(range.startOrdinal).toBeLessThan(range.endOrdinal)
+    expect(range.todayOrdinal).toBeGreaterThanOrEqual(range.startOrdinal)
+  })
+
+  it('moves, resizes and multi-shifts schedules without inverting task dates', () => {
+    const moved = moveProjectTaskSchedule(projects[0], 13, 2)
+    expect(moved.tasks.find((task: any) => task.id === 13)).toMatchObject({ start_date: '2026-09-02', end_date: '2026-09-07' })
+    const resizedStart = resizeProjectTaskSchedule(projects[0], 13, 'start', 99)
+    expect(resizedStart.tasks.find((task: any) => task.id === 13).start_date).toBe('2026-09-05')
+    const resizedEnd = resizeProjectTaskSchedule(projects[0], 13, 'end', -99)
+    expect(resizedEnd.tasks.find((task: any) => task.id === 13).end_date).toBe('2026-08-31')
+    const shifted = shiftProjectTaskSchedules(projects[0], [12,13], -1)
+    expect(shifted.tasks.find((task: any) => task.id === 12).end_date).toBe('2026-08-29')
+    expect(shifted.tasks.find((task: any) => task.id === 11).end_date).toBe('2026-08-27')
+  })
+
+  it('creates and removes task dependencies while rejecting self-links and cycles', () => {
+    expect(wouldCreateProjectTaskDependencyCycle(projects[0], 11, 13)).toBe(true)
+    expect(setProjectTaskDependency(projects[0], 11, 13, true)).toBe(projects[0])
+    expect(setProjectTaskDependency(projects[0], 12, 12, true)).toBe(projects[0])
+    const linked = setProjectTaskDependency(projects[0], 13, 11, true)
+    expect(linked.tasks.find((task: any) => task.id === 13).dependencies_json.map(String)).toEqual(['12','11'])
+    const removed = setProjectTaskDependency(linked, 13, 12, false)
+    expect(removed.tasks.find((task: any) => task.id === 13).dependencies_json.map(String)).toEqual(['11'])
+  })
+
+  it('captures per-task baselines in existing metadata without changing live dates', () => {
+    const baseline = captureProjectScheduleBaseline(projects[0], NOW)
+    const task = baseline.tasks.find((row: any) => row.id === 13)
+    expect(task.start_date).toBe('2026-08-31')
+    expect(task.metadata_json.baseline_start_date).toBe('2026-08-31')
+    expect(task.metadata_json.baseline_end_date).toBe('2026-09-05')
+    expect(baseline.metadata_json.schedule_baseline_captured_at).toBe(NOW.toISOString())
+  })
+
+  it('persists configurable WIP limits through existing Project metadata and adds milestone swimlane compatibility', () => {
+    expect(getProjectWipLimits(projects[0])['In Progress']).toBe(5)
+    const changed = setProjectWipLimit(projects[0], 'In Progress', 8)
+    expect(getProjectWipLimits(changed)['In Progress']).toBe(8)
+    expect(changed.metadata_json.project_execution_config_v1.wip_limits['In Progress']).toBe(8)
+  })
+
+  it('classifies My Work and deterministic Needs Update without fabricating stale state when timestamps are missing', () => {
+    const datedProjects: any[] = [{ id: 7, name: 'Execution', updated_at: '2026-08-20T10:00:00Z', tasks: [
+      { id: 71, name: 'Blocked', owner: 'alice', status: 'Blocked', end_date: '2026-09-10' },
+      { id: 72, name: 'Due', owner: 'alice', status: 'In Progress', end_date: '2026-08-28', updated_at: '2026-08-27T10:00:00Z' },
+      { id: 73, name: 'Stale', owner: 'alice', status: 'Review', end_date: '2026-09-20', updated_at: '2026-08-20T10:00:00Z' },
+      { id: 74, name: 'Future', owner: 'alice', status: 'To Do', end_date: '2026-10-20' },
+    ] }]
+    const needs = getProjectNeedsUpdate(datedProjects, 'alice', NOW)
+    expect(needs.map((row: any) => row.task.id)).toEqual(expect.arrayContaining([71,72,73]))
+    expect(needs.map((row: any) => row.task.id)).not.toContain(74)
+    const work = getMyWork(datedProjects, 'alice', NOW)
+    expect(work.find((row: any) => row.task.id === 71)?.bucket).toBe('Blocked')
+    expect(work.find((row: any) => row.task.id === 72)?.bucket).toBe('Today')
+    expect(work.find((row: any) => row.task.id === 73)?.bucket).toBe('Needs update')
+    expect(work.find((row: any) => row.task.id === 74)?.bucket).toBe('Upcoming')
   })
 
 })

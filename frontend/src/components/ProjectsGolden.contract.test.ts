@@ -6,7 +6,7 @@ import path from 'node:path'
 const source = fs.readFileSync(path.resolve(__dirname, 'ProjectsGolden.tsx'), 'utf8')
 const model = fs.readFileSync(path.resolve(__dirname, 'ProjectsGolden.model.ts'), 'utf8')
 
-describe('Projects complete task workbench golden contract', () => {
+describe('Projects complete planning and execution golden contract', () => {
   it('keeps Projects on the shared hybrid workspace shell while adding one unified workbench shell', () => {
     expect(source).toContain('<OperationalWorkspaceShell')
     expect(source).toContain('archetype="hybrid"')
@@ -38,17 +38,19 @@ describe('Projects complete task workbench golden contract', () => {
     expect(source).toContain('data-project-tasks-foundation="true"')
     expect(source).toContain('data-project-report-preview="true"')
     expect(source).toContain('data-project-task-drawer="true"')
-    expect(source).toContain('<LegacyEmbeddedHost mode="GANTT" label="Project Timeline" />')
+    expect(source).toContain('<ProjectTimeline project={selectedProject}')
+    expect(source).toContain('data-project-flagship-gantt="true"')
     expect(source).toContain('<LegacyEmbeddedHost mode="ACTIVITY" label="Project Updates" />')
-    expect(source).toContain('data-project-direct-surface={mode.toLowerCase()}')
   })
 
-  it('removes the visible nested legacy navigation while retaining the proven planning/activity engines', () => {
+  it('removes the primary legacy-Gantt dependency while retaining the accepted activity adapter and legacy compatibility shell', () => {
     expect(source).toContain('data-project-embedded-rail="true"')
     expect(source).toContain('data-project-embedded-hud="true"')
     expect(source).toContain('data-project-embedded-tabs="true"')
     expect(source).toContain("GANTT: 'Precision Gantt'")
     expect(source).toContain("ACTIVITY: 'Stream'")
+    expect(source).toContain("view === 'timeline' ? <ProjectTimeline")
+    expect(source).not.toContain("view === 'timeline' ? <LegacyEmbeddedHost mode=\"GANTT\"")
     expect(source).not.toContain(':nth-child(')
     expect(source).toContain('<LegacyProjects />')
   })
@@ -175,6 +177,100 @@ describe('Projects complete task workbench golden contract', () => {
     expect(source).not.toContain('/api/v2/projects')
     expect(model).toContain('wbs_parent_id')
     expect(model).toContain('is_milestone')
+  })
+
+  it('owns a first-class synchronized flagship Timeline with direct schedule manipulation and four zoom levels', () => {
+    expect(model).toContain("PROJECT_TIMELINE_ZOOMS = ['day', 'week', 'month', 'quarter']")
+    expect(source).toContain('data-project-flagship-gantt="true"')
+    expect(source).toContain('Task table + schedule canvas · baseline · forecast · critical path · dependencies')
+    for (const marker of ['buildProjectTimelineRows', 'getProjectTimelineRange', 'shiftProjectTaskSchedules', 'resizeProjectTaskSchedule', 'scheduleProjectTask']) expect(model).toContain(marker)
+    expect(source).toContain('data-project-timeline-bar="true"')
+    expect(source).toContain('Resize start ${row.task.name}')
+    expect(source).toContain('Resize end ${row.task.name}')
+    expect(source).toContain('Fit Project')
+    expect(source).toContain('Critical only')
+  })
+
+  it('renders baseline, deterministic forecast, milestones and critical path from canonical task truth', () => {
+    expect(model).toContain('captureProjectScheduleBaseline')
+    expect(model).toContain('baseline_start_date')
+    expect(model).toContain('baseline_end_date')
+    expect(model).toContain('getProjectForecast(project, now)')
+    expect(model).toContain('critical: critical.has(task.id)')
+    expect(model).toContain("taskMetadata(task).milestone === true")
+    expect(source).toContain('Capture baseline')
+    expect(source).toContain('Baseline ${projectOrdinalToDate(row.baselineStartOrdinal)}')
+    expect(source).toContain('Forecast ${projectOrdinalToDate(row.forecastStartOrdinal)}')
+  })
+
+  it('owns visual dependency creation/removal with self-link and cycle rejection', () => {
+    for (const marker of ['getProjectTaskDependencyIds', 'wouldCreateProjectTaskDependencyCycle', 'setProjectTaskDependency']) expect(model).toContain(marker)
+    expect(source).toContain('data-project-dependency-handle="true"')
+    expect(source).toContain("setProjectTaskDependency(project, targetId, sourceId, true)")
+    expect(source).toContain("setProjectTaskDependency(project, link.row.id, link.depId, false)")
+    expect(model).toContain('target == predecessor')
+  })
+
+  it('makes pointer direct manipulation the primary Board status path instead of native HTML5 drag/drop', () => {
+    expect(source).toContain('const pointerDragRef = useRef')
+    expect(source).toContain('beginBoardPointerDrag')
+    expect(source).toContain('moveBoardPointerDrag')
+    expect(source).toContain('finishBoardPointerDrag')
+    expect(source).toContain('cancelBoardPointerDrag')
+    expect(source).toContain('boardStatusAtPoint')
+    expect(source).toContain('document.elementFromPoint(clientX, clientY)')
+    expect(source).toContain('onPointerDown={(event) => beginBoardPointerDrag(task.id, event)}')
+    expect(source).toContain('onPointerMove={moveBoardPointerDrag}')
+    expect(source).toContain('onPointerUp={(event) => finishBoardPointerDrag(task, event)}')
+    expect(source).toContain('data-board-pointer-drag="true"')
+    expect(source).not.toContain('data-project-board-card="true" data-task-id={String(task.id)} draggable')
+    expect(source).not.toContain('onDrop={(event) =>')
+  })
+
+  it('keeps Board status controls responsive while unrelated serialized Project writes are pending', () => {
+    expect(source).toContain('disabled={statusIndex === 0}')
+    expect(source).toContain('disabled={statusIndex === PROJECT_TASK_STATUSES.length - 1}')
+    expect(source).not.toContain('disabled={statusIndex === 0 || isSaving}')
+    expect(source).not.toContain('disabled={statusIndex === PROJECT_TASK_STATUSES.length - 1 || isSaving}')
+  })
+
+  it('rebases rapid Board and My Work task actions on the latest optimistic Project write head', () => {
+    expect(source).toContain("queryClient.getQueryData<any[]>(['projects'])")
+    expect(source).toContain('getProjectWriteHead(selectedProject.id) || selectedProject')
+    expect(source).toContain("commitTaskProject(moved, 'Task status changed'")
+    expect(source).toContain('true, current)')
+    expect(source).toContain('getProjectWriteHead(projectId)')
+  })
+
+  it('upgrades Board into the same execution system with persisted WIP controls and milestone swimlanes', () => {
+    expect(model).toContain("PROJECT_SWIMLANES = ['none', 'owner', 'priority', 'milestone', 'criticality']")
+    expect(model).toContain("PROJECT_EXECUTION_CONFIG_KEY = 'project_execution_config_v1'")
+    expect(model).toContain('getProjectWipLimits')
+    expect(model).toContain('setProjectWipLimit')
+    expect(source).toContain('data-project-wip-controls="true"')
+    expect(source).toContain('Decrease ${status} WIP')
+    expect(source).toContain('Increase ${status} WIP')
+    expect(source).toContain("swimlane === 'milestone'")
+    expect(source).toContain('Board status, Tasks, Timeline and My Work share the same authoritative task truth.')
+  })
+
+  it('adds cross-project My Work and deterministic Needs Update as daily execution surfaces', () => {
+    expect(model).toContain('getProjectNeedsUpdate')
+    expect(model).toContain("'Needs update'")
+    expect(source).toContain('data-project-my-work-execution="true"')
+    expect(source).toContain('Cross-project execution · update work without project hopping')
+    expect(source).toContain('Needs Update ${needs.length}')
+    expect(source).toContain('data-project-execution-hub="true"')
+    expect(source).toContain("{ value: 'my-work', label: 'My Work' }")
+  })
+
+  it('keeps planning and execution on the existing Project contract without a new schedule or board API', () => {
+    expect(source).not.toContain('/api/v1/project-timeline')
+    expect(source).not.toContain('/api/v1/project-board')
+    expect(source).not.toContain('/api/v1/my-work')
+    expect(source).not.toContain('/api/v2/projects')
+    expect(source).toContain("scope: { id: 'projects-authoritative-write' }")
+    expect(model).toContain('metadata_json: project?.metadata_json || null')
   })
 
 })

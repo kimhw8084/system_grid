@@ -14,8 +14,11 @@ export type ProjectTaskStatus = (typeof PROJECT_TASK_STATUSES)[number]
 
 export const PROJECT_SORT_MODES = ['order', 'health', 'priority', 'deadline', 'progress', 'blocked', 'value', 'name'] as const
 export type ProjectSortMode = (typeof PROJECT_SORT_MODES)[number]
-export const PROJECT_SWIMLANES = ['none', 'owner', 'priority', 'criticality'] as const
+export const PROJECT_SWIMLANES = ['none', 'owner', 'priority', 'milestone', 'criticality'] as const
 export type ProjectSwimlane = (typeof PROJECT_SWIMLANES)[number]
+export const PROJECT_TIMELINE_ZOOMS = ['day', 'week', 'month', 'quarter'] as const
+export type ProjectTimelineZoom = (typeof PROJECT_TIMELINE_ZOOMS)[number]
+export const PROJECT_EXECUTION_CONFIG_KEY = 'project_execution_config_v1'
 export type ProjectHealth = 'green' | 'amber' | 'red'
 export type ProjectAttentionKind = 'blocked' | 'overdue' | 'due-soon' | 'unassigned' | 'high-priority' | 'review-congestion' | 'unknown-status'
 export type ProjectAttentionTone = 'rose' | 'amber' | 'blue' | 'slate'
@@ -419,7 +422,7 @@ export const moveProjectTaskStatus = (project: any, taskId: number | string, sta
 const taskKey = (value: any) => String(value?.id ?? value?.task_id ?? value ?? '')
 const taskMetadata = (task: any) => (task?.metadata_json && typeof task.metadata_json === 'object' ? task.metadata_json : {})
 export const getProjectTaskParentId = (task: any): number | string | null => taskMetadata(task).wbs_parent_id ?? task?.parent_task_id ?? null
-export const isProjectTaskMilestone = (task: any): boolean => Boolean(taskMetadata(task).is_milestone ?? task?.is_milestone)
+export const isProjectTaskMilestone = (task: any): boolean => Boolean(task?.type === 'Milestone' || taskMetadata(task).is_milestone === true || taskMetadata(task).milestone === true || task?.is_milestone === true)
 
 const normalizeTaskPatch = (task: any, patch: any) => {
   const next = { ...task, ...patch }
@@ -598,6 +601,157 @@ export const parseProjectTaskPaste = (text: string): ParsedProjectTaskRow[] => {
     if (parsed.progress != null && !Number.isFinite(parsed.progress)) delete parsed.progress
     return parsed as ParsedProjectTaskRow
   }).filter((row) => row.name.trim())
+}
+
+
+export const getProjectTaskDependencyIds = (task: any): string[] => (Array.isArray(task?.dependencies_json) ? task.dependencies_json : []).map(taskKey).filter(Boolean)
+
+export const wouldCreateProjectTaskDependencyCycle = (project: any, taskId: number | string, predecessorId: number | string): boolean => {
+  const target = String(taskId); const predecessor = String(predecessorId)
+  if (!target || !predecessor || target == predecessor) return true
+  const tasks = Array.isArray(project?.tasks) ? project.tasks : []
+  const byId = new Map(tasks.map((task: any) => [String(task?.id), task]))
+  if (!byId.has(target) || !byId.has(predecessor)) return true
+  const stack = [predecessor]; const seen = new Set<string>()
+  while (stack.length) {
+    const current = stack.pop() as string
+    if (current === target) return true
+    if (seen.has(current)) continue
+    seen.add(current)
+    const task = byId.get(current)
+    for (const dependencyId of getProjectTaskDependencyIds(task)) if (!seen.has(dependencyId)) stack.push(dependencyId)
+  }
+  return false
+}
+
+export const setProjectTaskDependency = (project: any, taskId: number | string, predecessorId: number | string, enabled = true) => {
+  const task = (project?.tasks || []).find((row: any) => String(row?.id) === String(taskId))
+  const predecessor = (project?.tasks || []).find((row: any) => String(row?.id) === String(predecessorId))
+  if (!task || !predecessor || String(taskId) === String(predecessorId)) return project
+  const current = getProjectTaskDependencyIds(task)
+  if (enabled) {
+    if (current.includes(String(predecessorId)) || wouldCreateProjectTaskDependencyCycle(project, taskId, predecessorId)) return project
+    return updateProjectTask(project, taskId, { dependencies_json: [...current, predecessorId] })
+  }
+  if (!current.includes(String(predecessorId))) return project
+  return updateProjectTask(project, taskId, { dependencies_json: current.filter((id) => id !== String(predecessorId)) })
+}
+
+export const moveProjectTaskSchedule = (project: any, taskId: number | string, deltaDays: number) => {
+  const task = (project?.tasks || []).find((row: any) => String(row?.id) === String(taskId)); const delta = Math.round(Number(deltaDays) || 0)
+  if (!task || !delta) return project
+  const start = calendarOrdinal(task?.start_date); const end = calendarOrdinal(task?.end_date)
+  if (start == null && end == null) return project
+  return updateProjectTask(project, taskId, { start_date: calendarStringShift(task?.start_date || task?.end_date, delta), end_date: calendarStringShift(task?.end_date || task?.start_date, delta) })
+}
+
+export const shiftProjectTaskSchedules = (project: any, taskIds: Array<number | string>, deltaDays: number) => {
+  const selected = new Set(taskIds.map(String)); const delta = Math.round(Number(deltaDays) || 0)
+  if (!selected.size || !delta) return project
+  return { ...project, tasks: (project?.tasks || []).map((task: any) => {
+    if (!selected.has(String(task?.id))) return task
+    const start = calendarOrdinal(task?.start_date); const end = calendarOrdinal(task?.end_date)
+    if (start == null && end == null) return task
+    return { ...task, start_date: calendarStringShift(task?.start_date || task?.end_date, delta), end_date: calendarStringShift(task?.end_date || task?.start_date, delta) }
+  }) }
+}
+
+export const resizeProjectTaskSchedule = (project: any, taskId: number | string, edge: 'start' | 'end', deltaDays: number) => {
+  const task = (project?.tasks || []).find((row: any) => String(row?.id) === String(taskId)); const delta = Math.round(Number(deltaDays) || 0)
+  if (!task || !delta) return project
+  const start = calendarOrdinal(task?.start_date); const end = calendarOrdinal(task?.end_date)
+  if (start == null || end == null) return project
+  if (edge === 'start') {
+    const nextStart = Math.min(end, start + delta)
+    return updateProjectTask(project, taskId, { start_date: ordinalToDate(nextStart) })
+  }
+  const nextEnd = Math.max(start, end + delta)
+  return updateProjectTask(project, taskId, { end_date: ordinalToDate(nextEnd) })
+}
+
+export const scheduleProjectTask = (project: any, taskId: number | string, startDate: string, durationDays = 1) => {
+  const start = calendarOrdinal(startDate); if (start == null) return project
+  const duration = Math.max(1, Math.round(Number(durationDays) || 1))
+  return updateProjectTask(project, taskId, { start_date: ordinalToDate(start), end_date: ordinalToDate(start + duration - 1) })
+}
+
+export const captureProjectScheduleBaseline = (project: any, now: Date = new Date()) => ({
+  ...project,
+  metadata_json: { ...(project?.metadata_json || {}), schedule_baseline_captured_at: now.toISOString() },
+  tasks: (project?.tasks || []).map((task: any) => ({ ...task, metadata_json: { ...taskMetadata(task), baseline_start_date: task?.start_date || null, baseline_end_date: task?.end_date || null } })),
+})
+
+export interface ProjectTimelineRow extends ProjectTaskWorkbenchRow {
+  startOrdinal: number | null
+  endOrdinal: number | null
+  baselineStartOrdinal: number | null
+  baselineEndOrdinal: number | null
+  forecastStartOrdinal: number | null
+  forecastEndOrdinal: number | null
+  dependencyIds: string[]
+  critical: boolean
+  milestone: boolean
+  blocked: boolean
+  progress: number
+}
+
+export const buildProjectTimelineRows = (project: any, now: Date = new Date()): ProjectTimelineRow[] => {
+  const hierarchy = buildProjectTaskHierarchy(project); const critical = getCriticalTaskIds(project); const forecast = getProjectForecast(project, now)
+  const forecastById = new Map(forecast.tasks.map((row: any) => [String(row.id), row]))
+  return hierarchy.map((row) => {
+    const task = row.task; const metadata = taskMetadata(task); const projected: any = forecastById.get(String(row.id))
+    return { ...row,
+      startOrdinal: calendarOrdinal(task?.start_date), endOrdinal: calendarOrdinal(task?.end_date),
+      baselineStartOrdinal: calendarOrdinal(metadata.baseline_start_date), baselineEndOrdinal: calendarOrdinal(metadata.baseline_end_date),
+      forecastStartOrdinal: projected?.forecastStartOrdinal ?? null, forecastEndOrdinal: projected?.forecastEndOrdinal ?? null,
+      dependencyIds: getProjectTaskDependencyIds(task), critical: critical.has(task.id), milestone: isProjectTaskMilestone(task), blocked: task?.status === 'Blocked', progress: getTaskProgress(task),
+    }
+  })
+}
+
+export const getProjectTimelineRange = (project: any, now: Date = new Date()) => {
+  const rows = buildProjectTimelineRows(project, now); const today = calendarOrdinal(now) ?? 0
+  const points = rows.flatMap((row) => [row.startOrdinal, row.endOrdinal, row.baselineStartOrdinal, row.baselineEndOrdinal, row.forecastStartOrdinal, row.forecastEndOrdinal]).filter((value): value is number => value != null)
+  const projectStart = calendarOrdinal(project?.start_date); const projectEnd = calendarOrdinal(project?.end_date || project?.target_date)
+  if (projectStart != null) points.push(projectStart); if (projectEnd != null) points.push(projectEnd); points.push(today)
+  const min = points.length ? Math.min(...points) : today - 14; const max = points.length ? Math.max(...points) : today + 30
+  const padding = Math.max(3, Math.min(14, Math.ceil((max - min + 1) * 0.08)))
+  return { startOrdinal: min - padding, endOrdinal: max + padding, spanDays: Math.max(1, max - min + 1 + padding * 2), todayOrdinal: today }
+}
+
+export const projectOrdinalToDate = (ordinal: number | null | undefined) => ordinalToDate(ordinal ?? null)
+
+export const getProjectWipLimits = (project: any): Partial<Record<ProjectTaskStatus, number>> => {
+  const raw = project?.metadata_json?.[PROJECT_EXECUTION_CONFIG_KEY]?.wip_limits || {}
+  const defaults: Partial<Record<ProjectTaskStatus, number>> = { 'In Progress': 5, Blocked: 3, Review: 4 }
+  return { ...defaults, ...Object.fromEntries(Object.entries(raw).filter(([, value]) => Number(value) >= 0).map(([key, value]) => [key, Math.round(Number(value))])) }
+}
+
+export const setProjectWipLimit = (project: any, status: ProjectTaskStatus, limit: number) => {
+  const metadata = project?.metadata_json || {}; const config = metadata[PROJECT_EXECUTION_CONFIG_KEY] || {}; const current = getProjectWipLimits(project)
+  return { ...project, metadata_json: { ...metadata, [PROJECT_EXECUTION_CONFIG_KEY]: { ...config, wip_limits: { ...current, [status]: Math.max(0, Math.round(Number(limit) || 0)) } } } }
+}
+
+const taskActivityOrdinal = (project: any, task: any) => {
+  const value = task?.updated_at || task?.updatedAt || taskMetadata(task).last_updated_at || taskMetadata(task).updated_at || project?.updated_at || project?.updatedAt
+  return value ? calendarOrdinal(String(value).slice(0, 10)) : null
+}
+
+export const getProjectNeedsUpdate = (projects: any[], owner = '', now: Date = new Date()) => {
+  const normalizedOwner = owner.trim().toLowerCase(); const today = calendarOrdinal(now) ?? 0
+  return (projects || []).flatMap((project: any) => (project?.tasks || []).filter((task: any) => task?.status !== 'Completed').map((task: any) => {
+    const ownerLabel = getTaskOwnerLabel(task); if (normalizedOwner && !ownerLabel.toLowerCase().includes(normalizedOwner)) return null
+    const due = getDaysToDue(task?.end_date, now); const activityOrdinal = taskActivityOrdinal(project, task); const staleDays = activityOrdinal == null ? null : Math.max(0, today - activityOrdinal)
+    const reasons: string[] = []
+    if (task?.status === 'Blocked') reasons.push('Blocked')
+    if (due != null && due < 0) reasons.push(`Overdue ${Math.abs(due)}d`)
+    else if (due != null && due === 0) reasons.push('Due today')
+    else if (due != null && due <= 2) reasons.push(`Due in ${due}d`)
+    if (['In Progress','Review','Blocked'].includes(task?.status) && staleDays != null && staleDays >= 3) reasons.push(`No activity ${staleDays}d`)
+    if (!reasons.length) return null
+    const urgency = task?.status === 'Blocked' || (due != null && due < 0) ? 0 : due === 0 ? 1 : staleDays != null && staleDays >= 5 ? 2 : 3
+    return { projectId: project.id, projectName: project.name, task, owner: ownerLabel, daysToDue: due, staleDays, reasons, urgency }
+  }).filter(Boolean)).sort((a: any, b: any) => a.urgency - b.urgency || (a.daysToDue ?? 9999) - (b.daysToDue ?? 9999) || (b.staleDays ?? 0) - (a.staleDays ?? 0))
 }
 
 export const filterProjectsForGoldenView = (
@@ -1019,11 +1173,13 @@ export const buildProjectReportSummary = (project: any, now: Date = new Date()) 
 export const getMyWork = (projects: any[], owner: string, now: Date = new Date()) => {
   const normalized = owner.trim().toLowerCase()
   if (!normalized) return []
-  return (projects || []).flatMap((project: any) => (project?.tasks || []).filter((task: any) => task?.status !== 'Completed' && getTaskOwnerLabel(task).toLowerCase().includes(normalized)).map((task: any) => ({
-    projectId: project.id,
-    projectName: project.name,
-    task,
-    daysToDue: getDaysToDue(task?.end_date, now),
-    progress: getTaskProgress(task),
-  }))).sort((a: any, b: any) => (a.daysToDue ?? 99999) - (b.daysToDue ?? 99999))
+  const needs = new Map(getProjectNeedsUpdate(projects, owner, now).map((row: any) => [`${row.projectId}:${row.task.id}`, row]))
+  return (projects || []).flatMap((project: any) => (project?.tasks || []).filter((task: any) => task?.status !== 'Completed' && getTaskOwnerLabel(task).toLowerCase().includes(normalized)).map((task: any) => {
+    const daysToDue = getDaysToDue(task?.end_date, now); const key = `${project.id}:${task.id}`; const needsRow: any = needs.get(key)
+    const bucket = task?.status === 'Blocked' ? 'Blocked' : daysToDue != null && daysToDue < 0 ? 'Overdue' : daysToDue === 0 ? 'Today' : daysToDue != null && daysToDue <= 3 ? 'Due soon' : needsRow ? 'Needs update' : 'Upcoming'
+    return { projectId: project.id, projectName: project.name, task, daysToDue, progress: getTaskProgress(task), bucket, needsUpdate: Boolean(needsRow), updateReasons: needsRow?.reasons || [] }
+  })).sort((a: any, b: any) => {
+    const rank: Record<string, number> = { Blocked: 0, Overdue: 1, Today: 2, 'Needs update': 3, 'Due soon': 4, Upcoming: 5 }
+    return (rank[a.bucket] ?? 9) - (rank[b.bucket] ?? 9) || (a.daysToDue ?? 99999) - (b.daysToDue ?? 99999)
+  })
 }
