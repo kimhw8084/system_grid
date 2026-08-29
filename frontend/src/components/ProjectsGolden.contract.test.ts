@@ -273,4 +273,36 @@ describe('Projects complete planning and execution golden contract', () => {
     expect(model).toContain('metadata_json: project?.metadata_json || null')
   })
 
+  it('adds Iteration 4A collaboration authoring on canonical task and project metadata', () => {
+    expect(model).toContain("PROJECT_REPORTING_KEY = 'project_reporting_v1'")
+    for (const marker of ['extractProjectMentions', 'addProjectTaskComment', 'addProjectMaterial']) expect(model).toContain(marker)
+    expect(source).toContain('data-project-collaboration-authoring="true"')
+    expect(source).toContain('aria-label="Add task comment"')
+    expect(source).toContain('Post comment')
+    expect(source).toContain('data-project-material-authoring="true"')
+    expect(source).toContain('Add project material')
+    expect(source).toContain('Canonical Project PUT')
+  })
+
+  it('adds immutable report snapshots and stable report deep-link authoring without a report API family', () => {
+    for (const marker of ['captureProjectReportSnapshot', 'getProjectReportHistory', 'getProjectReportSharePath']) expect(model).toContain(marker)
+    expect(source).toContain('data-project-report-history="true"')
+    expect(source).toContain('Capture snapshot')
+    expect(source).toContain('Copy share link')
+    expect(source).toContain("searchParams.get('report')")
+    expect(source).toContain("next.set('view', 'reports')")
+    expect(source).not.toContain('/api/v1/project-comments')
+    expect(source).not.toContain('/api/v1/project-files')
+    expect(source).not.toContain('/api/v1/project-reports')
+  })
+
+  it('keeps PC59 planning and execution ownership intact while Iteration 4A stays additive', () => {
+    expect(source).toContain('data-project-flagship-gantt="true"')
+    expect(source).toContain('data-project-board-card="true"')
+    expect(source).toContain('data-project-my-work-execution="true"')
+    expect(source).toContain("scope: { id: 'projects-authoritative-write' }")
+    expect(model).toContain("PROJECT_EXECUTION_CONFIG_KEY = 'project_execution_config_v1'")
+  })
+
+
 })

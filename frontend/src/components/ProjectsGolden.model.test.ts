@@ -3,9 +3,12 @@ import {
   PROJECT_GOLDEN_VIEWS,
   PROJECT_GOVERNANCE_KEY,
   PROJECT_PRIMARY_VIEWS,
+  PROJECT_REPORTING_KEY,
   PROJECT_RAIL_SCOPES,
   PROJECT_TASK_STATUSES,
   PROJECT_TIMELINE_ZOOMS,
+  addProjectMaterial,
+  addProjectTaskComment,
   appendProjectAudit,
   buildCrossProjectDependencies,
   buildProjectTaskHierarchy,
@@ -18,6 +21,7 @@ import {
   buildProjectOverview,
   buildProjectRailRows,
   buildProjectReportSummary,
+  captureProjectReportSnapshot,
   captureProjectReviewSnapshot,
   captureProjectScheduleBaseline,
   createProjectTask,
@@ -37,10 +41,13 @@ import {
   getProjectTaskDescendantIds,
   getProjectTaskParentId,
   getProjectNeedsUpdate,
+  getProjectReportHistory,
+  getProjectReportSharePath,
   getProjectTimelineRange,
   getProjectWipLimits,
   getMyWork,
   getTaskProgress,
+  extractProjectMentions,
   indentProjectTask,
   moveProjectTaskStatus,
   moveProjectTaskSchedule,
@@ -419,5 +426,36 @@ describe('Projects governance and forecasting model', () => {
     expect(work.find((row: any) => row.task.id === 73)?.bucket).toBe('Needs update')
     expect(work.find((row: any) => row.task.id === 74)?.bucket).toBe('Upcoming')
   })
+
+  it('extracts stable unique @mentions from authored task comments and persists them on canonical task metadata', () => {
+    expect(extractProjectMentions('Review with @Alice, @bob and @alice before signoff.')).toEqual(['@Alice', '@bob'])
+    const changed = addProjectTaskComment(projects[0], 11, { id: 'comment-1', content: 'Review with @Alice and @bob', author: 'operator' }, NOW)
+    const comment = changed.tasks.find((task: any) => task.id === 11).metadata_json.comments.at(-1)
+    expect(comment).toMatchObject({ id: 'comment-1', content: 'Review with @Alice and @bob', author: 'operator', mentions: ['@Alice', '@bob'] })
+    expect(projectFingerprint(changed)).not.toBe(projectFingerprint(projects[0]))
+    expect(addProjectTaskComment(projects[0], 999, { content: 'missing' }, NOW)).toBe(projects[0])
+    expect(addProjectTaskComment(projects[0], 11, { content: '   ' }, NOW)).toBe(projects[0])
+  })
+
+  it('authors link and file references through existing Project metadata without introducing a second material store', () => {
+    const linked = addProjectMaterial(projects[0], { id: 'material-link', kind: 'link', title: 'Decision log', url: 'https://example.test/decision' }, NOW)
+    expect(linked.metadata_json.links.at(-1)).toMatchObject({ id: 'material-link', title: 'Decision log', url: 'https://example.test/decision', type: 'link' })
+    const filed = addProjectMaterial(linked, { id: 'material-file', kind: 'file', title: 'Run evidence', url: 'https://example.test/evidence.zip' }, NOW)
+    expect(filed.metadata_json.files.at(-1)).toMatchObject({ id: 'material-file', title: 'Run evidence', type: 'file' })
+    expect(addProjectMaterial(projects[0], { title: '', url: 'https://example.test' }, NOW)).toBe(projects[0])
+  })
+
+  it('captures bounded immutable report history and emits stable report deep links', () => {
+    const captured = captureProjectReportSnapshot(projects[0], NOW)
+    const history = getProjectReportHistory(captured)
+    expect(history).toHaveLength(1)
+    expect(history[0].captured_at).toBe(NOW.toISOString())
+    expect(history[0].summary).toMatchObject({ projectId: 1, name: 'Alpha', status: 'In Progress' })
+    expect(captured.metadata_json[PROJECT_REPORTING_KEY].snapshots[0].id).toBe(history[0].id)
+    const changedAfterCapture = updateProjectTask(captured, 11, { status: 'Completed' })
+    expect(getProjectReportHistory(changedAfterCapture)[0].summary.progress).toBe(history[0].summary.progress)
+    expect(getProjectReportSharePath('alpha/1', history[0].id)).toBe(`/projects?id=alpha%2F1&view=reports&report=${encodeURIComponent(history[0].id)}`)
+  })
+
 
 })

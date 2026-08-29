@@ -19,6 +19,7 @@ export type ProjectSwimlane = (typeof PROJECT_SWIMLANES)[number]
 export const PROJECT_TIMELINE_ZOOMS = ['day', 'week', 'month', 'quarter'] as const
 export type ProjectTimelineZoom = (typeof PROJECT_TIMELINE_ZOOMS)[number]
 export const PROJECT_EXECUTION_CONFIG_KEY = 'project_execution_config_v1'
+export const PROJECT_REPORTING_KEY = 'project_reporting_v1'
 export type ProjectHealth = 'green' | 'amber' | 'red'
 export type ProjectAttentionKind = 'blocked' | 'overdue' | 'due-soon' | 'unassigned' | 'high-priority' | 'review-congestion' | 'unknown-status'
 export type ProjectAttentionTone = 'rose' | 'amber' | 'blue' | 'slate'
@@ -1169,6 +1170,70 @@ export const buildProjectReportSummary = (project: any, now: Date = new Date()) 
     benefits,
   }
 }
+
+
+const cloneProjectReportValue = <T>(value: T): T => JSON.parse(JSON.stringify(value))
+
+export const extractProjectMentions = (value?: string | null): string[] => {
+  const text = String(value || '')
+  const mentions: string[] = []
+  const seen = new Set<string>()
+  const pattern = /(^|[\s(\[{])@([A-Za-z0-9][A-Za-z0-9_.-]{0,63})/g
+  let match: RegExpExecArray | null
+  while ((match = pattern.exec(text))) {
+    const mention = `@${match[2]}`
+    const key = mention.toLowerCase()
+    if (!seen.has(key)) { seen.add(key); mentions.push(mention) }
+  }
+  return mentions
+}
+
+export const addProjectTaskComment = (project: any, taskId: number | string, input: any, now: Date = new Date()) => {
+  const content = String(input?.content ?? input?.text ?? '').trim()
+  if (!content) return project
+  const task = (project?.tasks || []).find((row: any) => String(row?.id) === String(taskId))
+  if (!task) return project
+  const metadata = taskMetadata(task)
+  const comments = Array.isArray(metadata.comments) ? metadata.comments : []
+  const createdAt = String(input?.created_at || input?.timestamp || now.toISOString())
+  const id = String(input?.id || `comment-${now.getTime()}`)
+  if (comments.some((comment: any) => String(comment?.id) === id)) return project
+  const author = String(input?.author || '').trim() || null
+  const comment = { id, content, text: content, author, mentions: extractProjectMentions(content), created_at: createdAt, timestamp: createdAt }
+  return updateProjectTask(project, taskId, { metadata_json: { ...metadata, comments: [...comments, comment].slice(-80) } })
+}
+
+export const addProjectMaterial = (project: any, input: any, now: Date = new Date()) => {
+  const title = String(input?.title || input?.name || '').trim()
+  const url = String(input?.url || input?.href || '').trim()
+  const kind = input?.kind === 'file' ? 'file' : 'link'
+  if (!title || !url) return project
+  const metadata = project?.metadata_json && typeof project.metadata_json === 'object' ? project.metadata_json : {}
+  const key = kind === 'file' ? 'files' : 'links'
+  const rows = Array.isArray(metadata[key]) ? metadata[key] : []
+  const createdAt = String(input?.created_at || now.toISOString())
+  const id = String(input?.id || `material-${now.getTime()}`)
+  if (rows.some((row: any) => String(row?.id) === id)) return project
+  const material = { id, title, name: title, url, href: url, type: kind, created_at: createdAt }
+  return { ...project, metadata_json: { ...metadata, [key]: [...rows, material].slice(-80) } }
+}
+
+export const getProjectReportHistory = (project: any): any[] => {
+  const metadata = project?.metadata_json && typeof project.metadata_json === 'object' ? project.metadata_json : {}
+  const reporting = metadata[PROJECT_REPORTING_KEY] && typeof metadata[PROJECT_REPORTING_KEY] === 'object' ? metadata[PROJECT_REPORTING_KEY] : {}
+  return Array.isArray(reporting.snapshots) ? reporting.snapshots : []
+}
+
+export const captureProjectReportSnapshot = (project: any, now: Date = new Date()) => {
+  const metadata = project?.metadata_json && typeof project.metadata_json === 'object' ? project.metadata_json : {}
+  const reporting = metadata[PROJECT_REPORTING_KEY] && typeof metadata[PROJECT_REPORTING_KEY] === 'object' ? metadata[PROJECT_REPORTING_KEY] : {}
+  const capturedAt = now.toISOString()
+  const snapshot = { id: `report-${now.getTime()}`, captured_at: capturedAt, summary: cloneProjectReportValue(buildProjectReportSummary(project, now)) }
+  const snapshots = [snapshot, ...getProjectReportHistory(project)].slice(0, 24)
+  return { ...project, metadata_json: { ...metadata, [PROJECT_REPORTING_KEY]: { ...reporting, snapshots } } }
+}
+
+export const getProjectReportSharePath = (projectId: number | string, snapshotId: string) => `/projects?id=${encodeURIComponent(String(projectId))}&view=reports&report=${encodeURIComponent(String(snapshotId))}`
 
 export const getMyWork = (projects: any[], owner: string, now: Date = new Date()) => {
   const normalized = owner.trim().toLowerCase()
