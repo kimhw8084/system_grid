@@ -397,8 +397,8 @@ export const projectFingerprint = (project: any): string => {
     man_hours_saved: project?.man_hours_saved,
     stoploss_minutes_saved: project?.stoploss_minutes_saved,
     wafers_gained: project?.wafers_gained,
-    governance: project?.metadata_json?.[PROJECT_GOVERNANCE_KEY] || null,
-    tasks: (project?.tasks || []).map((task: any) => ({ id: task?.id, status: task?.status, progress: task?.progress, owner: task?.owner, start_date: task?.start_date, end_date: task?.end_date, name: task?.name, priority: task?.priority, dependencies_json: task?.dependencies_json })),
+    metadata_json: project?.metadata_json || null,
+    tasks: (project?.tasks || []).map((task: any) => ({ id: task?.id, status: task?.status, progress: task?.progress, owner: task?.owner, owners: task?.owners, start_date: task?.start_date, end_date: task?.end_date, name: task?.name, description: task?.description, priority: task?.priority, order_index: task?.order_index, dependencies_json: task?.dependencies_json, metadata_json: task?.metadata_json })),
   }
   return JSON.stringify(payload)
 }
@@ -416,15 +416,189 @@ export const moveProjectTaskStatus = (project: any, taskId: number | string, sta
   }
 }
 
+const taskKey = (value: any) => String(value?.id ?? value?.task_id ?? value ?? '')
+const taskMetadata = (task: any) => (task?.metadata_json && typeof task.metadata_json === 'object' ? task.metadata_json : {})
+export const getProjectTaskParentId = (task: any): number | string | null => taskMetadata(task).wbs_parent_id ?? task?.parent_task_id ?? null
+export const isProjectTaskMilestone = (task: any): boolean => Boolean(taskMetadata(task).is_milestone ?? task?.is_milestone)
+
+const normalizeTaskPatch = (task: any, patch: any) => {
+  const next = { ...task, ...patch }
+  if (patch?.metadata_json) next.metadata_json = { ...taskMetadata(task), ...patch.metadata_json }
+  if (next.status === 'Completed') next.progress = 100
+  else if (task?.status === 'Completed' && Number(task?.progress) >= 100 && patch?.status && patch.status !== 'Completed' && patch?.progress == null) {
+    next.progress = patch.status === 'Review' ? 90 : patch.status === 'In Progress' ? 50 : 0
+  } else if (patch?.progress != null) {
+    const progress = Number(patch.progress)
+    next.progress = Number.isFinite(progress) ? Math.max(0, Math.min(99, Math.round(progress))) : getTaskProgress(task)
+  }
+  return next
+}
+
 export const updateProjectTask = (project: any, taskId: number | string, patch: any) => ({
   ...project,
-  tasks: (project?.tasks || []).map((task: any) => String(task?.id) === String(taskId) ? { ...task, ...patch } : task),
+  tasks: (project?.tasks || []).map((task: any) => String(task?.id) === String(taskId) ? normalizeTaskPatch(task, patch) : task),
 })
 
-export const createProjectTask = (project: any, task: any) => ({
-  ...project,
-  tasks: [...(project?.tasks || []), task],
-})
+export const createProjectTask = (project: any, task: any) => {
+  const tasks = Array.isArray(project?.tasks) ? project.tasks : []
+  const maxOrder = tasks.reduce((max: number, row: any) => Math.max(max, Number(row?.order_index) || 0), 0)
+  return {
+    ...project,
+    tasks: [...tasks, normalizeTaskPatch({}, { ...task, order_index: task?.order_index ?? maxOrder + 10, metadata_json: taskMetadata(task) })],
+  }
+}
+
+export interface ProjectTaskWorkbenchRow {
+  task: any
+  id: number | string
+  parentId: number | string | null
+  depth: number
+  hasChildren: boolean
+}
+
+export const buildProjectTaskHierarchy = (project: any): ProjectTaskWorkbenchRow[] => {
+  const tasks = [...(Array.isArray(project?.tasks) ? project.tasks : [])]
+    .sort((a: any, b: any) => (Number(a?.order_index) || 0) - (Number(b?.order_index) || 0) || String(a?.name || '').localeCompare(String(b?.name || '')))
+  const byId = new Map(tasks.map((task: any) => [taskKey(task), task]))
+  const children = new Map<string, any[]>()
+  const roots: any[] = []
+  for (const task of tasks) {
+    const parentId = getProjectTaskParentId(task)
+    const parentKey = taskKey(parentId)
+    if (parentId != null && parentKey !== taskKey(task) && byId.has(parentKey)) {
+      const bucket = children.get(parentKey) || []; bucket.push(task); children.set(parentKey, bucket)
+    } else roots.push(task)
+  }
+  const rows: ProjectTaskWorkbenchRow[] = []; const visited = new Set<string>()
+  const visit = (task: any, depth: number, lineage = new Set<string>()) => {
+    const id = taskKey(task)
+    if (!id || visited.has(id) || lineage.has(id)) return
+    visited.add(id)
+    const nextLineage = new Set(lineage); nextLineage.add(id)
+    const childRows = children.get(id) || []
+    rows.push({ task, id: task.id, parentId: getProjectTaskParentId(task), depth, hasChildren: childRows.length > 0 })
+    childRows.forEach((child) => visit(child, depth + 1, nextLineage))
+  }
+  roots.forEach((task) => visit(task, 0))
+  tasks.forEach((task) => { if (!visited.has(taskKey(task))) visit(task, 0) })
+  return rows
+}
+
+export const getProjectTaskDescendantIds = (project: any, taskId: number | string): Set<string> => {
+  const rows = buildProjectTaskHierarchy(project); const start = rows.findIndex((row) => String(row.id) === String(taskId)); const result = new Set<string>()
+  if (start < 0) return result
+  const depth = rows[start].depth
+  for (let index = start + 1; index < rows.length && rows[index].depth > depth; index += 1) result.add(String(rows[index].id))
+  return result
+}
+
+export const setProjectTaskParent = (project: any, taskId: number | string, parentId: number | string | null) => {
+  const tasks = Array.isArray(project?.tasks) ? project.tasks : []
+  const task = tasks.find((row: any) => String(row?.id) === String(taskId))
+  if (!task) return project
+  const normalizedParent = parentId == null || String(parentId) === '' ? null : parentId
+  if (normalizedParent != null) {
+    if (String(normalizedParent) === String(taskId)) return project
+    if (!tasks.some((row: any) => String(row?.id) === String(normalizedParent))) return project
+    if (getProjectTaskDescendantIds(project, taskId).has(String(normalizedParent))) return project
+  }
+  const metadata_json = { ...taskMetadata(task) }
+  if (normalizedParent == null) delete metadata_json.wbs_parent_id
+  else metadata_json.wbs_parent_id = normalizedParent
+  return updateProjectTask(project, taskId, { metadata_json })
+}
+
+export const setProjectTaskMilestone = (project: any, taskId: number | string, isMilestone: boolean) => {
+  const task = (project?.tasks || []).find((row: any) => String(row?.id) === String(taskId))
+  if (!task) return project
+  return updateProjectTask(project, taskId, { metadata_json: { ...taskMetadata(task), is_milestone: Boolean(isMilestone) } })
+}
+
+const calendarStringShift = (value: any, days: number) => {
+  const ordinal = calendarOrdinal(value)
+  if (ordinal == null || !Number.isFinite(days)) return value
+  const date = new Date((ordinal + days) * DAY_MS)
+  return `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, '0')}-${String(date.getUTCDate()).padStart(2, '0')}`
+}
+
+export const bulkUpdateProjectTasks = (project: any, taskIds: Array<number | string>, patch: any) => {
+  const selected = new Set(taskIds.map(String)); if (!selected.size) return project
+  return {
+    ...project,
+    tasks: (project?.tasks || []).map((task: any) => {
+      if (!selected.has(String(task?.id))) return task
+      const direct: any = {}
+      for (const field of ['owner', 'status', 'priority', 'start_date', 'end_date', 'progress']) if (patch?.[field] !== undefined && patch[field] !== '') direct[field] = patch[field]
+      let next = normalizeTaskPatch(task, direct)
+      if (patch?.shiftDays) next = { ...next, start_date: calendarStringShift(next.start_date, Number(patch.shiftDays)), end_date: calendarStringShift(next.end_date, Number(patch.shiftDays)) }
+      if (patch?.milestone !== undefined && patch.milestone !== '') next = { ...next, metadata_json: { ...taskMetadata(next), is_milestone: Boolean(patch.milestone) } }
+      return next
+    }),
+  }
+}
+
+export const reorderProjectTaskBefore = (project: any, taskId: number | string, targetTaskId: number | string) => {
+  if (String(taskId) === String(targetTaskId)) return project
+  const rows = buildProjectTaskHierarchy(project); const movedIds = new Set([String(taskId), ...getProjectTaskDescendantIds(project, taskId)])
+  const block = rows.filter((row) => movedIds.has(String(row.id))).map((row) => row.task)
+  const rest = rows.filter((row) => !movedIds.has(String(row.id))).map((row) => row.task)
+  const targetIndex = rest.findIndex((task: any) => String(task?.id) === String(targetTaskId)); if (targetIndex < 0) return project
+  const ordered = [...rest.slice(0, targetIndex), ...block, ...rest.slice(targetIndex)]
+  const order = new Map(ordered.map((task: any, index: number) => [String(task.id), (index + 1) * 10]))
+  return { ...project, tasks: (project?.tasks || []).map((task: any) => ({ ...task, order_index: order.get(String(task.id)) ?? task.order_index })) }
+}
+
+export const indentProjectTask = (project: any, taskId: number | string) => {
+  const rows = buildProjectTaskHierarchy(project); const index = rows.findIndex((row) => String(row.id) === String(taskId)); if (index <= 0) return project
+  const candidate = rows[index - 1]; if (!candidate) return project
+  return setProjectTaskParent(project, taskId, candidate.id)
+}
+
+export const outdentProjectTask = (project: any, taskId: number | string) => {
+  const task = (project?.tasks || []).find((row: any) => String(row?.id) === String(taskId)); const parentId = getProjectTaskParentId(task)
+  if (!task || parentId == null) return project
+  const parent = (project?.tasks || []).find((row: any) => String(row?.id) === String(parentId))
+  return setProjectTaskParent(project, taskId, parent ? getProjectTaskParentId(parent) : null)
+}
+
+export const duplicateProjectTask = (project: any, taskId: number | string, newId: number | string) => {
+  const rows = buildProjectTaskHierarchy(project); const index = rows.findIndex((row) => String(row.id) === String(taskId)); if (index < 0) return project
+  const source = rows[index].task; const clone = { ...source, id: newId, name: `${source.name || 'Untitled task'} copy`, order_index: (Number(source.order_index) || (index + 1) * 10) + 1, metadata_json: { ...taskMetadata(source), comments: [] } }
+  return createProjectTask(project, clone)
+}
+
+export const deleteProjectTasks = (project: any, taskIds: Array<number | string>) => {
+  const deleted = new Set(taskIds.map(String)); if (!deleted.size) return project
+  const parentByDeleted = new Map<string, any>(); for (const task of project?.tasks || []) if (deleted.has(String(task.id))) parentByDeleted.set(String(task.id), getProjectTaskParentId(task))
+  const resolveParent = (parentId: any): any => { let current = parentId; const seen = new Set<string>(); while (current != null && deleted.has(String(current)) && !seen.has(String(current))) { seen.add(String(current)); current = parentByDeleted.get(String(current)) ?? null } return current }
+  const tasks = (project?.tasks || []).filter((task: any) => !deleted.has(String(task.id))).map((task: any) => {
+    const parentId = resolveParent(getProjectTaskParentId(task)); let next = task
+    if (String(parentId ?? '') !== String(getProjectTaskParentId(task) ?? '')) next = normalizeTaskPatch(task, { metadata_json: { ...taskMetadata(task), wbs_parent_id: parentId } })
+    if (parentId == null && next.metadata_json?.wbs_parent_id == null) { const metadata_json = { ...taskMetadata(next) }; delete metadata_json.wbs_parent_id; next = { ...next, metadata_json } }
+    const deps = (Array.isArray(next.dependencies_json) ? next.dependencies_json : []).filter((dep: any) => !deleted.has(taskKey(dep)))
+    return deps.length === (next.dependencies_json || []).length ? next : { ...next, dependencies_json: deps }
+  })
+  return { ...project, tasks }
+}
+
+export interface ParsedProjectTaskRow { name: string; owner?: string; status?: string; priority?: string; start_date?: string; end_date?: string; progress?: number }
+export const parseProjectTaskPaste = (text: string): ParsedProjectTaskRow[] => {
+  const lines = String(text || '').split(/\r?\n/).map((line) => line.trimEnd()).filter((line) => line.trim())
+  if (!lines.length) return []
+  const cells = lines.map((line) => line.split('\t').map((cell) => cell.trim()))
+  const normalized = cells[0].map((cell) => cell.toLowerCase().replace(/[^a-z]/g, ''))
+  const headerMap: Record<string, keyof ParsedProjectTaskRow> = { task: 'name', name: 'name', owner: 'owner', assignee: 'owner', status: 'status', priority: 'priority', start: 'start_date', startdate: 'start_date', finish: 'end_date', finishdate: 'end_date', end: 'end_date', enddate: 'end_date', duedate: 'end_date', progress: 'progress' }
+  const hasHeader = normalized.some((cell) => headerMap[cell]) && normalized.some((cell) => ['task','name'].includes(cell))
+  const columns = hasHeader ? normalized.map((cell) => headerMap[cell] || null) : ['name','owner','status','priority','start_date','end_date','progress'] as Array<keyof ParsedProjectTaskRow | null>
+  return cells.slice(hasHeader ? 1 : 0).map((row) => {
+    const parsed: any = {}
+    row.forEach((value, index) => { const field = columns[index]; if (!field || !value) return; parsed[field] = field === 'progress' ? Number(value.replace('%','')) : value })
+    if (!parsed.name) parsed.name = row[0] || ''
+    if (!PROJECT_TASK_STATUSES.includes(parsed.status as any)) delete parsed.status
+    if (parsed.progress != null && !Number.isFinite(parsed.progress)) delete parsed.progress
+    return parsed as ParsedProjectTaskRow
+  }).filter((row) => row.name.trim())
+}
 
 export const filterProjectsForGoldenView = (
   projects: any[],

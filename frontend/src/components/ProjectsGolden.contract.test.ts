@@ -6,7 +6,7 @@ import path from 'node:path'
 const source = fs.readFileSync(path.resolve(__dirname, 'ProjectsGolden.tsx'), 'utf8')
 const model = fs.readFileSync(path.resolve(__dirname, 'ProjectsGolden.model.ts'), 'utf8')
 
-describe('Projects member-first foundation golden contract', () => {
+describe('Projects complete task workbench golden contract', () => {
   it('keeps Projects on the shared hybrid workspace shell while adding one unified workbench shell', () => {
     expect(source).toContain('<OperationalWorkspaceShell')
     expect(source).toContain('archetype="hybrid"')
@@ -109,4 +109,72 @@ describe('Projects member-first foundation golden contract', () => {
     expect(source).not.toContain('/api/v1/project-governance')
     expect(source).not.toContain('/api/v1/project-forecast')
   })
+
+  it('promotes Tasks into a high-speed inline workbench instead of a read-only foundation list', () => {
+    expect(source).toContain('data-project-task-workbench="true"')
+    expect(source).toContain('Inline authoring · WBS hierarchy · bulk operations')
+    for (const marker of ['Task name ${task.id}', 'Owner ${task.id}', 'Start date ${task.id}', 'Finish date ${task.id}', 'Status ${task.id}', 'Progress ${task.id}', 'Priority ${task.id}']) expect(source).toContain(marker)
+    expect(source).toContain('Type a task and press Enter…')
+    expect(source).toContain('Enter creates another row · Tab moves through fields')
+  })
+
+  it('owns WBS hierarchy, collapse, indent/outdent and subtree reorder through the canonical task model', () => {
+    for (const marker of ['buildProjectTaskHierarchy', 'getProjectTaskParentId', 'getProjectTaskDescendantIds', 'setProjectTaskParent', 'indentProjectTask', 'outdentProjectTask', 'reorderProjectTaskBefore']) expect(model).toContain(marker)
+    expect(source).toContain('data-task-depth={String(row.depth)}')
+    expect(source).toContain('Reorder ${task.name}')
+    expect(source).toContain('Indent ${task.name}')
+    expect(source).toContain('Outdent ${task.name}')
+  })
+
+  it('adds spreadsheet paste, multi-select and bounded bulk task operations without a second task store', () => {
+    expect(source).toContain('data-project-task-paste="true"')
+    expect(source).toContain('data-project-task-bulkbar="true"')
+    expect(source).toContain('Paste rows from Excel / Sheets')
+    expect(model).toContain('parseProjectTaskPaste')
+    expect(model).toContain('bulkUpdateProjectTasks')
+    expect(source).toContain('Select visible tasks')
+    expect(source).toContain('Shift days')
+    expect(source).toContain('Milestone')
+  })
+
+  it('makes the persistent task drawer directly editable and preserves deep task context', () => {
+    expect(source).toContain('data-project-task-drawer-editable="true"')
+    expect(source).toContain('data-project-task-checklist="true"')
+    expect(source).toContain('data-project-task-dependencies="true"')
+    expect(source).toContain('Choose predecessor by task name…')
+    expect(source).toContain('autosaves on blur')
+    expect(source).toContain('WBS parent')
+    expect(source).toContain('Comments & project material')
+    expect(source).toContain('Recent task activity')
+  })
+
+  it('serializes rapid authoritative Project writes and provides bounded undo/redo history', () => {
+    expect(source).toContain("scope: { id: 'projects-authoritative-write' }")
+    expect(source).toContain('taskHistory')
+    expect(source).toContain(".slice(-40)")
+    expect(source).toContain('Task workbench undo')
+    expect(source).toContain('Task workbench redo')
+    expect(source).toContain('structuredClone(selectedProject.tasks || [])')
+  })
+
+  it('extends stale-write fingerprints to hierarchy, ordering, descriptions and task metadata', () => {
+    expect(model).toContain('description: task?.description')
+    expect(model).toContain('order_index: task?.order_index')
+    expect(model).toContain('metadata_json: task?.metadata_json')
+    expect(model).toContain('metadata_json: project?.metadata_json || null')
+  })
+
+  it('keeps direct inline edits canonical for completed and reopened progress semantics', () => {
+    expect(model).toContain("if (next.status === 'Completed') next.progress = 100")
+    expect(model).toContain("task?.status === 'Completed'")
+    expect(model).toContain('Math.min(99')
+  })
+
+  it('does not introduce a task-workbench backend schema or alternate Project API family', () => {
+    expect(source).not.toContain('/api/v1/project-tasks')
+    expect(source).not.toContain('/api/v2/projects')
+    expect(model).toContain('wbs_parent_id')
+    expect(model).toContain('is_milestone')
+  })
+
 })

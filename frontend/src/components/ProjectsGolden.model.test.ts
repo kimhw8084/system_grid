@@ -7,6 +7,8 @@ import {
   PROJECT_TASK_STATUSES,
   appendProjectAudit,
   buildCrossProjectDependencies,
+  buildProjectTaskHierarchy,
+  bulkUpdateProjectTasks,
   buildOwnerWorkload,
   buildPortfolioMetrics,
   buildProjectAttentionItems,
@@ -16,7 +18,9 @@ import {
   buildProjectReportSummary,
   captureProjectReviewSnapshot,
   createProjectTask,
+  deleteProjectTasks,
   diversifyAttentionItems,
+  duplicateProjectTask,
   filterProjectsForGoldenView,
   getBenefitRealization,
   getCriticalTaskIds,
@@ -27,15 +31,23 @@ import {
   getProjectGovernance,
   getProjectHealth,
   getProjectMilestones,
+  getProjectTaskDescendantIds,
+  getProjectTaskParentId,
   getTaskProgress,
+  indentProjectTask,
   moveProjectTaskStatus,
   normalizeProjectFilterValue,
+  outdentProjectTask,
+  parseProjectTaskPaste,
   normalizeTaskStatus,
   projectFingerprint,
+  reorderProjectTaskBefore,
   resolveProjectGoldenView,
   resolveProjectInsightSection,
   resolveProjectPortfolioSection,
   setProjectBenefitTargets,
+  setProjectTaskMilestone,
+  setProjectTaskParent,
   simulateProjectScenario,
   toggleStageGateEvidence,
   updateProjectTask,
@@ -242,4 +254,86 @@ describe('Projects governance and forecasting model', () => {
   it('retains project execution progress compatibility', () => {
     expect(getProjectExecutionProgress(projects[0])).toBe(40)
   })
+
+  it('builds stable WBS hierarchy, supports indent/outdent, and rejects hierarchy cycles', () => {
+    const base: any = { id: 9, tasks: [
+      { id: 1, name: 'Phase', order_index: 10, metadata_json: {} },
+      { id: 2, name: 'Child', order_index: 20, metadata_json: {} },
+      { id: 3, name: 'Grandchild', order_index: 30, metadata_json: {} },
+    ] }
+    const indented = indentProjectTask(base, 2)
+    expect(getProjectTaskParentId(indented.tasks.find((task: any) => task.id === 2))).toBe(1)
+    const nested = indentProjectTask(indented, 3)
+    expect(getProjectTaskParentId(nested.tasks.find((task: any) => task.id === 3))).toBe(2)
+    expect(buildProjectTaskHierarchy(nested).map((row) => [row.id, row.depth])).toEqual([[1,0],[2,1],[3,2]])
+    expect(getProjectTaskDescendantIds(nested, 1)).toEqual(new Set(['2','3']))
+    expect(setProjectTaskParent(nested, 1, 3)).toBe(nested)
+    const outdented = outdentProjectTask(nested, 3)
+    expect(getProjectTaskParentId(outdented.tasks.find((task: any) => task.id === 3))).toBe(1)
+  })
+
+  it('reorders a task subtree as one WBS block', () => {
+    const base: any = { tasks: [
+      { id: 1, name: 'A', order_index: 10, metadata_json: {} },
+      { id: 2, name: 'A1', order_index: 20, metadata_json: { wbs_parent_id: 1 } },
+      { id: 3, name: 'B', order_index: 30, metadata_json: {} },
+      { id: 4, name: 'C', order_index: 40, metadata_json: {} },
+    ] }
+    const moved = reorderProjectTaskBefore(base, 1, 4)
+    expect(buildProjectTaskHierarchy(moved).map((row) => row.id)).toEqual([3,1,2,4])
+  })
+
+  it('bulk edits task truth with canonical status progress, dates, milestone and shift semantics', () => {
+    const base: any = { tasks: [
+      { id: 1, name: 'A', status: 'In Progress', progress: 25, start_date: '2026-08-28', end_date: '2026-08-30', metadata_json: {} },
+      { id: 2, name: 'B', status: 'To Do', progress: 0, start_date: '2026-09-01', end_date: '2026-09-02', metadata_json: {} },
+    ] }
+    const changed = bulkUpdateProjectTasks(base, [1,2], { status: 'Completed', owner: 'alice', milestone: true, shiftDays: 2 })
+    expect(changed.tasks.every((task: any) => task.progress === 100 && task.owner === 'alice' && task.metadata_json.is_milestone)).toBe(true)
+    expect(changed.tasks[0].start_date).toBe('2026-08-30')
+    expect(changed.tasks[1].end_date).toBe('2026-09-04')
+  })
+
+  it('duplicates and deletes tasks without leaving broken hierarchy or dependency references', () => {
+    const base: any = { tasks: [
+      { id: 1, name: 'Parent', order_index: 10, metadata_json: {} },
+      { id: 2, name: 'Child', order_index: 20, metadata_json: { wbs_parent_id: 1 }, dependencies_json: [] },
+      { id: 3, name: 'Dependent', order_index: 30, metadata_json: {}, dependencies_json: [2] },
+    ] }
+    const duplicated = duplicateProjectTask(base, 2, 20)
+    expect(duplicated.tasks.find((task: any) => task.id === 20).name).toBe('Child copy')
+    const deleted = deleteProjectTasks(base, [1])
+    expect(getProjectTaskParentId(deleted.tasks.find((task: any) => task.id === 2))).toBe(null)
+    const deletedChild = deleteProjectTasks(base, [2])
+    expect(deletedChild.tasks.find((task: any) => task.id === 3).dependencies_json).toEqual([])
+  })
+
+  it('parses spreadsheet paste with headers or positional columns and rejects invalid statuses', () => {
+    expect(parseProjectTaskPaste('Task\tOwner\tStatus\tPriority\tStart\tFinish\tProgress\nInstall\tAlice\tIn Progress\tHigh\t2026-09-01\t2026-09-03\t40%')).toEqual([{ name: 'Install', owner: 'Alice', status: 'In Progress', priority: 'High', start_date: '2026-09-01', end_date: '2026-09-03', progress: 40 }])
+    expect(parseProjectTaskPaste('Validate\tBob\tLegacy\tMedium')[0]).toMatchObject({ name: 'Validate', owner: 'Bob', priority: 'Medium' })
+    expect(parseProjectTaskPaste('Validate\tBob\tLegacy\tMedium')[0].status).toBeUndefined()
+  })
+
+  it('makes hierarchy, description, ordering and checklist metadata participate in stale-write fingerprints', () => {
+    const base = projectFingerprint(projects[0])
+    expect(projectFingerprint(updateProjectTask(projects[0], 11, { description: 'new detail' }))).not.toBe(base)
+    expect(projectFingerprint(updateProjectTask(projects[0], 11, { order_index: 99 }))).not.toBe(base)
+    expect(projectFingerprint(updateProjectTask(projects[0], 11, { metadata_json: { wbs_parent_id: 12 } }))).not.toBe(base)
+  })
+
+  it('normalizes direct inline status and progress updates consistently with board status moves', () => {
+    const completed = updateProjectTask(projects[0], 13, { status: 'Completed', progress: 10 })
+    expect(completed.tasks.find((task: any) => task.id === 13).progress).toBe(100)
+    const reopened = updateProjectTask(completed, 13, { status: 'In Progress' })
+    expect(reopened.tasks.find((task: any) => task.id === 13).progress).toBe(50)
+    const capped = updateProjectTask(projects[0], 13, { progress: 100 })
+    expect(capped.tasks.find((task: any) => task.id === 13).progress).toBe(99)
+  })
+
+  it('marks task milestones through the existing task metadata contract', () => {
+    const changed = setProjectTaskMilestone(projects[0], 13, true)
+    expect(changed.tasks.find((task: any) => task.id === 13).metadata_json.is_milestone).toBe(true)
+    expect(getProjectMilestones(changed, NOW).some((row) => row.id === 13)).toBe(true)
+  })
+
 })
