@@ -79,6 +79,82 @@ export const normalizeProjectFilterValue = (value?: string | null) => {
   return !normalized || normalized.toLowerCase() === 'all' ? 'ALL' : normalized
 }
 
+export interface ProjectSavedViewState {
+  search: string
+  statusFilter: string
+  priorityFilter: string
+  sortMode: ProjectSortMode
+  watchedOnly: boolean
+  view: ProjectGoldenView
+}
+
+export interface ProjectWorkspaceViewDefinition {
+  searchTerm: string
+  filters: { status: string[]; priority: string[]; watch: string[] }
+  activeTab: ProjectGoldenView
+  mode: ProjectSortMode
+}
+
+const normalizeProjectSortMode = (value: unknown): ProjectSortMode => {
+  const normalized = String(value ?? '').trim().toLowerCase()
+  return PROJECT_SORT_MODES.includes(normalized as ProjectSortMode) ? normalized as ProjectSortMode : 'order'
+}
+
+const projectSavedViewStringList = (value: unknown): string[] => {
+  if (!Array.isArray(value)) return []
+  const result: string[] = []
+  value.slice(0, 200).forEach((entry) => {
+    if (typeof entry !== 'string') return
+    const normalized = entry.trim()
+    if (normalized && !result.includes(normalized)) result.push(normalized)
+  })
+  return result
+}
+
+export const normalizeProjectSavedViewState = (value: unknown): ProjectSavedViewState => {
+  const record = value && typeof value === 'object' && !Array.isArray(value) ? value as Record<string, unknown> : {}
+  return {
+    search: typeof record.search === 'string' ? record.search.trim().slice(0, 500) : '',
+    statusFilter: normalizeProjectFilterValue(typeof record.statusFilter === 'string' ? record.statusFilter : 'ALL'),
+    priorityFilter: normalizeProjectFilterValue(typeof record.priorityFilter === 'string' ? record.priorityFilter : 'ALL'),
+    sortMode: normalizeProjectSortMode(record.sortMode),
+    watchedOnly: record.watchedOnly === true,
+    view: resolveProjectGoldenView(typeof record.view === 'string' ? record.view : null),
+  }
+}
+
+export const projectSavedViewToWorkspaceDefinition = (value: unknown): ProjectWorkspaceViewDefinition => {
+  const state = normalizeProjectSavedViewState(value)
+  return {
+    searchTerm: state.search,
+    filters: {
+      status: state.statusFilter === 'ALL' ? [] : [state.statusFilter],
+      priority: state.priorityFilter === 'ALL' ? [] : [state.priorityFilter],
+      watch: state.watchedOnly ? ['watched'] : [],
+    },
+    activeTab: state.view,
+    mode: state.sortMode,
+  }
+}
+
+export const projectSavedViewFromWorkspaceDefinition = (value: unknown): ProjectSavedViewState => {
+  const record = value && typeof value === 'object' && !Array.isArray(value) ? value as Record<string, unknown> : {}
+  const filters = record.filters && typeof record.filters === 'object' && !Array.isArray(record.filters)
+    ? record.filters as Record<string, unknown>
+    : {}
+  const status = projectSavedViewStringList(filters.status)[0] || 'ALL'
+  const priority = projectSavedViewStringList(filters.priority)[0] || 'ALL'
+  const watch = projectSavedViewStringList(filters.watch)
+  return normalizeProjectSavedViewState({
+    search: typeof record.searchTerm === 'string' ? record.searchTerm : '',
+    statusFilter: status,
+    priorityFilter: priority,
+    sortMode: record.mode,
+    watchedOnly: watch.includes('watched'),
+    view: typeof record.activeTab === 'string' ? record.activeTab : null,
+  })
+}
+
 export const normalizeTaskStatus = (value?: string | null): ProjectTaskStatus | 'Unknown' => (
   PROJECT_TASK_STATUSES.includes(value as ProjectTaskStatus) ? value as ProjectTaskStatus : 'Unknown'
 )

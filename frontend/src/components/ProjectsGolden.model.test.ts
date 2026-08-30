@@ -6,6 +6,7 @@ import {
   PROJECT_REPORTING_KEY,
   PROJECT_UPDATES_KEY,
   PROJECT_RAIL_SCOPES,
+  PROJECT_SORT_MODES,
   PROJECT_TASK_STATUSES,
   PROJECT_TIMELINE_ZOOMS,
   addProjectMaterial,
@@ -58,6 +59,9 @@ import {
   moveProjectTaskStatus,
   moveProjectTaskSchedule,
   normalizeProjectFilterValue,
+  normalizeProjectSavedViewState,
+  projectSavedViewFromWorkspaceDefinition,
+  projectSavedViewToWorkspaceDefinition,
   outdentProjectTask,
   parseProjectTaskPaste,
   normalizeTaskStatus,
@@ -514,6 +518,60 @@ describe('Projects governance and forecasting model', () => {
     expect(snapshot.summary.latestUpdates.map((row: any) => row.id)).toEqual(['update-frozen-1'])
     expect(snapshot.summary.latestUpdates[0].mentions).toEqual(['@alice'])
     expect(buildProjectReportSummary(later, NOW).latestUpdates.map((row: any) => row.id)).toEqual(['update-live-2', 'update-frozen-1'])
+  })
+
+  it('normalizes malformed local Project saved views onto accepted defaults', () => {
+    expect(PROJECT_SORT_MODES).toContain('order')
+    expect(normalizeProjectSavedViewState({
+      search: '  release  ',
+      statusFilter: 'all',
+      priorityFilter: 'High',
+      sortMode: 'not-a-sort',
+      watchedOnly: 'yes',
+      view: 'not-a-view',
+    })).toEqual({
+      search: 'release',
+      statusFilter: 'ALL',
+      priorityFilter: 'High',
+      sortMode: 'order',
+      watchedOnly: false,
+      view: 'overview',
+    })
+  })
+
+  it('round-trips the local Project saved-view shape through the shared workspace definition', () => {
+    const local = {
+      search: 'release',
+      statusFilter: 'In Progress',
+      priorityFilter: 'Highest',
+      sortMode: 'deadline',
+      watchedOnly: true,
+      view: 'reports',
+    }
+    const definition = projectSavedViewToWorkspaceDefinition(local)
+    expect(definition).toEqual({
+      searchTerm: 'release',
+      filters: { status: ['In Progress'], priority: ['Highest'], watch: ['watched'] },
+      activeTab: 'reports',
+      mode: 'deadline',
+    })
+    expect(projectSavedViewFromWorkspaceDefinition(definition)).toEqual(local)
+  })
+
+  it('treats unsupported remote Project saved-view values as bounded defaults', () => {
+    expect(projectSavedViewFromWorkspaceDefinition({
+      searchTerm: '  portfolio  ',
+      filters: { status: [], priority: ['Medium'], watch: ['unexpected'] },
+      activeTab: 'unknown',
+      mode: 'sideways',
+    })).toEqual({
+      search: 'portfolio',
+      statusFilter: 'ALL',
+      priorityFilter: 'Medium',
+      sortMode: 'order',
+      watchedOnly: false,
+      view: 'overview',
+    })
   })
 
 

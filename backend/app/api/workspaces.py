@@ -17,7 +17,7 @@ from .utils import get_current_user_id, normalize_json_object
 router = APIRouter(prefix="/workspaces", tags=["Workspaces"])
 
 WorkspaceScope = Literal["personal", "team"]
-WorkspaceArchetype = Literal["table", "topology_hybrid", "investigation", "research"]
+WorkspaceArchetype = Literal["table", "topology_hybrid", "investigation", "research", "hybrid"]
 
 MAX_VIEW_DEFINITION_BYTES = 64 * 1024
 MAX_SEARCH_LENGTH = 500
@@ -254,6 +254,14 @@ WORKSPACE_DEFINITIONS: dict[str, WorkspaceDefinition] = {
         active_tabs=["active", "deleted"],
         modes=["portfolio", "investigation", "evidence"],
         lifecycle_actions=["archive", "restore"],
+    ),
+    "projects": _definition(
+        "projects", "/projects", "hybrid",
+        ["saved_views", "search", "filters", "deep_links", "custom_body"],
+        allowed_keys=["searchTerm", "filters", "activeTab", "mode"],
+        quick_filter_keys=["status", "priority", "watch"],
+        active_tabs=["overview", "tasks", "timeline", "board", "files", "updates", "reports", "insights", "portfolio"],
+        modes=["order", "health", "priority", "deadline", "progress", "blocked", "value", "name"],
     ),
     "vendors": _definition(
         "vendors", "/vendors", "table",
