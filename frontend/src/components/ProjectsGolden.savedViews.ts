@@ -11,6 +11,8 @@ const asRecord = (value: unknown): Record<string, unknown> | null => (
   value && typeof value === 'object' && !Array.isArray(value) ? value as Record<string, unknown> : null
 )
 
+export type ProjectSavedViewScope = 'personal' | 'team'
+
 export const normalizeProjectSavedViewName = (value: unknown) => (
   typeof value === 'string' ? value.split(/\s+/).filter(Boolean).join(' ').slice(0, 120) : ''
 )
@@ -22,15 +24,19 @@ export interface ProjectSavedViewOption {
   state: ProjectSavedViewState
   remoteId?: number
   revision?: number
+  scope?: ProjectSavedViewScope
+  teamId?: number | null
+  isFavorite?: boolean
+  isDefault?: boolean
 }
 
 export interface ProjectRemoteSavedViewRecord {
   id: number
   workspace_key: 'projects'
   name: string
-  scope?: 'personal'
+  scope: ProjectSavedViewScope
   owner_user_id?: string
-  team_id?: null
+  team_id: number | null
   definition: Record<string, unknown>
   schema_version: 1
   revision: number
@@ -68,8 +74,13 @@ export const projectSavedViewOptionFromRemoteRecord = (entry: unknown): ProjectS
   const definition = record ? asRecord(record.definition) : null
   if (!record || !definition) return null
   if (record.workspace_key !== undefined && record.workspace_key !== 'projects') return null
-  if (record.scope !== undefined && record.scope !== 'personal') return null
-  if (record.team_id !== undefined && record.team_id !== null) return null
+  const scope: ProjectSavedViewScope | null = record.scope === 'team'
+    ? 'team'
+    : record.scope === 'personal' || record.scope === undefined ? 'personal' : null
+  if (!scope) return null
+  const teamId = record.team_id == null ? null : Number(record.team_id)
+  if (scope === 'personal' && teamId !== null) return null
+  if (scope === 'team' && (!Number.isSafeInteger(teamId) || Number(teamId) < 1)) return null
   if (record.schema_version !== 1) return null
   const id = Number(record.id)
   const name = normalizeProjectSavedViewName(record.name)
@@ -83,11 +94,19 @@ export const projectSavedViewOptionFromRemoteRecord = (entry: unknown): ProjectS
     source: 'remote',
     remoteId: id,
     revision,
+    scope,
+    teamId,
+    isFavorite: record.is_favorite === true,
+    isDefault: record.is_default === true,
     state: projectSavedViewFromWorkspaceDefinition(definition),
   }
 }
 
-const remoteProjectSavedViewOptions = (value: unknown): ProjectSavedViewOption[] => {
+const remoteProjectSavedViewOptions = (
+  value: unknown,
+  expectedScope: ProjectSavedViewScope,
+  expectedTeamId?: number | null,
+): ProjectSavedViewOption[] => {
   const payload = asRecord(value)
   const views = payload && Array.isArray(payload.views) ? payload.views : []
   const seen = new Set<number>()
@@ -95,17 +114,58 @@ const remoteProjectSavedViewOptions = (value: unknown): ProjectSavedViewOption[]
 
   views.slice(0, MAX_PROJECT_SAVED_VIEW_OPTIONS).forEach((entry) => {
     const option = projectSavedViewOptionFromRemoteRecord(entry)
-    if (!option?.remoteId || seen.has(option.remoteId)) return
+    if (!option?.remoteId || seen.has(option.remoteId) || option.scope !== expectedScope) return
+    if (expectedScope === 'team' && option.teamId !== expectedTeamId) return
     seen.add(option.remoteId)
     result.push(option)
   })
-  return result
+  return result.sort((left, right) => (
+    Number(Boolean(right.isDefault)) - Number(Boolean(left.isDefault))
+    || Number(Boolean(right.isFavorite)) - Number(Boolean(left.isFavorite))
+  ))
 }
 
-export const reconcileProjectSavedViewOptions = (localValue: unknown, remoteValue: unknown): ProjectSavedViewOption[] => [
-  ...remoteProjectSavedViewOptions(remoteValue),
+export const reconcileProjectSavedViewOptions = (
+  localValue: unknown,
+  personalRemoteValue: unknown,
+  teamRemoteValue?: unknown,
+  currentTeamId?: number | null,
+): ProjectSavedViewOption[] => [
+  ...remoteProjectSavedViewOptions(personalRemoteValue, 'personal'),
+  ...(Number.isSafeInteger(currentTeamId) && Number(currentTeamId) > 0
+    ? remoteProjectSavedViewOptions(teamRemoteValue, 'team', Number(currentTeamId))
+    : []),
   ...localProjectSavedViewOptions(localValue),
 ]
+
+export const projectSavedViewOptionLabel = (option: ProjectSavedViewOption) => {
+  if (option.source === 'local') return `${option.name} · Local`
+  const scopeLabel = option.scope === 'team' ? 'Team' : 'Personal'
+  const metadata = option.isDefault ? ' · Default' : option.isFavorite ? ' · Favorite' : ''
+  return `${option.name} · ${scopeLabel}${metadata}`
+}
+
+export const resolveProjectCurrentTeamId = (operatorsValue: unknown, currentUserId: unknown): number | null => {
+  if (!Array.isArray(operatorsValue) || typeof currentUserId !== 'string' || !currentUserId.trim()) return null
+  const current = operatorsValue.find((entry) => {
+    const record = asRecord(entry)
+    return record && record.username === currentUserId.trim()
+  })
+  const teamId = Number(asRecord(current)?.team_id)
+  return Number.isSafeInteger(teamId) && teamId > 0 ? teamId : null
+}
+
+export const projectSavedViewLinkedRemoteId = (value: unknown): number | null => {
+  if (typeof value !== 'string' || !/^\d+$/.test(value.trim())) return null
+  const id = Number(value)
+  return Number.isSafeInteger(id) && id > 0 ? id : null
+}
+
+export const buildProjectSavedViewShareSearch = (searchValue: unknown, remoteId: number) => {
+  const params = new URLSearchParams(typeof searchValue === 'string' ? searchValue : '')
+  if (Number.isSafeInteger(remoteId) && remoteId > 0) params.set('saved_view', String(remoteId))
+  return params.toString()
+}
 
 export const projectSavedViewStateForSelection = (
   options: ProjectSavedViewOption[],
@@ -125,12 +185,15 @@ export const buildProjectSavedViewMutationPayload = (
   nameValue: unknown,
   stateValue: unknown,
   revision?: number,
+  scope: ProjectSavedViewScope = 'personal',
+  teamId?: number | null,
 ) => {
   const name = normalizeProjectSavedViewName(nameValue)
+  const normalizedTeamId = scope === 'team' && Number.isSafeInteger(teamId) && Number(teamId) > 0 ? Number(teamId) : null
   const payload: Record<string, unknown> = {
     name,
-    scope: 'personal',
-    team_id: null,
+    scope,
+    team_id: normalizedTeamId,
     definition: projectSavedViewToWorkspaceDefinition(stateValue),
     schema_version: 1,
   }
@@ -145,7 +208,7 @@ export const projectSavedViewConflictFromError = (error: unknown): ProjectSavedV
   const detail = data ? asRecord(data.detail) : null
   const currentRecord = detail ? asRecord(detail.current) : null
   const option = projectSavedViewOptionFromRemoteRecord(currentRecord)
-  if (!option?.remoteId || !option.revision || !currentRecord) return null
+  if (!option?.remoteId || !option.revision || !option.scope || !currentRecord) return null
   return {
     message: typeof detail?.message === 'string' && detail.message.trim()
       ? detail.message.trim()
@@ -155,8 +218,8 @@ export const projectSavedViewConflictFromError = (error: unknown): ProjectSavedV
       id: option.remoteId,
       workspace_key: 'projects',
       name: option.name,
-      scope: 'personal',
-      team_id: null,
+      scope: option.scope,
+      team_id: option.scope === 'team' ? option.teamId || null : null,
       definition: asRecord(currentRecord.definition) || {},
       schema_version: 1,
       revision: option.revision,
