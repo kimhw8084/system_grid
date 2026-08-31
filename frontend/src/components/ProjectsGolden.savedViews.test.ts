@@ -4,7 +4,9 @@ import {
   buildProjectSavedViewShareSearch,
   projectSavedViewConflictFromError,
   projectSavedViewLinkedRemoteId,
+  projectSavedViewOptionFromRemoteRecord,
   projectSavedViewOptionLabel,
+  projectSavedViewSectionFromSearch,
   projectSavedViewStateForSelection,
   projectSavedViewStatesEqual,
   reconcileProjectSavedViewOptions,
@@ -125,4 +127,86 @@ describe('Projects shared saved-view integration', () => {
     expect(withNew.views.map((row: any) => row.id)).toEqual([2, 1])
     expect((removeProjectRemoteSavedViewPayload(withNew, 2) as any).views.map((row: any) => row.id)).toEqual([1])
   })
+
+  it('persists and restores nested Portfolio and Insights sections without widening the workspace schema', () => {
+    window.history.replaceState({}, '', '/projects?view=portfolio&section=roadmap')
+    const portfolioPayload = buildProjectSavedViewMutationPayload('Roadmap lens', {
+      search: '', statusFilter: 'ALL', priorityFilter: 'ALL', sortMode: 'order', watchedOnly: false, view: 'portfolio',
+    }) as any
+    expect(portfolioPayload.definition).toMatchObject({ activeTab: 'portfolio', filters: { watch: ['sysgrid:project-section:roadmap'] } })
+    expect(portfolioPayload.definition).not.toHaveProperty('section')
+
+    const roadmap = projectSavedViewOptionFromRemoteRecord({
+      id: 51, workspace_key: 'projects', scope: 'personal', team_id: null, name: 'Roadmap lens', schema_version: 1, revision: 1,
+      definition: { searchTerm: '', filters: { status: [], priority: [], watch: ['sysgrid:project-section:roadmap'] }, activeTab: 'portfolio', mode: 'order' },
+    })
+    expect(roadmap?.state).toMatchObject({ view: 'roadmap', watchedOnly: false })
+
+    window.history.replaceState({}, '', '/projects?view=insights&section=governance')
+    const governancePayload = buildProjectSavedViewMutationPayload('Governance lens', {
+      search: '', statusFilter: 'ALL', priorityFilter: 'ALL', sortMode: 'order', watchedOnly: false, view: 'insights',
+    }) as any
+    expect(governancePayload.definition).toMatchObject({ activeTab: 'insights', filters: { watch: ['sysgrid:project-section:governance'] } })
+    expect(governancePayload.definition).not.toHaveProperty('section')
+    const governance = projectSavedViewOptionFromRemoteRecord({
+      id: 52, workspace_key: 'projects', scope: 'team', team_id: 42, name: 'Governance lens', schema_version: 1, revision: 2,
+      definition: { searchTerm: '', filters: { status: [], priority: [], watch: ['sysgrid:project-section:governance'] }, activeTab: 'insights', mode: 'order' },
+    })
+    expect(governance?.state.view).toBe('governance')
+  })
+
+  it('keeps legacy defaults but preserves an explicit nested section carried by a matching saved_view link', () => {
+    const legacy = projectSavedViewOptionFromRemoteRecord({
+      id: 61, workspace_key: 'projects', scope: 'personal', team_id: null, name: 'Legacy portfolio', schema_version: 1, revision: 1,
+      definition: { activeTab: 'portfolio' },
+    })
+    expect(legacy?.state.view).toBe('portfolio')
+    const options = legacy ? [legacy] : []
+
+    window.history.replaceState({}, '', '/projects?view=portfolio&section=owners&saved_view=61')
+    expect(projectSavedViewStateForSelection(options, 'remote:61')?.view).toBe('owners')
+
+    window.history.replaceState({}, '', '/projects?view=portfolio&section=owners&saved_view=99')
+    expect(projectSavedViewStateForSelection(options, 'remote:61')?.view).toBe('portfolio')
+  })
+
+  it('captures nested section metadata only for local rows not yet persisted, while legacy rows keep safe defaults', () => {
+    window.localStorage.removeItem('sysgrid_projects_saved_view_sections_v1')
+    const newId = String(Date.now())
+    const fresh = { id: newId, name: 'Local roadmap', view: 'portfolio' }
+    window.localStorage.setItem('sysgrid_projects_workbench_v1', JSON.stringify({ savedViews: [fresh] }))
+    window.history.replaceState({}, '', '/projects?view=portfolio&section=roadmap')
+    const localOptions = reconcileProjectSavedViewOptions([fresh], { views: [] })
+    expect(localOptions[0].state.view).toBe('roadmap')
+    expect(JSON.parse(window.localStorage.getItem('sysgrid_projects_saved_view_sections_v1') || '{}')).toMatchObject({ [newId]: 'roadmap' })
+    expect(JSON.parse(window.localStorage.getItem('sysgrid_projects_workbench_v1') || '{}').savedViews[0]).toMatchObject({ id: newId, section: 'roadmap' })
+
+    const legacy = { id: 'legacy-existing', name: 'Legacy local', view: 'portfolio' }
+    window.localStorage.removeItem('sysgrid_projects_saved_view_sections_v1')
+    window.localStorage.setItem('sysgrid_projects_workbench_v1', JSON.stringify({ savedViews: [legacy] }))
+    window.history.replaceState({}, '', '/projects?view=portfolio&section=owners')
+    const legacyOptions = reconcileProjectSavedViewOptions([legacy], { views: [] })
+    expect(legacyOptions[0].state.view).toBe('portfolio')
+
+    const replacement = { id: String(Date.now() + 1), name: 'Replace me', view: 'insights' }
+    window.localStorage.setItem('sysgrid_projects_workbench_v1', JSON.stringify({ savedViews: [replacement] }))
+    window.history.replaceState({}, '', '/projects?view=insights&section=governance')
+    const replacementOptions = reconcileProjectSavedViewOptions([replacement], { views: [] })
+    expect(replacementOptions[0].state.view).toBe('governance')
+  })
+
+  it('tracks nested section changes as saved-view dirty state and normalizes default sections', () => {
+    const savedRoadmap = { search: '', statusFilter: 'ALL', priorityFilter: 'ALL', sortMode: 'order', watchedOnly: false, view: 'roadmap' }
+    const currentPortfolio = { search: '', statusFilter: 'ALL', priorityFilter: 'ALL', sortMode: 'order', watchedOnly: false, view: 'portfolio' }
+    window.history.replaceState({}, '', '/projects?view=portfolio&section=roadmap')
+    expect(projectSavedViewStatesEqual(savedRoadmap, currentPortfolio)).toBe(true)
+    window.history.replaceState({}, '', '/projects?view=portfolio&section=owners')
+    expect(projectSavedViewStatesEqual(savedRoadmap, currentPortfolio)).toBe(false)
+
+    window.history.replaceState({}, '', '/projects?view=portfolio&section=control')
+    expect(projectSavedViewStatesEqual({ ...currentPortfolio, view: 'portfolio' }, currentPortfolio)).toBe(true)
+    expect(projectSavedViewSectionFromSearch('?view=insights&section=governance')).toBe('governance')
+    expect(projectSavedViewSectionFromSearch('?view=tasks&section=governance')).toBeNull()
+  })
+
 })

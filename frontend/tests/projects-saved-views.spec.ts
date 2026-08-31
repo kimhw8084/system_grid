@@ -26,9 +26,9 @@ const findRemoteView = async (page: any, name: string, scope: 'personal' | 'team
   return payload.views.find((view: any) => view.name === name)
 }
 
-const projectViewDefinition = (searchTerm: string, activeTab = 'overview', mode = 'order') => ({
+const projectViewDefinition = (searchTerm: string, activeTab = 'overview', mode = 'order', section?: 'control' | 'roadmap' | 'owners' | 'review' | 'governance') => ({
   searchTerm,
-  filters: { status: [], priority: [], watch: [] },
+  filters: { status: [], priority: [], watch: section ? [`sysgrid:project-section:${section}`] : [] },
   activeTab,
   mode,
 })
@@ -84,6 +84,66 @@ test.describe('Projects shared saved views', () => {
     await expect(page.getByPlaceholder('Find projects, objectives, owners…')).toHaveValue('remote needle')
     await expect(page.locator('[data-project-saved-view-status="synced"]')).toBeVisible()
     await expect(page.locator('[data-project-saved-view-scope="personal"]')).toBeVisible()
+  })
+
+  test('restores the exact nested Portfolio section from a synced saved view', async ({ page }) => {
+    await resetBrowserState(page)
+    const viewName = `Iteration 6 Roadmap ${Date.now()}`
+    const create = await page.request.post(`${apiBase}/workspaces/projects/views`, {
+      headers: testApiHeaders,
+      data: { name: viewName, scope: 'personal', definition: projectViewDefinition('roadmap lens', 'portfolio', 'health', 'roadmap'), schema_version: 1 },
+    })
+    expect(create.ok(), await create.text()).toBeTruthy()
+    await installProjectState(page, { search: 'before roadmap', statusFilter: 'ALL', priorityFilter: 'ALL', sortMode: 'order', watchedOnly: false, savedViews: [], lastView: 'overview' })
+
+    await page.goto('/projects?view=overview')
+    await waitForAppIdle(page)
+    await page.getByRole('button', { name: 'Saved views', exact: true }).click()
+    await page.getByRole('button', { name: `${viewName} · Personal`, exact: true }).click()
+
+    await expect(page).toHaveURL(/view=portfolio/)
+    await expect(page).toHaveURL(/section=roadmap/)
+    await expect(page.getByPlaceholder('Find projects, objectives, owners…')).toHaveValue('roadmap lens')
+  })
+
+  test('restores a locally saved nested Portfolio section after leaving the view', async ({ page }) => {
+    await resetBrowserState(page)
+    await installProjectState(page, { search: '', statusFilter: 'ALL', priorityFilter: 'ALL', sortMode: 'order', watchedOnly: false, savedViews: [], lastView: 'portfolio' })
+
+    await page.goto('/projects?view=portfolio&section=roadmap')
+    await waitForAppIdle(page)
+    await page.getByRole('button', { name: 'Save view', exact: true }).click()
+    await page.getByLabel('View name').fill('Iteration 6 Local Roadmap')
+    await page.getByRole('button', { name: 'Save local', exact: true }).click()
+    await expect.poll(async () => (await readProjectState(page)).savedViews?.some((view: any) => view.name === 'Iteration 6 Local Roadmap')).toBeTruthy()
+
+    await page.goto('/projects?view=portfolio&section=control')
+    await waitForAppIdle(page)
+    await page.getByRole('button', { name: 'Saved views', exact: true }).click()
+    await page.getByRole('button', { name: 'Iteration 6 Local Roadmap · Local', exact: true }).click()
+
+    await expect(page).toHaveURL(/view=portfolio/)
+    await expect(page).toHaveURL(/section=roadmap/)
+  })
+
+  test('preserves a linked legacy Portfolio subsection instead of falling back to Control Tower', async ({ page }) => {
+    await resetBrowserState(page)
+    const viewName = `Iteration 6 Legacy Owners ${Date.now()}`
+    const create = await page.request.post(`${apiBase}/workspaces/projects/views`, {
+      headers: testApiHeaders,
+      data: { name: viewName, scope: 'personal', definition: projectViewDefinition('owners link', 'portfolio', 'health'), schema_version: 1 },
+    })
+    expect(create.ok(), await create.text()).toBeTruthy()
+    const linked = await create.json()
+    await installProjectState(page, { search: 'before owners link', statusFilter: 'ALL', priorityFilter: 'ALL', sortMode: 'order', watchedOnly: false, savedViews: [], lastView: 'portfolio' })
+
+    await page.goto(`/projects?view=portfolio&section=owners&saved_view=${linked.id}`)
+    await waitForAppIdle(page)
+
+    await expect(page).toHaveURL(/view=portfolio/)
+    await expect(page).toHaveURL(/section=owners/)
+    await expect(page).toHaveURL(new RegExp(`saved_view=${linked.id}`))
+    await expect(page.getByPlaceholder('Find projects, objectives, owners…')).toHaveValue('owners link')
   })
 
   test('preserves active state and local saved-view use when personal remote hydration fails', async ({ page }) => {

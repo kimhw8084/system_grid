@@ -11,6 +11,156 @@ const asRecord = (value: unknown): Record<string, unknown> | null => (
   value && typeof value === 'object' && !Array.isArray(value) ? value as Record<string, unknown> : null
 )
 
+type ProjectSavedViewSection = 'control' | 'roadmap' | 'owners' | 'review' | 'governance'
+
+const PROJECT_LOCAL_SAVED_VIEW_SECTION_KEY = 'sysgrid_projects_saved_view_sections_v1'
+const PROJECT_SAVED_VIEW_SECTION_FILTER_PREFIX = 'sysgrid:project-section:'
+const PROJECT_LOCAL_SAVED_VIEW_FRESH_MS = 60_000
+const PROJECT_WORKBENCH_STORAGE_KEYS = ['sysgrid_projects_workbench_v1', 'sysgrid_projects_execution_intelligence_v1'] as const
+const PROJECT_PORTFOLIO_SECTIONS = new Set<ProjectSavedViewSection>(['control', 'roadmap', 'owners'])
+const PROJECT_INSIGHT_SECTIONS = new Set<ProjectSavedViewSection>(['review', 'governance'])
+
+const normalizeProjectSavedViewSection = (value: unknown): ProjectSavedViewSection | null => (
+  typeof value === 'string' && (PROJECT_PORTFOLIO_SECTIONS.has(value as ProjectSavedViewSection) || PROJECT_INSIGHT_SECTIONS.has(value as ProjectSavedViewSection))
+    ? value as ProjectSavedViewSection
+    : null
+)
+
+const projectSavedViewTopLevelForSection = (section: ProjectSavedViewSection) => (
+  PROJECT_PORTFOLIO_SECTIONS.has(section) ? 'portfolio' : 'insights'
+)
+
+const projectSavedViewDefaultSection = (state: ProjectSavedViewState): ProjectSavedViewSection | null => (
+  state.view === 'portfolio' ? 'control' : state.view === 'insights' ? 'review' : null
+)
+
+const projectSavedViewRawTopLevel = (value: unknown): string => {
+  const record = asRecord(value)
+  if (!record) return ''
+  const rawView = typeof record.view === 'string' ? record.view : typeof record.activeTab === 'string' ? record.activeTab : ''
+  const aliasSection = normalizeProjectSavedViewSection(rawView)
+  return aliasSection ? projectSavedViewTopLevelForSection(aliasSection) : rawView
+}
+
+const normalizeProjectSavedViewStateForSections = (value: unknown): ProjectSavedViewState => {
+  const record = asRecord(value)
+  if (!record) return normalizeProjectSavedViewState(value)
+  const rawView = typeof record.view === 'string' ? record.view : ''
+  const aliasSection = normalizeProjectSavedViewSection(rawView)
+  return aliasSection && !['control', 'review'].includes(aliasSection)
+    ? normalizeProjectSavedViewState({ ...record, view: projectSavedViewTopLevelForSection(aliasSection) })
+    : normalizeProjectSavedViewState(value)
+}
+
+const projectSavedViewSectionFromValue = (value: unknown): ProjectSavedViewSection | null => {
+  const record = asRecord(value)
+  if (!record) return null
+  const rawView = typeof record.view === 'string' ? record.view : typeof record.activeTab === 'string' ? record.activeTab : ''
+  const aliasSection = normalizeProjectSavedViewSection(rawView)
+  if (aliasSection && !['control', 'review'].includes(aliasSection)) return aliasSection
+  const filters = asRecord(record.filters)
+  const watch = Array.isArray(filters?.watch) ? filters.watch : []
+  const encoded = watch.flatMap((entry) => {
+    if (typeof entry !== 'string' || !entry.startsWith(PROJECT_SAVED_VIEW_SECTION_FILTER_PREFIX)) return []
+    const section = normalizeProjectSavedViewSection(entry.slice(PROJECT_SAVED_VIEW_SECTION_FILTER_PREFIX.length))
+    return section ? [section] : []
+  })[0] || null
+  const explicit = normalizeProjectSavedViewSection(record.section)
+  const section = explicit || encoded
+  if (!section) return null
+  return projectSavedViewRawTopLevel(value) === projectSavedViewTopLevelForSection(section) ? section : null
+}
+
+export const projectSavedViewSectionFromSearch = (value: unknown): ProjectSavedViewSection | null => {
+  if (typeof value !== 'string') return null
+  const params = new URLSearchParams(value.startsWith('?') ? value.slice(1) : value)
+  const rawView = params.get('view') || ''
+  const aliasSection = normalizeProjectSavedViewSection(rawView)
+  if (aliasSection && !['control', 'review'].includes(aliasSection)) return aliasSection
+  const section = normalizeProjectSavedViewSection(params.get('section'))
+  if (!section) return null
+  const topLevel = rawView === 'roadmap' || rawView === 'owners' ? 'portfolio' : rawView === 'governance' || rawView === 'review' ? 'insights' : rawView
+  return topLevel === projectSavedViewTopLevelForSection(section) ? section : null
+}
+
+const currentProjectSavedViewSection = () => (
+  typeof window === 'undefined' ? null : projectSavedViewSectionFromSearch(window.location.search)
+)
+
+const projectSavedViewStateWithSection = (value: unknown, section: ProjectSavedViewSection | null): ProjectSavedViewState => {
+  const normalized = normalizeProjectSavedViewStateForSections(value)
+  if (!section || normalized.view !== projectSavedViewTopLevelForSection(section)) return normalized
+  if (section === 'control' || section === 'review') return normalized
+  return { ...normalized, view: section as ProjectSavedViewState['view'] }
+}
+
+const readLocalProjectSavedViewSections = (): Record<string, ProjectSavedViewSection> => {
+  if (typeof window === 'undefined') return {}
+  try {
+    const parsed = JSON.parse(window.localStorage.getItem(PROJECT_LOCAL_SAVED_VIEW_SECTION_KEY) || '{}')
+    const record = asRecord(parsed) || {}
+    return Object.fromEntries(Object.entries(record).flatMap(([key, value]) => {
+      const section = normalizeProjectSavedViewSection(value)
+      return section ? [[key, section]] : []
+    }))
+  } catch { return {} }
+}
+
+const isFreshLocalProjectSavedViewId = (rawId: string) => {
+  if (!/^\d{12,16}$/.test(rawId)) return false
+  const createdAt = Number(rawId)
+  return Number.isSafeInteger(createdAt) && Math.abs(Date.now() - createdAt) <= PROJECT_LOCAL_SAVED_VIEW_FRESH_MS
+}
+
+const persistLocalProjectSavedViewSection = (rawId: string, section: ProjectSavedViewSection) => {
+  if (typeof window === 'undefined') return
+  for (const key of PROJECT_WORKBENCH_STORAGE_KEYS) {
+    try {
+      const raw = window.localStorage.getItem(key)
+      if (!raw) continue
+      const parsed = JSON.parse(raw)
+      const record = asRecord(parsed)
+      if (!record || !Array.isArray(record.savedViews)) continue
+      let changed = false
+      const savedViews = record.savedViews.map((entry) => {
+        const saved = asRecord(entry)
+        const id = saved && (typeof saved.id === 'string' || typeof saved.id === 'number') ? String(saved.id).trim() : ''
+        if (!saved || id !== rawId || projectSavedViewSectionFromValue(saved)) return entry
+        changed = true
+        return { ...saved, section }
+      })
+      if (changed) window.localStorage.setItem(key, JSON.stringify({ ...record, savedViews }))
+    } catch {}
+  }
+}
+
+const captureNewLocalProjectSavedViewSections = (value: unknown[]) => {
+  const sections = readLocalProjectSavedViewSections()
+  const currentSection = currentProjectSavedViewSection()
+  let changed = false
+  value.forEach((entry) => {
+    const record = asRecord(entry)
+    const rawId = record && (typeof record.id === 'string' || typeof record.id === 'number') ? String(record.id).trim() : ''
+    if (!rawId) return
+    const explicit = projectSavedViewSectionFromValue(record)
+    if (explicit) {
+      if (sections[rawId] !== explicit) { sections[rawId] = explicit; changed = true }
+      return
+    }
+    if (sections[rawId] || !currentSection || !isFreshLocalProjectSavedViewId(rawId)) return
+    const normalized = normalizeProjectSavedViewStateForSections(record)
+    if (normalized.view !== projectSavedViewTopLevelForSection(currentSection)) return
+    record.section = currentSection
+    sections[rawId] = currentSection
+    persistLocalProjectSavedViewSection(rawId, currentSection)
+    changed = true
+  })
+  if (changed && typeof window !== 'undefined') {
+    try { window.localStorage.setItem(PROJECT_LOCAL_SAVED_VIEW_SECTION_KEY, JSON.stringify(sections)) } catch {}
+  }
+  return sections
+}
+
 export type ProjectSavedViewScope = 'personal' | 'team'
 
 export const normalizeProjectSavedViewName = (value: unknown) => (
@@ -54,6 +204,7 @@ export interface ProjectSavedViewConflict {
 
 const localProjectSavedViewOptions = (value: unknown): ProjectSavedViewOption[] => {
   if (!Array.isArray(value)) return []
+  const storedSections = captureNewLocalProjectSavedViewSections(value)
   return value.slice(0, MAX_PROJECT_SAVED_VIEW_OPTIONS).flatMap((entry, index) => {
     const record = asRecord(entry)
     if (!record) return []
@@ -64,7 +215,7 @@ const localProjectSavedViewOptions = (value: unknown): ProjectSavedViewOption[] 
       id: `local:${rawId || `legacy-${index + 1}`}:${index}`,
       name,
       source: 'local' as const,
-      state: normalizeProjectSavedViewState(record),
+      state: projectSavedViewStateWithSection(record, storedSections[rawId] || projectSavedViewSectionFromValue(record)),
     }]
   })
 }
@@ -98,7 +249,7 @@ export const projectSavedViewOptionFromRemoteRecord = (entry: unknown): ProjectS
     teamId,
     isFavorite: record.is_favorite === true,
     isDefault: record.is_default === true,
-    state: projectSavedViewFromWorkspaceDefinition(definition),
+    state: projectSavedViewStateWithSection(projectSavedViewFromWorkspaceDefinition(definition), projectSavedViewSectionFromValue(definition)),
   }
 }
 
@@ -172,13 +323,27 @@ export const projectSavedViewStateForSelection = (
   id: string,
 ): ProjectSavedViewState | null => {
   const selected = options.find((option) => option.id === id)
-  return selected ? { ...selected.state } : null
+  if (!selected) return null
+  let section = projectSavedViewSectionFromValue(selected.state)
+  if (!section && selected.remoteId && typeof window !== 'undefined') {
+    const params = new URLSearchParams(window.location.search)
+    const linkedId = projectSavedViewLinkedRemoteId(params.get('saved_view'))
+    const linkedSection = projectSavedViewSectionFromSearch(params.toString())
+    const normalized = normalizeProjectSavedViewStateForSections(selected.state)
+    if (linkedId === selected.remoteId && linkedSection && normalized.view === projectSavedViewTopLevelForSection(linkedSection)) section = linkedSection
+  }
+  return projectSavedViewStateWithSection(selected.state, section)
 }
 
 export const projectSavedViewStatesEqual = (left: unknown, right: unknown) => {
-  const normalizedLeft = normalizeProjectSavedViewState(left)
-  const normalizedRight = normalizeProjectSavedViewState(right)
-  return JSON.stringify(normalizedLeft) === JSON.stringify(normalizedRight)
+  const normalizedLeft = normalizeProjectSavedViewStateForSections(left)
+  const normalizedRight = normalizeProjectSavedViewStateForSections(right)
+  const leftSection = projectSavedViewSectionFromValue(left) || projectSavedViewDefaultSection(normalizedLeft)
+  const currentSection = currentProjectSavedViewSection()
+  const rightSection = projectSavedViewSectionFromValue(right)
+    || (currentSection && normalizedRight.view === projectSavedViewTopLevelForSection(currentSection) ? currentSection : null)
+    || projectSavedViewDefaultSection(normalizedRight)
+  return JSON.stringify({ ...normalizedLeft, section: leftSection }) === JSON.stringify({ ...normalizedRight, section: rightSection })
 }
 
 export const buildProjectSavedViewMutationPayload = (
@@ -190,11 +355,22 @@ export const buildProjectSavedViewMutationPayload = (
 ) => {
   const name = normalizeProjectSavedViewName(nameValue)
   const normalizedTeamId = scope === 'team' && Number.isSafeInteger(teamId) && Number(teamId) > 0 ? Number(teamId) : null
+  const definition: Record<string, unknown> = { ...projectSavedViewToWorkspaceDefinition(stateValue) }
+  const normalizedState = normalizeProjectSavedViewStateForSections(stateValue)
+  const currentSection = currentProjectSavedViewSection()
+  const section = projectSavedViewSectionFromValue(stateValue)
+    || (currentSection && normalizedState.view === projectSavedViewTopLevelForSection(currentSection) ? currentSection : null)
+    || projectSavedViewDefaultSection(normalizedState)
+  const filters = asRecord(definition.filters) || {}
+  const watch = (Array.isArray(filters.watch) ? filters.watch : [])
+    .filter((entry): entry is string => typeof entry === 'string' && !entry.startsWith(PROJECT_SAVED_VIEW_SECTION_FILTER_PREFIX))
+  if (section && normalizedState.view === projectSavedViewTopLevelForSection(section)) watch.push(`${PROJECT_SAVED_VIEW_SECTION_FILTER_PREFIX}${section}`)
+  definition.filters = { ...filters, watch }
   const payload: Record<string, unknown> = {
     name,
     scope,
     team_id: normalizedTeamId,
-    definition: projectSavedViewToWorkspaceDefinition(stateValue),
+    definition,
     schema_version: 1,
   }
   if (Number.isSafeInteger(revision) && Number(revision) > 0) payload.revision = Number(revision)
