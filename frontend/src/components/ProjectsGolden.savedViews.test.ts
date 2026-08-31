@@ -1,5 +1,6 @@
-import { describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import {
+  buildProjectSavedViewIdentitySearch,
   buildProjectSavedViewMutationPayload,
   buildProjectSavedViewShareSearch,
   projectSavedViewConflictFromError,
@@ -16,6 +17,20 @@ import {
 } from './ProjectsGolden.savedViews'
 
 describe('Projects shared saved-view integration', () => {
+  const flushIdentity = async (turns = 1) => {
+    for (let turn = 0; turn < turns; turn += 1) await new Promise((resolve) => window.setTimeout(resolve, 0))
+  }
+
+  beforeEach(() => {
+    window.localStorage.clear()
+    window.history.replaceState({}, '', '/projects?view=overview')
+    resolveProjectCurrentTeamId([], 'admin_root')
+  })
+
+  afterEach(async () => {
+    await flushIdentity(3)
+  })
+
   it('keeps personal hydration inert while preserving same-named legacy local views', () => {
     const local = [{ id: 'legacy-1', name: 'Daily Focus', search: 'local needle', view: 'tasks' }]
     const personal = { views: [{
@@ -116,6 +131,71 @@ describe('Projects shared saved-view integration', () => {
     expect(projectSavedViewLinkedRemoteId('nope')).toBeNull()
     const params = new URLSearchParams(buildProjectSavedViewShareSearch('view=reports&id=7&report=22&section=review', 41))
     expect(Object.fromEntries(params.entries())).toEqual({ view: 'reports', id: '7', report: '22', section: 'review', saved_view: '41' })
+  })
+
+  it('converges saved_view identity across remote selection, local replacement, synced creation and deletion without dropping route context', async () => {
+    const remote = projectSavedViewOptionFromRemoteRecord({
+      id: 41, workspace_key: 'projects', scope: 'personal', team_id: null, name: 'Remote report', schema_version: 1, revision: 1,
+      definition: { searchTerm: 'remote report', filters: { status: [], priority: [], watch: [] }, activeTab: 'reports', mode: 'order' },
+    })
+    const local = { id: 'local:proof:0', name: 'Local report', source: 'local' as const, state: { search: 'local report', statusFilter: 'ALL', priorityFilter: 'ALL', sortMode: 'order' as const, watchedOnly: false, view: 'reports' as const } }
+    const options = remote ? [remote, local] : [local]
+
+    window.history.replaceState({}, '', '/projects?view=reports&id=7&report=22&section=review&saved_view=9#proof')
+    const identity = new URLSearchParams(buildProjectSavedViewIdentitySearch(window.location.search, 41))
+    expect(Object.fromEntries(identity.entries())).toEqual({ view: 'reports', id: '7', report: '22', section: 'review', saved_view: '41' })
+
+    expect(projectSavedViewStateForSelection(options, 'remote:41')?.search).toBe('remote report')
+    await flushIdentity()
+    expect(new URLSearchParams(window.location.search).get('saved_view')).toBe('41')
+    expect(window.location.hash).toBe('#proof')
+    expect(new URLSearchParams(window.location.search).get('report')).toBe('22')
+
+    expect(projectSavedViewStateForSelection(options, 'local:proof:0')?.search).toBe('local report')
+    await flushIdentity()
+    expect(new URLSearchParams(window.location.search).has('saved_view')).toBe(false)
+    expect(new URLSearchParams(window.location.search).get('id')).toBe('7')
+
+    const inserted = { id: 52, workspace_key: 'projects', scope: 'personal', team_id: null, name: 'Created report', schema_version: 1, revision: 1, definition: { activeTab: 'reports' } }
+    const payload = upsertProjectRemoteSavedViewPayload({ views: [] }, inserted) as any
+    await flushIdentity()
+    expect(payload.views[0].id).toBe(52)
+    expect(new URLSearchParams(window.location.search).get('saved_view')).toBe('52')
+
+    removeProjectRemoteSavedViewPayload(payload, 52)
+    await flushIdentity()
+    expect(new URLSearchParams(window.location.search).has('saved_view')).toBe(false)
+    expect(new URLSearchParams(window.location.search).get('view')).toBe('reports')
+    expect(new URLSearchParams(window.location.search).get('report')).toBe('22')
+  })
+
+  it('cleans a missing saved_view only after authoritative hydration and preserves the same link when hydration is unavailable', async () => {
+    resolveProjectCurrentTeamId([{ username: 'admin_root', team_id: null }], 'admin_root')
+    window.history.replaceState({}, '', '/projects?view=overview&saved_view=999999')
+    reconcileProjectSavedViewOptions([], { views: [] }, undefined, null)
+    await flushIdentity(3)
+    expect(new URLSearchParams(window.location.search).has('saved_view')).toBe(false)
+    expect(new URLSearchParams(window.location.search).get('view')).toBe('overview')
+
+    window.history.replaceState({}, '', '/projects?view=overview&saved_view=888888')
+    reconcileProjectSavedViewOptions([], undefined, undefined, null)
+    await flushIdentity(3)
+    expect(new URLSearchParams(window.location.search).get('saved_view')).toBe('888888')
+  })
+
+  it('resumes stale-link cleanup when operator hydration later resolves to no team without another saved-view reconcile', async () => {
+    resolveProjectCurrentTeamId([], 'admin_root')
+    window.history.replaceState({}, '', '/projects?view=portfolio&section=owners&saved_view=777777')
+    reconcileProjectSavedViewOptions([], { views: [] }, undefined, null)
+    await flushIdentity(2)
+    expect(new URLSearchParams(window.location.search).get('saved_view')).toBe('777777')
+
+    resolveProjectCurrentTeamId([{ username: 'admin_root', team_id: null }], 'admin_root')
+    await new Promise((resolve) => window.setTimeout(resolve, 80))
+    await flushIdentity(2)
+    expect(new URLSearchParams(window.location.search).has('saved_view')).toBe(false)
+    expect(new URLSearchParams(window.location.search).get('view')).toBe('portfolio')
+    expect(new URLSearchParams(window.location.search).get('section')).toBe('owners')
   })
 
   it('updates remote caches deterministically without touching local saved-view storage', () => {

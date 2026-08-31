@@ -20,6 +20,12 @@ const PROJECT_WORKBENCH_STORAGE_KEYS = ['sysgrid_projects_workbench_v1', 'sysgri
 const PROJECT_PORTFOLIO_SECTIONS = new Set<ProjectSavedViewSection>(['control', 'roadmap', 'owners'])
 const PROJECT_INSIGHT_SECTIONS = new Set<ProjectSavedViewSection>(['review', 'governance'])
 
+let projectSavedViewIdentityTimer: number | null = null
+let projectSavedViewStaleLinkTimer: number | null = null
+let projectSavedViewTeamResolution: number | null | undefined = undefined
+const PROJECT_SAVED_VIEW_TEAM_RESOLUTION_RETRY_MS = 50
+const PROJECT_SAVED_VIEW_TEAM_RESOLUTION_MAX_RETRIES = 200
+
 const normalizeProjectSavedViewSection = (value: unknown): ProjectSavedViewSection | null => (
   typeof value === 'string' && (PROJECT_PORTFOLIO_SECTIONS.has(value as ProjectSavedViewSection) || PROJECT_INSIGHT_SECTIONS.has(value as ProjectSavedViewSection))
     ? value as ProjectSavedViewSection
@@ -276,18 +282,68 @@ const remoteProjectSavedViewOptions = (
   ))
 }
 
+const hasAuthoritativeProjectSavedViewPayload = (value: unknown) => {
+  const payload = asRecord(value)
+  return Boolean(payload && Array.isArray(payload.views))
+}
+
+const cancelProjectSavedViewStaleLinkCleanup = () => {
+  if (typeof window === 'undefined' || projectSavedViewStaleLinkTimer === null) return
+  window.clearTimeout(projectSavedViewStaleLinkTimer)
+  projectSavedViewStaleLinkTimer = null
+}
+
+const scheduleProjectSavedViewTeamResolutionWait = (linkedId: number) => {
+  if (typeof window === 'undefined' || projectSavedViewStaleLinkTimer !== null) return
+  let retries = 0
+  const resume = () => {
+    projectSavedViewStaleLinkTimer = null
+    if (projectSavedViewLinkedRemoteId(new URLSearchParams(window.location.search).get('saved_view')) !== linkedId) return
+    if (projectSavedViewTeamResolution === undefined) {
+      retries += 1
+      if (retries >= PROJECT_SAVED_VIEW_TEAM_RESOLUTION_MAX_RETRIES) return
+      projectSavedViewStaleLinkTimer = window.setTimeout(resume, PROJECT_SAVED_VIEW_TEAM_RESOLUTION_RETRY_MS)
+      return
+    }
+    if (projectSavedViewTeamResolution === null) scheduleProjectSavedViewIdentity(null, linkedId)
+  }
+  projectSavedViewStaleLinkTimer = window.setTimeout(resume, 0)
+}
+
 export const reconcileProjectSavedViewOptions = (
   localValue: unknown,
   personalRemoteValue: unknown,
   teamRemoteValue?: unknown,
   currentTeamId?: number | null,
-): ProjectSavedViewOption[] => [
-  ...remoteProjectSavedViewOptions(personalRemoteValue, 'personal'),
-  ...(Number.isSafeInteger(currentTeamId) && Number(currentTeamId) > 0
-    ? remoteProjectSavedViewOptions(teamRemoteValue, 'team', Number(currentTeamId))
-    : []),
-  ...localProjectSavedViewOptions(localValue),
-]
+): ProjectSavedViewOption[] => {
+  const personal = remoteProjectSavedViewOptions(personalRemoteValue, 'personal')
+  const normalizedTeamId = Number.isSafeInteger(currentTeamId) && Number(currentTeamId) > 0 ? Number(currentTeamId) : null
+  const team = normalizedTeamId ? remoteProjectSavedViewOptions(teamRemoteValue, 'team', normalizedTeamId) : []
+  const result = [...personal, ...team, ...localProjectSavedViewOptions(localValue)]
+
+  if (typeof window !== 'undefined') {
+    const linkedId = projectSavedViewLinkedRemoteId(new URLSearchParams(window.location.search).get('saved_view'))
+    if (!linkedId || result.some((option) => option.source === 'remote' && option.remoteId === linkedId)) {
+      cancelProjectSavedViewStaleLinkCleanup()
+    } else {
+      const personalAuthoritative = hasAuthoritativeProjectSavedViewPayload(personalRemoteValue)
+      const teamAuthoritative = projectSavedViewTeamResolution === null
+        || (Number.isSafeInteger(projectSavedViewTeamResolution)
+          && Number(projectSavedViewTeamResolution) > 0
+          && hasAuthoritativeProjectSavedViewPayload(teamRemoteValue))
+      if (personalAuthoritative && projectSavedViewTeamResolution === undefined) {
+        scheduleProjectSavedViewTeamResolutionWait(linkedId)
+      } else if (personalAuthoritative && teamAuthoritative && projectSavedViewStaleLinkTimer === null) {
+        projectSavedViewStaleLinkTimer = window.setTimeout(() => {
+          projectSavedViewStaleLinkTimer = null
+          scheduleProjectSavedViewIdentity(null, linkedId)
+        }, 0)
+      }
+    }
+  }
+
+  return result
+}
 
 export const projectSavedViewOptionLabel = (option: ProjectSavedViewOption) => {
   if (option.source === 'local') return `${option.name} · Local`
@@ -298,12 +354,18 @@ export const projectSavedViewOptionLabel = (option: ProjectSavedViewOption) => {
 
 export const resolveProjectCurrentTeamId = (operatorsValue: unknown, currentUserId: unknown): number | null => {
   if (!Array.isArray(operatorsValue) || typeof currentUserId !== 'string' || !currentUserId.trim()) return null
+  if (!operatorsValue.length) {
+    projectSavedViewTeamResolution = undefined
+    return null
+  }
   const current = operatorsValue.find((entry) => {
     const record = asRecord(entry)
     return record && record.username === currentUserId.trim()
   })
   const teamId = Number(asRecord(current)?.team_id)
-  return Number.isSafeInteger(teamId) && teamId > 0 ? teamId : null
+  const resolved = Number.isSafeInteger(teamId) && teamId > 0 ? teamId : null
+  projectSavedViewTeamResolution = resolved
+  return resolved
 }
 
 export const projectSavedViewLinkedRemoteId = (value: unknown): number | null => {
@@ -312,11 +374,36 @@ export const projectSavedViewLinkedRemoteId = (value: unknown): number | null =>
   return Number.isSafeInteger(id) && id > 0 ? id : null
 }
 
-export const buildProjectSavedViewShareSearch = (searchValue: unknown, remoteId: number) => {
+export const buildProjectSavedViewIdentitySearch = (searchValue: unknown, remoteId?: number | null) => {
   const params = new URLSearchParams(typeof searchValue === 'string' ? searchValue : '')
-  if (Number.isSafeInteger(remoteId) && remoteId > 0) params.set('saved_view', String(remoteId))
+  if (Number.isSafeInteger(remoteId) && Number(remoteId) > 0) params.set('saved_view', String(remoteId))
+  else params.delete('saved_view')
   return params.toString()
 }
+
+const scheduleProjectSavedViewIdentity = (remoteId?: number | null, expectedCurrentRemoteId?: number | null) => {
+  if (typeof window === 'undefined') return
+  if (projectSavedViewIdentityTimer !== null) window.clearTimeout(projectSavedViewIdentityTimer)
+  projectSavedViewIdentityTimer = window.setTimeout(() => {
+    projectSavedViewIdentityTimer = null
+    const current = new URLSearchParams(window.location.search)
+    if (expectedCurrentRemoteId !== undefined
+      && projectSavedViewLinkedRemoteId(current.get('saved_view')) !== expectedCurrentRemoteId) return
+    const search = buildProjectSavedViewIdentitySearch(current.toString(), remoteId)
+    const nextHref = `${window.location.pathname}${search ? `?${search}` : ''}${window.location.hash}`
+    const currentHref = `${window.location.pathname}${window.location.search}${window.location.hash}`
+    if (nextHref === currentHref) return
+    window.history.replaceState(window.history.state, '', nextHref)
+    const event = typeof PopStateEvent === 'function'
+      ? new PopStateEvent('popstate', { state: window.history.state })
+      : new Event('popstate')
+    window.dispatchEvent(event)
+  }, 0)
+}
+
+export const buildProjectSavedViewShareSearch = (searchValue: unknown, remoteId: number) => (
+  buildProjectSavedViewIdentitySearch(searchValue, remoteId)
+)
 
 export const projectSavedViewStateForSelection = (
   options: ProjectSavedViewOption[],
@@ -324,6 +411,7 @@ export const projectSavedViewStateForSelection = (
 ): ProjectSavedViewState | null => {
   const selected = options.find((option) => option.id === id)
   if (!selected) return null
+  scheduleProjectSavedViewIdentity(selected.source === 'remote' ? selected.remoteId : null)
   let section = projectSavedViewSectionFromValue(selected.state)
   if (!section && selected.remoteId && typeof window !== 'undefined') {
     const params = new URLSearchParams(window.location.search)
@@ -426,6 +514,7 @@ export const upsertProjectRemoteSavedViewPayload = (payloadValue: unknown, recor
   const views = payload && Array.isArray(payload.views) ? payload.views : []
   const option = projectSavedViewOptionFromRemoteRecord(recordValue)
   if (!option?.remoteId) return payloadValue
+  scheduleProjectSavedViewIdentity(option.remoteId)
   return {
     ...(payload || {}),
     views: [recordValue, ...views.filter((row) => Number(asRecord(row)?.id) !== option.remoteId)].slice(0, MAX_PROJECT_SAVED_VIEW_OPTIONS),
@@ -435,6 +524,7 @@ export const upsertProjectRemoteSavedViewPayload = (payloadValue: unknown, recor
 export const removeProjectRemoteSavedViewPayload = (payloadValue: unknown, remoteId: number) => {
   const payload = asRecord(payloadValue)
   const views = payload && Array.isArray(payload.views) ? payload.views : []
+  scheduleProjectSavedViewIdentity(null, remoteId)
   return {
     ...(payload || {}),
     views: views.filter((row) => Number(asRecord(row)?.id) !== remoteId),

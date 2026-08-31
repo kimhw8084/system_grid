@@ -146,6 +146,79 @@ test.describe('Projects shared saved views', () => {
     await expect(page.getByPlaceholder('Find projects, objectives, owners…')).toHaveValue('owners link')
   })
 
+  test('saved-view URL identity follows explicit remote selection and local replacement', async ({ page }) => {
+    await resetBrowserState(page)
+    const viewName = `Iteration 7 Identity Selection ${Date.now()}`
+    const create = await page.request.post(`${apiBase}/workspaces/projects/views`, {
+      headers: testApiHeaders,
+      data: { name: viewName, scope: 'personal', definition: projectViewDefinition('identity remote', 'portfolio', 'health', 'owners'), schema_version: 1 },
+    })
+    expect(create.ok(), await create.text()).toBeTruthy()
+    const remote = await create.json()
+    await installProjectState(page, { search: 'identity local baseline', statusFilter: 'ALL', priorityFilter: 'ALL', sortMode: 'order', watchedOnly: false, savedViews: [{ id: 'identity-local', name: 'Identity Local', search: 'identity local', view: 'overview' }], lastView: 'portfolio' })
+
+    await page.goto('/projects?view=portfolio&section=roadmap')
+    await waitForAppIdle(page)
+    await page.getByRole('button', { name: 'Saved views', exact: true }).click()
+    await page.getByRole('button', { name: `${viewName} · Personal`, exact: true }).click()
+
+    await expect(page).toHaveURL(/view=portfolio/)
+    await expect(page).toHaveURL(/section=owners/)
+    await expect.poll(() => new URL(page.url()).searchParams.get('saved_view')).toBe(String(remote.id))
+    await expect(page.getByPlaceholder('Find projects, objectives, owners…')).toHaveValue('identity remote')
+
+    await page.getByRole('button', { name: `${viewName} · Personal`, exact: true }).click()
+    await page.getByRole('button', { name: 'Identity Local · Local', exact: true }).click()
+    await expect(page).toHaveURL(/view=overview/)
+    await expect.poll(() => new URL(page.url()).searchParams.get('saved_view')).toBeNull()
+    await expect(page.getByPlaceholder('Find projects, objectives, owners…')).toHaveValue('identity local')
+  })
+
+  test('saved-view URL identity follows synced creation and deletion', async ({ page }) => {
+    await resetBrowserState(page)
+    const viewName = `Iteration 7 Identity Lifecycle ${Date.now()}`
+    await installProjectState(page, { search: 'identity create', statusFilter: 'ALL', priorityFilter: 'ALL', sortMode: 'order', watchedOnly: false, savedViews: [], lastView: 'overview' })
+
+    await page.goto('/projects?view=overview')
+    await waitForAppIdle(page)
+    await page.getByRole('button', { name: 'Save view', exact: true }).click()
+    await page.getByLabel('View name').fill(viewName)
+    await page.getByRole('button', { name: 'Save personal', exact: true }).click()
+    await expect(page.locator('[data-project-saved-view-status="synced"]')).toBeVisible()
+
+    const remote = await findRemoteView(page, viewName)
+    expect(remote?.id).toBeTruthy()
+    await expect.poll(() => new URL(page.url()).searchParams.get('saved_view')).toBe(String(remote.id))
+    await expect(page).toHaveURL(/view=overview/)
+
+    await page.getByRole('button', { name: 'Delete synced', exact: true }).click()
+    await page.getByRole('button', { name: 'Delete synced view', exact: true }).click()
+    await expect.poll(() => new URL(page.url()).searchParams.get('saved_view')).toBeNull()
+    await expect(page).toHaveURL(/view=overview/)
+  })
+
+  test('saved-view URL identity removes authoritative stale links but preserves them while hydration is offline', async ({ page }) => {
+    await resetBrowserState(page)
+    await installProjectState(page, { search: 'stale identity', statusFilter: 'ALL', priorityFilter: 'ALL', sortMode: 'order', watchedOnly: false, savedViews: [], lastView: 'portfolio' })
+    await page.goto('/projects?view=portfolio&section=owners&saved_view=999999')
+    await waitForAppIdle(page)
+    await expect.poll(() => new URL(page.url()).searchParams.get('saved_view')).toBeNull()
+    await expect(page).toHaveURL(/view=portfolio/)
+    await expect(page).toHaveURL(/section=owners/)
+
+    await page.route('**/api/v1/workspaces/projects/views*', async (route) => {
+      if (route.request().method() === 'GET') return route.fulfill({ status: 503, contentType: 'application/json', body: JSON.stringify({ detail: 'identity proof outage' }) })
+      return route.continue()
+    })
+    await resetBrowserState(page)
+    await installProjectState(page, { search: 'offline identity', statusFilter: 'ALL', priorityFilter: 'ALL', sortMode: 'order', watchedOnly: false, savedViews: [], lastView: 'portfolio' })
+    await page.goto('/projects?view=portfolio&section=roadmap&saved_view=888888')
+    await waitForAppIdle(page)
+    await expect.poll(() => new URL(page.url()).searchParams.get('saved_view')).toBe('888888')
+    await expect(page).toHaveURL(/view=portfolio/)
+    await expect(page).toHaveURL(/section=roadmap/)
+  })
+
   test('preserves active state and local saved-view use when personal remote hydration fails', async ({ page }) => {
     await resetBrowserState(page)
     await installProjectState(page, { search: 'active fallback', statusFilter: 'ALL', priorityFilter: 'ALL', sortMode: 'order', watchedOnly: false, savedViews: [{ id: 'local-7', name: 'Local Fallback', search: 'local saved search', statusFilter: 'Planning', priorityFilter: 'Medium', sortMode: 'health', watchedOnly: false, view: 'tasks' }], lastView: 'overview' })

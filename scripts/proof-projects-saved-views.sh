@@ -167,5 +167,5 @@ env \
   PLAYWRIGHT_BASE_URL="$FRONTEND_ORIGIN" \
   npx playwright test \
   tests/projects-saved-views.spec.ts \
-  --grep "nested Portfolio|linked legacy Portfolio" \
+  --grep "saved-view URL identity" \
   --workers=1
