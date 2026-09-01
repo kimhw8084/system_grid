@@ -8,6 +8,7 @@ from ..database import get_db
 from ..models import models
 from ..schemas import schemas
 from .utils import filter_valid_columns
+from .project_hierarchy import validate_project_parent_assignment
 
 router = APIRouter(prefix="/projects", tags=["Projects"])
 
@@ -43,6 +44,11 @@ async def reorder_projects(order_data: List[dict], db: AsyncSession = Depends(ge
 async def create_project(data: schemas.ProjectCreate, db: AsyncSession = Depends(get_db)):
     project_data = data.model_dump()
     tasks_data = project_data.pop("tasks", [])
+    await validate_project_parent_assignment(
+        db,
+        project_id=None,
+        parent_project_id=project_data.get("parent_project_id"),
+    )
     
     db_project = models.Project(**project_data)
     db.add(db_project)
@@ -87,6 +93,12 @@ async def update_project(project_id: int, data: schemas.ProjectUpdate, db: Async
     
     update_data = data.model_dump(exclude_unset=True)
     tasks_data = update_data.pop("tasks", None)
+    if "parent_project_id" in update_data:
+        await validate_project_parent_assignment(
+            db,
+            project_id=project_id,
+            parent_project_id=update_data.get("parent_project_id"),
+        )
     previous_values = {
         key: getattr(db_project, key)
         for key in ["status", "priority", "name", "type"]
