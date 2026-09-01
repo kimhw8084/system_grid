@@ -1,0 +1,400 @@
+/*
+ * SysGrid Projects Readability Foundation v1
+ * Scope: dark Projects workspace only. No feature hiding or interaction semantics.
+ */
+:is(
+  html[data-theme='nordic-frost-v1'],
+  html[data-theme='industrial-slate'],
+  html[data-theme='ocean-deep'],
+  html[data-theme='cyber-emerald'],
+  html[data-theme='dark']
+) [data-workspace='projects'] {
+  --projects-surface-base: #0a0c14;
+  --projects-surface-shell: #0f1420;
+  --projects-surface-work: #111827;
+  --projects-surface-raised: #141b2a;
+  --projects-surface-elevated: #182235;
+  --projects-border-subtle: rgba(148, 163, 184, 0.18);
+  --projects-border-strong: rgba(148, 163, 184, 0.28);
+  --projects-text-primary: #f1f5f9;
+  --projects-text-secondary: #cbd5e1;
+  --projects-text-muted: #94a3b8;
+  --projects-text-soft: #a8b3c5;
+  --projects-text-disabled: #7f8ea3;
+  --projects-focus: #60a5fa;
+  background-color: var(--projects-surface-base);
+  color: var(--projects-text-primary);
+  min-width: 0;
+  width: 100%;
+}
+
+/* Functional typography floor: current Projects utility text never renders below 12px. */
+:is(
+  html[data-theme='nordic-frost-v1'],
+  html[data-theme='industrial-slate'],
+  html[data-theme='ocean-deep'],
+  html[data-theme='cyber-emerald'],
+  html[data-theme='dark']
+) [data-workspace='projects'] :is(
+  [class~='text-[7px]'],
+  [class~='text-[8px]'],
+  [class~='text-[9px]'],
+  [class~='text-[10px]'],
+  [class~='text-[11px]']
+) {
+  font-size: 12px;
+  line-height: 1.42;
+}
+
+:is(
+  html[data-theme='nordic-frost-v1'],
+  html[data-theme='industrial-slate'],
+  html[data-theme='ocean-deep'],
+  html[data-theme='cyber-emerald'],
+  html[data-theme='dark']
+) [data-workspace='projects'] :is(.text-slate-700, .text-slate-600) {
+  color: var(--projects-text-muted);
+}
+
+:is(
+  html[data-theme='nordic-frost-v1'],
+  html[data-theme='industrial-slate'],
+  html[data-theme='ocean-deep'],
+  html[data-theme='cyber-emerald'],
+  html[data-theme='dark']
+) [data-workspace='projects'] .text-slate-500 {
+  color: var(--projects-text-soft);
+}
+
+:is(
+  html[data-theme='nordic-frost-v1'],
+  html[data-theme='industrial-slate'],
+  html[data-theme='ocean-deep'],
+  html[data-theme='cyber-emerald'],
+  html[data-theme='dark']
+) [data-workspace='projects'] .text-slate-400 {
+  color: var(--projects-text-secondary);
+}
+
+:is(
+  html[data-theme='nordic-frost-v1'],
+  html[data-theme='industrial-slate'],
+  html[data-theme='ocean-deep'],
+  html[data-theme='cyber-emerald'],
+  html[data-theme='dark']
+) [data-workspace='projects'] :is([class~='tracking-widest'], [class*='tracking-[0.']) {
+  letter-spacing: 0.08em;
+}
+
+/* Surface ladder: base < shell < working panel < raised item < elevated input/drawer. */
+:is(
+  html[data-theme='nordic-frost-v1'],
+  html[data-theme='industrial-slate'],
+  html[data-theme='ocean-deep'],
+  html[data-theme='cyber-emerald'],
+  html[data-theme='dark']
+) [data-workspace='projects'] :is(
+  [data-project-workbench-rail='true'],
+  [data-project-workbench-header='true'],
+  [data-project-primary-nav='true'],
+  [data-project-pulse='true']
+) {
+  background-color: var(--projects-surface-shell);
+  border-color: var(--projects-border-subtle);
+}
+
+:is(
+  html[data-theme='nordic-frost-v1'],
+  html[data-theme='industrial-slate'],
+  html[data-theme='ocean-deep'],
+  html[data-theme='cyber-emerald'],
+  html[data-theme='dark']
+) [data-workspace='projects'] :is(
+  [class~='bg-black/20'],
+  [class~='bg-black/25'],
+  [class~='bg-black/30'],
+  [class~='bg-black/40']
+) {
+  background-color: var(--projects-surface-work);
+}
+
+:is(
+  html[data-theme='nordic-frost-v1'],
+  html[data-theme='industrial-slate'],
+  html[data-theme='ocean-deep'],
+  html[data-theme='cyber-emerald'],
+  html[data-theme='dark']
+) [data-workspace='projects'] :is(
+  [class~='bg-white/[0.02]'],
+  [class~='bg-white/[0.025]'],
+  [class~='bg-white/[0.03]'],
+  [class~='bg-white/[0.035]'],
+  [class~='bg-white/[0.04]'],
+  [class~='bg-white/[0.05]'],
+  [class~='bg-white/5']
+) {
+  background-color: var(--projects-surface-raised);
+}
+
+:is(
+  html[data-theme='nordic-frost-v1'],
+  html[data-theme='industrial-slate'],
+  html[data-theme='ocean-deep'],
+  html[data-theme='cyber-emerald'],
+  html[data-theme='dark']
+) [data-workspace='projects'] :is(
+  [class~='border-white/5'],
+  [class~='border-white/[0.05]']
+) {
+  border-color: var(--projects-border-subtle);
+}
+
+:is(
+  html[data-theme='nordic-frost-v1'],
+  html[data-theme='industrial-slate'],
+  html[data-theme='ocean-deep'],
+  html[data-theme='cyber-emerald'],
+  html[data-theme='dark']
+) [data-workspace='projects'] :is(
+  [class~='border-white/10'],
+  [class~='border-white/[0.10]']
+) {
+  border-color: var(--projects-border-strong);
+}
+
+:is(
+  html[data-theme='nordic-frost-v1'],
+  html[data-theme='industrial-slate'],
+  html[data-theme='ocean-deep'],
+  html[data-theme='cyber-emerald'],
+  html[data-theme='dark']
+) [data-workspace='projects'] :is(input, textarea, select) {
+  background-color: var(--projects-surface-elevated);
+  border-color: var(--projects-border-strong);
+  color: var(--projects-text-primary);
+  min-height: 34px;
+}
+
+:is(
+  html[data-theme='nordic-frost-v1'],
+  html[data-theme='industrial-slate'],
+  html[data-theme='ocean-deep'],
+  html[data-theme='cyber-emerald'],
+  html[data-theme='dark']
+) [data-workspace='projects'] :is(input, textarea)::placeholder {
+  color: var(--projects-text-disabled);
+  opacity: 1;
+}
+
+:is(
+  html[data-theme='nordic-frost-v1'],
+  html[data-theme='industrial-slate'],
+  html[data-theme='ocean-deep'],
+  html[data-theme='cyber-emerald'],
+  html[data-theme='dark']
+) [data-workspace='projects'] :is(button, input, textarea, select, a):focus-visible {
+  outline: 2px solid var(--projects-focus);
+  outline-offset: 2px;
+}
+
+:is(
+  html[data-theme='nordic-frost-v1'],
+  html[data-theme='industrial-slate'],
+  html[data-theme='ocean-deep'],
+  html[data-theme='cyber-emerald'],
+  html[data-theme='dark']
+) [data-workspace='projects'] :is(button, input, textarea, select):disabled {
+  color: var(--projects-text-disabled);
+  opacity: 1;
+}
+
+:is(
+  html[data-theme='nordic-frost-v1'],
+  html[data-theme='industrial-slate'],
+  html[data-theme='ocean-deep'],
+  html[data-theme='cyber-emerald'],
+  html[data-theme='dark']
+) [data-workspace='projects'] [data-project-task-drawer='true'] {
+  background-color: var(--projects-surface-elevated);
+  border-color: var(--projects-border-strong);
+  box-shadow: -18px 0 48px rgba(2, 6, 23, 0.34);
+}
+
+:is(
+  html[data-theme='nordic-frost-v1'],
+  html[data-theme='industrial-slate'],
+  html[data-theme='ocean-deep'],
+  html[data-theme='cyber-emerald'],
+  html[data-theme='dark']
+) [data-workspace='projects'] [data-project-primary-nav='true'] {
+  overflow-x: auto;
+  scroll-snap-type: x proximity;
+  scrollbar-gutter: auto;
+}
+
+:is(
+  html[data-theme='nordic-frost-v1'],
+  html[data-theme='industrial-slate'],
+  html[data-theme='ocean-deep'],
+  html[data-theme='cyber-emerald'],
+  html[data-theme='dark']
+) [data-workspace='projects'] [data-project-primary-nav='true'] > button {
+  scroll-snap-align: start;
+  min-height: 36px;
+}
+
+:is(
+  html[data-theme='nordic-frost-v1'],
+  html[data-theme='industrial-slate'],
+  html[data-theme='ocean-deep'],
+  html[data-theme='cyber-emerald'],
+  html[data-theme='dark']
+) [data-workspace='projects'] :is(
+  [data-project-unified-shell='true'],
+  main,
+  [data-project-overview='true'],
+  [data-project-tasks-foundation='true'],
+  [data-project-flagship-gantt='true'],
+  [data-project-execution-hub='true'],
+  [data-project-material-authoring='true'],
+  [data-project-updates-native='true'],
+  [data-project-report-preview='true'],
+  [data-project-governance='true']
+) {
+  min-width: 0;
+  max-width: 100%;
+}
+
+/* Projects portal dialogs inherit the same contract only while Projects is mounted. */
+:is(
+  html[data-theme='nordic-frost-v1'],
+  html[data-theme='industrial-slate'],
+  html[data-theme='ocean-deep'],
+  html[data-theme='cyber-emerald'],
+  html[data-theme='dark']
+) body:has([data-workspace='projects']) [role='dialog'] > div {
+  background-color: #182235;
+  border-color: rgba(148, 163, 184, 0.28);
+}
+
+:is(
+  html[data-theme='nordic-frost-v1'],
+  html[data-theme='industrial-slate'],
+  html[data-theme='ocean-deep'],
+  html[data-theme='cyber-emerald'],
+  html[data-theme='dark']
+) body:has([data-workspace='projects']) [role='dialog'] :is(
+  [class~='text-[7px]'],
+  [class~='text-[8px]'],
+  [class~='text-[9px]'],
+  [class~='text-[10px]'],
+  [class~='text-[11px]']
+) {
+  font-size: 12px;
+  line-height: 1.42;
+}
+
+:is(
+  html[data-theme='nordic-frost-v1'],
+  html[data-theme='industrial-slate'],
+  html[data-theme='ocean-deep'],
+  html[data-theme='cyber-emerald'],
+  html[data-theme='dark']
+) body:has([data-workspace='projects']) [role='dialog'] :is(.text-slate-700, .text-slate-600) {
+  color: #94a3b8;
+}
+
+:is(
+  html[data-theme='nordic-frost-v1'],
+  html[data-theme='industrial-slate'],
+  html[data-theme='ocean-deep'],
+  html[data-theme='cyber-emerald'],
+  html[data-theme='dark']
+) body:has([data-workspace='projects']) [role='dialog'] .text-slate-500 {
+  color: #a8b3c5;
+}
+
+:is(
+  html[data-theme='nordic-frost-v1'],
+  html[data-theme='industrial-slate'],
+  html[data-theme='ocean-deep'],
+  html[data-theme='cyber-emerald'],
+  html[data-theme='dark']
+) body:has([data-workspace='projects']) [role='dialog'] :is(input, textarea, select) {
+  background-color: #111827;
+  border-color: rgba(148, 163, 184, 0.28);
+  color: #f1f5f9;
+  min-height: 34px;
+}
+
+:is(
+  html[data-theme='nordic-frost-v1'],
+  html[data-theme='industrial-slate'],
+  html[data-theme='ocean-deep'],
+  html[data-theme='cyber-emerald'],
+  html[data-theme='dark']
+) body:has([data-workspace='projects']) [role='dialog'] :is(input, textarea)::placeholder {
+  color: #7f8ea3;
+  opacity: 1;
+}
+
+:is(
+  html[data-theme='nordic-frost-v1'],
+  html[data-theme='industrial-slate'],
+  html[data-theme='ocean-deep'],
+  html[data-theme='cyber-emerald'],
+  html[data-theme='dark']
+) body:has([data-workspace='projects']) [role='dialog'] :is(button, input, textarea, select, a):focus-visible {
+  outline: 2px solid #60a5fa;
+  outline-offset: 2px;
+}
+
+@media (max-width: 640px) {
+  :is(
+    html[data-theme='nordic-frost-v1'],
+    html[data-theme='industrial-slate'],
+    html[data-theme='ocean-deep'],
+    html[data-theme='cyber-emerald'],
+    html[data-theme='dark']
+  ) [data-workspace='projects'] {
+    gap: 10px;
+    padding: 10px;
+  }
+
+  :is(
+    html[data-theme='nordic-frost-v1'],
+    html[data-theme='industrial-slate'],
+    html[data-theme='ocean-deep'],
+    html[data-theme='cyber-emerald'],
+    html[data-theme='dark']
+  ) [data-workspace='projects'] [data-project-workbench-header='true'] {
+    padding: 12px;
+  }
+
+  :is(
+    html[data-theme='nordic-frost-v1'],
+    html[data-theme='industrial-slate'],
+    html[data-theme='ocean-deep'],
+    html[data-theme='cyber-emerald'],
+    html[data-theme='dark']
+  ) [data-workspace='projects'] [data-project-primary-nav='true'] > button {
+    padding-inline: 12px;
+  }
+}
+
+/* Reassert shell surfaces after generic utility-class remapping. */
+:is(
+  html[data-theme='nordic-frost-v1'],
+  html[data-theme='industrial-slate'],
+  html[data-theme='ocean-deep'],
+  html[data-theme='cyber-emerald'],
+  html[data-theme='dark']
+) [data-workspace='projects'] :is(
+  [data-project-workbench-rail='true'],
+  [data-project-workbench-header='true'],
+  [data-project-primary-nav='true'],
+  [data-project-pulse='true']
+) {
+  background-color: var(--projects-surface-shell);
+  border-color: var(--projects-border-subtle);
+}
