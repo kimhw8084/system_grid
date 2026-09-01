@@ -260,9 +260,9 @@ test('narrow Projects navigation remains reachable at 390x844 @readability-accep
   const geometry = await nav.evaluate((element) => ({ clientWidth: element.clientWidth, scrollWidth: element.scrollWidth, overflowX: getComputedStyle(element).overflowX }))
   expect(geometry.overflowX).toBe('auto')
   expect(geometry.scrollWidth).toBeGreaterThanOrEqual(geometry.clientWidth)
-  const timelineNavButton = nav.getByRole('button', { name: 'Timeline', exact: true })
-  await timelineNavButton.scrollIntoViewIfNeeded()
-  await expect(timelineNavButton).toBeVisible()
+  const planNavButton = nav.getByRole('button', { name: 'Plan', exact: true })
+  await planNavButton.scrollIntoViewIfNeeded()
+  await expect(planNavButton).toBeVisible()
 })
 
 test('Projects modal inherits elevated readability without changing the shared modal @readability-acceptance', async ({ page }) => {
