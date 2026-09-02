@@ -44,7 +44,8 @@ describe('Projects central navigation and progressive disclosure contract', () =
     for (const label of ['Target', 'Evidence', 'Value', 'Adoption', 'Owner']) expect(source).toContain(`['${label}'`)
     expect(source).toContain('overview.health.level')
     expect(source).toContain("project.objective || project.problem_statement")
-    expect(source).toContain('project.metadata_json?.adoption_state')
+    expect(source).toContain('data-project-outcome-state="true"')
+    expect(source).toContain("['Adoption', outcome.adoptionLabel")
   })
 
   it('preserves legacy deep-link canonicalization and separate Portfolio ownership', () => {
