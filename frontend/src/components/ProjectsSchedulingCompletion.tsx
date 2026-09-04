@@ -5,7 +5,7 @@ import { AlertTriangle, BarChart3, CalendarDays, CheckCircle2, ChevronRight, Git
 import toast from 'react-hot-toast'
 import ProjectsGolden from './ProjectsGolden'
 import { apiFetch } from '../api/apiClient'
-import { PROJECT_TASK_STATUSES, projectFingerprint, type ProjectTaskStatus } from './ProjectsGolden.model'
+import { PROJECT_TASK_STATUSES, buildProjectTaskHierarchy, projectFingerprint, type ProjectTaskStatus } from './ProjectsGolden.model'
 import {
   PROJECT_DEPENDENCY_TYPES,
   analyzeProjectSchedule,
@@ -33,6 +33,42 @@ const sectionClass = 'rounded-lg border border-white/5 bg-black/25 p-3'
 const dayLabels = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
 const constraintTypes: ProjectConstraintType[] = ['ASAP', 'SNET', 'FNLT', 'MUST_START', 'MUST_FINISH']
 type BoardPendingMove = { taskId: string; taskName: string; fromStatus: ProjectTaskStatus; toStatus: ProjectTaskStatus }
+type TaskKeyboardMoveDirection = 'earlier' | 'later'
+type TaskKeyboardMovePlan = { taskId: string; direction: TaskKeyboardMoveDirection; neighborId: string; dragTaskId: string; dropTargetId: string }
+type TaskPendingMove = TaskKeyboardMovePlan & { taskName: string }
+
+export const syncTaskKeyboardMoveButtonGlyph = (button: { textContent: string | null }, direction: TaskKeyboardMoveDirection): string => {
+  const glyph = direction === 'earlier' ? '↑' : '↓'
+  if (button.textContent !== glyph) button.textContent = glyph
+  return glyph
+}
+
+export const buildTaskKeyboardMovePlan = (project: any, taskIdValue: number | string, direction: TaskKeyboardMoveDirection): TaskKeyboardMovePlan | null => {
+  const taskId = String(taskIdValue)
+  const rows = buildProjectTaskHierarchy(project)
+  const row = rows.find((candidate: any) => String(candidate?.task?.id ?? candidate?.id ?? '') === taskId)
+  if (!row) return null
+  const sameParent = (candidate: any) => String(candidate?.parentId ?? '') === String(row?.parentId ?? '')
+  const siblings = rows.filter(sameParent)
+  const index = siblings.findIndex((candidate: any) => String(candidate?.task?.id ?? candidate?.id ?? '') === taskId)
+  if (index < 0) return null
+  if (direction === 'earlier') {
+    const previousId = String(siblings[index - 1]?.task?.id ?? siblings[index - 1]?.id ?? '')
+    return previousId ? { taskId, direction, neighborId: previousId, dragTaskId: taskId, dropTargetId: previousId } : null
+  }
+  const nextId = String(siblings[index + 1]?.task?.id ?? siblings[index + 1]?.id ?? '')
+  return nextId ? { taskId, direction, neighborId: nextId, dragTaskId: nextId, dropTargetId: taskId } : null
+}
+
+export const taskKeyboardMoveRelationMatches = (project: any, pending: Pick<TaskPendingMove, 'taskId' | 'neighborId' | 'direction'>): boolean => {
+  const list = Array.isArray(project?.tasks) ? project.tasks : []
+  const moving = list.find((task: any) => String(task?.id) === pending.taskId)
+  const neighbor = list.find((task: any) => String(task?.id) === pending.neighborId)
+  if (!moving || !neighbor) return false
+  const movingOrder = Number(moving?.order_index) || 0
+  const neighborOrder = Number(neighbor?.order_index) || 0
+  return pending.direction === 'earlier' ? movingOrder < neighborOrder : movingOrder > neighborOrder
+}
 
 const readProjects = async () => {
   const response = await apiFetch('/api/v1/projects')
@@ -64,7 +100,9 @@ export default function ProjectsSchedulingCompletion() {
   const [previewNonce, setPreviewNonce] = useState(0)
   const [liveMessage, setLiveMessage] = useState('')
   const [boardLiveMessage, setBoardLiveMessage] = useState('')
+  const [taskLiveMessage, setTaskLiveMessage] = useState('')
   const boardPendingMoveRef = useRef<BoardPendingMove | null>(null)
+  const taskPendingMoveRef = useRef<TaskPendingMove | null>(null)
   const workspaceRootRef = useRef<HTMLDivElement | null>(null)
   const scheduleToggleRef = useRef<HTMLButtonElement | null>(null)
   const scheduleCloseRef = useRef<HTMLButtonElement | null>(null)
@@ -223,6 +261,155 @@ export default function ProjectsSchedulingCompletion() {
     }
   }, [view, queryClient])
 
+  useEffect(() => {
+    if (view !== 'tasks') {
+      taskPendingMoveRef.current = null
+      setTaskLiveMessage('')
+      return
+    }
+    const root = workspaceRootRef.current
+    if (!root || !selectedProject) return
+
+    const selectorValue = (value: string) => typeof CSS !== 'undefined' && typeof CSS.escape === 'function'
+      ? CSS.escape(value)
+      : value.replace(/["\\]/g, '\\$&')
+    const currentProject = () => queryClient.getQueryData<any[]>(['projects'])?.find((project: any) => String(project?.id) === String(selectedProject?.id)) || selectedProject
+    const taskRow = (taskId: string) => root.querySelector<HTMLElement>(`[data-project-task-row="true"][data-task-id="${selectorValue(taskId)}"]`)
+
+    const decorateTasks = () => {
+      const project = currentProject()
+      const rows = buildProjectTaskHierarchy(project)
+      const byId = new Map(rows.map((row: any) => [String(row?.task?.id ?? row?.id ?? ''), row]))
+      root.querySelectorAll<HTMLElement>('[data-project-task-row="true"]').forEach((rowElement) => {
+        const taskId = String(rowElement.getAttribute('data-task-id') || '')
+        const row = byId.get(taskId)
+        const task = row?.task
+        if (!taskId || !task) return
+        const taskName = String(task?.name || `Task ${taskId}`)
+        const taskCell = rowElement.children.item(1) as HTMLElement | null
+        if (!taskCell) return
+
+        rowElement.tabIndex = -1
+        rowElement.setAttribute('data-project-task-focus-target', 'true')
+        rowElement.setAttribute('aria-label', taskName)
+
+        let controls = taskCell.querySelector<HTMLElement>('[data-project-task-keyboard-reorder="true"]')
+        if (!controls) {
+          controls = document.createElement('span')
+          controls.setAttribute('data-project-task-keyboard-reorder', 'true')
+          controls.className = 'mr-1 inline-flex shrink-0 items-center gap-0.5'
+          const dragHandle = taskCell.querySelector<HTMLElement>('[draggable="true"]')
+          if (dragHandle?.nextSibling) taskCell.insertBefore(controls, dragHandle.nextSibling)
+          else taskCell.appendChild(controls)
+        }
+
+        const ensureButton = (direction: TaskKeyboardMoveDirection) => {
+          const plan = buildTaskKeyboardMovePlan(project, taskId, direction)
+          let button = controls!.querySelector<HTMLButtonElement>(`button[data-project-task-move="${direction}"]`)
+          if (!button) {
+            button = document.createElement('button')
+            button.type = 'button'
+            button.setAttribute('data-project-task-move', direction)
+            button.className = 'inline-flex h-[40px] w-[40px] items-center justify-center rounded-md border border-white/5 text-xs font-black text-slate-600 hover:border-blue-500/25 hover:bg-blue-500/10 hover:text-blue-300 disabled:cursor-not-allowed disabled:opacity-25'
+            controls!.appendChild(button)
+          }
+          button.disabled = !plan
+          syncTaskKeyboardMoveButtonGlyph(button, direction)
+          button.setAttribute('aria-label', `Move ${taskName} ${direction}`)
+          button.setAttribute('data-project-task-move-task', taskId)
+        }
+
+        ensureButton('earlier')
+        ensureButton('later')
+      })
+    }
+
+    const focusTaskRow = (taskId: string) => {
+      let attempts = 0
+      const focus = () => {
+        decorateTasks()
+        const row = taskRow(taskId)
+        if (row) {
+          row.focus({ preventScroll: true })
+          return
+        }
+        attempts += 1
+        if (attempts < 6) requestAnimationFrame(focus)
+      }
+      requestAnimationFrame(focus)
+    }
+
+    const dispatchExistingReorder = (movingTaskId: string, targetTaskId: string) => {
+      const sourceRow = taskRow(movingTaskId)
+      const targetRow = taskRow(targetTaskId)
+      const dragHandle = sourceRow?.querySelector<HTMLElement>('[draggable="true"]')
+      if (!sourceRow || !targetRow || !dragHandle || typeof DataTransfer === 'undefined' || typeof DragEvent === 'undefined') return false
+      const transfer = new DataTransfer()
+      dragHandle.dispatchEvent(new DragEvent('dragstart', { bubbles: true, cancelable: true, dataTransfer: transfer }))
+      requestAnimationFrame(() => requestAnimationFrame(() => {
+        const currentTarget = taskRow(targetTaskId)
+        if (!currentTarget) return
+        currentTarget.dispatchEvent(new DragEvent('dragover', { bubbles: true, cancelable: true, dataTransfer: transfer }))
+        currentTarget.dispatchEvent(new DragEvent('drop', { bubbles: true, cancelable: true, dataTransfer: transfer }))
+        dragHandle.dispatchEvent(new DragEvent('dragend', { bubbles: true, cancelable: true, dataTransfer: transfer }))
+      }))
+      return true
+    }
+
+    const handleTaskMoveActivation = (event: Event) => {
+      const target = event.target instanceof Element ? event.target : null
+      const button = target?.closest<HTMLButtonElement>('button[data-project-task-move]') || null
+      if (!button || !root.contains(button) || button.disabled) return
+      event.preventDefault()
+      event.stopPropagation()
+      const direction = button.getAttribute('data-project-task-move') as TaskKeyboardMoveDirection | null
+      const taskId = String(button.getAttribute('data-project-task-move-task') || '')
+      const row = taskRow(taskId)
+      const taskName = row?.getAttribute('aria-label') || `Task ${taskId}`
+      if (!direction || !taskId) return
+      const plan = buildTaskKeyboardMovePlan(currentProject(), taskId, direction)
+      if (!plan) return
+      taskPendingMoveRef.current = { ...plan, taskName }
+      setTaskLiveMessage(`Moving ${taskName} ${direction}…`)
+      if (!dispatchExistingReorder(plan.dragTaskId, plan.dropTargetId)) {
+        taskPendingMoveRef.current = null
+        setTaskLiveMessage(`Could not move ${taskName} ${direction}: reorder control is unavailable`)
+        focusTaskRow(taskId)
+      }
+    }
+
+    const unsubscribe = queryClient.getMutationCache().subscribe((event: any) => {
+      const pending = taskPendingMoveRef.current
+      const mutation = event?.mutation
+      if (!pending || mutation?.options?.scope?.id !== 'projects-authoritative-write') return
+      const requestedProject = mutation?.state?.variables?.nextProject
+      if (!taskKeyboardMoveRelationMatches(requestedProject, pending)) return
+
+      if (mutation.state.status === 'success') {
+        const savedProject = mutation.state.data
+        if (!taskKeyboardMoveRelationMatches(savedProject, pending)) return
+        taskPendingMoveRef.current = null
+        setTaskLiveMessage(`${pending.taskName} moved ${pending.direction}`)
+        focusTaskRow(pending.taskId)
+      } else if (mutation.state.status === 'error') {
+        const message = mutation.state.error?.message || 'Project update failed'
+        taskPendingMoveRef.current = null
+        setTaskLiveMessage(`Could not move ${pending.taskName} ${pending.direction}: ${message}`)
+        focusTaskRow(pending.taskId)
+      }
+    })
+
+    decorateTasks()
+    root.addEventListener('click', handleTaskMoveActivation, true)
+    const observer = new MutationObserver(decorateTasks)
+    observer.observe(root, { childList: true, subtree: true })
+    return () => {
+      observer.disconnect()
+      root.removeEventListener('click', handleTaskMoveActivation, true)
+      unsubscribe()
+    }
+  }, [view, selectedProject?.id, queryClient])
+
   const updateMutation = useMutation({
     mutationFn: async ({ baseProject, nextProject, label }: { baseProject: any; nextProject: any; label: string }) => {
       const latestResponse = await apiFetch('/api/v1/projects')
@@ -295,6 +482,7 @@ export default function ProjectsSchedulingCompletion() {
   return <div ref={workspaceRootRef} className="relative h-full min-h-0" data-projects-scheduling-completion="true">
     <ProjectsGolden />
     <p className="sr-only" role="status" aria-live="polite" aria-atomic="true" data-project-board-live-status="true">{boardLiveMessage}</p>
+    <p className="sr-only" role="status" aria-live="polite" aria-atomic="true" data-project-task-live-status="true">{taskLiveMessage}</p>
     {timelineActive && selectedProject ? <>
       <button ref={scheduleToggleRef} type="button" onClick={() => setOpen((current) => !current)} aria-expanded={open} aria-controls="project-schedule-control-drawer" aria-haspopup="dialog" data-project-schedule-control-toggle="true" className="absolute right-4 top-3 z-40 inline-flex min-h-[40px] min-w-[40px] items-center gap-2 rounded-lg border border-blue-500/30 bg-[#0b1222]/95 px-3 py-2 text-xs font-black uppercase tracking-widest text-blue-300 shadow-xl backdrop-blur hover:bg-blue-500/10">
         <SlidersHorizontal size={13} /> Schedule control <ChevronRight size={12} className={open ? 'rotate-180' : ''} />
