@@ -36,6 +36,29 @@ const installRoutes = async (page: Page) => {
   })
 }
 
+const visibleTextBelow = async (page: Page, selector: string, floor: number) => page.locator(selector).evaluate((root, min) => {
+  const bad: Array<{ text: string; size: number }> = []
+  for (const element of Array.from(root.querySelectorAll<HTMLElement>('*'))) {
+    const text = (element.innerText || '').trim()
+    if (!text || element.children.length > 0) continue
+    const rect = element.getBoundingClientRect(); const style = getComputedStyle(element)
+    if (rect.width <= 0 || rect.height <= 0 || style.display === 'none' || style.visibility === 'hidden') continue
+    const size = Number.parseFloat(style.fontSize)
+    if (size < min) bad.push({ text: text.slice(0, 80), size })
+  }
+  return bad
+}, floor)
+
+const undersizedControls = async (page: Page, selector: string, floor: number) => page.locator(selector).evaluate((root, min) => {
+  const bad: Array<{ name: string; width: number; height: number }> = []
+  for (const element of Array.from(root.querySelectorAll<HTMLElement>('button, input, select'))) {
+    const rect = element.getBoundingClientRect(); const style = getComputedStyle(element)
+    if (rect.width <= 0 || rect.height <= 0 || style.display === 'none' || style.visibility === 'hidden' || element.hasAttribute('disabled')) continue
+    if (rect.width + 0.5 < min || rect.height + 0.5 < min) bad.push({ name: element.getAttribute('aria-label') || element.innerText || element.getAttribute('name') || element.tagName, width: rect.width, height: rect.height })
+  }
+  return bad
+}, floor)
+
 test.beforeEach(async ({ page }) => {
   projects = [structuredClone(seed)]; lastPutBody = null
   await page.addInitScript(() => { localStorage.setItem('sysgrid-theme', 'nordic-frost-v1'); localStorage.setItem('SYSGRID_USER_ID', 'proof_operator') })
@@ -94,4 +117,70 @@ test('baseline history is additive and capacity stays Unknown without authority 
   await baselines.getByRole('button', { name: 'Capture', exact: true }).click()
   await expect.poll(() => lastPutBody?.metadata_json?.project_schedule_v2?.baselines?.length).toBe(1)
   await expect(page.locator('[data-project-schedule-capacity="true"]')).toContainText('Capacity Unknown')
+})
+
+test('OUT-40 schedule control is keyboard-accessible, announced and contained at 390x844 @out40-slice-b-acceptance', async ({ page }) => {
+  const consoleErrors: string[] = []; const requestFailures: string[] = []
+  page.on('console', (message) => { if (message.type() === 'error') consoleErrors.push(message.text()) })
+  page.on('requestfailed', (request) => requestFailures.push(`${request.method()} ${request.url()} ${request.failure()?.errorText || ''}`))
+  await page.setViewportSize({ width: 390, height: 844 })
+  await page.goto('/projects?id=3801&view=timeline')
+
+  const toggle = page.locator('[data-project-schedule-control-toggle="true"]')
+  await toggle.focus(); await page.keyboard.press('Enter')
+  const dialog = page.getByRole('dialog', { name: 'Scheduling, capacity & scenarios' })
+  await expect(dialog).toBeVisible()
+  await expect(toggle).toHaveAttribute('aria-expanded', 'true')
+  await expect(toggle).toHaveAttribute('aria-controls', 'project-schedule-control-drawer')
+  await expect(dialog).toHaveAttribute('aria-modal', 'true')
+  await expect(page.getByRole('button', { name: 'Close schedule control' })).toBeFocused()
+
+  const bounds = await dialog.boundingBox()
+  expect(bounds).not.toBeNull()
+  expect(bounds?.x || 0).toBeGreaterThanOrEqual(0)
+  expect(bounds?.y || 0).toBeGreaterThanOrEqual(0)
+  expect((bounds?.x || 0) + (bounds?.width || 0)).toBeLessThanOrEqual(391)
+  expect((bounds?.y || 0) + (bounds?.height || 0)).toBeLessThanOrEqual(845)
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1)).toBe(true)
+  expect(await visibleTextBelow(page, '[data-project-schedule-control-drawer="true"]', 12)).toEqual([])
+  expect(await undersizedControls(page, '[data-project-schedule-control-drawer="true"]', 40)).toEqual([])
+
+  const network = page.locator('[data-project-schedule-network="true"]')
+  await network.getByLabel('Task').selectOption('2')
+  await network.getByLabel('Predecessor').selectOption('1')
+  await network.getByLabel('Type').selectOption('SS')
+  await network.getByRole('spinbutton').fill('2')
+  await network.getByRole('button', { name: /Save dependency/i }).click()
+  const live = page.locator('[data-project-schedule-live-status="true"]')
+  await expect(live).toHaveText('Typed dependency saved')
+
+  await network.getByLabel('Task').selectOption('1')
+  await network.getByLabel('Predecessor').selectOption('2')
+  await network.getByRole('button', { name: /Save dependency/i }).click()
+  await expect(live).toHaveText('Dependency was not changed. Check for a duplicate or cycle.')
+
+  await page.keyboard.press('Escape')
+  await expect(dialog).toHaveCount(0)
+  await expect(toggle).toBeFocused()
+  await expect(toggle).toHaveAttribute('aria-expanded', 'false')
+  expect(consoleErrors).toEqual([])
+  expect(requestFailures).toEqual([])
+})
+
+test('OUT-40 schedule control stays viewport-contained on desktop and wide screens @out40-slice-b-regression', async ({ page }) => {
+  for (const viewport of [{ width: 1280, height: 720 }, { width: 1920, height: 1080 }]) {
+    await page.setViewportSize(viewport)
+    await page.goto('/projects?id=3801&view=timeline')
+    const toggle = page.locator('[data-project-schedule-control-toggle="true"]')
+    await toggle.click()
+    const dialog = page.getByRole('dialog', { name: 'Scheduling, capacity & scenarios' })
+    await expect(dialog).toBeVisible()
+    const bounds = await dialog.boundingBox()
+    expect(bounds).not.toBeNull()
+    expect((bounds?.x || 0) + (bounds?.width || 0)).toBeLessThanOrEqual(viewport.width + 1)
+    expect((bounds?.y || 0) + (bounds?.height || 0)).toBeLessThanOrEqual(viewport.height + 1)
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1)).toBe(true)
+    await page.getByRole('button', { name: 'Close schedule control' }).click()
+    await expect(toggle).toBeFocused()
+  }
 })

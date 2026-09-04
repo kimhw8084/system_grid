@@ -30,3 +30,29 @@ describe('OUT-38 source contract', () => {
     expect(model).toContain("status: !authoritative ? 'UNKNOWN'")
   })
 })
+
+describe('OUT-40 schedule control accessibility contract', () => {
+  it('owns explicit dialog, keyboard restoration and live mutation semantics', () => {
+    expect(wrapper).toContain('aria-expanded={open}')
+    expect(wrapper).toContain('aria-controls="project-schedule-control-drawer"')
+    expect(wrapper).toContain('aria-haspopup="dialog"')
+    expect(wrapper).toContain('role="dialog"')
+    expect(wrapper).toContain('aria-modal="true"')
+    expect(wrapper).toContain('onKeyDown={handleScheduleDialogKeyDown}')
+    expect(wrapper).toContain('scheduleToggleRef.current?.focus()')
+    expect(wrapper).toContain('data-project-schedule-live-status="true"')
+    expect(wrapper).toContain('setLiveMessage(label)')
+    expect(wrapper).toContain("setLiveMessage(message)")
+  })
+
+  it('keeps functional text and critical controls above the Projects hardening floor', () => {
+    expect(wrapper).toContain('const controlStyle = { minHeight: 40, minWidth: 40 } as const')
+    expect(wrapper.match(/style=\{controlStyle\}/g)?.length).toBe(11)
+    expect(wrapper).toContain('min-h-[40px]')
+    expect(wrapper).toContain('min-w-[40px]')
+    expect(wrapper).toContain('grid grid-cols-2 gap-1 sm:grid-cols-7')
+    expect(wrapper).toContain('grid grid-cols-1 gap-2 sm:grid-cols-2')
+    expect(wrapper).toContain('sm:w-[470px]')
+    expect(wrapper).not.toMatch(/text-\[(?:[0-9]|1[01])px\]/)
+  })
+})
