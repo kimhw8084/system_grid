@@ -5,7 +5,7 @@ import { AlertTriangle, BarChart3, CalendarDays, CheckCircle2, ChevronRight, Git
 import toast from 'react-hot-toast'
 import ProjectsGolden from './ProjectsGolden'
 import { apiFetch } from '../api/apiClient'
-import { projectFingerprint } from './ProjectsGolden.model'
+import { PROJECT_TASK_STATUSES, projectFingerprint, type ProjectTaskStatus } from './ProjectsGolden.model'
 import {
   PROJECT_DEPENDENCY_TYPES,
   analyzeProjectSchedule,
@@ -32,6 +32,7 @@ const primaryButtonClass = `${buttonClass} border-blue-500/30 bg-blue-500/10 tex
 const sectionClass = 'rounded-lg border border-white/5 bg-black/25 p-3'
 const dayLabels = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
 const constraintTypes: ProjectConstraintType[] = ['ASAP', 'SNET', 'FNLT', 'MUST_START', 'MUST_FINISH']
+type BoardPendingMove = { taskId: string; taskName: string; fromStatus: ProjectTaskStatus; toStatus: ProjectTaskStatus }
 
 const readProjects = async () => {
   const response = await apiFetch('/api/v1/projects')
@@ -62,6 +63,9 @@ export default function ProjectsSchedulingCompletion() {
   const [scenarioSlipDays, setScenarioSlipDays] = useState(5)
   const [previewNonce, setPreviewNonce] = useState(0)
   const [liveMessage, setLiveMessage] = useState('')
+  const [boardLiveMessage, setBoardLiveMessage] = useState('')
+  const boardPendingMoveRef = useRef<BoardPendingMove | null>(null)
+  const workspaceRootRef = useRef<HTMLDivElement | null>(null)
   const scheduleToggleRef = useRef<HTMLButtonElement | null>(null)
   const scheduleCloseRef = useRef<HTMLButtonElement | null>(null)
 
@@ -105,6 +109,119 @@ export default function ProjectsSchedulingCompletion() {
     const frame = requestAnimationFrame(() => scheduleCloseRef.current?.focus())
     return () => cancelAnimationFrame(frame)
   }, [open])
+
+  useEffect(() => {
+    if (view !== 'board') {
+      boardPendingMoveRef.current = null
+      setBoardLiveMessage('')
+      return
+    }
+    const root = workspaceRootRef.current
+    if (!root) return
+
+    const selectorValue = (value: string) => typeof CSS !== 'undefined' && typeof CSS.escape === 'function'
+      ? CSS.escape(value)
+      : value.replace(/["\\]/g, '\\$&')
+
+    const decorateBoard = () => {
+      root.querySelectorAll<HTMLElement>('[data-project-board-card="true"]').forEach((card) => {
+        const taskId = String(card.getAttribute('data-task-id') || '')
+        if (!taskId) return
+        const taskName = card.querySelector('h4')?.textContent?.trim() || `Task ${taskId}`
+        const column = card.closest<HTMLElement>('[data-project-board-column]')
+        const status = String(column?.getAttribute('data-project-board-column') || '') as ProjectTaskStatus
+        const statusIndex = PROJECT_TASK_STATUSES.indexOf(status)
+        if (statusIndex < 0) return
+
+        card.tabIndex = -1
+        card.setAttribute('data-project-board-focus-target', 'true')
+        card.setAttribute('aria-label', `${taskName}, ${status}`)
+        const buttons = Array.from(card.querySelectorAll<HTMLButtonElement>('button'))
+        if (buttons.length < 3) return
+        const previousButton = buttons[buttons.length - 2]
+        const nextButton = buttons[buttons.length - 1]
+
+        const decorateMoveButton = (button: HTMLButtonElement, direction: 'previous' | 'next', destination: ProjectTaskStatus | null) => {
+          button.style.minHeight = '40px'
+          button.style.minWidth = '40px'
+          button.setAttribute('data-project-board-move', direction)
+          button.setAttribute('data-project-board-move-task', taskId)
+          if (destination) {
+            button.setAttribute('data-project-board-move-destination', destination)
+            button.setAttribute('aria-label', `Move ${taskName} to ${destination}`)
+          } else {
+            button.removeAttribute('data-project-board-move-destination')
+            button.setAttribute('aria-label', `${taskName} has no ${direction} status`)
+          }
+        }
+
+        decorateMoveButton(previousButton, 'previous', statusIndex > 0 ? PROJECT_TASK_STATUSES[statusIndex - 1] : null)
+        decorateMoveButton(nextButton, 'next', statusIndex < PROJECT_TASK_STATUSES.length - 1 ? PROJECT_TASK_STATUSES[statusIndex + 1] : null)
+      })
+    }
+
+    const focusTaskCard = (taskId: string) => {
+      let attempts = 0
+      const focus = () => {
+        decorateBoard()
+        const card = root.querySelector<HTMLElement>(`[data-project-board-card="true"][data-task-id="${selectorValue(taskId)}"]`)
+        if (card) {
+          card.focus({ preventScroll: true })
+          return
+        }
+        attempts += 1
+        if (attempts < 5) requestAnimationFrame(focus)
+      }
+      requestAnimationFrame(focus)
+    }
+
+    const handleMoveActivation = (event: Event) => {
+      const target = event.target instanceof Element ? event.target : null
+      const button = target?.closest<HTMLButtonElement>('button[data-project-board-move]') || null
+      if (!button || !root.contains(button) || button.disabled) return
+      const taskId = String(button.getAttribute('data-project-board-move-task') || '')
+      const destination = button.getAttribute('data-project-board-move-destination') as ProjectTaskStatus | null
+      const card = button.closest<HTMLElement>('[data-project-board-card="true"]')
+      const column = card?.closest<HTMLElement>('[data-project-board-column]')
+      const fromStatus = String(column?.getAttribute('data-project-board-column') || '') as ProjectTaskStatus
+      const taskName = card?.querySelector('h4')?.textContent?.trim() || `Task ${taskId}`
+      if (!taskId || !destination || !PROJECT_TASK_STATUSES.includes(destination) || !PROJECT_TASK_STATUSES.includes(fromStatus)) return
+      boardPendingMoveRef.current = { taskId, taskName, fromStatus, toStatus: destination }
+      setBoardLiveMessage(`Moving ${taskName} to ${destination}…`)
+    }
+
+    const unsubscribe = queryClient.getMutationCache().subscribe((event: any) => {
+      const pending = boardPendingMoveRef.current
+      const mutation = event?.mutation
+      if (!pending || mutation?.options?.scope?.id !== 'projects-authoritative-write') return
+      const variables = mutation?.state?.variables as any
+      const requestedTask = variables?.nextProject?.tasks?.find((task: any) => String(task?.id) === pending.taskId)
+      if (!requestedTask || requestedTask.status !== pending.toStatus) return
+
+      if (mutation.state.status === 'success') {
+        const savedTask = mutation.state.data?.tasks?.find((task: any) => String(task?.id) === pending.taskId)
+        if (!savedTask || savedTask.status !== pending.toStatus) return
+        boardPendingMoveRef.current = null
+        setBoardLiveMessage(`${pending.taskName} moved to ${pending.toStatus}`)
+        focusTaskCard(pending.taskId)
+      } else if (mutation.state.status === 'error') {
+        const message = mutation.state.error?.message || 'Project update failed'
+        boardPendingMoveRef.current = null
+        setBoardLiveMessage(`Could not move ${pending.taskName} to ${pending.toStatus}: ${message}`)
+        focusTaskCard(pending.taskId)
+      }
+    })
+
+    decorateBoard()
+    root.addEventListener('click', handleMoveActivation, true)
+    const observer = new MutationObserver(decorateBoard)
+    observer.observe(root, { childList: true, subtree: true })
+    return () => {
+      observer.disconnect()
+      root.removeEventListener('click', handleMoveActivation, true)
+      unsubscribe()
+    }
+  }, [view, queryClient])
 
   const updateMutation = useMutation({
     mutationFn: async ({ baseProject, nextProject, label }: { baseProject: any; nextProject: any; label: string }) => {
@@ -175,8 +292,9 @@ export default function ProjectsSchedulingCompletion() {
   const criticalRows = analysis.rows.filter((row) => row.critical)
   const dependencies = normalizeProjectTaskDependencies(selectedTask)
 
-  return <div className="relative h-full min-h-0" data-projects-scheduling-completion="true">
+  return <div ref={workspaceRootRef} className="relative h-full min-h-0" data-projects-scheduling-completion="true">
     <ProjectsGolden />
+    <p className="sr-only" role="status" aria-live="polite" aria-atomic="true" data-project-board-live-status="true">{boardLiveMessage}</p>
     {timelineActive && selectedProject ? <>
       <button ref={scheduleToggleRef} type="button" onClick={() => setOpen((current) => !current)} aria-expanded={open} aria-controls="project-schedule-control-drawer" aria-haspopup="dialog" data-project-schedule-control-toggle="true" className="absolute right-4 top-3 z-40 inline-flex min-h-[40px] min-w-[40px] items-center gap-2 rounded-lg border border-blue-500/30 bg-[#0b1222]/95 px-3 py-2 text-xs font-black uppercase tracking-widest text-blue-300 shadow-xl backdrop-blur hover:bg-blue-500/10">
         <SlidersHorizontal size={13} /> Schedule control <ChevronRight size={12} className={open ? 'rotate-180' : ''} />
