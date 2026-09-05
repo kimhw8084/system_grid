@@ -757,6 +757,89 @@ export default function ProjectsSchedulingCompletion() {
     return () => observer.disconnect()
   }, [selectedProject?.id, searchParams, queryClient])
 
+  useEffect(() => {
+    const root = workspaceRootRef.current
+    if (!root) return
+
+    const hasNativeLabel = (control: HTMLElement) => {
+      const labels = (control as HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement).labels
+      return Boolean(labels && labels.length)
+    }
+
+    const nameIfMissing = (control: HTMLElement | null, label: string) => {
+      if (!control || control.getAttribute('aria-label') || control.getAttribute('aria-labelledby') || control.getAttribute('title') || hasNativeLabel(control)) return
+      control.setAttribute('aria-label', label)
+    }
+
+    const semanticText = (element: Element | null): string => {
+      if (!element) return ''
+      const clone = element.cloneNode(true) as HTMLElement
+      clone.querySelectorAll('input, select, textarea, button, option, svg').forEach((node) => node.remove())
+      return String(clone.textContent || '').replace(/\s+/g, ' ').trim()
+    }
+
+    const inferCreateProjectControlName = (control: HTMLElement, index: number): string => {
+      const placeholder = String(control.getAttribute('placeholder') || '').replace(/[.…]+$/g, '').trim()
+      if (placeholder) return placeholder
+      const ownName = String(control.getAttribute('name') || control.getAttribute('id') || '').replace(/[_-]+/g, ' ').trim()
+      if (ownName) return ownName.replace(/\b\w/g, (letter) => letter.toUpperCase())
+
+      let sibling = control.previousElementSibling
+      while (sibling) {
+        const text = semanticText(sibling)
+        if (text && text.length <= 80) return text
+        sibling = sibling.previousElementSibling
+      }
+
+      let ancestor = control.parentElement
+      for (let depth = 0; ancestor && depth < 3; depth += 1, ancestor = ancestor.parentElement) {
+        const text = semanticText(ancestor)
+        if (text && text.length <= 80) return text
+      }
+
+      if (control instanceof HTMLSelectElement) {
+        const values = Array.from(control.options).map((option) => option.textContent?.trim() || '').filter(Boolean)
+        const joined = values.join(' | ').toLowerCase()
+        if (joined.includes('planning') && joined.includes('in progress') && joined.includes('completed')) return 'Project status'
+        if (joined.includes('low') && joined.includes('medium') && joined.includes('high')) return 'Project priority'
+        if (joined.includes('strategic') || joined.includes('operational') || joined.includes('tactical')) return 'Project type'
+        const prompt = values.find((value) => /^(select|choose)\b/i.test(value))
+        if (prompt) return prompt.replace(/^(select|choose)\s+/i, '').replace(/[.…]+$/g, '').trim() || `Create project selection ${index + 1}`
+      }
+      return `Create project ${control.tagName.toLowerCase()} ${index + 1}`
+    }
+
+    const decorateCreateProjectDialog = () => {
+      const dialog = Array.from(document.querySelectorAll<HTMLElement>('[role="dialog"]')).find((candidate) => /Create Project Outcome/i.test(candidate.textContent || ''))
+      if (!dialog) return
+      const controls = Array.from(dialog.querySelectorAll<HTMLElement>('input:not([type="hidden"]), select, textarea'))
+      controls.forEach((control, index) => {
+        if (control.getAttribute('aria-label') || control.getAttribute('aria-labelledby') || control.getAttribute('title') || hasNativeLabel(control)) return
+        nameIfMissing(control, inferCreateProjectControlName(control, index))
+      })
+    }
+
+    const decorateRemainingProjectNames = () => {
+      nameIfMissing(root.querySelector<HTMLElement>('[data-project-my-work="true"] input[placeholder="Owner name / username"]'), 'My Work owner')
+      nameIfMissing(root.querySelector<HTMLElement>('[data-project-task-paste="true"] textarea'), 'Paste tasks')
+      nameIfMissing(root.querySelector<HTMLElement>('[data-project-schedule-scenarios="true"] select'), 'Scenario task')
+      nameIfMissing(root.querySelector<HTMLElement>('[data-project-schedule-scenarios="true"] input[placeholder="Scenario name"]'), 'Scenario name')
+      nameIfMissing(root.querySelector<HTMLElement>('[data-project-schedule-baselines="true"] input[placeholder="Baseline name"]'), 'Baseline name')
+      nameIfMissing(root.querySelector<HTMLElement>('[data-project-schedule-baselines="true"] select'), 'Schedule baseline')
+      decorateCreateProjectDialog()
+    }
+
+    decorateRemainingProjectNames()
+    const observer = new MutationObserver(decorateRemainingProjectNames)
+    observer.observe(root, { childList: true, subtree: true })
+    const dialogObserver = new MutationObserver(decorateCreateProjectDialog)
+    dialogObserver.observe(document.body, { childList: true, subtree: true })
+    return () => {
+      observer.disconnect()
+      dialogObserver.disconnect()
+    }
+  }, [])
+
   const updateMutation = useMutation({
     mutationFn: async ({ baseProject, nextProject, label }: { baseProject: any; nextProject: any; label: string }) => {
       const latestResponse = await apiFetch('/api/v1/projects')
