@@ -93,6 +93,29 @@ export const taskKeyboardMoveRelationMatches = (project: any, pending: Pick<Task
   return pending.direction === 'earlier' ? movingOrder < neighborOrder : movingOrder > neighborOrder
 }
 
+
+type ProjectTaskDrawerAccessibleNameControl = {
+  getAttribute: (name: string) => string | null
+  setAttribute: (name: string, value: string) => void
+}
+
+export const syncProjectTaskDrawerAccessibleName = (control: ProjectTaskDrawerAccessibleNameControl, label: string): boolean => {
+  if (control.getAttribute('aria-label') === label) return false
+  control.setAttribute('aria-label', label)
+  return true
+}
+
+export const projectTaskDrawerChecklistLabels = (taskName: string, itemName: string) => ({
+  toggle: `Toggle checklist item ${itemName}`,
+  remove: `Remove checklist item ${itemName}`,
+  addInput: `Add checklist item for ${taskName}`,
+  addButton: `Add checklist item for ${taskName}`,
+})
+
+export const projectTaskDrawerDependencyLabel = (taskName: string, dependencyName: string | null, action: 'add' | 'remove'): string =>
+  action === 'remove' && dependencyName ? `Remove dependency ${dependencyName}` : `Add selected dependency to ${taskName}`
+
+
 const readProjects = async () => {
   const response = await apiFetch('/api/v1/projects')
   if (!response.ok) throw new Error(await response.text())
@@ -656,6 +679,83 @@ export default function ProjectsSchedulingCompletion() {
       unsubscribe()
     }
   }, [view, selectedProject?.id, queryClient])
+
+
+  useEffect(() => {
+    const root = workspaceRootRef.current
+    const drawerTaskId = String(searchParams.get('task') || '')
+    if (!root || !selectedProject || !drawerTaskId) return
+
+    const currentProject = () => queryClient.getQueryData<any[]>(['projects'])?.find((project: any) => String(project?.id) === String(selectedProject?.id)) || selectedProject
+    const drawerTask = () => (Array.isArray(currentProject()?.tasks) ? currentProject().tasks : []).find((task: any) => String(task?.id) === drawerTaskId) || null
+    const ensureMinTarget = (control: HTMLElement | null) => {
+      if (!control) return
+      if (control.style.minHeight !== '40px') control.style.minHeight = '40px'
+      if (control.style.minWidth !== '40px') control.style.minWidth = '40px'
+    }
+
+    const decorateTaskDrawer = () => {
+      const drawer = root.querySelector<HTMLElement>('[data-project-task-drawer="true"]')
+      const task = drawerTask()
+      if (!drawer || !task) return
+      const taskName = String(task.name || `Task ${drawerTaskId}`)
+
+      const description = Array.from(drawer.querySelectorAll<HTMLTextAreaElement>('textarea')).find((control) => !control.getAttribute('aria-label'))
+      if (description) syncProjectTaskDrawerAccessibleName(description, `Description for ${taskName}`)
+
+      for (const label of ['Undo task change', 'Redo task change', 'Close task drawer']) {
+        ensureMinTarget(drawer.querySelector<HTMLElement>(`button[aria-label="${label}"]`))
+      }
+
+      const checklistRoot = drawer.querySelector<HTMLElement>('[data-project-task-checklist="true"]')
+      if (checklistRoot) {
+        checklistRoot.querySelectorAll<HTMLInputElement>('input[type="checkbox"]').forEach((checkbox) => {
+          const row = checkbox.parentElement
+          const itemName = row?.querySelector('span')?.textContent?.trim() || 'Checklist item'
+          const labels = projectTaskDrawerChecklistLabels(taskName, itemName)
+          syncProjectTaskDrawerAccessibleName(checkbox, labels.toggle)
+          const remove = row?.querySelector<HTMLButtonElement>('button') || null
+          if (remove) {
+            syncProjectTaskDrawerAccessibleName(remove, labels.remove)
+            ensureMinTarget(remove)
+          }
+        })
+        const addInput = Array.from(checklistRoot.querySelectorAll<HTMLInputElement>('input')).find((input) => input.type !== 'checkbox') || null
+        if (addInput) {
+          const labels = projectTaskDrawerChecklistLabels(taskName, '')
+          syncProjectTaskDrawerAccessibleName(addInput, labels.addInput)
+          const addButton = addInput.parentElement?.querySelector<HTMLButtonElement>('button') || null
+          if (addButton) {
+            syncProjectTaskDrawerAccessibleName(addButton, labels.addButton)
+            ensureMinTarget(addButton)
+          }
+        }
+      }
+
+      const dependencyRoot = drawer.querySelector<HTMLElement>('[data-project-task-dependencies="true"]')
+      if (dependencyRoot) {
+        const addSelect = dependencyRoot.querySelector<HTMLSelectElement>('select[aria-label="Add task dependency"]')
+        const addButton = addSelect?.parentElement?.querySelector<HTMLButtonElement>('button') || null
+        if (addButton) {
+          syncProjectTaskDrawerAccessibleName(addButton, projectTaskDrawerDependencyLabel(taskName, null, 'add'))
+          ensureMinTarget(addButton)
+        }
+        dependencyRoot.querySelectorAll<HTMLButtonElement>('button').forEach((button) => {
+          if (button === addButton) return
+          const row = button.parentElement
+          const dependencyName = row?.querySelector('span')?.textContent?.trim() || ''
+          if (!dependencyName) return
+          syncProjectTaskDrawerAccessibleName(button, projectTaskDrawerDependencyLabel(taskName, dependencyName, 'remove'))
+          ensureMinTarget(button)
+        })
+      }
+    }
+
+    decorateTaskDrawer()
+    const observer = new MutationObserver(decorateTaskDrawer)
+    observer.observe(root, { childList: true, subtree: true })
+    return () => observer.disconnect()
+  }, [selectedProject?.id, searchParams, queryClient])
 
   const updateMutation = useMutation({
     mutationFn: async ({ baseProject, nextProject, label }: { baseProject: any; nextProject: any; label: string }) => {
