@@ -1,3 +1,5 @@
+// SYSGRID_VISUAL_REPAIR_V1
+import { canonicalTaskStatus } from './ProjectsVisualRepair.geometry'
 export const PROJECT_GOLDEN_VIEWS = ['overview', 'tasks', 'timeline', 'board', 'files', 'updates', 'reports', 'insights', 'portfolio'] as const
 export type ProjectGoldenView = (typeof PROJECT_GOLDEN_VIEWS)[number]
 export const PROJECT_PRIMARY_VIEWS = ['overview', 'tasks', 'timeline', 'board', 'files', 'updates', 'reports', 'insights'] as const
@@ -155,9 +157,7 @@ export const projectSavedViewFromWorkspaceDefinition = (value: unknown): Project
   })
 }
 
-export const normalizeTaskStatus = (value?: string | null): ProjectTaskStatus | 'Unknown' => (
-  PROJECT_TASK_STATUSES.includes(value as ProjectTaskStatus) ? value as ProjectTaskStatus : 'Unknown'
-)
+export const normalizeTaskStatus = (value?: string | null): ProjectTaskStatus | 'Unknown' => { const status = canonicalTaskStatus(value); return PROJECT_TASK_STATUSES.includes(status as ProjectTaskStatus) ? status as ProjectTaskStatus : 'Unknown' }
 
 const dateParts = (value?: string | Date | null): [number, number, number] | null => {
   if (!value) return null
@@ -191,7 +191,7 @@ export const getDaysToDue = (value?: string | null, now: Date = new Date()): num
 }
 
 export const getTaskProgress = (task: any): number => {
-  if (task?.status === 'Completed') return 100
+  if (canonicalTaskStatus(task?.status) === 'Completed') return 100
   const subtasks = Array.isArray(task?.metadata_json?.subtasks) ? task.metadata_json.subtasks : []
   if (subtasks.length) {
     const completed = subtasks.filter((subtask: any) => Boolean(subtask?.completed)).length
@@ -208,7 +208,7 @@ export const getTaskProgress = (task: any): number => {
 
 export const getProjectExecutionProgress = (project: any): number => {
   const tasks = Array.isArray(project?.tasks) ? project.tasks : []
-  if (!tasks.length) return project?.status === 'Completed' ? 100 : 0
+  if (!tasks.length) return canonicalTaskStatus(project?.status) === 'Completed' ? 100 : 0
   return Math.round(tasks.reduce((sum: number, task: any) => sum + getTaskProgress(task), 0) / tasks.length)
 }
 
@@ -221,7 +221,7 @@ export const getTaskOwnerLabel = (task: any): string => {
 
 export const isOpenProject = (project: any) => !['Completed', 'Cancelled'].includes(project?.status)
 
-const openTasksFor = (project: any) => (Array.isArray(project?.tasks) ? project.tasks : []).filter((task: any) => task?.status !== 'Completed')
+const openTasksFor = (project: any) => (Array.isArray(project?.tasks) ? project.tasks : []).filter((task: any) => canonicalTaskStatus(task?.status) !== 'Completed')
 
 export const getCriticalTaskIds = (project: any): Set<number | string> => {
   const tasks = Array.isArray(project?.tasks) ? project.tasks : []
@@ -278,7 +278,7 @@ export const getProjectMilestones = (project: any, now: Date = new Date()): Proj
         daysToDue,
         progress: getTaskProgress(task),
         blocked: task.status === 'Blocked',
-        overdue: task.status !== 'Completed' && daysToDue != null && daysToDue < 0,
+        overdue: canonicalTaskStatus(task.status) !== 'Completed' && daysToDue != null && daysToDue < 0,
       }
     })
 }
@@ -372,7 +372,7 @@ export const buildProjectAttentionItems = (projects: any[], now: Date = new Date
     const projectName = project?.name || `Project ${projectId}`
     const critical = getCriticalTaskIds(project)
     ;(project?.tasks || []).forEach((task: any) => {
-      if (task?.status === 'Completed') return
+      if (canonicalTaskStatus(task?.status) === 'Completed') return
       const owner = getTaskOwnerLabel(task)
       const daysToDue = getDaysToDue(task?.end_date, now)
       const taskId = task?.id ?? task?.name ?? `${projectId}-${items.length}`
@@ -438,7 +438,7 @@ export const buildPortfolioMetrics = (projects: any[], now: Date = new Date()) =
   const list = Array.isArray(projects) ? projects : []
   const openProjects = list.filter(isOpenProject)
   const allTasks = list.flatMap((project: any) => (project?.tasks || []).map((task: any) => ({ task, project })))
-  const openTasks = allTasks.filter(({ task }) => task?.status !== 'Completed')
+  const openTasks = allTasks.filter(({ task }) => canonicalTaskStatus(task?.status) !== 'Completed')
   const blocked = openTasks.filter(({ task }) => task?.status === 'Blocked').length
   const overdue = openTasks.filter(({ task }) => { const d = getDaysToDue(task?.end_date, now); return d != null && d < 0 }).length
   const dueSoon = openTasks.filter(({ task }) => { const d = getDaysToDue(task?.end_date, now); return d != null && d >= 0 && d <= 3 }).length
@@ -491,7 +491,7 @@ export const moveProjectTaskStatus = (project: any, taskId: number | string, sta
     ...project,
     tasks: (project?.tasks || []).map((task: any) => {
       if (String(task?.id) !== String(taskId)) return task
-      const nextProgress = status === 'Completed' ? 100 : task.status === 'Completed' && Number(task.progress) >= 100 ? (status === 'Review' ? 90 : status === 'In Progress' ? 50 : 0) : task.progress
+      const nextProgress = status === 'Completed' ? 100 : canonicalTaskStatus(task.status) === 'Completed' && Number(task.progress) >= 100 ? (status === 'Review' ? 90 : status === 'In Progress' ? 50 : 0) : task.progress
       return { ...task, status, progress: nextProgress }
     }),
   }
@@ -505,8 +505,8 @@ export const isProjectTaskMilestone = (task: any): boolean => Boolean(task?.type
 const normalizeTaskPatch = (task: any, patch: any) => {
   const next = { ...task, ...patch }
   if (patch?.metadata_json) next.metadata_json = { ...taskMetadata(task), ...patch.metadata_json }
-  if (next.status === 'Completed') next.progress = 100
-  else if (task?.status === 'Completed' && Number(task?.progress) >= 100 && patch?.status && patch.status !== 'Completed' && patch?.progress == null) {
+  if (canonicalTaskStatus(next.status) === 'Completed') next.progress = 100
+  else if (canonicalTaskStatus(task?.status) === 'Completed' && Number(task?.progress) >= 100 && patch?.status && canonicalTaskStatus(patch.status) !== 'Completed' && patch?.progress == null) {
     next.progress = patch.status === 'Review' ? 90 : patch.status === 'In Progress' ? 50 : 0
   } else if (patch?.progress != null) {
     const progress = Number(patch.progress)
@@ -817,7 +817,7 @@ const taskActivityOrdinal = (project: any, task: any) => {
 
 export const getProjectNeedsUpdate = (projects: any[], owner = '', now: Date = new Date()) => {
   const normalizedOwner = owner.trim().toLowerCase(); const today = calendarOrdinal(now) ?? 0
-  return (projects || []).flatMap((project: any) => (project?.tasks || []).filter((task: any) => task?.status !== 'Completed').map((task: any) => {
+  return (projects || []).flatMap((project: any) => (project?.tasks || []).filter((task: any) => canonicalTaskStatus(task?.status) !== 'Completed').map((task: any) => {
     const ownerLabel = getTaskOwnerLabel(task); if (normalizedOwner && !ownerLabel.toLowerCase().includes(normalizedOwner)) return null
     const due = getDaysToDue(task?.end_date, now); const activityOrdinal = taskActivityOrdinal(project, task); const staleDays = activityOrdinal == null ? null : Math.max(0, today - activityOrdinal)
     const reasons: string[] = []
@@ -875,7 +875,7 @@ export const buildOwnerWorkload = (projects: any[], now: Date = new Date()) => {
   ;(projects || []).forEach((project: any) => {
     const critical = getCriticalTaskIds(project)
     ;(project?.tasks || []).forEach((task: any) => {
-      if (task?.status === 'Completed') return
+      if (canonicalTaskStatus(task?.status) === 'Completed') return
       const owner = getTaskOwnerLabel(task)
       const row = map.get(owner) || { owner, tasks: 0, projects: new Set<number>(), overdue: 0, blocked: 0, review: 0, dueSoon: 0, critical: 0 }
       row.tasks += 1; row.projects.add(project.id)
@@ -1058,8 +1058,8 @@ export const getProjectForecast = (project: any, now: Date = new Date(), slipByT
     const plannedStart = calendarOrdinal(task?.start_date)
     const plannedEnd = calendarOrdinal(task?.end_date)
     const duration = plannedStart != null && plannedEnd != null ? Math.max(1, plannedEnd - plannedStart + 1) : 1
-    const remainingRatio = task?.status === 'Completed' ? 0 : Math.max(0.05, (100 - getTaskProgress(task)) / 100)
-    const remainingDays = task?.status === 'Completed' ? 0 : Math.max(1, Math.ceil(duration * remainingRatio))
+    const remainingRatio = canonicalTaskStatus(task?.status) === 'Completed' ? 0 : Math.max(0.05, (100 - getTaskProgress(task)) / 100)
+    const remainingDays = canonicalTaskStatus(task?.status) === 'Completed' ? 0 : Math.max(1, Math.ceil(duration * remainingRatio))
     if (visiting.has(key)) {
       const fallbackEnd = plannedEnd ?? today
       const fallback = { id: task.id, name: task?.name || 'Unnamed task', plannedEndOrdinal: plannedEnd, forecastStartOrdinal: plannedStart ?? today, forecastEndOrdinal: fallbackEnd, delayDays: plannedEnd == null ? 0 : Math.max(0, fallbackEnd - plannedEnd), critical: critical.has(task.id) }
@@ -1069,8 +1069,8 @@ export const getProjectForecast = (project: any, now: Date = new Date(), slipByT
     const deps = (Array.isArray(task?.dependencies_json) ? task.dependencies_json : []).map((dep: any) => taskById.get(String(dep?.id ?? dep?.task_id ?? dep))).filter(Boolean) as any[]
     const dependencyEnd = deps.length ? Math.max(...deps.map((dep) => calculate(dep).forecastEndOrdinal)) : null
     let forecastStart = Math.max(today, plannedStart ?? today, dependencyEnd == null ? -Infinity : dependencyEnd + 1)
-    if (task?.status === 'Completed') forecastStart = plannedStart ?? plannedEnd ?? today
-    let forecastEnd = task?.status === 'Completed' ? (plannedEnd ?? forecastStart) : forecastStart + remainingDays - 1
+    if (canonicalTaskStatus(task?.status) === 'Completed') forecastStart = plannedStart ?? plannedEnd ?? today
+    let forecastEnd = canonicalTaskStatus(task?.status) === 'Completed' ? (plannedEnd ?? forecastStart) : forecastStart + remainingDays - 1
     if (plannedEnd != null) forecastEnd = Math.max(plannedEnd, forecastEnd)
     forecastEnd += Math.max(0, Math.round(Number(slipByTask[key]) || 0))
     const row = { id: task.id, name: task?.name || 'Unnamed task', plannedEndOrdinal: plannedEnd, forecastStartOrdinal: forecastStart, forecastEndOrdinal: forecastEnd, delayDays: plannedEnd == null ? 0 : Math.max(0, forecastEnd - plannedEnd), critical: critical.has(task.id) }
@@ -1138,7 +1138,7 @@ export const buildProjectChangeIntelligence = (project: any, now: Date = new Dat
   currentTasks.forEach((task: any, id) => {
     const before: any = previousTasks.get(id)
     if (!before) { changes.push({ kind: 'added', tone: 'blue', label: `Added task · ${task.name}` }); return }
-    if (before.status !== task.status) changes.push({ kind: task.status === 'Blocked' ? 'newly-blocked' : before.status === 'Completed' && task.status !== 'Completed' ? 'reopened' : 'status', tone: task.status === 'Blocked' || before.status === 'Completed' ? 'rose' : task.status === 'Completed' ? 'emerald' : 'blue', label: `${task.name} · ${before.status || 'blank'} → ${task.status || 'blank'}` })
+    if (before.status !== task.status) changes.push({ kind: task.status === 'Blocked' ? 'newly-blocked' : canonicalTaskStatus(before.status) === 'Completed' && canonicalTaskStatus(task.status) !== 'Completed' ? 'reopened' : 'status', tone: task.status === 'Blocked' || canonicalTaskStatus(before.status) === 'Completed' ? 'rose' : canonicalTaskStatus(task.status) === 'Completed' ? 'emerald' : 'blue', label: `${task.name} · ${before.status || 'blank'} → ${task.status || 'blank'}` })
     if (before.owner !== task.owner) changes.push({ kind: 'owner', tone: 'slate', label: `${task.name} · owner ${before.owner} → ${task.owner}` })
     if (before.end_date !== task.end_date) changes.push({ kind: 'date', tone: 'amber', label: `${task.name} · due ${before.end_date || 'none'} → ${task.end_date || 'none'}` })
     if (before.priority !== task.priority) changes.push({ kind: 'priority', tone: 'amber', label: `${task.name} · priority ${before.priority} → ${task.priority}` })
@@ -1184,11 +1184,11 @@ export const buildProjectRailRows = (
 
 export const buildProjectOverview = (project: any, now: Date = new Date()) => {
   const tasks = Array.isArray(project?.tasks) ? project.tasks : []
-  const openTasks = tasks.filter((task: any) => task?.status !== 'Completed')
+  const openTasks = tasks.filter((task: any) => canonicalTaskStatus(task?.status) !== 'Completed')
   const criticalIds = getCriticalTaskIds(project)
   const health = getProjectHealth(project, now)
   const milestones = getProjectMilestones(project, now)
-  const nextMilestone = milestones.find((milestone) => milestone.status !== 'Completed') || null
+  const nextMilestone = milestones.find((milestone) => canonicalTaskStatus(milestone.status) !== 'Completed') || null
   const forecast = getProjectForecast(project, now)
   const evidence = getEvidenceReadiness(project)
   const blockers = openTasks
@@ -1384,7 +1384,7 @@ export const getMyWork = (projects: any[], owner: string, now: Date = new Date()
   const normalized = owner.trim().toLowerCase()
   if (!normalized) return []
   const needs = new Map(getProjectNeedsUpdate(projects, owner, now).map((row: any) => [`${row.projectId}:${row.task.id}`, row]))
-  return (projects || []).flatMap((project: any) => (project?.tasks || []).filter((task: any) => task?.status !== 'Completed' && getTaskOwnerLabel(task).toLowerCase().includes(normalized)).map((task: any) => {
+  return (projects || []).flatMap((project: any) => (project?.tasks || []).filter((task: any) => canonicalTaskStatus(task?.status) !== 'Completed' && getTaskOwnerLabel(task).toLowerCase().includes(normalized)).map((task: any) => {
     const daysToDue = getDaysToDue(task?.end_date, now); const key = `${project.id}:${task.id}`; const needsRow: any = needs.get(key)
     const bucket = task?.status === 'Blocked' ? 'Blocked' : daysToDue != null && daysToDue < 0 ? 'Overdue' : daysToDue === 0 ? 'Today' : daysToDue != null && daysToDue <= 3 ? 'Due soon' : needsRow ? 'Needs update' : 'Upcoming'
     return { projectId: project.id, projectName: project.name, task, daysToDue, progress: getTaskProgress(task), bucket, needsUpdate: Boolean(needsRow), updateReasons: needsRow?.reasons || [] }

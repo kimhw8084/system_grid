@@ -1,3 +1,7 @@
+// SYSGRID_VISUAL_REPAIR_R4
+// SYSGRID_VISUAL_REPAIR_R3
+// SYSGRID_VISUAL_REPAIR_V1
+import { useProjectsNavigation, ProjectsNavigationButton, ProjectsNavigationBackdrop } from './components/ProjectsWorkspaceLayout'
 import React, { useState, useEffect, Component, ErrorInfo, ReactNode } from "react"
 import { QueryClient, QueryClientProvider, useQuery } from "@tanstack/react-query"
 import { Routes, Route, Link, useLocation, useNavigate, Navigate, RouterProvider, createBrowserRouter } from "react-router-dom"
@@ -393,7 +397,8 @@ const LinuxEnvModal = ({ onClose }: any) => {
 function MainLayout() {
   const location = useLocation(); 
   const navigate = useNavigate(); 
-  const [isSidebarOpen, setIsSidebarOpen] = useState(true); 
+  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  const projectNavigation = useProjectsNavigation(location.pathname, isSidebarOpen, setIsSidebarOpen); 
   const [showPatchNotes, setShowPatchNotes] = useState(false);
   const [showLinuxEnv, setShowLinuxEnv] = useState(false);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
@@ -591,9 +596,10 @@ function MainLayout() {
   }, [currentTheme])
 
   return (
-    <div className="flex h-screen overflow-hidden bg-[var(--bg-primary)] text-[var(--text-primary)] font-sans">
+    <div className="flex h-screen overflow-hidden bg-[var(--bg-primary)] text-[var(--text-primary)] font-sans" data-sg-projects-app={projectNavigation.active ? "true" : undefined}>
       <Toaster position="top-right" toastOptions={{ duration: 4000 }} />
-      <motion.aside animate={{ width: isSidebarOpen ? 240 : 80 }} className="glass-panel border-r border-[var(--glass-border)] flex flex-col z-20 shadow-2xl relative bg-[var(--sidebar-bg)]">
+      <ProjectsNavigationBackdrop nav={projectNavigation} />
+<motion.aside initial={projectNavigation.active ? false : undefined} transition={projectNavigation.active ? { duration: 0 } : undefined} animate={{ width: projectNavigation.active ? (projectNavigation.sidebarExpanded ? 240 : 80) : (isSidebarOpen ? 240 : 80) }} className="glass-panel border-r border-[var(--glass-border)] flex flex-col z-20 shadow-2xl relative bg-[var(--sidebar-bg)]" data-sg-app-sidebar="true" data-sg-nav-open={projectNavigation.sidebarExpanded ? "true" : "false"}>
         <div className={`p-6 flex items-center ${isSidebarOpen ? 'justify-between' : 'justify-center'}`}>
           <Link to="/" className="flex items-center space-x-3 hover:opacity-80 transition-opacity group">
              <div className="w-9 h-9 flex-shrink-0 bg-blue-600 rounded-lg flex items-center justify-center shadow-lg shadow-blue-500/20 border border-white/5 transition-transform group-hover:scale-105 duration-300">
@@ -602,7 +608,7 @@ function MainLayout() {
              {isSidebarOpen && <span className="font-black text-xl text-[var(--text-primary)] tracking-tighter uppercase">SYSGRID</span>}
           </Link>
           {isSidebarOpen && (
-            <button onClick={() => setIsSidebarOpen(false)} className="p-2 hover:bg-white/5 rounded-lg text-[var(--text-muted)]">
+            <button onClick={() => projectNavigation.mobile ? projectNavigation.close() : setIsSidebarOpen(false)} className="p-2 hover:bg-white/5 rounded-lg text-[var(--text-muted)]">
               <Menu size={18}/>
             </button>
           )}
@@ -681,14 +687,14 @@ function MainLayout() {
            {isSidebarOpen ? <p className="text-[8px] font-black uppercase tracking-[0.3em]">{APP_VERSION}</p> : <div className="w-2 h-2 rounded-full bg-blue-500 mx-auto"/>}
         </div>
       </motion.aside>
-      <main className="flex-1 flex flex-col overflow-hidden relative">
+      <main className="flex-1 flex flex-col overflow-hidden relative" data-sg-app-main="true">
         <ShellHeader
           left={
-            <>
+            <><ProjectsNavigationButton nav={projectNavigation} />{<>
               <ToolbarButton onClick={() => setShowPatchNotes(true)}>Patch Notes</ToolbarButton>
               <button
                 onClick={() => setIsSearchOpen(true)}
-                className="group flex min-w-[320px] items-center gap-3 rounded-lg border border-white/5 bg-white/5 px-4 py-2 text-slate-500 transition-all hover:border-blue-500/30 hover:text-white"
+                className="group flex min-w-[320px] items-center gap-3 rounded-lg border border-white/5 bg-white/5 px-4 py-2 text-slate-500 transition-all hover:border-blue-500/30 hover:text-white" data-sg-app-search="true" aria-label="Search assets, projects, or incidents"
               >
                 <Search size={16} className="transition-colors group-hover:text-blue-400" />
                 <span className="flex-1 text-left text-[11px] font-bold tracking-tight">Search assets, projects, or incidents...</span>
@@ -697,10 +703,44 @@ function MainLayout() {
                   <span className="rounded-lg border border-white/10 bg-black/40 px-1.5 py-0.5 text-[8px]">K</span>
                 </div>
               </button>
-            </>
+            </>}</>
           }
           right={
-            <>
+            projectNavigation.active ? <details className="sg-app-tools"><summary>App tools</summary><div>{<>
+              <TenantSelector />
+              <div className="mr-4 flex flex-col items-end">
+                <span className="text-[8px] font-bold uppercase tracking-widest text-slate-500">System Status</span>
+                <div className="flex items-center space-x-2">
+                  <span className={`text-[11px] font-black uppercase tracking-widest ${isOnline ? 'text-emerald-400' : 'text-rose-500'}`}>
+                    {isOnline ? 'Operational' : 'Degraded'}
+                  </span>
+                  {isOnline && <span className="text-[9px] font-bold tabular-nums text-slate-600">{latency}ms</span>}
+                </div>
+              </div>
+
+              <button
+                className="relative rounded-lg border border-white/5 bg-white/5 p-2 text-slate-400 hover:bg-white/10 hover:text-white transition-all"
+                title="Notifications"
+              >
+                <Bell size={18} />
+                <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-blue-500 rounded-full border-2 border-[var(--bg-header)]" />
+              </button>
+
+              <button
+                onClick={() => setErrorConsoleOpen(true)}
+                className={`relative rounded-lg border p-2 transition-all ${errors.filter(e => !e.acknowledged).length > 0 ? 'bg-rose-500/10 border-rose-500/30 text-rose-500 hover:bg-rose-500/20' : 'bg-white/5 border-white/5 text-slate-400 hover:bg-white/10'}`}
+              >
+                <Bug size={18} />
+                {errors.filter(e => !e.acknowledged).length > 0 && (
+                  <span className="absolute -top-1.5 -right-1.5 min-w-[18px] rounded-lg border-2 border-[var(--bg-header)] bg-rose-600 px-1.5 py-0.5 text-center text-[9px] font-black text-white">
+                    {errors.filter(e => !e.acknowledged).length}
+                  </span>
+                )}
+              </button>
+              <Link to="/settings" className={`rounded-lg border p-2 transition-all ${location.pathname === '/settings' ? 'bg-blue-600 border-blue-500 text-white shadow-lg shadow-blue-500/20' : 'bg-white/5 border-white/5 text-slate-400 hover:bg-white/10 hover:text-white'}`}>
+                <Settings size={18} />
+              </Link>
+            </>}</div></details> : <>
               <TenantSelector />
               <div className="mr-4 flex flex-col items-end">
                 <span className="text-[8px] font-bold uppercase tracking-widest text-slate-500">System Status</span>
@@ -738,7 +778,7 @@ function MainLayout() {
           }
         />
 
-        <div className={`flex-1 overflow-hidden relative flex flex-col ${location.pathname === '/architecture' || location.pathname === '/logs' || location.pathname === '/projects' ? '' : 'p-8'}`}>
+        <div className={`flex-1 overflow-hidden relative flex flex-col ${location.pathname === '/architecture' || location.pathname === '/logs' || location.pathname === '/projects' ? '' : 'p-8'}`} data-sg-content-panel="true">
           <ErrorBoundary>
             <Routes>
               <Route path="/" element={<Dashboard onNavigate={(p:any) => navigate("/" + p)} />} />

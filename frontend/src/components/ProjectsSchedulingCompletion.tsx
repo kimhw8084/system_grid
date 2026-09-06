@@ -4,7 +4,7 @@ import { useSearchParams } from 'react-router-dom'
 import { AlertTriangle, BarChart3, CalendarDays, CheckCircle2, ChevronRight, GitBranch, Layers3, Save, SlidersHorizontal, X } from 'lucide-react'
 import toast from 'react-hot-toast'
 import ProjectsGolden from './ProjectsGolden'
-import ProjectsModernGantt from './ProjectsModernGantt'
+import { ProjectsTimelineAuthority } from './ProjectsWorkspaceLayout'
 import { apiFetch } from '../api/apiClient'
 import { PROJECT_TASK_STATUSES, buildProjectTaskHierarchy, projectFingerprint, type ProjectTaskStatus } from './ProjectsGolden.model'
 import {
@@ -38,7 +38,6 @@ type BoardPendingMove = { taskId: string; taskName: string; fromStatus: ProjectT
 type TaskKeyboardMoveDirection = 'earlier' | 'later'
 type TaskKeyboardMovePlan = { taskId: string; direction: TaskKeyboardMoveDirection; neighborId: string; dragTaskId: string; dropTargetId: string }
 type TaskPendingMove = TaskKeyboardMovePlan & { taskName: string }
-type OverlayRect = { top: number; left: number; width: number; height: number }
 
 
 export const syncTimelineDependencyButtonGlyph = (button: { textContent: string | null }): string => {
@@ -139,7 +138,6 @@ export default function ProjectsSchedulingCompletion() {
   const [liveMessage, setLiveMessage] = useState('')
   const [boardLiveMessage, setBoardLiveMessage] = useState('')
   const [taskLiveMessage, setTaskLiveMessage] = useState('')
-  const [timelineRect, setTimelineRect] = useState<OverlayRect | null>(null)
   const boardPendingMoveRef = useRef<BoardPendingMove | null>(null)
   const taskPendingMoveRef = useRef<TaskPendingMove | null>(null)
   const workspaceRootRef = useRef<HTMLDivElement | null>(null)
@@ -186,41 +184,6 @@ export default function ProjectsSchedulingCompletion() {
     const frame = requestAnimationFrame(() => scheduleCloseRef.current?.focus())
     return () => cancelAnimationFrame(frame)
   }, [open])
-
-  // Keep the accepted Projects layout as the sizing authority, but make the old Gantt inert/invisible.
-  // The modern Gantt is React-owned and overlays exactly that measured rectangle, so it cannot drift
-  // from the task drawer, responsive shell or Project navigation layout.
-  useEffect(() => {
-    const root = workspaceRootRef.current
-    if (!root || view !== 'timeline') { setTimelineRect(null); return }
-    let legacy: HTMLElement | null = null
-    let resize: ResizeObserver | null = null
-    const measure = () => {
-      if (!legacy || !root.isConnected) return
-      const base = root.getBoundingClientRect(); const rect = legacy.getBoundingClientRect()
-      if (rect.width <= 0 || rect.height <= 0) return
-      setTimelineRect({ top: rect.top - base.top, left: rect.left - base.left, width: rect.width, height: rect.height })
-    }
-    const attach = () => {
-      const next = root.querySelector<HTMLElement>('[data-project-flagship-gantt="true"]:not([data-project-modern-gantt="true"])')
-      if (!next || next === legacy) return
-      if (legacy) { resize?.disconnect(); legacy.style.visibility = ''; legacy.style.pointerEvents = ''; legacy.removeAttribute('data-project-legacy-gantt-hidden') }
-      legacy = next
-      legacy.setAttribute('data-project-legacy-gantt-hidden', 'true')
-      legacy.style.visibility = 'hidden'; legacy.style.pointerEvents = 'none'
-      legacy.removeAttribute('data-project-timeline'); legacy.removeAttribute('data-project-flagship-gantt')
-      resize = new ResizeObserver(measure); resize.observe(legacy); measure()
-    }
-    attach()
-    const observer = new MutationObserver(() => { attach(); measure() })
-    observer.observe(root, { childList: true, subtree: true })
-    window.addEventListener('resize', measure)
-    return () => {
-      observer.disconnect(); resize?.disconnect(); window.removeEventListener('resize', measure)
-      if (legacy) { legacy.style.visibility = ''; legacy.style.pointerEvents = ''; legacy.setAttribute('data-project-timeline', 'true'); legacy.setAttribute('data-project-flagship-gantt', 'true'); legacy.removeAttribute('data-project-legacy-gantt-hidden') }
-      setTimelineRect(null)
-    }
-  }, [view, selectedProject?.id])
 
   // Board keyboard status alternatives from accepted OUT-40 Slice C.
   useEffect(() => {
@@ -371,9 +334,12 @@ export default function ProjectsSchedulingCompletion() {
     if (!selectedProject || nextProject === selectedProject || projectFingerprint(nextProject) === projectFingerprint(selectedProject)) return
     updateMutation.mutate({ baseProject: selectedProject, nextProject, label })
   }
-  const persistModern = async (nextProject: any, label: string) => {
-    if (!selectedProject || nextProject === selectedProject || projectFingerprint(nextProject) === projectFingerprint(selectedProject)) return selectedProject
-    const result = await updateMutation.mutateAsync({ baseProject: selectedProject, nextProject, label })
+  const persistModern = async (nextProject: any, label: string, displayedBase?: any) => {
+    // The displayed timeline owns its base, not a wrapper's fallback selection.
+    const baseProject = displayedBase || projects.find((item: any) => String(item.id) === String(nextProject?.id))
+    if (!baseProject || String(baseProject.id) !== String(nextProject?.id)) throw new Error('Timeline project identity changed. Refresh before saving.')
+    if (nextProject === baseProject || projectFingerprint(nextProject) === projectFingerprint(baseProject)) return baseProject
+    const result = await updateMutation.mutateAsync({ baseProject, nextProject, label })
     return result.saved
   }
 
@@ -388,17 +354,16 @@ export default function ProjectsSchedulingCompletion() {
   const closeScheduleControl = () => { setOpen(false); requestAnimationFrame(() => scheduleToggleRef.current?.focus()) }
   const handleScheduleDialogKeyDown = (event: React.KeyboardEvent<HTMLElement>) => { if (event.key !== 'Escape') return; event.preventDefault(); event.stopPropagation(); closeScheduleControl() }
 
+  useEffect(() => setOpen(false), [selectedProject?.id])
   const timelineActive = view === 'timeline'
   const criticalRows = analysis.rows.filter((row) => row.critical)
   const dependencies = normalizeProjectTaskDependencies(selectedTask)
 
-  return <div ref={workspaceRootRef} className="relative h-full min-h-0" data-projects-scheduling-completion="true">
-    <ProjectsGolden />
+  return <div ref={workspaceRootRef} className="relative h-full min-h-0" data-projects-scheduling-completion="true" data-project-visual-repair="v1">
+    <ProjectsTimelineAuthority.Provider value={{ onPersist: persistModern, isSaving: updateMutation.isPending, scheduleControl: (<button ref={scheduleToggleRef} type="button" onClick={() => setOpen((current) => !current)} aria-expanded={open} aria-controls="project-schedule-control-drawer" aria-haspopup="dialog" data-project-schedule-control-toggle="true" className="absolute right-4 top-3 z-40 inline-flex min-h-[40px] min-w-[40px] items-center gap-2 rounded-lg border border-blue-500/30 bg-[#0b1222]/95 px-3 py-2 text-xs font-black uppercase tracking-widest text-blue-300 shadow-xl backdrop-blur hover:bg-blue-500/10"><SlidersHorizontal size={13} /> Schedule control <ChevronRight size={12} className={open ? 'rotate-180' : ''} /></button>) }}><ProjectsGolden /></ProjectsTimelineAuthority.Provider>
     <p className="sr-only" role="status" aria-live="polite" aria-atomic="true" data-project-board-live-status="true">{boardLiveMessage}</p>
     <p className="sr-only" role="status" aria-live="polite" aria-atomic="true" data-project-task-live-status="true">{taskLiveMessage}</p>
-    {timelineActive && selectedProject && timelineRect ? <div className="absolute z-[35] flex min-h-0 min-w-0" style={{ top: timelineRect.top, left: timelineRect.left, width: timelineRect.width, height: timelineRect.height }} data-project-modern-gantt-overlay="true"><ProjectsModernGantt project={selectedProject} onPersist={persistModern} isSaving={updateMutation.isPending} /></div> : null}
     {timelineActive && selectedProject ? <>
-      <button ref={scheduleToggleRef} type="button" onClick={() => setOpen((current) => !current)} aria-expanded={open} aria-controls="project-schedule-control-drawer" aria-haspopup="dialog" data-project-schedule-control-toggle="true" className="absolute right-4 top-3 z-40 inline-flex min-h-[40px] min-w-[40px] items-center gap-2 rounded-lg border border-blue-500/30 bg-[#0b1222]/95 px-3 py-2 text-xs font-black uppercase tracking-widest text-blue-300 shadow-xl backdrop-blur hover:bg-blue-500/10"><SlidersHorizontal size={13} /> Schedule control <ChevronRight size={12} className={open ? 'rotate-180' : ''} /></button>
       {open ? <aside id="project-schedule-control-drawer" role="dialog" aria-modal="true" aria-labelledby="project-schedule-control-title" aria-describedby="project-schedule-control-description" aria-busy={updateMutation.isPending} onKeyDown={handleScheduleDialogKeyDown} className="absolute inset-x-2 bottom-2 top-14 z-50 flex flex-col overflow-hidden rounded-xl border border-blue-500/20 bg-[#08101f]/[0.98] shadow-2xl backdrop-blur sm:left-auto sm:right-3 sm:w-[470px]" data-project-schedule-control-drawer="true">
         <header className="flex shrink-0 items-start justify-between gap-3 border-b border-white/5 px-4 py-3"><div className="min-w-0"><p className="text-xs font-black uppercase tracking-[0.2em] text-blue-400">OUT-40 · Flagship Gantt modernization</p><h2 id="project-schedule-control-title" className="mt-1 text-sm font-black text-white">Scheduling, capacity & scenarios</h2><p id="project-schedule-control-description" className="mt-1 text-xs text-slate-500">One scheduler, one canonical Project truth. Controls extend the connected Gantt.</p></div><button ref={scheduleCloseRef} type="button" onClick={closeScheduleControl} className="inline-flex h-[40px] w-[40px] shrink-0 items-center justify-center rounded-md text-slate-400 hover:bg-white/5 hover:text-white" aria-label="Close schedule control"><X size={16} /></button></header>
         <p className="sr-only" role="status" aria-live="polite" aria-atomic="true" data-project-schedule-live-status="true">{liveMessage}</p>
