@@ -1,5 +1,6 @@
 import { test, expect, Page } from '@playwright/test'
 const sizes=[[390,844],[430,932],[768,1024],[1024,768],[1280,720],[1440,900],[1920,1080],[2560,1440]]
+const INTERACTION_BUDGET_MS=1200
 function fixture() {
  const day=86400000,base=Math.floor(Date.now()/day)-14,iso=(n:number)=>new Date(n*day).toISOString().slice(0,10)
  const tasks=Array.from({length:120},(_,i)=>({id:1001+i,name:`Visual task ${i+1}`,status:i%5===4?'Done':'In Progress',progress:20,priority:'Medium',owner:'Planner',start_date:iso(base+i*2),end_date:iso(base+i*2+(i===1?7:2)),order_index:(i+1)*10,dependencies_json:i?[{id:String(1000+i),type:['FS','SS','FF','SF'][i%4],lag_days:0}]:[],metadata_json:i===0?{milestone:true}:i===2?{wbs_parent_id:1002}:{}}))
@@ -65,13 +66,30 @@ test('wide resize and bounded realized DOM after scroll',async({page})=>{
  const s=await setup(page);await page.getByLabel('Timeline zoom',{exact:true}).selectOption('day')
  const appSidebar=page.locator('[data-sg-app-sidebar]');const sidebarWidth0=await appSidebar.evaluate((e:HTMLElement)=>e.getBoundingClientRect().width);await page.waitForTimeout(80);const sidebarWidth1=await appSidebar.evaluate((e:HTMLElement)=>e.getBoundingClientRect().width);expect(Math.abs(sidebarWidth1-sidebarWidth0),'Projects app sidebar must be stable before canvas gestures').toBeLessThan(0.5)
  const scroll=page.locator('[data-project-timeline-scrollport]');await scroll.evaluate(e=>{e.scrollLeft=0})
- const edge=page.locator('[data-project-timeline-bar][data-task-id="1002"] [data-project-resize-edge="end"]');const p=await target(edge)
+ const edge=page.locator('[data-project-timeline-bar][data-task-id="1002"] [data-project-resize-edge="end"]');const p=await target(edge);expect(p.width).toBeGreaterThanOrEqual(40);expect(p.height).toBeGreaterThanOrEqual(40)
  await page.mouse.move(p.x,p.y);await page.mouse.down();await page.mouse.move(p.x+28,p.y,{steps:6});await page.mouse.up();await expect.poll(()=>s.puts.length).toBe(1)
  await scroll.evaluate(e=>{e.scrollTop=4000;e.scrollLeft=1200});await page.waitForTimeout(100)
  expect(await page.locator('[data-project-timeline-row]').count()).toBeLessThanOrEqual(40)
  expect(await page.locator('[data-project-timeline-dependency-connector]').count()).toBeLessThanOrEqual(80)
  expect(await page.locator('[data-project-timeline-tick],[data-project-timeline-grid]').count()).toBeLessThanOrEqual(64)
  expect(s.puts).toHaveLength(1);expect(s.errors).toEqual([])
+})
+
+test('virtual WBS semantics and keyboard schedule parity stay bounded',async({page},info)=>{
+ const s=await setup(page)
+ const tree=page.getByRole('treegrid',{name:'Project WBS timeline tasks',exact:true});await expect(tree).toHaveAttribute('aria-rowcount','120')
+ const parent=page.locator('[data-project-timeline-row][data-task-id="1002"]');await expect(parent).toHaveAttribute('role','row');await expect(parent).toHaveAttribute('aria-level','1');await expect(parent).toHaveAttribute('aria-rowindex','2');await expect(parent).toHaveAttribute('aria-expanded','true')
+ const child=page.locator('[data-project-timeline-row][data-task-id="1003"]');await expect(child).toHaveAttribute('aria-level','2')
+ await parent.getByRole('button',{name:'Collapse Visual task 2',exact:true}).click();await expect(parent).toHaveAttribute('aria-expanded','false');await expect(child).toHaveCount(0)
+ await parent.getByRole('button',{name:'Expand Visual task 2',exact:true}).click();await expect(parent).toHaveAttribute('aria-expanded','true')
+ const bar=page.locator('[data-project-timeline-bar][data-task-id="1002"]');const before=s.getProject().tasks.find((t:any)=>t.id===1002);const start0=before.start_date,end0=before.end_date
+ await bar.focus();const moveStarted=Date.now();await page.keyboard.press('ArrowRight');await expect.poll(()=>s.puts.length).toBe(1);const moveMs=Date.now()-moveStarted
+ expect(moveMs).toBeLessThan(INTERACTION_BUDGET_MS);const moved=s.getProject().tasks.find((t:any)=>t.id===1002);expect(moved.start_date).not.toBe(start0);expect(moved.end_date).not.toBe(end0);await expect(bar).toBeFocused();await expect(page.locator('[data-project-timeline-live-status]')).toContainText('moved +1 day')
+ const edge=bar.locator('[data-project-resize-edge="end"]');await edge.focus();const resizedBefore=s.getProject().tasks.find((t:any)=>t.id===1002).end_date;const resizeStarted=Date.now();await page.keyboard.press('ArrowRight');await expect.poll(()=>s.puts.length).toBe(2);const resizeMs=Date.now()-resizeStarted
+ expect(resizeMs).toBeLessThan(INTERACTION_BUDGET_MS);expect(s.getProject().tasks.find((t:any)=>t.id===1002).end_date).not.toBe(resizedBefore);await expect(edge).toBeFocused();await expect(page.locator('[data-project-timeline-live-status]')).toContainText('resized +1 day')
+ const link=page.locator('[data-project-timeline-dependency-connector]').first();expect(await link.evaluate((e:SVGPathElement)=>parseFloat(getComputedStyle(e).strokeWidth))).toBeGreaterThanOrEqual(40)
+ await info.attach('keyboard-performance',{body:JSON.stringify({budgetMs:INTERACTION_BUDGET_MS,moveMs,resizeMs,puts:s.puts.length},null,2),contentType:'application/json'})
+ expect(await page.locator('[data-project-timeline-row]').count()).toBeLessThanOrEqual(40);expect(s.errors).toEqual([])
 })
 test('Board and task drawer preserve Done meaning and working space',async({page},info)=>{
  const state=await setup(page);await page.goto('/projects?id=901&view=board')

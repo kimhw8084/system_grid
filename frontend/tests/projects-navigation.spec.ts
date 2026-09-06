@@ -95,13 +95,14 @@ test('P09 Outcomes reveals Reports and Insights and legacy governance link canon
   await expect(page.locator('[data-project-insights-hub="true"]')).toBeVisible()
 })
 
-test('central Add and Jump to menus reuse existing project flows @navigation-acceptance', async ({ page }) => {
+test('central Add/edit and intent navigation reuse existing project flows @navigation-acceptance', async ({ page }) => {
   await page.goto('/projects?id=901&view=overview')
-  const add = page.locator('[data-project-quick-add="true"]')
-  await add.locator('summary').click(); await add.getByRole('button', { name: 'Update', exact: true }).click(); await expect(page).toHaveURL(/view=updates/)
-  const jump = page.locator('[data-project-jump-menu="true"]')
-  await jump.locator('summary').click(); await expect(jump.getByRole('button')).toHaveCount(8)
-  await jump.getByRole('button', { name: 'Timeline', exact: true }).click(); await expect(page).toHaveURL(/view=timeline/)
+  const addEdit = page.locator('.sg-context-actions details')
+  await addEdit.locator('summary').click(); await addEdit.getByRole('button', { name: 'Write update', exact: true }).click(); await expect(page).toHaveURL(/view=updates/)
+  await page.goto('/projects?id=901&view=overview')
+  const primary = page.locator('[data-project-primary-nav="true"]')
+  await primary.getByRole('button', { name: 'Plan', exact: true }).click(); await expect(page).toHaveURL(/view=timeline/)
+  await expect(page.locator('[data-project-flagship-gantt="true"]')).toBeVisible()
   await expect(page.locator('[data-project-workbench-header="true"]')).toContainText('P01 — Yield Guardian')
 })
 

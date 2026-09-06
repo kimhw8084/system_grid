@@ -91,15 +91,16 @@ test('OUT-40 Slice E Timeline controls expose keyboard dependency and named Gant
   await expectMinimumTarget(target)
   await expect(page.locator('[data-project-timeline-live-status="true"]')).toHaveAttribute('aria-live', 'polite')
 
-  const bar = page.getByRole('button', { name: 'Open Timeline task B timeline task', exact: true })
+  const bar = page.locator('[data-project-semantic-id="task-bar-9012"]')
   await expect(bar).toBeVisible()
   await bar.focus()
   await expect(bar).toBeFocused()
   await bar.press('Enter')
   await expect(page).toHaveURL(/(?:\?|&)task=9012(?:&|$)/)
 
-  const existingConnector = page.getByRole('button', { name: 'Remove dependency Timeline task A → Timeline task B', exact: true })
+  const existingConnector = page.locator('[data-project-timeline-dependency-connector="true"][data-source-task-id="9011"][data-target-task-id="9012"]')
   await expect(existingConnector).toBeVisible()
+  await expect(existingConnector).toHaveAccessibleName(/Inspect dependency Timeline task A to Timeline task B/)
 })
 
 test('OUT-40 Slice E Enter add/remove uses canonical PUT, announces, and restores target focus @out40-slice-e-acceptance', async ({ page }) => {
@@ -142,11 +143,17 @@ test('OUT-40 Slice E Enter add/remove uses canonical PUT, announces, and restore
   await expect(restoredAfterAdd).toBeFocused()
   await expectMinimumTarget(restoredAfterAdd)
 
-  const connector = page.getByRole('button', { name: 'Remove dependency Timeline task A → Timeline task C', exact: true })
+  const connector = page.locator('[data-project-timeline-dependency-connector="true"][data-source-task-id="9011"][data-target-task-id="9013"]')
   await expect(connector).toBeVisible()
   await connector.focus()
   await expect(connector).toBeFocused()
   await connector.press('Enter')
+  const dialog = page.getByRole('dialog', { name: 'Dependency details', exact: true })
+  await expect(dialog).toBeVisible()
+  const remove = dialog.getByRole('button', { name: 'Remove dependency', exact: true })
+  await expectMinimumTarget(remove)
+  await remove.focus()
+  await remove.press('Enter')
 
   await expect.poll(() => state.getPutCount()).toBe(2)
   await expect.poll(() => dependencyIds(taskById(state.getProject(), 9013))).not.toContain('9011')

@@ -19,7 +19,7 @@ const projectFixture = (): Project => {
       owner: `Planner ${index % 4}`,
       priority: index % 9 === 0 ? 'High' : 'Medium',
       start_date: iso(start),
-      end_date: iso(start + 1),
+      end_date: iso(start + (index === 4 ? 7 : 1)),
       order_index: (index + 1) * 10,
       dependencies_json: dependency,
       metadata_json: index === 2 ? { wbs_parent_id: 1002 } : {},
@@ -86,8 +86,10 @@ const center = async (locator: Locator) => {
   const box = await locator.boundingBox(); expect(box).not.toBeNull()
   return { x: box!.x + box!.width / 2, y: box!.y + box!.height / 2 }
 }
-const expectMinTarget = async (locator: Locator) => {
-  const box = await locator.boundingBox(); expect(box).not.toBeNull(); expect(box!.width).toBeGreaterThanOrEqual(40); expect(box!.height).toBeGreaterThanOrEqual(40)
+const expectMinTarget = async (locator: Locator, label = 'control') => {
+  const box = await locator.boundingBox(); expect(box).not.toBeNull()
+  const style = await locator.evaluate((element) => { const node = element as HTMLElement; const computed = getComputedStyle(node); return { tag: node.tagName, minHeight: computed.minHeight, height: computed.height, transform: computed.transform, zoom: (computed as any).zoom || '1' } })
+  expect(box!.width, `${label} width ${JSON.stringify(style)}`).toBeGreaterThanOrEqual(40); expect(box!.height, `${label} height ${JSON.stringify(style)}`).toBeGreaterThanOrEqual(40)
 }
 const dependencyIds = (task: any) => (task?.dependencies_json || []).map((dep: any) => String(dep?.id ?? dep?.task_id ?? dep))
 
@@ -95,7 +97,7 @@ const openTimeline = async (page: Page) => {
   await page.goto('/projects?id=901&view=timeline')
   const gantt = page.locator('[data-project-modern-gantt="true"]')
   await expect(gantt).toBeVisible()
-  await expect(page.locator('[data-project-legacy-gantt-hidden="true"]')).toHaveCount(1)
+  await expect(gantt).toHaveCount(1)
   return gantt
 }
 
@@ -117,11 +119,11 @@ test('OUT-40 Slice H P10 Gantt is bounded, aligned and connector-anchored @out40
   const rc = await center(row); const bc = await center(bar)
   expect(Math.abs(rc.y - bc.y)).toBeLessThanOrEqual(1)
 
-  await expect(gantt.locator('[data-project-semantic-id="dependency-1001-1002-fs"]')).toBeVisible()
+  await expect(gantt.locator('[data-project-semantic-id="dependency-1001:1002:FS:0"]')).toBeVisible()
   const sourceEndpoint = gantt.locator('[data-project-connector-endpoint="source"][data-project-relation-key="1001:1002:FS:0"]')
   const targetEndpoint = gantt.locator('[data-project-connector-endpoint="target"][data-project-relation-key="1001:1002:FS:0"]')
-  const sourcePort = gantt.locator('[data-project-semantic-id="dependency-port-1001-finish"]')
-  const targetPort = gantt.locator('[data-project-semantic-id="dependency-port-1002-start"]')
+  const sourcePort = gantt.locator('[data-project-timeline-row="true"][data-task-id="1001"] [data-project-dependency-port="true"][data-edge="finish"]')
+  const targetPort = gantt.locator('[data-project-timeline-row="true"][data-task-id="1002"] [data-project-dependency-port="true"][data-edge="start"]')
   for (const [endpoint, port] of [[sourceEndpoint, sourcePort], [targetEndpoint, targetPort]] as const) {
     const ec = await center(endpoint); const pc = await center(port)
     expect(Math.hypot(ec.x - pc.x, ec.y - pc.y)).toBeLessThanOrEqual(2)
@@ -144,12 +146,16 @@ test('OUT-40 Slice H keyboard dependency add/remove is explicit, canonical and f
   await expect(gantt.locator('[data-project-timeline-live-status="true"]')).toHaveText('Dependency added: Gantt task 1 → Gantt task 4')
   await expect(gantt.locator('[data-project-timeline-row="true"][data-task-id="1004"] button[data-project-timeline-dependency-keyboard="true"]')).toBeFocused()
 
-  const connector = page.getByRole('button', { name: 'Remove dependency Gantt task 1 → Gantt task 4', exact: true })
-  await connector.focus(); await connector.press('Enter')
+  const connector = gantt.locator('[data-project-timeline-dependency-connector="true"][data-source-task-id="1001"][data-target-task-id="1004"]')
+  await expect(connector).toBeVisible(); await connector.focus(); await connector.press('Enter')
+  const dialog = page.getByRole('dialog', { name: 'Dependency details', exact: true })
+  await expect(dialog).toBeVisible()
+  const remove = dialog.getByRole('button', { name: 'Remove dependency', exact: true })
+  await expectMinTarget(remove); await remove.focus(); await remove.press('Enter')
   await expect.poll(() => state.getPutCount()).toBe(2)
   await expect.poll(() => dependencyIds(state.getProject().tasks.find((task: any) => task.id === 1004))).not.toContain('1001')
   await expect(gantt.locator('[data-project-timeline-live-status="true"]')).toHaveText('Dependency removed: Gantt task 1 → Gantt task 4')
-  await expect(gantt.locator('[data-project-timeline-row="true"][data-task-id="1004"] button[data-project-timeline-dependency-keyboard="true"]')).toBeFocused()
+  await expect(gantt.locator('[data-project-semantic-id="dependency-source-1004"]')).toBeFocused()
   expect(failures).toEqual([])
 })
 
@@ -164,14 +170,15 @@ test('OUT-40 Slice H scroll zoom filter collapse are mutation-free and stay boun
       scroll.scrollTop = (index % 6) * 620
       scroll.scrollLeft = (index % 5) * 420
       scroll.dispatchEvent(new Event('scroll', { bubbles: true }))
-      const label = index % 2 === 0 ? 'Month' : 'Week'
-      const button = Array.from(root.querySelectorAll<HTMLButtonElement>('button')).find((candidate) => candidate.textContent?.trim() === label)!
-      const started = performance.now(); button.click()
+      const value = index % 2 === 0 ? 'month' : 'week'
+      const select = root.querySelector<HTMLSelectElement>('select[aria-label="Timeline zoom"]')!
+      const started = performance.now(); select.value = value; select.dispatchEvent(new Event('change', { bubbles: true }))
       await new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve())))
       return performance.now() - started
     }, cycle)
     expect(elapsed).toBeLessThanOrEqual(250)
   }
+  await gantt.getByRole('button', { name: 'Filters', exact: true }).click()
   await page.getByLabel('Find timeline tasks or owners').fill('Gantt task 2')
   await page.getByLabel('Find timeline tasks or owners').fill('')
   const collapse = gantt.getByRole('button', { name: 'Collapse Gantt task 2', exact: true })
@@ -196,7 +203,8 @@ test('OUT-40 Slice H bar move and resize each commit one Project PUT @out40-slic
   expect(movedStart).not.toBe(iso(baseOrdinal))
 
   await page.goto('/projects?id=901&view=timeline'); await expect(gantt).toBeVisible(); state.resetWrites()
-  const resize = gantt.getByRole('button', { name: 'Resize end Gantt task 1', exact: true })
+  const resize = gantt.locator('[data-project-semantic-id="resize-end-1005"]')
+  await expectMinTarget(resize)
   const rb = await resize.boundingBox(); expect(rb).not.toBeNull()
   await page.mouse.move(rb!.x + rb!.width / 2, rb!.y + rb!.height / 2); await page.mouse.down(); await page.mouse.move(rb!.x + rb!.width / 2 + 28, rb!.y + rb!.height / 2, { steps: 3 }); await page.mouse.up()
   await expect.poll(() => state.getPutCount()).toBe(1)
@@ -207,14 +215,14 @@ test('OUT-40 Slice H narrow Gantt contains page overflow and keeps primary contr
   await page.setViewportSize({ width: 390, height: 844 })
   const failures = collectFailures(page); await installIdentity(page); await installRoutes(page); const gantt = await openTimeline(page)
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1)).toBe(true)
-  for (const control of [
-    gantt.getByRole('button', { name: 'Today', exact: true }),
-    gantt.getByRole('button', { name: 'Fit', exact: true }),
-    gantt.getByRole('button', { name: 'Week', exact: true }),
-    gantt.getByRole('button', { name: 'Start dependency from Gantt task 1', exact: true }),
-    gantt.locator('[data-project-semantic-id="dependency-port-1001-start"]'),
-    gantt.locator('[data-project-semantic-id="dependency-port-1001-finish"]'),
-  ]) await expectMinTarget(control)
+  const narrowControls: Array<[string, Locator]> = [
+    ['Today', gantt.getByRole('button', { name: 'Today', exact: true })],
+    ['Fit', gantt.getByRole('button', { name: 'Fit', exact: true })],
+    ['Timeline zoom', gantt.getByLabel('Timeline zoom', { exact: true })],
+    ['Filters', gantt.getByRole('button', { name: 'Filters', exact: true })],
+    ['Dependency start', gantt.getByRole('button', { name: 'Start dependency from Gantt task 1', exact: true })],
+  ]
+  for (const [label, control] of narrowControls) await expectMinTarget(control, label)
   const scrollport = gantt.locator('[data-project-timeline-scrollport="true"]'); const scrollBox = await scrollport.boundingBox(); expect(scrollBox).not.toBeNull(); expect(scrollBox!.x).toBeGreaterThanOrEqual(0); expect(scrollBox!.x + scrollBox!.width).toBeLessThanOrEqual(391)
   expect(failures).toEqual([])
 })

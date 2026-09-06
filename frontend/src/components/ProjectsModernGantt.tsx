@@ -158,7 +158,7 @@ function ProjectsModernGanttSession({ project, onPersist, isSaving = false }: Mo
     focusAfterSave.current = null
     requestAnimationFrame(() => {
       const escaped = typeof CSS !== 'undefined' && CSS.escape ? CSS.escape(target) : target
-      document.querySelector<HTMLButtonElement>(`[data-project-timeline-row="true"][data-task-id="${escaped}"] button[data-project-timeline-dependency-keyboard="true"]`)?.focus({ preventScroll: true })
+      document.querySelector<HTMLElement>(`[data-project-semantic-id="${escaped}"]`)?.focus({ preventScroll: true })
     })
   }, [project])
 
@@ -167,12 +167,12 @@ function ProjectsModernGanttSession({ project, onPersist, isSaving = false }: Mo
     const next = new URLSearchParams(searchParams); next.set('task', taskId); next.set('view', 'timeline'); setSearchParams(next, { replace: true })
   }
 
-  const persist = async (nextProject: any, label: string, successMessage?: string, focusTaskId?: string) => {
+  const persist = async (nextProject: any, label: string, successMessage?: string, focusSemanticId?: string) => {
     if (nextProject === project || savingRef.current || isSaving) return null
     savingRef.current = true
     const before = structuredClone(project.tasks || [])
     if (successMessage) setLive(`${successMessage}…`)
-    if (focusTaskId) focusAfterSave.current = focusTaskId
+    if (focusSemanticId) focusAfterSave.current = focusSemanticId
     try {
       const saved = await Promise.resolve(onPersist(nextProject, label, project))
       setHistory(current => [...current, before].slice(-30)); setRedo([])
@@ -202,7 +202,7 @@ function ProjectsModernGanttSession({ project, onPersist, isSaving = false }: Mo
     if (changed === project) { setLive('Dependency was not changed. Check for a duplicate or cycle.'); setDependencySource(null); return }
     const next = appendProjectAudit(changed, 'Timeline dependency added', `${source.task.name} → ${target.task.name}`)
     setDependencySource(null)
-    await persist(next, 'Timeline dependency added', `Dependency added: ${source.task.name} → ${target.task.name}`, targetId)
+    await persist(next, 'Timeline dependency added', `Dependency added: ${source.task.name} → ${target.task.name}`, `dependency-source-${targetId}`)
   }
 
   const removeDependency = async (sourceId: string, targetId: string, type: ProjectDependencyType, lag: number) => {
@@ -211,7 +211,7 @@ function ProjectsModernGanttSession({ project, onPersist, isSaving = false }: Mo
     const changed = setTypedProjectDependency(project, targetId, sourceId, type, lag, false)
     if (changed === project) return
     const next = appendProjectAudit(changed, 'Timeline dependency removed', `${source.task.name} → ${target.task.name}`)
-    await persist(next, 'Timeline dependency removed', `Dependency removed: ${source.task.name} → ${target.task.name}`, targetId)
+    await persist(next, 'Timeline dependency removed', `Dependency removed: ${source.task.name} → ${target.task.name}`, `dependency-source-${targetId}`)
   }
 
   const keyboardDependency = (row: any) => {
@@ -363,12 +363,26 @@ function ProjectsModernGanttSession({ project, onPersist, isSaving = false }: Mo
   const todayX = xFor(range.todayOrdinal)
   const shownFirst = Math.min(visibleRows.length, Math.floor(scroll.top / GANTT_ROW_HEIGHT) + 1)
   const shownLast = Math.min(visibleRows.length, Math.ceil((scroll.top + Math.max(0, scroll.height - AXIS_HEIGHT)) / GANTT_ROW_HEIGHT))
+  const keyboardSchedule = (row: any, mode: 'move' | 'start' | 'end', delta: number) => {
+    if (!row || !delta || isSaving || savingRef.current) return
+    const next = mode === 'move'
+      ? shiftProjectTaskSchedules(project, [row.id], delta)
+      : resizeProjectTaskSchedule(project, row.id, mode, delta)
+    const changed = next.tasks?.find((task: any) => String(task.id) === String(row.id))
+    if (!changed || (changed.start_date === row.task.start_date && changed.end_date === row.task.end_date)) {
+      setLive(`${row.task.name} schedule unchanged`)
+      return
+    }
+    const action = mode === 'move' ? 'Timeline schedule moved' : 'Timeline task resized'
+    const detail = mode === 'move'
+      ? `${row.task.name} shifted ${delta > 0 ? '+' : ''}${delta}d`
+      : `${row.task.name}: ${mode} ${delta > 0 ? '+' : ''}${delta}d`
+    const message = `${row.task.name} ${mode === 'move' ? 'moved' : 'resized'} ${delta > 0 ? '+' : ''}${delta} day`
+    const focusSemanticId = mode === 'move' ? `task-bar-${row.id}` : `resize-${mode}-${row.id}`
+    void persist(appendProjectAudit(next, action, detail), action, message, focusSemanticId)
+  }
   const editDay = (edge: 'start' | 'end', delta: number) => {
-    if (!selectedRow) return
-    const next = resizeProjectTaskSchedule(project, selectedRow.id, edge, delta)
-    const changed = next.tasks?.find((task: any) => String(task.id) === String(selectedRow.id))
-    if (!changed || (changed.start_date === selectedRow.task.start_date && changed.end_date === selectedRow.task.end_date)) return
-    if (next !== project) void persist(appendProjectAudit(next, 'Timeline task resized', `${selectedRow.task.name}: ${edge} ${delta}d`), 'Timeline task resized', `${selectedRow.task.name} resized`)
+    if (selectedRow) keyboardSchedule(selectedRow, edge, delta)
   }
   const inspect = (link: any) => { setRelation(link); setLive(`Dependency ${link.source.task.name} to ${link.target.task.name}`) }
   const relationDialog = useRef<HTMLDivElement | null>(null)
@@ -422,7 +436,7 @@ function ProjectsModernGanttSession({ project, onPersist, isSaving = false }: Mo
             <span className="sg-today-axis" style={{ left: todayX }} aria-label="Today"/>
           </div>
         </div>
-        <div className="sg-gantt-body" style={{ height: Math.max(totalHeight, 100) }}>
+        <div className="sg-gantt-body" role="treegrid" aria-label="Project WBS timeline tasks" aria-rowcount={visibleRows.length} aria-colcount={2} style={{ height: Math.max(totalHeight, 100) }}>
           <div className="sg-time-grid" style={{ left: railWidth, width: timelineWidth }} aria-hidden="true">
             {ticks.map(t => <span key={t.start} data-project-timeline-grid="true" style={{ left: xFor(t.start) }}/>) }
             <span className="sg-today-line" style={{ left: todayX }}/>
@@ -450,20 +464,20 @@ function ProjectsModernGanttSession({ project, onPersist, isSaving = false }: Mo
             const baselineTask: any = baselineById.get(String(row.id))
             const parseDate = (v: string | null) => v ? Math.floor(Date.parse(v.slice(0,10) + 'T00:00:00Z') / 86400000) : null
             const baselineStart = parseDate(baselineTask?.start_date) ?? row.baselineStartOrdinal, baselineEnd = parseDate(baselineTask?.end_date) ?? row.baselineEndOrdinal
-            return <div key={String(row.id)} className={`sg-task-row ${selected ? 'selected' : ''}`} style={{ top: index * GANTT_ROW_HEIGHT, height: GANTT_ROW_HEIGHT, width: railWidth + timelineWidth }} data-project-timeline-row="true" data-task-id={String(row.id)} data-critical={String(critical)} data-milestone={String(row.milestone)}>
-              <div className="sg-rail sg-task-rail" style={{ width: railWidth }}>
+            return <div key={String(row.id)} role="row" aria-rowindex={index + 1} aria-level={row.depth + 1} aria-selected={selected} aria-expanded={row.hasChildren ? !collapsed.has(String(row.id)) : undefined} className={`sg-task-row ${selected ? 'selected' : ''}`} style={{ top: index * GANTT_ROW_HEIGHT, height: GANTT_ROW_HEIGHT, width: railWidth + timelineWidth }} data-project-timeline-row="true" data-task-id={String(row.id)} data-critical={String(critical)} data-milestone={String(row.milestone)}>
+              <div className="sg-rail sg-task-rail" role="rowheader" style={{ width: railWidth }}>
                 <button className="sg-task-link" data-project-timeline-dependency-keyboard="true" data-project-semantic-id={`dependency-source-${row.id}`} aria-pressed={dependencySource?.id === String(row.id)} aria-label={!dependencySource ? `Start dependency from ${row.task.name}` : dependencySource.id === String(row.id) ? `Cancel dependency from ${row.task.name}` : `Add dependency from ${dependencySource.name} to ${row.task.name}`} onClick={() => keyboardDependency(row)}><GitBranch size={15}/></button>
                 {row.hasChildren && <button className="sg-collapse" aria-label={`${collapsed.has(String(row.id)) ? 'Expand' : 'Collapse'} ${row.task.name}`} onClick={() => setCollapsed(s => { const next = new Set(s); next.has(String(row.id)) ? next.delete(String(row.id)) : next.add(String(row.id)); return next })}>{collapsed.has(String(row.id)) ? <ChevronRight size={14}/> : <ChevronDown size={14}/>}</button>}
                 <button className="sg-task-name" title={`${row.task.name} · ${getTaskOwnerLabel(row.task)}`} style={{ paddingLeft: Math.min(row.depth, 4) * 8 }} onClick={() => setSelectedId(String(row.id))} onDoubleClick={() => openTask(String(row.id))}><span>{row.task.name}</span><small>{getTaskOwnerLabel(row.task)}</small></button>
                 {violation && <span title={violation} aria-label={violation}>!</span>}
               </div>
-              <div className="sg-row-time" style={{ width: timelineWidth }}>
+              <div className="sg-row-time" role="gridcell" aria-label={`${row.task.name} schedule`} style={{ width: timelineWidth }}>
                 {baselineStart != null && baselineEnd != null && <span className="sg-baseline" title="Baseline" style={{ left: xFor(baselineStart), width: widthFor(baselineStart, baselineEnd) }}/>} 
                 {row.forecastStartOrdinal != null && row.forecastEndOrdinal != null && <span className="sg-forecast" title="Forecast" style={{ left: xFor(row.forecastStartOrdinal), width: widthFor(row.forecastStartOrdinal, row.forecastEndOrdinal) }}/>} 
                 {!scheduled ? <button className="sg-unscheduled" style={{ left: Math.max(8, scroll.left) }} disabled={isSaving} onClick={() => void persist(appendProjectAudit(scheduleProjectTask(project,row.id,projectOrdinalToDate(range.todayOrdinal) || '',1),'Timeline task scheduled',row.task.name),'Timeline task scheduled')}>Schedule today</button> : <>
-                  <div data-project-timeline-bar="true" data-task-id={String(row.id)} data-project-semantic-id={`task-bar-${row.id}`} data-move-surface="true" role="button" tabIndex={0} aria-label={`Open ${row.task.name} timeline task`} title={`${row.task.name}\n${readableProjectDate(row.task.start_date)} – ${readableProjectDate(row.task.end_date)}\n${canonicalTaskStatus(row.task.status)} · ${row.progress}%`} className={`sg-task-bar ${row.milestone ? 'milestone' : ''} ${row.blocked ? 'blocked' : ''} ${critical ? 'critical' : ''}`} style={{ left: geom.left, width: geom.width }} onPointerDown={e => { e.stopPropagation(); beginDrag(e,String(row.id),'move') }} onPointerMove={e => moveDrag(e,String(row.id),'move')} onPointerUp={endDrag} onMouseDown={e => beginMouseFallback(e,String(row.id),'move')} onClick={() => { if (!suppressClick.current) setSelectedId(String(row.id)); suppressClick.current = false }} onDoubleClick={() => openTask(String(row.id))} onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openTask(String(row.id)) } }}>
+                  <div data-project-timeline-bar="true" data-task-id={String(row.id)} data-project-semantic-id={`task-bar-${row.id}`} data-move-surface="true" role="button" tabIndex={0} aria-keyshortcuts="ArrowLeft ArrowRight Enter Space" aria-label={`${row.task.name} timeline task. Left or Right moves one day. Enter opens details.`} title={`${row.task.name}\n${readableProjectDate(row.task.start_date)} – ${readableProjectDate(row.task.end_date)}\n${canonicalTaskStatus(row.task.status)} · ${row.progress}%`} className={`sg-task-bar ${row.milestone ? 'milestone' : ''} ${row.blocked ? 'blocked' : ''} ${critical ? 'critical' : ''}`} style={{ left: row.milestone ? geom.left - 10 : geom.left, width: row.milestone ? 40 : geom.width }} onPointerDown={e => { e.stopPropagation(); beginDrag(e,String(row.id),'move') }} onPointerMove={e => moveDrag(e,String(row.id),'move')} onPointerUp={endDrag} onMouseDown={e => beginMouseFallback(e,String(row.id),'move')} onClick={() => { if (!suppressClick.current) setSelectedId(String(row.id)); suppressClick.current = false }} onDoubleClick={() => openTask(String(row.id))} onKeyDown={e => { if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') { e.preventDefault(); e.stopPropagation(); keyboardSchedule(row,'move',e.key === 'ArrowLeft' ? -1 : 1) } else if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openTask(String(row.id)) } }}>
                     {row.milestone ? <span className="sg-milestone-glyph"/> : <><span className="sg-progress" style={{ width: `${row.progress}%` }}/>{geom.width >= 96 && <span className="sg-bar-label">{row.task.name}</span>}</>}
-                    {!row.milestone && geom.width >= 96 && (['start','end'] as const).map(edge => <button type="button" key={edge} data-project-resize-edge={edge} aria-label={`Resize ${edge} ${row.task.name}`} className={`sg-resize ${edge}`} onClick={e => e.stopPropagation()} onPointerDown={e => { e.stopPropagation(); beginDrag(e,String(row.id),edge) }} onPointerMove={e => moveDrag(e,String(row.id),edge)} onPointerUp={endDrag} onMouseDown={e => { e.stopPropagation(); beginMouseFallback(e,String(row.id),edge) }}/>) }
+                    {!row.milestone && geom.width >= 96 && (['start','end'] as const).map(edge => <button type="button" key={edge} data-project-resize-edge={edge} data-project-semantic-id={`resize-${edge}-${row.id}`} aria-keyshortcuts="ArrowLeft ArrowRight" aria-label={`Resize ${edge} ${row.task.name}. Left or Right adjusts one day; activate to extend one day ${edge === 'start' ? 'earlier' : 'later'}.`} className={`sg-resize ${edge}`} onClick={e => { e.stopPropagation(); if (e.detail === 0) keyboardSchedule(row,edge,edge === 'start' ? -1 : 1) }} onKeyDown={e => { if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') { e.preventDefault(); e.stopPropagation(); keyboardSchedule(row,edge,e.key === 'ArrowLeft' ? -1 : 1) } }} onPointerDown={e => { e.stopPropagation(); beginDrag(e,String(row.id),edge) }} onPointerMove={e => moveDrag(e,String(row.id),edge)} onPointerUp={endDrag} onMouseDown={e => { e.stopPropagation(); beginMouseFallback(e,String(row.id),edge) }}/>) }
                   </div>
                   {(['start','finish'] as GanttEdge[]).map(edge => <span key={edge} className="sg-port" data-project-dependency-port="true" data-edge={edge} aria-hidden="true" style={{ left: geom[edge] }}/>) }
                 </>}
@@ -474,7 +488,7 @@ function ProjectsModernGanttSession({ project, onPersist, isSaving = false }: Mo
         </div>
       </div>
     </div>
-    {selectedRow && <div className="sg-selection" aria-label="Selected task actions"><strong title={selectedRow.task.name}>{selectedRow.task.name}</strong><button onClick={() => openTask(String(selectedRow.id))}>Details</button>{!selectedRow.milestone && <><button aria-label={`Move start earlier ${selectedRow.task.name}`} disabled={isSaving} onClick={() => editDay('start',-1)}>Start −1d</button><button aria-label={`Move start later ${selectedRow.task.name}`} disabled={isSaving} onClick={() => editDay('start',1)}>Start +1d</button><button aria-label={`Move finish earlier ${selectedRow.task.name}`} disabled={isSaving} onClick={() => editDay('end',-1)}>Finish −1d</button><button aria-label={`Move finish later ${selectedRow.task.name}`} disabled={isSaving} onClick={() => editDay('end',1)}>Finish +1d</button></>}<button onClick={() => setSelectedId(null)} aria-label="Clear task selection">×</button></div>}
+    {selectedRow && <div className="sg-selection" aria-label="Selected task actions"><strong title={selectedRow.task.name}>{selectedRow.task.name}</strong><button onClick={() => openTask(String(selectedRow.id))}>Details</button><button aria-label={`Move task earlier ${selectedRow.task.name}`} disabled={isSaving} onClick={() => keyboardSchedule(selectedRow,'move',-1)}>Move −1d</button><button aria-label={`Move task later ${selectedRow.task.name}`} disabled={isSaving} onClick={() => keyboardSchedule(selectedRow,'move',1)}>Move +1d</button>{!selectedRow.milestone && <><button aria-label={`Move start earlier ${selectedRow.task.name}`} disabled={isSaving} onClick={() => editDay('start',-1)}>Start −1d</button><button aria-label={`Move start later ${selectedRow.task.name}`} disabled={isSaving} onClick={() => editDay('start',1)}>Start +1d</button><button aria-label={`Move finish earlier ${selectedRow.task.name}`} disabled={isSaving} onClick={() => editDay('end',-1)}>Finish −1d</button><button aria-label={`Move finish later ${selectedRow.task.name}`} disabled={isSaving} onClick={() => editDay('end',1)}>Finish +1d</button></>}<button onClick={() => setSelectedId(null)} aria-label="Clear task selection">×</button></div>}
     <footer className="sg-gantt-footer"><span>Rows {shownFirst}–{shownLast} of {visibleRows.length}{visibleRows.length !== rows.length ? ` / ${rows.length} total` : ''}</span><span><i className="sg-legend baseline"/>Baseline <i className="sg-legend forecast"/>Forecast {analysis.cycle ? ' · Cycle detected' : ''}</span></footer>
     {relation && createPortal(<div className="sg-dialog-shade" onClick={() => setRelation(null)}><div ref={relationDialog} className="sg-relation-dialog" role="dialog" aria-modal="true" aria-label="Dependency details" onKeyDown={dialogKeys} onClick={e => e.stopPropagation()}><header><h3>Dependency details</h3><button aria-label="Close dependency details" onClick={() => setRelation(null)}>×</button></header><p><b>{relation.source.task.name}</b> → <b>{relation.target.task.name}</b></p><dl><dt>Relationship</dt><dd>{relation.dependency.type}</dd><dt>Lead / lag</dt><dd>{labelLag(relation.dependency.lag_days)}</dd></dl><p>Selecting a connector does not change the schedule.</p><button className="sg-danger" disabled={isSaving} onClick={async () => { await removeDependency(String(relation.source.id),String(relation.target.id),relation.dependency.type,relation.dependency.lag_days); setRelation(null) }}>Remove dependency</button></div></div>, document.body)}
   </section>
