@@ -162,7 +162,7 @@ async def queue_cadence_notification(project_id: str, request: Request, body: di
 @router.post("/projects/{project_id}/reports/capture")
 async def capture_report(project_id: str, request: Request, body: dict[str, Any], db: AsyncSession = Depends(get_db), idempotency_key: str | None = Header(default=None, alias="Idempotency-Key")):
     try:
-        project, _ = await _project(request, db, project_id)
+        project, _ = await _project(request, db, project_id, write=True)
         command_id = _idempotency(request, idempotency_key)
         result = await _execute_command(request, db, project, "", command_id, "report.capture", {"project_revision": project.revision}, body)
         return result

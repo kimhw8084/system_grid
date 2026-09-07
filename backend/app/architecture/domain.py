@@ -282,6 +282,9 @@ def _normalize_operation(raw: dict[str, Any], sequence: int) -> dict[str, Any]:
 
 async def create_change_set(session: AsyncSession, *, tenant_id: int, actor_id: str, request_role: str | None, command_id: str, model_id: str, payload: dict[str, Any]) -> dict[str, Any]:
     model, _ = await require_model_access(session, tenant_id=tenant_id, model_id=model_id, actor_id=actor_id, request_role=request_role, write=True)
+    project_id = _clean_text(payload.get("project_id"), "project_id", limit=80)
+    if project_id:
+        await pv1_domain.require_project_role(session, tenant_id=tenant_id, project_id=project_id, actor_id=actor_id, request_role=request_role)
     operations_raw = payload.get("operations") or []
     if not isinstance(operations_raw, list) or not operations_raw:
         raise ArchitectureDomainError("VALIDATION_FAILED", "A change set must contain at least one typed operation.", details={"field": "operations"})
@@ -294,7 +297,7 @@ async def create_change_set(session: AsyncSession, *, tenant_id: int, actor_id: 
         return existing.response_json
     base_entities = await _capture_base_revisions(session, tenant_id, model_id, operations)
     change_set = models.ArchitectureChangeSet(
-        id=str(payload.get("id") or _id()), tenant_id=tenant_id, model_id=model_id, project_id=payload.get("project_id"),
+        id=str(payload.get("id") or _id()), tenant_id=tenant_id, model_id=model_id, project_id=project_id,
         owner_id=actor_id, base_model_revision=base_revision, base_entity_revisions=base_entities,
         state="Draft", revision=1, conflict_metadata={}, created_by=actor_id, updated_by=actor_id,
     )
@@ -310,6 +313,8 @@ async def create_change_set(session: AsyncSession, *, tenant_id: int, actor_id: 
 
 
 async def model_projection(session: AsyncSession, *, tenant_id: int, model_id: str, actor_id: str, request_role: str | None, mode: str = "current", change_set_id: str | None = None, project_id: str | None = None) -> dict[str, Any]:
+    if project_id:
+        await pv1_domain.require_project_role(session, tenant_id=tenant_id, project_id=project_id, actor_id=actor_id, request_role=request_role)
     model, access = await require_model_access(session, tenant_id=tenant_id, model_id=model_id, actor_id=actor_id, request_role=request_role)
     object_result = await session.execute(select(models.ArchitectureObject).where(models.ArchitectureObject.tenant_id == tenant_id, models.ArchitectureObject.model_id == model_id, models.ArchitectureObject.retired_at.is_(None)).order_by(models.ArchitectureObject.name, models.ArchitectureObject.id))
     relation_result = await session.execute(select(models.ArchitectureRelation).where(models.ArchitectureRelation.tenant_id == tenant_id, models.ArchitectureRelation.model_id == model_id, models.ArchitectureRelation.retired_at.is_(None)).order_by(models.ArchitectureRelation.id))
@@ -328,6 +333,8 @@ async def model_projection(session: AsyncSession, *, tenant_id: int, model_id: s
         change_set = cs_result.scalar_one_or_none()
         if not change_set:
             raise ArchitectureDomainError("NOT_FOUND", "Architecture change set not found.", http_status=status.HTTP_404_NOT_FOUND)
+        if change_set.project_id and not project_id:
+            await pv1_domain.require_project_role(session, tenant_id=tenant_id, project_id=change_set.project_id, actor_id=actor_id, request_role=request_role)
         ops = (await session.execute(select(models.ArchitectureChangeOperation).where(models.ArchitectureChangeOperation.tenant_id == tenant_id, models.ArchitectureChangeOperation.change_set_id == change_set.id).order_by(models.ArchitectureChangeOperation.sequence))).scalars().all()
         object_by_id = {item["id"]: item for item in object_items}
         relation_by_id = {item["id"]: item for item in relation_items}
@@ -574,6 +581,8 @@ async def execute_changeset_command(session: AsyncSession, *, tenant_id: int, ac
     if normalized_type not in ALLOWED_CHANGE_COMMANDS:
         raise ArchitectureDomainError("VALIDATION_FAILED", f"Unsupported change-set command: {command_type}.")
     change_set, model, operations = await _load_changeset(session, tenant_id, change_set_id)
+    if change_set.project_id:
+        await pv1_domain.require_project_role(session, tenant_id=tenant_id, project_id=change_set.project_id, actor_id=actor_id, request_role=request_role)
     if normalized_type == "change_set.approve":
         await require_model_access(session, tenant_id=tenant_id, model_id=model.id, actor_id=actor_id, request_role=request_role, approve=True)
     else:
@@ -648,6 +657,8 @@ async def execute_changeset_command(session: AsyncSession, *, tenant_id: int, ac
 async def get_changeset(session: AsyncSession, *, tenant_id: int, actor_id: str, request_role: str | None, change_set_id: str) -> dict[str, Any]:
     change_set, model, operations = await _load_changeset(session, tenant_id, change_set_id)
     await require_model_access(session, tenant_id=tenant_id, model_id=model.id, actor_id=actor_id, request_role=request_role)
+    if change_set.project_id:
+        await pv1_domain.require_project_role(session, tenant_id=tenant_id, project_id=change_set.project_id, actor_id=actor_id, request_role=request_role)
     return _changeset_dict(change_set, operations)
 
 

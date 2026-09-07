@@ -3,6 +3,7 @@ import { useLocation, useNavigate } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { AlertTriangle, CheckCircle2, ClipboardCheck, CircleDollarSign, LockKeyhole, RotateCcw, Target } from 'lucide-react'
 import { apiFetch } from '../api/apiClient'
+import { ProjectsOfflineNotice, useProjectsOnline } from './ProjectsState'
 import './ProjectsOutcomes.css'
 
 export type ProjectsOutcomesRoute = { projectId: string }
@@ -56,6 +57,7 @@ export default function ProjectsOutcomes() {
   const route = shouldUseProjectsOutcomes(location.pathname)
   const projectId = route?.projectId || ''
   const queryClient = useQueryClient()
+  const online = useProjectsOnline()
   const [result, setResult] = useState('Partial')
   const [rationale, setRationale] = useState('')
   const [measurementMetricId, setMeasurementMetricId] = useState('')
@@ -108,11 +110,11 @@ export default function ProjectsOutcomes() {
   const pending = close.isPending || reopen.isPending
   const qualificationCount = useMemo(() => (outcomes.data?.metrics || []).filter((item: any) => item.qualification?.qualified).length, [outcomes.data])
   if (!route) return null
-  if (project.isPending || outcomes.isPending) return <main className="p09-page"><State message="Loading outcome evidence…" /></main>
-  if (project.isError || outcomes.isError) return <main className="p09-page"><State error message="Outcome evidence is unavailable. Refresh and try again." /></main>
+  if (project.isPending || outcomes.isPending) return <main className="p09-page"><ProjectsOfflineNotice online={online} /><State message="Loading outcome evidence…" /></main>
+  if (project.isError || outcomes.isError) return <main className="p09-page"><ProjectsOfflineNotice online={online} /><State error message="Outcome evidence is unavailable. Refresh and try again." /></main>
   const delivery = outcomes.data?.delivery || {}
   const outcome = outcomes.data?.outcomes || {}
-  return <main className="p09-page" data-p09-outcomes="true"><Header projectId={projectId} />
+  return <main className="p09-page" data-p09-outcomes="true"><ProjectsOfflineNotice online={online} /><Header projectId={projectId} />
     <section className="p09-hero"><div><p className="p09-eyebrow">{project.data?.display_key || projectId}</p><h2>{project.data?.name || 'Project outcomes'}</h2><p>{project.data?.objective || 'No objective recorded.'}</p></div><div className="p09-hero-state"><span>Delivery</span><strong>{delivery.phase || 'Unknown'}</strong><span>Outcome</span><strong>{outcome.result || outcome.phase || 'Unassessed'}</strong></div></section>
     <div className="p09-grid"><section className="p09-card" aria-labelledby="delivery-title"><div className="p09-card-heading"><div><p className="p09-eyebrow">Acceptance snapshot</p><h2 id="delivery-title"><ClipboardCheck size={18} /> Delivery acceptance</h2></div><span className="p09-status">{delivery.latest_acceptance ? 'Accepted' : 'Not accepted'}</span></div>{delivery.latest_acceptance ? <><p>Reviewed by {delivery.latest_acceptance.reviewer_id || 'an authorized reviewer'} at {delivery.latest_acceptance.accepted_at || 'recorded time'}.</p><p className="p09-source">Source snapshot is retained at the acceptance revision; reopening creates a new delivery review without erasing history.</p><ul className="p09-checkpoints">{(delivery.latest_acceptance.followups || []).map((item: any, index: number) => <li key={`${item.kind}-${item.due_date}-${index}`}><span>{item.kind}</span><strong>{item.due_date}</strong><small>{item.state || 'Pending'}</small></li>)}</ul></> : <State message="Delivery must be accepted with task, criterion, and evidence snapshots before outcome closure." />}</section>
       <section className="p09-card" aria-labelledby="qualification-title"><div className="p09-card-heading"><div><p className="p09-eyebrow">Independent result</p><h2 id="qualification-title"><CheckCircle2 size={18} /> Qualification</h2></div><span className="p09-status">{qualificationCount} qualified</span></div><p>Task progress is not used as an outcome result. Each current metric definition needs its own verified, fresh evidence.</p><div className="p09-metric-list">{(outcomes.data?.metrics || []).map((metric: any) => <MetricCard key={metric.id} metric={metric} />)}{!(outcomes.data?.metrics || []).length ? <State message="No metric definitions are recorded yet." /> : null}</div></section>

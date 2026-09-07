@@ -202,6 +202,7 @@ async def setup_db(tmp_path_factory, monkeypatch, tmp_path):
         user_id = get_current_user_id(request)
         tenant_url = None
         current_tenant_id = None
+        selected_access_role = None
         selected_tenant = None # Initialize selected_tenant here
 
         # Prioritize X-Tenant-Id exactly as the production dependency does.
@@ -246,6 +247,7 @@ async def setup_db(tmp_path_factory, monkeypatch, tmp_path):
 
                 tenant_url = selected_tenant.db_url
                 current_tenant_id = selected_tenant.id
+                selected_access_role = user_access.role
 
         if not x_tenant_id and not selected_tenant:
             # Use the *test-specific* current_ConfigSessionLocal for all config_db interactions
@@ -280,6 +282,13 @@ async def setup_db(tmp_path_factory, monkeypatch, tmp_path):
                 
                 tenant_url = selected_tenant.db_url
                 current_tenant_id = selected_tenant.id
+                role_result = await config_db.execute(
+                    select(UserTenantAccess.role).filter(
+                        UserTenantAccess.user_id == user_id,
+                        UserTenantAccess.tenant_id == selected_tenant.id,
+                    )
+                )
+                selected_access_role = role_result.scalar_one_or_none()
 
         # Now, provide session for the target DB (tenant DB)
         # This will call app.database.get_tenant_engine, which is now cache-bypassing in TESTING mode
@@ -294,7 +303,7 @@ async def setup_db(tmp_path_factory, monkeypatch, tmp_path):
         
         async with session_factory() as session:
             try:
-                request.state.sysgrid_access_role = "ADMIN" # For simplicity in test
+                request.state.sysgrid_access_role = selected_access_role or "VIEWER"
                 request.state.tenant_id = current_tenant_id # Store tenant ID
                 yield session
             finally:

@@ -80,6 +80,10 @@ function decorateApiError(
   return error
 }
 
+function isWriteMethod(method: string) {
+  return !['GET', 'HEAD', 'OPTIONS'].includes(method.toUpperCase())
+}
+
 async function parseJsonResponse(response: Response) {
   const rawBody = await response.clone().text()
   const contentType = (response.headers.get('content-type') || '').toLowerCase()
@@ -252,6 +256,19 @@ export async function apiFetch(endpoint: string, options: RequestInit = {}) {
 
   const hasBody = options.body != null
   const isBodylessReadRequest = (method === 'GET' || method === 'HEAD') && !hasBody
+
+  // PV1 is online-first. A failed write is surfaced to the caller and is
+  // never placed in a browser or query-library replay queue.
+  if (isWriteMethod(method) && typeof navigator !== 'undefined' && navigator.onLine === false) {
+    const offlineError = decorateApiError(new Error('Offline. The change was not sent; reconnect and review the current revision before retrying.'), {
+      status: 0,
+      url,
+      finalUrl: url,
+      method,
+    })
+    offlineError.offline = true
+    throw offlineError
+  }
 
   if (!isBodylessReadRequest && !(options.body instanceof FormData) && !headers['Content-Type']) {
     headers['Content-Type'] = 'application/json';

@@ -1475,6 +1475,17 @@ async def execute_command(session: AsyncSession, *, tenant_id: int, actor_id: st
         raise PV1DomainError("NOT_FOUND", "Project not found.", http_status=status.HTTP_404_NOT_FOUND)
 
     role = await require_project_role(session, tenant_id=tenant_id, project_id=project_id, actor_id=actor_id, request_role=request_role, write=False)
+    # Project membership is not a blanket write grant. Keep personal
+    # notification preferences separate, but require an editor-level project
+    # role for durable communication/resource changes and for report capture.
+    editor_only_commands = {
+        "resource.save", "resource.link", "resource.unlink",
+        "update.draft", "update.autosave", "report.capture",
+    }
+    if command_type in editor_only_commands and role not in EDIT_ROLES:
+        raise PV1DomainError("FORBIDDEN", "Editor capability is required for this project change.", http_status=status.HTTP_403_FORBIDDEN)
+    if command_type == "resource.scan" and role != "Tenant administrator":
+        raise PV1DomainError("FORBIDDEN", "Only the tenant scanning service or administrator may publish a scan verdict.", http_status=status.HTTP_403_FORBIDDEN)
     if role not in EDIT_ROLES:
         if command_type in {"task.update_fields", "task.transition"}:
             task_for_permission = await session.get(models.PV1Task, str(payload.get("task_id") or ""))
@@ -1482,7 +1493,7 @@ async def execute_command(session: AsyncSession, *, tenant_id: int, actor_id: st
                 raise PV1DomainError("FORBIDDEN", "Contributors may update only their own tasks.", http_status=status.HTTP_403_FORBIDDEN)
         elif command_type in {
             "criterion.create", "criterion.review", "blocker.resolve", "risk.save", "decision.request", "decision.decide",
-            "resource.save", "resource.link", "resource.unlink", "resource.scan", "update.draft", "update.autosave",
+            "resource.scan",
             "update.publish", "update.correct", "update.withdraw", "update.cadence.set", "notification.subscription.save",
             "report.capture", "metric.define", "metric.amend", "measurement.record", "measurement.correct", "measurement.verify",
             "value.record", "delivery.accept", "delivery.reopen", "outcomes.close", "outcomes.reopen",
@@ -2231,7 +2242,7 @@ async def execute_command(session: AsyncSession, *, tenant_id: int, actor_id: st
         event_id, _ = await append_event(session, tenant_id=tenant_id, project_id=project_id, actor_id=actor_id, command_id=command_id, event_type=command_type, aggregate_type=record_type.lower(), aggregate_id=record_id, aggregate_revision=(record.revision if command_type == "decision.decide" else 1), delta={"state": state})
         response = _success(command_id, revisions={"project_revision": project.revision + 1, "graph_revision": project.graph_revision}, changed_entities=[{"kind": record_type.lower(), "id": record_id}], event_id=event_id)
     elif command_type in {"resource.save", "resource.link", "resource.unlink"}:
-        from .communication import RESOURCE_KINDS, sanitize_markdown, validate_upload
+        from .communication import RESOURCE_KINDS, sanitize_markdown, validate_storage_ref, validate_upload
         resource_id = str(payload.get("resource_id") or payload.get("id") or _new_id())
         resource = await session.get(models.PV1Resource, resource_id)
         if resource and resource.tenant_id != tenant_id:
@@ -2260,7 +2271,8 @@ async def execute_command(session: AsyncSession, *, tenant_id: int, actor_id: st
                     resource.upload_ref = upload["storage_ref"]; resource.mime_type = upload["mime_type"]; resource.size_bytes = upload["size_bytes"]; resource.content_sha256 = upload["content_sha256"]; resource.scan_state = upload["scan_state"]
                 session.add(models.PV1ResourceVersion(id=_new_id(), tenant_id=tenant_id, project_id=project_id, resource_id=resource.id, version=resource.revision, title=resource.title, content=resource.content, upload_ref=resource.upload_ref, mime_type=resource.mime_type, size_bytes=resource.size_bytes, content_sha256=resource.content_sha256, scan_state=resource.scan_state, snapshot={"links": resource.links or [], "pinned": resource.pinned}, created_by=actor_id, updated_by=actor_id))
             else:
-                resource = models.PV1Resource(id=resource_id, tenant_id=tenant_id, project_id=project_id, resource_kind=kind, title=title, content=content, upload_ref=(upload["storage_ref"] if upload else payload.get("upload_ref")), scan_state=(upload["scan_state"] if upload else "Available"), mime_type=(upload["mime_type"] if upload else None), size_bytes=(upload["size_bytes"] if upload else None), content_sha256=(upload["content_sha256"] if upload else None), sensitivity=payload.get("sensitivity", "Project"), pinned=pinned, links=list(payload.get("links") or []), created_by=actor_id, updated_by=actor_id)
+                storage_ref = upload["storage_ref"] if upload else validate_storage_ref(payload.get("upload_ref"))
+                resource = models.PV1Resource(id=resource_id, tenant_id=tenant_id, project_id=project_id, resource_kind=kind, title=title, content=content, upload_ref=storage_ref, scan_state=(upload["scan_state"] if upload else "Available"), mime_type=(upload["mime_type"] if upload else None), size_bytes=(upload["size_bytes"] if upload else None), content_sha256=(upload["content_sha256"] if upload else None), sensitivity=payload.get("sensitivity", "Project"), pinned=pinned, links=list(payload.get("links") or []), created_by=actor_id, updated_by=actor_id)
                 session.add(resource)
                 await session.flush()
                 session.add(models.PV1ResourceVersion(id=_new_id(), tenant_id=tenant_id, project_id=project_id, resource_id=resource_id, version=1, title=title, content=content, upload_ref=resource.upload_ref, mime_type=resource.mime_type, size_bytes=resource.size_bytes, content_sha256=resource.content_sha256, scan_state=resource.scan_state, snapshot={"links": resource.links or [], "pinned": pinned}, created_by=actor_id, updated_by=actor_id))

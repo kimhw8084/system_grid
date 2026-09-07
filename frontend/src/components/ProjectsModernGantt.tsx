@@ -169,6 +169,7 @@ function ProjectsModernGanttSession({ project, onPersist, isSaving = false, sche
     }
     return links
   }, [realizedRows, rowById, realizedIds, visibleIndex])
+  const timelineTextSummary = `Text alternative: ${visibleRows.length} visible task rows, ${connectors.length} visible dependencies, and ${typedCritical.size} critical tasks at the current ${zoom} scale. Use the WBS task rows and dependency controls for the complete keyboard-accessible record view.`
 
   useEffect(() => {
     const node = scrollRef.current
@@ -506,7 +507,7 @@ function ProjectsModernGanttSession({ project, onPersist, isSaving = false, sche
     setFocusedId(String(target.id)); setSelectedId(String(target.id))
     requestAnimationFrame(() => document.querySelector<HTMLElement>(`[data-project-timeline-row="true"][data-task-id="${CSS.escape(String(target.id))}"]`)?.focus({ preventScroll: true }))
   }
-  return <section className={`sg-gantt ${railWidth === 0 ? 'sg-schedule-only' : ''}`} data-project-timeline="true" data-project-flagship-gantt="true" data-project-modern-gantt="true" data-project-semantic-id="gantt-root" aria-label="Project timeline">
+  return <section className={`sg-gantt ${railWidth === 0 ? 'sg-schedule-only' : ''}`} data-project-timeline="true" data-project-flagship-gantt="true" data-project-modern-gantt="true" data-project-semantic-id="gantt-root" aria-label="Project timeline"><p className="sg-sr">{timelineTextSummary}</p>
     <div className="sg-gantt-toolbar">
       <div className="sg-gantt-title"><CalendarClock size={18}/><strong>Timeline</strong><span>{rows.length} tasks · {project?.__pv1_calendar?.timezone || 'project calendar'}</span></div>
       <div className="sg-gantt-actions">

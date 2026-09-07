@@ -37,6 +37,13 @@ class Settings(BaseSettings):
     ALLOW_AUTO_ADMIN_IN_PRODUCTION: bool = False
     SCHEDULE_PREVIEW_SIGNING_KEY: str = "development-only-schedule-preview-key"
 
+    # Application-boundary overload protection. A gateway should enforce the
+    # same policy across workers; this bounded fallback remains enabled in the
+    # application so a single worker cannot be driven without a limit.
+    RATE_LIMIT_ENABLED: bool = True
+    RATE_LIMIT_REQUESTS: int = 600
+    RATE_LIMIT_WINDOW_SECONDS: int = 60
+
     # Startup schema mutation is convenient in development/test but dangerous in
     # production. Production requires an explicit acknowledgement before either
     # config create_all or Alembic upgrade runs during application startup.

@@ -35,3 +35,15 @@ export function ProjectsOfflineNotice({ online, lastSynchronizedAt }: { online: 
   if (online) return null
   return <aside className="sg-pv1-offline-notice" data-pv1-offline="true" role="status">Offline · showing the last synchronized revision{lastSynchronizedAt ? ` from ${lastSynchronizedAt}` : ''}. Drafts are allowed; writes wait for revalidation.</aside>
 }
+
+export function useProjectsOnline() {
+  const [online, setOnline] = React.useState(() => typeof navigator === 'undefined' ? true : navigator.onLine)
+  React.useEffect(() => {
+    const setTrue = () => setOnline(true)
+    const setFalse = () => setOnline(false)
+    window.addEventListener('online', setTrue)
+    window.addEventListener('offline', setFalse)
+    return () => { window.removeEventListener('online', setTrue); window.removeEventListener('offline', setFalse) }
+  }, [])
+  return online
+}

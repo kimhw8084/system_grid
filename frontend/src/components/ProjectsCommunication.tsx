@@ -3,6 +3,7 @@ import { useLocation, useNavigate } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { FileText, History, Megaphone, Plus, RefreshCcw, ShieldCheck } from 'lucide-react'
 import { apiFetch } from '../api/apiClient'
+import { ProjectsOfflineNotice, useProjectsOnline } from './ProjectsState'
 import './ProjectsCommunication.css'
 
 type CommunicationRoute = 'updates' | 'resources' | 'reports'
@@ -73,9 +74,10 @@ export default function ProjectsCommunication() {
   const projectId = route?.projectId || ''
   const project = useQuery({ queryKey: ['p08-project', projectId], queryFn: () => apiFetch(`/api/v2/projects/${encodeURIComponent(projectId)}`).then(jsonOrThrow), enabled: Boolean(projectId) })
   const queryClient = useQueryClient()
+  const online = useProjectsOnline()
   const refresh = () => { queryClient.invalidateQueries({ queryKey: ['p08-project', projectId] }); queryClient.invalidateQueries({ queryKey: ['p08-updates', projectId] }); queryClient.invalidateQueries({ queryKey: ['p08-resources', projectId] }); queryClient.invalidateQueries({ queryKey: ['p08-reports', projectId] }) }
   if (!route) return null
-  if (project.isPending) return <main className="p08-page"><State message="Loading project communication…" /></main>
-  if (project.isError) return <main className="p08-page"><State error message="Project communication is unavailable." /></main>
-  return <main className="p08-page" data-p08-communication="true"><Header projectId={projectId} active={route.route} />{route.route === 'updates' ? <UpdatesView projectId={projectId} project={project.data} refresh={refresh} /> : route.route === 'resources' ? <ResourcesView projectId={projectId} project={project.data} refresh={refresh} /> : <ReportsView projectId={projectId} project={project.data} />}<button className="p08-back" onClick={() => navigate(`/projects/${encodeURIComponent(projectId)}/home`)}>Back to Project Home</button></main>
+  if (project.isPending) return <main className="p08-page"><ProjectsOfflineNotice online={online} /><State message="Loading project communication…" /></main>
+  if (project.isError) return <main className="p08-page"><ProjectsOfflineNotice online={online} /><State error message="Project communication is unavailable." /></main>
+  return <main className="p08-page" data-p08-communication="true"><ProjectsOfflineNotice online={online} /><Header projectId={projectId} active={route.route} />{route.route === 'updates' ? <UpdatesView projectId={projectId} project={project.data} refresh={refresh} /> : route.route === 'resources' ? <ResourcesView projectId={projectId} project={project.data} refresh={refresh} /> : <ReportsView projectId={projectId} project={project.data} />}<button className="p08-back" onClick={() => navigate(`/projects/${encodeURIComponent(projectId)}/home`)}>Back to Project Home</button></main>
 }

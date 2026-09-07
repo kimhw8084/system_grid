@@ -122,7 +122,7 @@ def validate_upload(upload: dict[str, Any]) -> dict[str, Any]:
         raise _error("UNSAFE_FILE", "The file content does not match its declared JPEG type.")
     if mime_type == "image/svg+xml" and raw:
         svg = raw.decode("utf-8", errors="replace")
-        if re.search(r"<\s*script\b|on[a-z]+\s*=|(?:javascript|data):", svg, re.I):
+        if re.search(r"<!DOCTYPE|<!ENTITY|<\s*script\b|on[a-z]+\s*=|(?:javascript|data|file|https?):", svg, re.I) or re.search(r"(?:href|src|url)\s*=", svg, re.I):
             raise _error("UNSAFE_FILE", "SVG scripts and external resource URLs are not allowed.")
     if raw and re.search(rb"(?:EICAR|<script|javascript:)", raw, re.I):
         raise _error("UNSAFE_FILE", "The file failed the deterministic safety scan.")
@@ -134,6 +134,20 @@ def validate_upload(upload: dict[str, Any]) -> dict[str, Any]:
         "storage_ref": str(upload.get("storage_ref") or f"pending/{hashlib.sha256((filename + str(size)).encode()).hexdigest()}"),
         "scan_state": "Pending",
     }
+
+
+def validate_storage_ref(value: Any) -> str | None:
+    """Accept opaque tenant storage references, never filesystem paths."""
+    if value is None:
+        return None
+    if not isinstance(value, str) or not value.strip() or len(value) > 500:
+        raise _error("VALIDATION_FAILED", "storage_ref is invalid.")
+    candidate = value.strip()
+    if candidate.startswith(("/", "\\")) or ".." in candidate.split("/") or ".." in candidate.split("\\") or re.match(r"^[A-Za-z]:", candidate):
+        raise _error("UNSAFE_FILE", "storage_ref may not address a filesystem path.")
+    if not re.fullmatch(r"[A-Za-z0-9._:/-]+", candidate):
+        raise _error("VALIDATION_FAILED", "storage_ref contains unsupported characters.")
+    return candidate
 
 
 def neutralize_csv_cell(value: Any) -> str:

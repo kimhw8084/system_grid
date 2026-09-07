@@ -110,6 +110,23 @@ describe('apiClient', () => {
     expect(options.headers['Content-Type']).toBeUndefined()
   })
 
+  it('does not send writes while offline and exposes a reviewable error', async () => {
+    const fetchMock = vi.fn()
+    vi.stubGlobal('fetch', fetchMock)
+    const originalOnline = navigator.onLine
+    Object.defineProperty(navigator, 'onLine', { configurable: true, value: false })
+    try {
+      await expect(apiFetch('/api/v2/projects', { method: 'POST', body: '{}' })).rejects.toMatchObject({
+        status: 0,
+        offline: true,
+        message: expect.stringContaining('was not sent'),
+      })
+      expect(fetchMock).not.toHaveBeenCalled()
+    } finally {
+      Object.defineProperty(navigator, 'onLine', { configurable: true, value: originalOnline })
+    }
+  })
+
   it('does not leak identity headers to non-local external requests', async () => {
     const fetchMock = vi.fn().mockResolvedValue({
       ok: true,

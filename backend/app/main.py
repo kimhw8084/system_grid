@@ -4,6 +4,7 @@ import asyncio
 import logging
 import os
 import re
+from time import perf_counter
 from uuid import uuid4
 
 from alembic import command
@@ -25,6 +26,7 @@ from .api.import_engine import ROUND_TRIP_EXPOSE_HEADER_NAMES, ROUND_TRIP_EXPOSE
 from .core.config import settings
 from .database import config_engine, default_engine
 from .runtime_diagnostics import build_readiness_payload
+from .observability import SlidingWindowRateLimiter, request_rate_limit_key, safe_request_metric
 from .pv1 import models as pv1_models  # noqa: F401 - register PV1 tables with Base.metadata
 from .architecture import models as architecture_models  # noqa: F401 - register canonical Architecture tables
 
@@ -102,6 +104,10 @@ manager = ConnectionManager()
 app = FastAPI(title=settings.PROJECT_NAME, lifespan=lifespan, redirect_slashes=False)
 standardize_validation_errors(app)
 app.state.ws_manager = manager
+app.state.rate_limiter = SlidingWindowRateLimiter(
+    limit=settings.RATE_LIMIT_REQUESTS,
+    window_seconds=settings.RATE_LIMIT_WINDOW_SECONDS,
+)
 
 EXPOSED_DOWNLOAD_HEADERS = list(ROUND_TRIP_EXPOSE_HEADER_NAMES)
 origins = settings.cors_origins
@@ -120,12 +126,26 @@ app.add_middleware(TrustedHostMiddleware, allowed_hosts=settings.allowed_hosts)
 
 @app.middleware("http")
 async def request_context_and_export_headers(request: Request, call_next):
+    started = perf_counter()
     incoming_request_id = request.headers.get("X-Request-ID", "")
     request_id = incoming_request_id if REQUEST_ID_PATTERN.fullmatch(incoming_request_id) else str(uuid4())
     request.state.request_id = request_id
 
     response = await call_next(request)
     response.headers["X-Request-ID"] = request_id
+    duration_ms = (perf_counter() - started) * 1000
+    # Safe, structured request timing. The path is retained for operations;
+    # bodies, query values, and response content are deliberately excluded.
+    metric = safe_request_metric(
+        request_id=request_id,
+        method=request.method,
+        path=request.url.path,
+        status_code=response.status_code,
+        duration_ms=duration_ms,
+    )
+    request.state.safe_metric = metric
+    response.headers["Server-Timing"] = f"app;dur={metric['duration_ms']}"
+    logger.info("request_complete", extra={"pv1_metric": metric})
     if response.status_code == 200:
         response_header_names = {key.lower() for key in response.headers.keys()}
         if {
@@ -134,6 +154,30 @@ async def request_context_and_export_headers(request: Request, call_next):
             "x-sysgrid-schema-version",
         }.issubset(response_header_names):
             response.headers["Access-Control-Expose-Headers"] = ROUND_TRIP_EXPOSE_HEADERS
+    return response
+
+
+@app.middleware("http")
+async def bounded_mutation_rate_limit(request: Request, call_next):
+    method = request.method.upper()
+    expensive_read = method == "GET" and any(token in request.url.path for token in ("/export", "/reports/"))
+    if not settings.RATE_LIMIT_ENABLED or (method not in {"POST", "PUT", "PATCH", "DELETE"} and not expensive_read):
+        return await call_next(request)
+    decision = app.state.rate_limiter.check(request_rate_limit_key(request))
+    if not decision.allowed:
+        request_id = getattr(request.state, "request_id", str(uuid4()))
+        return JSONResponse(
+            status_code=429,
+            content={
+                "code": "RATE_LIMITED",
+                "message": "Too many requests. Retry after the indicated delay.",
+                "request_id": request_id,
+                "retryable": True,
+            },
+            headers={"X-Request-ID": request_id, "Retry-After": str(decision.retry_after_seconds)},
+        )
+    response = await call_next(request)
+    response.headers.setdefault("X-RateLimit-Remaining", str(decision.remaining))
     return response
 
 

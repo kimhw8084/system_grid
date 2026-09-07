@@ -6,6 +6,7 @@ import { AlertTriangle, Check, ChevronDown, ChevronRight, CircleHelp, Pin, Plus,
 import { BOARD_STATUSES, buildWorkRows, focusDisplayItems, parseTaskImportText, transitionLabel, treeGridAria, WORK_STATUSES } from './ProjectsWorkPlan.model'
 import './ProjectsWorkPlan.css'
 import ArchitectureHost from '../architecture/ArchitectureHost'
+import { ProjectsOfflineNotice, useProjectsOnline } from './ProjectsState'
 
 type Route = { scope: 'my-day' | 'work' | 'plan'; projectId?: string; board: boolean; section?: string }
 
@@ -80,6 +81,7 @@ function PlanView({ projectId, plan, onRefresh }: { projectId: string; plan: any
 
 export default function ProjectsWorkPlan() {
   const location = useLocation(); const navigate = useNavigate(); const route = shouldUseProjectsWorkPlan(location.pathname, location.search); const queryClient = useQueryClient()
+  const online = useProjectsOnline()
   const activeRoute = route || { scope: 'my-day' as const, board: false }
   const projectId = activeRoute.projectId
   const focus = useQuery({ queryKey: ['pv1-focus', projectId || 'all'], queryFn: () => apiFetch(`/api/v2/focus${projectId ? `?project_id=${encodeURIComponent(projectId)}` : ''}`).then(jsonOrThrow), enabled: Boolean(route), staleTime: 10_000 })
@@ -87,5 +89,5 @@ export default function ProjectsWorkPlan() {
   const plan = useQuery({ queryKey: ['pv1-plan', projectId], queryFn: () => apiFetch(`/api/v2/projects/${encodeURIComponent(projectId!)}/plan`).then(jsonOrThrow), enabled: Boolean(projectId && activeRoute.scope === 'plan'), staleTime: 10_000 })
   const refresh = () => { queryClient.invalidateQueries({ queryKey: ['pv1-focus'] }); queryClient.invalidateQueries({ queryKey: ['pv1-work', projectId] }); queryClient.invalidateQueries({ queryKey: ['pv1-plan', projectId] }) }
   if (!route) return null
-  return <main className="p05-page" data-workspace="projects" data-pv1-projects-route="true"><Header projectId={projectId} scope={activeRoute.scope} board={activeRoute.board} />{focus.isPending ? <p className="p05-state">Loading Focus…</p> : focus.isError ? <p className="p05-error" role="alert">Focus unavailable. Work remains available when the server reconnects.</p> : <FocusSection response={focus.data} projectId={projectId} onRefresh={refresh} />}{activeRoute.scope === 'work' ? (work.isPending ? <p className="p05-state">Loading work…</p> : work.isError ? <p className="p05-error" role="alert">Work unavailable. Retry to refresh the canonical task graph.</p> : <WorkTree projectId={projectId!} work={work.data} board={activeRoute.board} onRefresh={refresh} />) : null}{activeRoute.scope === 'plan' ? (plan.isPending ? <p className="p05-state">Loading plan…</p> : plan.isError ? <p className="p05-error" role="alert">Plan unavailable.</p> : <PlanView projectId={projectId!} plan={plan.data} onRefresh={refresh} />) : null}<button className="p05-back" onClick={() => navigate(projectId ? `/projects/${projectId}/home` : '/projects')}>Back to {projectId ? 'Project Home' : 'Portfolio'}</button></main>
+  return <main className="p05-page" data-workspace="projects" data-pv1-projects-route="true"><ProjectsOfflineNotice online={online} /><Header projectId={projectId} scope={activeRoute.scope} board={activeRoute.board} />{focus.isPending ? <p className="p05-state">Loading Focus…</p> : focus.isError ? <p className="p05-error" role="alert">Focus unavailable. Work remains available when the server reconnects.</p> : <FocusSection response={focus.data} projectId={projectId} onRefresh={refresh} />}{activeRoute.scope === 'work' ? (work.isPending ? <p className="p05-state">Loading work…</p> : work.isError ? <p className="p05-error" role="alert">Work unavailable. Retry to refresh the canonical task graph.</p> : <WorkTree projectId={projectId!} work={work.data} board={activeRoute.board} onRefresh={refresh} />) : null}{activeRoute.scope === 'plan' ? (plan.isPending ? <p className="p05-state">Loading plan…</p> : plan.isError ? <p className="p05-error" role="alert">Plan unavailable.</p> : <PlanView projectId={projectId!} plan={plan.data} onRefresh={refresh} />) : null}<button className="p05-back" onClick={() => navigate(projectId ? `/projects/${projectId}/home` : '/projects')}>Back to {projectId ? 'Project Home' : 'Portfolio'}</button></main>
 }

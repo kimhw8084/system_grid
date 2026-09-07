@@ -67,6 +67,11 @@ const queryClient = new QueryClient({
       retry: 1,
       refetchOnWindowFocus: false,
     },
+    mutations: {
+      // Do not let React Query pause and replay unreviewed PV1 writes after a
+      // reconnect. apiFetch reports the offline write without sending it.
+      networkMode: 'always',
+    },
   },
   queryCache: new QueryCache({
     onError: (error: any) => {
@@ -838,9 +843,19 @@ function MainLayout() {
 
 import { ErrorSentinel } from './components/shared/ErrorSentinel'
 
+function ReconnectRefresh() {
+  React.useEffect(() => {
+    const refresh = () => { void queryClient.invalidateQueries() }
+    window.addEventListener('online', refresh)
+    return () => window.removeEventListener('online', refresh)
+  }, [])
+  return null
+}
+
 export default function App() {
   return (
     <QueryClientProvider client={queryClient}>
+      <ReconnectRefresh />
       <ErrorSentinel>
         <RouterProvider router={appRouter} />
       </ErrorSentinel>
