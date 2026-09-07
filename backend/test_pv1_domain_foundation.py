@@ -395,7 +395,7 @@ async def test_metric_delivery_acceptance_and_verified_outcome_are_independent(c
     task = await client.post(
         f"/api/v2/projects/{project_id}/commands",
         headers=_headers(tenant_id, command_id=task_id),
-        json=_command(task_id, "task.create", expected={"project_revision": 4, "graph_revision": 2}, payload={"title": "Execute measured delivery", "owner_id": "admin_root", "start_date": "2026-02-01", "end_date": "2026-02-15", "mandatory": True}),
+            json=_command(task_id, "task.create", expected={"project_revision": 4, "graph_revision": 2}, payload={"title": "Execute measured delivery", "owner_id": "admin_root", "start_date": "2026-02-02", "end_date": "2026-02-13", "mandatory": True}),
     )
     assert task.status_code == 200, task.text
 

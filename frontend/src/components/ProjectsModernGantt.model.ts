@@ -2,7 +2,12 @@ export type GanttDependencyType = 'FS' | 'SS' | 'FF' | 'SF'
 export type GanttEdge = 'start' | 'finish'
 
 export const GANTT_ROW_HEIGHT = 48
-export const GANTT_RAIL_WIDTH = 360
+export const GANTT_RAIL_WIDTH = 320
+export const GANTT_RAIL_MIN = 240
+export const GANTT_RAIL_MAX = 480
+export const GANTT_RAIL_KEY_STEP = 16
+export const GANTT_COMPACT_RAIL_WIDTH = 200
+export const GANTT_PX_PER_DAY = { day: 32, week: 16, month: 6, quarter: 3 } as const
 export const GANTT_MAX_REALIZED_ROWS = 40
 export const GANTT_MAX_CONNECTORS = 80
 export const GANTT_MAX_TICKS = 64
@@ -21,7 +26,7 @@ export const ganttDependencyTypeForEdges = (source: GanttEdge, target: GanttEdge
   return 'FS'
 }
 
-export const ganttWindow = (totalRows: number, scrollTop: number, viewportHeight: number, rowHeight = GANTT_ROW_HEIGHT, overscan = 6) => {
+export const ganttWindow = (totalRows: number, scrollTop: number, viewportHeight: number, rowHeight = GANTT_ROW_HEIGHT, overscan = 6, focusedIndex: number | null = null) => {
   const safeTotal = Math.max(0, Math.floor(totalRows || 0))
   if (!safeTotal) return { start: 0, end: 0, count: 0 }
   const visibleStart = Math.max(0, Math.floor(Math.max(0, scrollTop) / rowHeight))
@@ -29,8 +34,11 @@ export const ganttWindow = (totalRows: number, scrollTop: number, viewportHeight
   let start = Math.max(0, visibleStart - overscan)
   let end = Math.min(safeTotal, visibleStart + visibleCount + overscan)
   if (end - start > GANTT_MAX_REALIZED_ROWS) {
-    const center = visibleStart + Math.floor(visibleCount / 2)
-    start = Math.max(0, Math.min(safeTotal - GANTT_MAX_REALIZED_ROWS, center - Math.floor(GANTT_MAX_REALIZED_ROWS / 2)))
+    start = Math.max(0, Math.min(safeTotal - GANTT_MAX_REALIZED_ROWS, visibleStart - overscan))
+    end = Math.min(safeTotal, start + GANTT_MAX_REALIZED_ROWS)
+  }
+  if (focusedIndex != null && focusedIndex >= 0 && focusedIndex < safeTotal && (focusedIndex < start || focusedIndex >= end)) {
+    start = Math.max(0, Math.min(safeTotal - GANTT_MAX_REALIZED_ROWS, focusedIndex - Math.floor(GANTT_MAX_REALIZED_ROWS / 2)))
     end = Math.min(safeTotal, start + GANTT_MAX_REALIZED_ROWS)
   }
   return { start, end, count: end - start }

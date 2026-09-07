@@ -85,8 +85,8 @@ test('typed dependency and calendar save through canonical Project PUT @scheduli
   await network.getByLabel('Type').selectOption('SS')
   await network.getByRole('spinbutton').fill('2')
   await network.getByRole('button', { name: /Save dependency/i }).click()
-  await expect.poll(() => lastPutBody?.tasks?.find((task: any) => task.id === 2)?.dependencies_json?.[0]?.type).toBe('SS')
-  expect(lastPutBody.tasks.find((task: any) => task.id === 2).dependencies_json[0].lag_days).toBe(2)
+  await expect.poll(() => lastPutBody?.tasks?.find((task: any) => task.id === 2)?.dependencies_json?.some((dependency: any) => dependency.type === 'SS' && dependency.lag_days === 2)).toBe(true)
+  expect(lastPutBody.tasks.find((task: any) => task.id === 2).dependencies_json).toEqual(expect.arrayContaining([expect.objectContaining({ id: '1', type: 'FS', lag_days: 0 }), expect.objectContaining({ id: '1', type: 'SS', lag_days: 2 })]))
 
   const constraints = page.locator('[data-project-schedule-constraints="true"]')
   await constraints.getByRole('button', { name: 'Sat', exact: true }).click()

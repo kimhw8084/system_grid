@@ -17,6 +17,22 @@ class CommandEnvelope(PV1Model):
     payload: dict[str, Any] = Field(default_factory=dict)
 
 
+class SchedulePreviewRequest(PV1Model):
+    operation: Literal["move", "resize", "set_dates", "group_move", "recalculate_earliest", "change_calendar"]
+    selection_ids: list[str] = Field(default_factory=list, max_length=1000)
+    parameters: dict[str, Any] = Field(default_factory=dict)
+    graph_revision: int = Field(ge=1)
+    calendar_revision: int = Field(ge=1)
+
+    @field_validator("selection_ids")
+    @classmethod
+    def unique_selection(cls, value: list[str]) -> list[str]:
+        normalized = [item.strip() for item in value]
+        if any(not item for item in normalized) or len(normalized) != len(set(normalized)):
+            raise ValueError("selection_ids must contain unique non-empty task IDs")
+        return normalized
+
+
 class ProjectCreate(PV1Model):
     name: str = Field(min_length=1, max_length=120)
     objective: str | None = Field(default=None, max_length=500)

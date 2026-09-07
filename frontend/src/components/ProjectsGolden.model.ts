@@ -783,7 +783,7 @@ export const buildProjectTimelineRows = (project: any, now: Date = new Date()): 
     return { ...row,
       startOrdinal: calendarOrdinal(task?.start_date), endOrdinal: calendarOrdinal(task?.end_date),
       baselineStartOrdinal: calendarOrdinal(metadata.baseline_start_date), baselineEndOrdinal: calendarOrdinal(metadata.baseline_end_date),
-      forecastStartOrdinal: projected?.forecastStartOrdinal ?? null, forecastEndOrdinal: projected?.forecastEndOrdinal ?? null,
+      forecastStartOrdinal: calendarOrdinal(task?.forecast_start_date) ?? projected?.forecastStartOrdinal ?? null, forecastEndOrdinal: calendarOrdinal(task?.forecast_end_date) ?? projected?.forecastEndOrdinal ?? null,
       dependencyIds: getProjectTaskDependencyIds(task), critical: critical.has(task.id), milestone: isProjectTaskMilestone(task), blocked: task?.status === 'Blocked', progress: getTaskProgress(task),
     }
   })
@@ -795,7 +795,7 @@ export const getProjectTimelineRange = (project: any, now: Date = new Date()) =>
   const projectStart = calendarOrdinal(project?.start_date); const projectEnd = calendarOrdinal(project?.end_date || project?.target_date)
   if (projectStart != null) points.push(projectStart); if (projectEnd != null) points.push(projectEnd); points.push(today)
   const min = points.length ? Math.min(...points) : today - 14; const max = points.length ? Math.max(...points) : today + 30
-  const padding = Math.max(3, Math.min(14, Math.ceil((max - min + 1) * 0.08)))
+  const padding = 7
   return { startOrdinal: min - padding, endOrdinal: max + padding, spanDays: Math.max(1, max - min + 1 + padding * 2), todayOrdinal: today }
 }
 

@@ -35,6 +35,7 @@ class Settings(BaseSettings):
     DEFAULT_USER_ID: str = "admin_root"
     AUTO_ADMIN_USER_IDS: str = "admin_root"
     ALLOW_AUTO_ADMIN_IN_PRODUCTION: bool = False
+    SCHEDULE_PREVIEW_SIGNING_KEY: str = "development-only-schedule-preview-key"
 
     # Startup schema mutation is convenient in development/test but dangerous in
     # production. Production requires an explicit acknowledgement before either
@@ -144,6 +145,8 @@ class Settings(BaseSettings):
             errors.append("AUTO_ADMIN_USER_IDS must be empty in production unless explicitly acknowledged.")
         if self.DEFAULT_USER_ID.strip().lower() == "admin_root":
             errors.append("DEFAULT_USER_ID must not remain admin_root in production.")
+        if len(self.SCHEDULE_PREVIEW_SIGNING_KEY.strip()) < 32 or self.SCHEDULE_PREVIEW_SIGNING_KEY == "development-only-schedule-preview-key":
+            errors.append("SCHEDULE_PREVIEW_SIGNING_KEY must be a deployment-specific secret of at least 32 characters.")
 
         for env_name in ("DATABASE_URL", "CONFIG_DATABASE_URL", "TENANT_STORAGE_ROOT"):
             if not os.getenv(env_name):

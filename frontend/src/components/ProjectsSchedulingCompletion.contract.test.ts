@@ -7,20 +7,32 @@ const root = path.resolve(process.cwd(), 'src')
 const app = fs.readFileSync(path.join(root, 'App.tsx'), 'utf8')
 const wrapper = fs.readFileSync(path.join(root, 'components/ProjectsSchedulingCompletion.tsx'), 'utf8')
 const model = fs.readFileSync(path.join(root, 'components/ProjectsSchedulingCompletion.model.ts'), 'utf8')
+const timeline = fs.readFileSync(path.join(root, 'components/ProjectsTimeline.tsx'), 'utf8')
 
 describe('OUT-38 source contract', () => {
-  it('wraps the accepted ProjectsGolden timeline rather than creating a second scheduler route', () => {
+  it('keeps one Gantt renderer while routing canonical deep links to the v2 schedule authority', () => {
     expect(app).toContain('import Projects from "./components/ProjectsSchedulingCompletion"')
     expect(wrapper).toContain("import ProjectsGolden from './ProjectsGolden'")
     expect(wrapper).toContain('<ProjectsGolden />')
     expect(wrapper).toContain("view === 'timeline'")
+    expect(wrapper).toContain('shouldUseProjectsTimeline(location.pathname)')
+    expect(timeline).toContain('<ProjectsModernGantt')
   })
 
-  it('uses the canonical Project GET/CAS/full PUT write seam', () => {
+  it('uses pure v2 previews and one atomic command on the canonical route', () => {
+    expect(timeline).toContain('/schedule/preview')
+    expect(timeline).toContain("sendCommand('schedule.apply'")
+    expect(timeline).toContain("setMessage('Schedule preview cancelled; zero mutations were sent.')")
+    expect(timeline).toContain('preview_id: candidate.preview.preview_id')
+    expect(timeline).toContain('preview_hash: candidate.preview.content_hash')
+  })
+
+  it('retains the full Project PUT only for legacy route compatibility', () => {
     expect(wrapper).toContain("apiFetch('/api/v1/projects')")
     expect(wrapper).toContain('projectFingerprint(remote) !== projectFingerprint(baseProject)')
     expect(wrapper).toContain("apiFetch(`/api/v1/projects/${nextProject.id}`, { method: 'PUT', body: JSON.stringify(nextProject) })")
     expect(wrapper).not.toMatch(/\/api\/v1\/projects\/[^`'\"]*schedule/)
+    expect(timeline).not.toContain("method: 'PUT'")
   })
 
   it('keeps typed scheduling metadata additive and capacity authority explicit', () => {

@@ -7,6 +7,7 @@ import toast from 'react-hot-toast'
 import ProjectsGolden from './ProjectsGolden'
 import ProjectsStory, { shouldUseProjectsStory } from './ProjectsStory'
 import ProjectsWorkPlan, { shouldUseProjectsWorkPlan } from './ProjectsWorkPlan'
+import { shouldUseProjectsTimeline } from './ProjectsTimeline.route'
 import { ProjectsTimelineAuthority } from './ProjectsWorkspaceLayout'
 import { apiFetch } from '../api/apiClient'
 import { PROJECT_TASK_STATUSES, buildProjectTaskHierarchy, projectFingerprint, type ProjectTaskStatus } from './ProjectsGolden.model'
@@ -36,6 +37,7 @@ const primaryButtonClass = `${buttonClass} border-blue-500/30 bg-blue-500/10 tex
 const sectionClass = 'rounded-lg border border-white/5 bg-[var(--sg-surface-1)] p-3'
 const dayLabels = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
 const constraintTypes: ProjectConstraintType[] = ['ASAP', 'SNET', 'FNLT', 'MUST_START', 'MUST_FINISH']
+const ProjectsTimeline = React.lazy(() => import('./ProjectsTimeline'))
 
 type BoardPendingMove = { taskId: string; taskName: string; fromStatus: ProjectTaskStatus; toStatus: ProjectTaskStatus }
 type TaskKeyboardMoveDirection = 'earlier' | 'later'
@@ -123,6 +125,8 @@ export default function ProjectsSchedulingCompletion() {
   const location = useLocation()
   if (shouldUseProjectsStory(location.pathname, location.search)) return <ProjectsStory />
   if (shouldUseProjectsWorkPlan(location.pathname, location.search)) return <ProjectsWorkPlan />
+  const timeline = shouldUseProjectsTimeline(location.pathname)
+  if (timeline) return <React.Suspense fallback={<main className="sg-pv1-state" aria-busy="true">Loading Timeline…</main>}><ProjectsTimeline projectId={timeline.projectId} /></React.Suspense>
   return <ProjectsSchedulingWorkspace />
 }
 
@@ -381,7 +385,7 @@ function ProjectsSchedulingWorkspace() {
           <section className={sectionClass} data-project-schedule-network="true"><div className="flex items-center justify-between"><span><p className="text-xs font-black uppercase tracking-widest text-slate-600">Dependency network</p><h3 className="mt-1 text-xs font-black text-white">Typed relationship + lag</h3></span><GitBranch size={15} className="text-blue-400" /></div>
             <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2"><label className="text-xs font-black uppercase text-slate-600">Task<select style={controlStyle} className={`${inputClass} mt-1`} value={taskId} onChange={(event) => setTaskId(event.target.value)}>{tasks.map((task: any) => <option key={String(task.id)} value={String(task.id)}>{task.name || task.id}</option>)}</select></label><label className="text-xs font-black uppercase text-slate-600">Predecessor<select style={controlStyle} className={`${inputClass} mt-1`} value={predecessorId} onChange={(event) => setPredecessorId(event.target.value)}><option value="">Select</option>{tasks.filter((task: any) => String(task.id) !== taskId).map((task: any) => <option key={String(task.id)} value={String(task.id)}>{task.name || task.id}</option>)}</select></label><label className="text-xs font-black uppercase text-slate-600">Type<select style={controlStyle} className={`${inputClass} mt-1`} value={dependencyType} onChange={(event) => setDependencyType(event.target.value as ProjectDependencyType)}>{PROJECT_DEPENDENCY_TYPES.map((type) => <option key={type}>{type}</option>)}</select></label><label className="text-xs font-black uppercase text-slate-600">Lag / lead days<input style={controlStyle} className={`${inputClass} mt-1`} type="number" value={lagDays} onChange={(event) => setLagDays(Number(event.target.value))} /></label></div>
             <button className={`${primaryButtonClass} mt-2 w-full`} disabled={updateMutation.isPending || !predecessorId} onClick={saveDependency}><Save size={11} /> Save dependency</button>
-            <div className="mt-2 space-y-1">{dependencies.length ? dependencies.map((dep) => <div key={dep.id} className="flex items-center justify-between rounded-md border border-white/5 bg-white/[0.02] px-2 py-1.5 text-xs"><span className="text-slate-400">{dep.id} → {taskId} <b className="text-blue-300">{dep.type}</b> {dep.lag_days >= 0 ? '+' : ''}{dep.lag_days}d</span><button className="min-h-[40px] min-w-[40px] rounded-md px-2 text-xs text-rose-300 hover:bg-rose-500/10" onClick={() => removeDependency(dep.id)}>Remove</button></div>) : <p className="mt-2 text-xs text-slate-700">Legacy IDs display as FS +0d until edited; no migration loss.</p>}</div>
+            <div className="mt-2 space-y-1">{dependencies.length ? dependencies.map((dep) => <div key={`${dep.id}:${taskId}:${dep.type}:${dep.lag_days}`} className="flex items-center justify-between rounded-md border border-white/5 bg-white/[0.02] px-2 py-1.5 text-xs"><span className="text-slate-400">{dep.id} → {taskId} <b className="text-blue-300">{dep.type}</b> {dep.lag_days >= 0 ? '+' : ''}{dep.lag_days}d</span><button className="min-h-[40px] min-w-[40px] rounded-md px-2 text-xs text-rose-300 hover:bg-rose-500/10" onClick={() => removeDependency(dep.id)}>Remove</button></div>) : <p className="mt-2 text-xs text-slate-700">Legacy IDs display as FS +0d until edited; no migration loss.</p>}</div>
           </section>
 
           <section className={sectionClass} data-project-schedule-analysis="true"><div className="flex items-center justify-between"><span><p className="text-xs font-black uppercase tracking-widest text-slate-600">Critical path & slack</p><h3 className="mt-1 text-xs font-black text-white">Typed-edge CPM</h3></span><BarChart3 size={15} className="text-violet-300" /></div>

@@ -9,6 +9,8 @@ export interface ProjectTaskDependencyV2 {
   id: string
   type: ProjectDependencyType
   lag_days: number
+  edge_id?: string
+  revision?: number
 }
 
 export interface ProjectTaskConstraintV1 {
@@ -56,7 +58,7 @@ export interface ProjectScheduleAnalysisRow {
 }
 
 const DAY_MS = 86_400_000
-const clampLag = (value: unknown) => Math.max(-3650, Math.min(3650, Math.round(Number(value) || 0)))
+const clampLag = (value: unknown) => Math.max(-365, Math.min(365, Math.round(Number(value) || 0)))
 const taskKey = (value: any) => String(value?.id ?? value?.task_id ?? value ?? '')
 const taskMetadata = (task: any) => task?.metadata_json && typeof task.metadata_json === 'object' && !Array.isArray(task.metadata_json) ? task.metadata_json : {}
 const projectTasks = (project: any): any[] => Array.isArray(project?.tasks) ? project.tasks : []
@@ -89,14 +91,15 @@ export const normalizeProjectDependency = (value: any): ProjectTaskDependencyV2 
   if (!id) return null
   const rawType = String(value?.type ?? value?.dependency_type ?? value?.relation ?? 'FS').toUpperCase()
   const type = PROJECT_DEPENDENCY_TYPES.includes(rawType as ProjectDependencyType) ? rawType as ProjectDependencyType : 'FS'
-  return { id, type, lag_days: clampLag(value?.lag_days ?? value?.lagDays ?? value?.lag ?? 0) }
+  return { id, type, lag_days: clampLag(value?.lag_days ?? value?.lagDays ?? value?.lag ?? 0), edge_id: value?.edge_id ?? value?.dependency_id, revision: Number(value?.revision) || undefined }
 }
 
 export const normalizeProjectTaskDependencies = (task: any): ProjectTaskDependencyV2[] => {
   const seen = new Set<string>(); const result: ProjectTaskDependencyV2[] = []
   for (const raw of Array.isArray(task?.dependencies_json) ? task.dependencies_json : []) {
-    const dep = normalizeProjectDependency(raw); if (!dep || seen.has(dep.id)) continue
-    seen.add(dep.id); result.push(dep)
+    const dep = normalizeProjectDependency(raw); const identity = dep ? `${dep.id}:${dep.type}` : ''
+    if (!dep || seen.has(identity)) continue
+    seen.add(identity); result.push(dep)
   }
   return result
 }
@@ -156,8 +159,8 @@ export const setTypedProjectDependency = (
   const current = normalizeProjectTaskDependencies(task)
   if (enabled && !current.some((dep) => dep.id === predecessor) && wouldCreateTypedDependencyCycle(project, target, predecessor)) return project
   const nextDeps = enabled
-    ? [...current.filter((dep) => dep.id !== predecessor), { id: predecessor, type, lag_days: clampLag(lagDays) }]
-    : current.filter((dep) => dep.id !== predecessor)
+    ? [...current.filter((dep) => dep.id !== predecessor || dep.type !== type), { id: predecessor, type, lag_days: clampLag(lagDays) }]
+    : current.filter((dep) => dep.id !== predecessor || dep.type !== type)
   if (JSON.stringify(nextDeps) === JSON.stringify(current)) return project
   const next = replaceTask(project, target, { ...task, dependencies_json: nextDeps })
   return appendScheduleHistory(next, enabled ? 'Dependency updated' : 'Dependency removed', `${predecessor} → ${target}${enabled ? ` ${type} ${clampLag(lagDays) >= 0 ? '+' : ''}${clampLag(lagDays)}d` : ''}`, now)

@@ -1,5 +1,5 @@
 /* Projects-only layout repair. No invisible legacy timeline or DOM geometry oracle. */
-.sg-gantt,.sg-projects-frame,.sg-dialog-shade { --sg-bg:var(--projects-surface-work,#101827); --sg-raised:var(--projects-surface-shell,#0e1624); --sg-line:var(--projects-border-subtle,#29354a); --sg-text:var(--text-primary,#e2e8f0); --sg-muted:var(--projects-text-muted,#a8b4c7); --sg-accent:#60a5fa; color:var(--sg-text); font-family:Inter,ui-sans-serif,system-ui,sans-serif; font-size:13px; line-height:1.4 }
+.sg-gantt,.sg-projects-frame,.sg-dialog-shade { --sg-bg:var(--pv1-surface-1,var(--projects-surface-work,#23242f)); --sg-raised:var(--pv1-surface-2,var(--projects-surface-shell,#2c2d37)); --sg-line:var(--pv1-border,var(--projects-border-subtle,#3b4153)); --sg-text:var(--pv1-text-primary,var(--text-primary,#eef0fa)); --sg-muted:var(--pv1-text-muted,var(--projects-text-muted,#a0abc5)); --sg-accent:var(--pv1-accent,#93b4ff); color:var(--sg-text); font-family:Inter,ui-sans-serif,system-ui,sans-serif; font-size:13px; line-height:1.4 }
 .sg-gantt *, .sg-axis *, .sg-gantt-canvas, .sg-task-row, .sg-row-time, .sg-dependencies { box-sizing:border-box; max-width:none }
 .sg-gantt button,.sg-gantt select,.sg-gantt input,.sg-projects-frame button,.sg-projects-frame summary { font:inherit }
 .sg-gantt button,.sg-relation-dialog button,.sg-gantt select,.sg-gantt input,.sg-context-actions button,.sg-context-actions summary,.sg-context-expanded button,.sg-workspace-actions>summary { min-height:40px; min-width:40px; border:1px solid var(--sg-line); border-radius:7px; padding:7px 10px; color:var(--sg-text); background:var(--sg-raised); cursor:pointer }
@@ -15,11 +15,12 @@
 .sg-gantt-filters { display:flex; flex-wrap:wrap; align-items:end; gap:10px; padding:10px 12px; border-bottom:1px solid var(--sg-line); max-height:180px; overflow:auto; flex:none }
 .sg-gantt-filters label { display:flex; flex-direction:column; gap:4px; min-width:0 }.sg-gantt-filters input { max-width:240px }.sg-gantt-filters .sg-check { flex-direction:row; align-items:center; min-height:40px }.sg-check input { width:18px; height:18px; min-height:18px; min-width:18px }
 .sg-link-mode { display:flex; align-items:center; flex-wrap:wrap; gap:8px; padding:8px 12px; color:var(--sg-accent); border-bottom:1px solid var(--sg-line); max-height:144px; overflow:auto; flex:none }.sg-link-mode span { min-width:160px; flex:1 }.sg-link-mode label { display:flex; align-items:center; gap:6px }.sg-link-mode input { width:64px }
-.sg-gantt-scroll { flex:1 1 auto; min-height:160px; min-width:0; overflow:auto; overscroll-behavior:contain; position:relative; scrollbar-gutter:stable; overflow-anchor:none }
+.sg-gantt-scroll { flex:1 1 0; height:0; min-height:160px; min-width:0; overflow:auto; overscroll-behavior:contain; position:relative; scrollbar-gutter:stable; overflow-anchor:none }
 .sg-gantt-canvas,.sg-gantt-body { position:relative; min-width:0 }
 .sg-axis { display:flex; position:sticky; top:0; z-index:40; background:var(--sg-raised); border-bottom:1px solid var(--sg-line); font-variant-numeric:tabular-nums }
 .sg-rail { flex-shrink:0; position:sticky; left:0; z-index:30; background:var(--sg-raised); border-right:1px solid var(--sg-line) }
 .sg-axis-rail { display:flex; align-items:center; padding:12px; font-weight:600; z-index:45 }
+.sg-axis-rail { position:relative }.sg-gantt .sg-rail-divider { position:absolute; right:-8px; top:0; width:16px; min-width:16px; height:64px; padding:0; border:0; border-radius:0; background:transparent; cursor:col-resize; z-index:60 }.sg-gantt .sg-rail-divider:focus-visible { background:color-mix(in srgb,var(--sg-accent) 18%,transparent) }
 .sg-axis-time { position:relative; flex:none; height:64px; overflow:hidden }
 .sg-axis-cell { position:absolute; top:0; bottom:0; border-left:1px solid var(--sg-line); overflow:hidden; white-space:nowrap }
 .sg-axis-cell span,.sg-axis-cell strong { display:block; height:32px; line-height:32px; padding:0 8px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; font-size:12px; font-weight:500 }.sg-axis-cell span { color:var(--sg-muted); border-bottom:1px solid var(--sg-line) }
@@ -51,6 +52,7 @@
 .sg-projects-frame .text-slate-600,.sg-projects-frame .text-slate-700 { color:var(--sg-muted)!important }
 @container (max-width: 1360px) { .sg-projects-frame [data-project-workbench-rail] { display:none!important } }
 @container (max-width: 600px) { .sg-context-actions>button { padding:7px; font-size:12px }.sg-workspace-picker>div:has(input) { display:none }.sg-workspace-picker>strong { display:none }.sg-gantt-title span { display:none }.sg-gantt-toolbar { padding:8px }.sg-gantt-title { width:100% }.sg-gantt-actions { width:100%; justify-content:space-between }.sg-gantt-footer>span:last-child { display:none }.sg-context-actions summary { padding:7px!important }.sg-task-name small { display:none }.sg-gantt-filters label { flex:1 1 120px }.sg-gantt-filters input,.sg-gantt-filters select { max-width:100%; width:100% } }
+@media (max-width:767px),(pointer:coarse) { .sg-gantt .sg-gantt-actions>button,.sg-gantt .sg-gantt-actions>select,.sg-gantt .sg-gantt-filters button,.sg-gantt .sg-gantt-filters input,.sg-gantt .sg-gantt-filters select,.sg-gantt .sg-selection button { min-height:44px!important; height:44px } }
 /* App markers are attached declaratively by the source transformer, Projects route only. */
 [data-sg-projects-app=true] { height:100dvh!important; min-height:0; overflow:hidden }
 [data-sg-projects-app=true] [data-sg-app-main] { min-height:0; flex:1; min-width:0; overflow:hidden }

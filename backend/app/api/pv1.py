@@ -199,7 +199,9 @@ async def get_capabilities(request: Request, db: AsyncSession = Depends(get_db))
             "task_bulk": {"supported": True, "contract_version": "1.0"},
             "task_import": {"supported": True, "contract_version": "1.0"},
             "saved_views": {"supported": False, "contract_version": None},
-            "schedule_preview": {"supported": False, "contract_version": None},
+            "schedule_preview": {"supported": True, "contract_version": "1.0"},
+            "schedule_apply": {"supported": True, "contract_version": "1.0"},
+            "schedule_baselines": {"supported": True, "contract_version": "1.0"},
             "architecture_read": {"supported": False, "contract_version": None},
             "architecture_edit": {"supported": False, "contract_version": None},
         },
@@ -386,6 +388,35 @@ async def get_plan_projection(project_id: str, request: Request, db: AsyncSessio
     try:
         return await domain.plan_projection(db, tenant_id=_tenant_id(request), project_id=project_id, actor_id=_actor(request), request_role=getattr(request.state, "sysgrid_access_role", None))
     except domain.PV1DomainError as error:
+        return _error(request, error)
+
+
+@router.get("/projects/{project_id}/schedule")
+async def get_project_schedule(project_id: str, request: Request, db: AsyncSession = Depends(get_db), as_of: date | None = Query(default=None)):
+    try:
+        return await domain.schedule_projection(db, tenant_id=_tenant_id(request), project_id=project_id, actor_id=_actor(request), request_role=getattr(request.state, "sysgrid_access_role", None), as_of=as_of)
+    except domain.PV1DomainError as error:
+        return _error(request, error)
+
+
+@router.post("/projects/{project_id}/schedule/preview")
+async def preview_project_schedule(project_id: str, request: Request, body: schemas.SchedulePreviewRequest, db: AsyncSession = Depends(get_db)):
+    """Pure schedule calculation: this endpoint intentionally never commits."""
+    try:
+        return await domain.preview_project_schedule(
+            db,
+            tenant_id=_tenant_id(request),
+            project_id=project_id,
+            actor_id=_actor(request),
+            request_role=getattr(request.state, "sysgrid_access_role", None),
+            operation=body.operation,
+            selection_ids=body.selection_ids,
+            parameters=body.parameters,
+            graph_revision=body.graph_revision,
+            calendar_revision=body.calendar_revision,
+        )
+    except domain.PV1DomainError as error:
+        await db.rollback()
         return _error(request, error)
 
 

@@ -24,7 +24,13 @@ import {
   type ProjectDependencyType,
 } from './ProjectsSchedulingCompletion.model'
 import {
+  GANTT_COMPACT_RAIL_WIDTH,
   GANTT_MAX_CONNECTORS,
+  GANTT_PX_PER_DAY,
+  GANTT_RAIL_KEY_STEP,
+  GANTT_RAIL_MAX,
+  GANTT_RAIL_MIN,
+  GANTT_RAIL_WIDTH,
   GANTT_ROW_HEIGHT,
   ganttDependencyEdges,
   ganttDependencyTypeForEdges,
@@ -33,31 +39,44 @@ import {
   ganttWindow,
   type GanttEdge,
 } from './ProjectsModernGantt.model'
+import { normalizeProjectWorkingOrdinal, projectWorkingDistance, scheduleDateOrdinal, type PV1Calendar } from './ProjectsScheduleCore'
 
 type Persist = (nextProject: any, label: string, baseProject?: any) => Promise<any> | any
-const PX_PER_DAY: Record<ProjectTimelineZoom, number> = { day: 28, week: 12, month: 5, quarter: 2.2 }
+export type TimelineScheduleAuthority = {
+  request: (operation: 'move' | 'resize' | 'set_dates' | 'group_move' | 'recalculate_earliest' | 'change_calendar', selectionIds: string[], parameters: Record<string, unknown>) => Promise<'applied' | 'review'>
+  createDependency: (sourceId: string, targetId: string, type: ProjectDependencyType, lagDays: number) => Promise<void>
+  removeDependency: (dependencyId: string, revision: number) => Promise<void>
+  undo: () => Promise<void>
+  redo: () => Promise<void>
+  canUndo: boolean
+  canRedo: boolean
+  openScheduleChanges: () => void
+}
+const PX_PER_DAY: Record<ProjectTimelineZoom, number> = GANTT_PX_PER_DAY
 const zoomOptions: ProjectTimelineZoom[] = ['day', 'week', 'month', 'quarter']
 const labelLag = (lag: number) => `${lag >= 0 ? '+' : ''}${lag}d`
-type ModernGanttProps = { project: any; onPersist: Persist; isSaving?: boolean }
+type ModernGanttProps = { project: any; onPersist: Persist; isSaving?: boolean; scheduleAuthority?: TimelineScheduleAuthority }
 
 // A project change must not retain another project's undo stack or active gesture.
 export default function ProjectsModernGantt(props: ModernGanttProps) {
   return <ProjectsModernGanttSession key={String(props.project.id)} {...props} />
 }
 
-function ProjectsModernGanttSession({ project, onPersist, isSaving = false }: ModernGanttProps) {
+function ProjectsModernGanttSession({ project, onPersist, isSaving = false, scheduleAuthority }: ModernGanttProps) {
   const [searchParams, setSearchParams] = useSearchParams()
   const scrollRef = useRef<HTMLDivElement | null>(null)
   const rows = useMemo(() => buildProjectTimelineRows(project), [project])
   const range = useMemo(() => getProjectTimelineRange(project), [project])
   const analysis = useMemo(() => analyzeProjectSchedule(project), [project])
-  const analysisById = useMemo(() => new Map(analysis.rows.map((row) => [String(row.id), row])), [analysis])
-  const typedCritical = analysis.criticalTaskIds
+  const serverAnalysis = project?.__pv1_analysis
+  const analysisById = useMemo<Map<string, any>>(() => serverAnalysis ? new Map((serverAnalysis.rows || []).map((row: any) => [String(row.task_id), { constraintViolation: row.negative_slack ? 'Negative slack' : null }])) : new Map(analysis.rows.map((row) => [String(row.id), row])), [analysis, serverAnalysis])
+  const typedCritical = useMemo(() => serverAnalysis ? new Set<string>(serverAnalysis.critical_task_ids || []) : analysis.criticalTaskIds, [analysis.criticalTaskIds, serverAnalysis])
   const scheduleState = getProjectScheduleState(project)
   const baseline = scheduleState.baselines?.[0] || null
   const baselineById = useMemo(() => new Map((baseline?.tasks || []).map((task) => [String(task.id), task])), [baseline?.tasks])
   const [zoom, setZoom] = useState<ProjectTimelineZoom>('week')
   const [fitted, setFitted] = useState(false)
+  const [baselineVisible, setBaselineVisible] = useState(true)
   const [filtersOpen, setFiltersOpen] = useState(false)
   const [relation, setRelation] = useState<any>(null)
   const [linkType, setLinkType] = useState<ProjectDependencyType>('FS')
@@ -71,8 +90,11 @@ function ProjectsModernGanttSession({ project, onPersist, isSaving = false }: Mo
   const [criticalOnly, setCriticalOnly] = useState(false)
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set())
   const [selectedId, setSelectedId] = useState<string | null>(searchParams.get('task'))
+  const [focusedId, setFocusedId] = useState<string | null>(null)
+  const [railPreference, setRailPreference] = useState(GANTT_RAIL_WIDTH)
+  const [mobilePane, setMobilePane] = useState<'split' | 'schedule'>('split')
   const [scroll, setScroll] = useState({ top: 0, left: 0, width: 1200, height: 720 })
-  type DragState = { taskId: string; mode: 'move' | 'start' | 'end'; startX: number; delta: number; pointerId: number; startScrollLeft: number; scale: number }
+  type DragState = { taskId: string; mode: 'move' | 'start' | 'end'; startX: number; delta: number; workdayDelta: number; pixels: number; pointerId: number; startScrollLeft: number; scale: number }
   const [drag, setDrag] = useState<DragState | null>(null)
   const dragRef = useRef<DragState | null>(null)
   const nativeGestureCleanupRef = useRef<(() => void) | null>(null)
@@ -103,7 +125,8 @@ function ProjectsModernGanttSession({ project, onPersist, isSaving = false }: Mo
     return true
   }), [rows, collapsed, rowById, search, statusFilter, ownerFilter, criticalOnly, typedCritical])
 
-  const railWidth = scroll.width < 600 ? Math.min(180, Math.floor(scroll.width * .43)) : scroll.width < 1000 ? 260 : 320
+  const compact = scroll.width < 768
+  const railWidth = compact ? (mobilePane === 'schedule' ? 0 : GANTT_COMPACT_RAIL_WIDTH) : Math.max(GANTT_RAIL_MIN, Math.min(GANTT_RAIL_MAX, railPreference))
   const pxPerDay = fitted ? fitScale(range.spanDays, scroll.width, railWidth) : PX_PER_DAY[zoom]
   const timelineWidth = Math.max(1, Math.ceil(range.spanDays * pxPerDay), scroll.width - railWidth)
   const geometryFor = (row: any) => taskGeometry(row, range.startOrdinal, pxPerDay)
@@ -119,9 +142,15 @@ function ProjectsModernGanttSession({ project, onPersist, isSaving = false }: Mo
     else endOrdinal = Math.max(startOrdinal, endOrdinal + drag.delta)
     return { ...row, startOrdinal, endOrdinal }
   }
-  const rowWindow = ganttWindow(visibleRows.length, scroll.top, Math.max(1, scroll.height - 64))
+  const focusedIndex = focusedId == null ? null : visibleRows.findIndex((row) => String(row.id) === focusedId)
+  const rowWindow = ganttWindow(visibleRows.length, scroll.top, Math.max(1, scroll.height - 64), GANTT_ROW_HEIGHT, 6, focusedIndex)
   const realizedRows = visibleRows.slice(rowWindow.start, rowWindow.end)
   const visibleIndex = useMemo(() => new Map(visibleRows.map((row, index) => [String(row.id), index])), [visibleRows])
+  const siblingMeta = useMemo(() => {
+    const groups = new Map<string, string[]>()
+    visibleRows.forEach((row) => { const key = String(row.parentId ?? '__root__'); groups.set(key, [...(groups.get(key) || []), String(row.id)]) })
+    return new Map(visibleRows.map((row) => { const siblings = groups.get(String(row.parentId ?? '__root__')) || []; return [String(row.id), { pos: siblings.indexOf(String(row.id)) + 1, size: siblings.length }] }))
+  }, [visibleRows])
   const realizedIds = useMemo(() => new Set(realizedRows.map((row) => String(row.id))), [realizedRows])
   const ticks = useMemo(() => axisCells(range.startOrdinal, range.endOrdinal, pxPerDay, scroll.left, Math.max(1, scroll.width - railWidth)), [range.startOrdinal, range.endOrdinal, pxPerDay, scroll.left, scroll.width, railWidth])
 
@@ -198,6 +227,12 @@ function ProjectsModernGanttSession({ project, onPersist, isSaving = false }: Mo
   const commitDependency = async (sourceId: string, targetId: string, type: ProjectDependencyType, lag = 0) => {
     const source = rowById.get(sourceId); const target = rowById.get(targetId)
     if (!source || !target || sourceId === targetId) return
+    if (scheduleAuthority) {
+      setDependencySource(null); setLive(`Adding dependency ${source.task.name} → ${target.task.name}…`)
+      try { await scheduleAuthority.createDependency(sourceId, targetId, type, lag); setLive(`Dependency added: ${source.task.name} → ${target.task.name}`) }
+      catch (error: any) { setLive(error?.message || 'Dependency update failed') }
+      return
+    }
     const changed = setTypedProjectDependency(project, targetId, sourceId, type, lag, true)
     if (changed === project) { setLive('Dependency was not changed. Check for a duplicate or cycle.'); setDependencySource(null); return }
     const next = appendProjectAudit(changed, 'Timeline dependency added', `${source.task.name} → ${target.task.name}`)
@@ -208,6 +243,13 @@ function ProjectsModernGanttSession({ project, onPersist, isSaving = false }: Mo
   const removeDependency = async (sourceId: string, targetId: string, type: ProjectDependencyType, lag: number) => {
     const source = rowById.get(sourceId); const target = rowById.get(targetId)
     if (!source || !target) return
+    if (scheduleAuthority) {
+      const dependency = normalizeProjectTaskDependencies(target.task).find((item) => item.id === sourceId && item.type === type && item.lag_days === lag)
+      if (!dependency?.edge_id || !dependency.revision) { setLive('Dependency identity is unavailable. Refresh before removing it.'); return }
+      try { await scheduleAuthority.removeDependency(dependency.edge_id, dependency.revision); setLive(`Dependency removed: ${source.task.name} → ${target.task.name}`) }
+      catch (error: any) { setLive(error?.message || 'Dependency removal failed') }
+      return
+    }
     const changed = setTypedProjectDependency(project, targetId, sourceId, type, lag, false)
     if (changed === project) return
     const next = appendProjectAudit(changed, 'Timeline dependency removed', `${source.task.name} → ${target.task.name}`)
@@ -274,7 +316,7 @@ function ProjectsModernGanttSession({ project, onPersist, isSaving = false }: Mo
   const beginDragAt = (taskId: string, mode: DragState['mode'], startX: number, pointerId: number) => {
     if (isSaving || savingRef.current || dependencySource || dragRef.current) return false
     suppressClick.current = false
-    const active: DragState = { taskId, mode, startX, delta: 0, pointerId, startScrollLeft: scrollRef.current?.scrollLeft || 0, scale: pxPerDay }
+    const active: DragState = { taskId, mode, startX, delta: 0, workdayDelta: 0, pixels: 0, pointerId, startScrollLeft: scrollRef.current?.scrollLeft || 0, scale: pxPerDay }
     dragRef.current = active
     setDrag(active)
     armNativeGestureBridge()
@@ -292,13 +334,25 @@ function ProjectsModernGanttSession({ project, onPersist, isSaving = false }: Mo
     beginDragAt(taskId, mode, event.clientX, -1)
   }
 
+  const dragDeltas = (active: DragState, clientX: number) => {
+    const pixels = clientX - active.startX + (scrollRef.current?.scrollLeft || 0) - active.startScrollLeft
+    const rawDays = Math.round(pixels / active.scale)
+    const row = rowById.get(active.taskId)
+    const calendar = project?.__pv1_calendar as PV1Calendar | undefined
+    const baseOrdinal = active.mode === 'end' ? row?.endOrdinal : row?.startOrdinal
+    if (!calendar || baseOrdinal == null || rawDays === 0) return { delta: rawDays, workdayDelta: rawDays, pixels }
+    const rawTarget = baseOrdinal + rawDays
+    const target = normalizeProjectWorkingOrdinal(calendar, rawTarget, rawDays < 0 ? 'previous' : 'next')
+    return { delta: target - baseOrdinal, workdayDelta: projectWorkingDistance(calendar, baseOrdinal, target), pixels }
+  }
+
   const moveDragAt = (clientX: number, taskId?: string, mode?: DragState['mode']) => {
     const active = dragRef.current
     if (!active || (taskId && active.taskId !== taskId) || (mode && active.mode !== mode)) return
-    const delta = Math.round((clientX - active.startX + (scrollRef.current?.scrollLeft || 0) - active.startScrollLeft) / active.scale)
-    if (delta === active.delta) return
+    const deltas = dragDeltas(active, clientX)
+    if (deltas.delta === active.delta && deltas.pixels === active.pixels) return
     suppressClick.current = true
-    const next = { ...active, delta }
+    const next = { ...active, ...deltas }
     dragRef.current = next
     setDrag(next)
   }
@@ -310,16 +364,30 @@ function ProjectsModernGanttSession({ project, onPersist, isSaving = false }: Mo
   const endDragAt = async (clientX: number) => {
     const active = dragRef.current
     if (!active) return
-    const releaseDelta = Math.round((clientX - active.startX + (scrollRef.current?.scrollLeft || 0) - active.startScrollLeft) / active.scale)
+    const release = dragDeltas(active, clientX)
     // Prefer the release coordinate, but preserve the last meaningful preview if a browser
     // reports the original coordinate while releasing pointer capture.
-    const delta = releaseDelta || active.delta
-    suppressClick.current = Math.abs(clientX - active.startX) > 3
+    const delta = release.delta || active.delta
+    const workdayDelta = release.workdayDelta || active.workdayDelta
+    const movement = Math.abs(release.pixels) || Math.abs(active.pixels)
+    suppressClick.current = movement > 4
     clearNativeGestureBridge()
     dragRef.current = null
     setDrag(null)
-    if (!delta) return
+    if (movement <= 4 || !delta || !workdayDelta) return
     const row = rowById.get(active.taskId); if (!row) return
+    if (scheduleAuthority) {
+      const operation = active.mode === 'move' && row.task?.type === 'Summary' ? 'group_move' : active.mode === 'move' ? 'move' : 'resize'
+      const parameters = active.mode === 'move' ? { delta_workdays: workdayDelta } : { edge: active.mode === 'end' ? 'finish' : 'start', delta_workdays: workdayDelta }
+      const focusSemanticId = active.mode === 'move' ? `task-bar-${row.id}` : `resize-${active.mode}-${row.id}`
+      focusAfterSave.current = focusSemanticId
+      setLive(`Calculating ${row.task.name} schedule change…`)
+      try {
+        const result = await scheduleAuthority.request(operation, [String(row.id)], parameters)
+        setLive(result === 'review' ? `Review propagation for ${row.task.name}` : `${row.task.name} ${active.mode === 'move' ? 'moved' : 'resized'}`)
+      } catch (error: any) { focusAfterSave.current = null; setLive(error?.message || 'Timeline update failed') }
+      return
+    }
     const base = active.mode === 'move'
       ? shiftProjectTaskSchedules(project, [row.id], delta)
       : resizeProjectTaskSchedule(project, row.id, active.mode, delta)
@@ -343,6 +411,14 @@ function ProjectsModernGanttSession({ project, onPersist, isSaving = false }: Mo
     const node = scrollRef.current
     if (node) node.scrollLeft = Math.max(0, xFor(range.todayOrdinal) - (node.clientWidth - railWidth) * .45)
   }
+  const beginRailResize = (event: React.PointerEvent<HTMLButtonElement>) => {
+    if (compact) return
+    event.preventDefault()
+    const startX = event.clientX, startWidth = railWidth
+    const move = (nativeEvent: PointerEvent) => setRailPreference(Math.max(GANTT_RAIL_MIN, Math.min(GANTT_RAIL_MAX, startWidth + nativeEvent.clientX - startX)))
+    const end = () => { window.removeEventListener('pointermove', move); window.removeEventListener('pointerup', end); window.removeEventListener('pointercancel', end) }
+    window.addEventListener('pointermove', move); window.addEventListener('pointerup', end); window.addEventListener('pointercancel', end)
+  }
   const fitProject = () => { setFitted(true); if (scrollRef.current) scrollRef.current.scrollLeft = 0 }
   const switchZoom = (value: ProjectTimelineZoom) => {
     const center = range.startOrdinal + (scroll.left + (scroll.width - railWidth) / 2) / pxPerDay
@@ -365,6 +441,17 @@ function ProjectsModernGanttSession({ project, onPersist, isSaving = false }: Mo
   const shownLast = Math.min(visibleRows.length, Math.ceil((scroll.top + Math.max(0, scroll.height - AXIS_HEIGHT)) / GANTT_ROW_HEIGHT))
   const keyboardSchedule = (row: any, mode: 'move' | 'start' | 'end', delta: number) => {
     if (!row || !delta || isSaving || savingRef.current) return
+    if (scheduleAuthority) {
+      const operation = mode === 'move' && row.task?.type === 'Summary' ? 'group_move' : mode === 'move' ? 'move' : 'resize'
+      const parameters = mode === 'move' ? { delta_workdays: delta } : { edge: mode === 'end' ? 'finish' : 'start', delta_workdays: delta }
+      const focusSemanticId = mode === 'move' ? `task-bar-${row.id}` : `resize-${mode}-${row.id}`
+      focusAfterSave.current = focusSemanticId
+      setLive(`Calculating ${row.task.name} schedule change…`)
+      void scheduleAuthority.request(operation, [String(row.id)], parameters)
+        .then((result) => setLive(result === 'review' ? `Review propagation for ${row.task.name}` : `${row.task.name} ${mode === 'move' ? 'moved' : 'resized'} ${delta > 0 ? '+' : ''}${delta} working day${Math.abs(delta) === 1 ? '' : 's'}`))
+        .catch((error: any) => { focusAfterSave.current = null; setLive(error?.message || 'Timeline update failed') })
+      return
+    }
     const next = mode === 'move'
       ? shiftProjectTaskSchedules(project, [row.id], delta)
       : resizeProjectTaskSchedule(project, row.id, mode, delta)
@@ -384,6 +471,16 @@ function ProjectsModernGanttSession({ project, onPersist, isSaving = false }: Mo
   const editDay = (edge: 'start' | 'end', delta: number) => {
     if (selectedRow) keyboardSchedule(selectedRow, edge, delta)
   }
+  const scheduleUnscheduled = (row: any) => {
+    if (!scheduleAuthority) return persist(appendProjectAudit(scheduleProjectTask(project,row.id,projectOrdinalToDate(range.todayOrdinal) || '',1),'Timeline task scheduled',row.task.name),'Timeline task scheduled')
+    const today = projectOrdinalToDate(range.todayOrdinal) || ''
+    const parameters = row.milestone
+      ? { point_date: today, anchor: row.task?.milestone_anchor || 'finish', normalization: { point_date: 'next' } }
+      : { start_date: today, end_date: today, normalization: { start_date: 'next', end_date: 'next' } }
+    return scheduleAuthority.request('set_dates', [String(row.id)], parameters)
+      .then((result) => setLive(result === 'review' ? `Review propagation for ${row.task.name}` : `${row.task.name} scheduled`))
+      .catch((error: any) => setLive(error?.message || 'Timeline update failed'))
+  }
   const inspect = (link: any) => { setRelation(link); setLive(`Dependency ${link.source.task.name} to ${link.target.task.name}`) }
   const relationDialog = useRef<HTMLDivElement | null>(null)
   const returnFocus = useRef<HTMLElement | SVGElement | null>(null)
@@ -402,15 +499,26 @@ function ProjectsModernGanttSession({ project, onPersist, isSaving = false }: Mo
     const current = targets.indexOf(document.activeElement as HTMLElement)
     if (targets.length && ((e.shiftKey && current <= 0) || (!e.shiftKey && current === targets.length - 1))) { e.preventDefault(); targets[e.shiftKey ? targets.length - 1 : 0].focus() }
   }
-  return <section className="sg-gantt" data-project-timeline="true" data-project-flagship-gantt="true" data-project-modern-gantt="true" data-project-semantic-id="gantt-root" aria-label="Project timeline">
+  const coarsePointer = typeof window !== 'undefined' && window.matchMedia?.('(pointer: coarse)').matches
+  const focusVisibleRow = (index: number) => {
+    const target = visibleRows[Math.max(0, Math.min(visibleRows.length - 1, index))]
+    if (!target) return
+    setFocusedId(String(target.id)); setSelectedId(String(target.id))
+    requestAnimationFrame(() => document.querySelector<HTMLElement>(`[data-project-timeline-row="true"][data-task-id="${CSS.escape(String(target.id))}"]`)?.focus({ preventScroll: true }))
+  }
+  return <section className={`sg-gantt ${railWidth === 0 ? 'sg-schedule-only' : ''}`} data-project-timeline="true" data-project-flagship-gantt="true" data-project-modern-gantt="true" data-project-semantic-id="gantt-root" aria-label="Project timeline">
     <div className="sg-gantt-toolbar">
-      <div className="sg-gantt-title"><CalendarClock size={18}/><strong>Timeline</strong><span>{rows.length} tasks</span></div>
+      <div className="sg-gantt-title"><CalendarClock size={18}/><strong>Timeline</strong><span>{rows.length} tasks · {project?.__pv1_calendar?.timezone || 'project calendar'}</span></div>
       <div className="sg-gantt-actions">
-        <button aria-label="Undo Timeline change" title="Undo" disabled={!history.length || isSaving} onClick={() => void restoreTasks(history[history.length - 1], 'undo')}><Undo2 size={16}/></button>
-        <button aria-label="Redo Timeline change" title="Redo" disabled={!redo.length || isSaving} onClick={() => void restoreTasks(redo[redo.length - 1], 'redo')}><Redo2 size={16}/></button>
+        <button aria-label="Undo Timeline change" title="Undo" disabled={!(scheduleAuthority?.canUndo ?? history.length > 0) || isSaving} onClick={() => scheduleAuthority ? void scheduleAuthority.undo() : void restoreTasks(history[history.length - 1], 'undo')}><Undo2 size={16}/></button>
+        <button aria-label="Redo Timeline change" title="Redo" disabled={!(scheduleAuthority?.canRedo ?? redo.length > 0) || isSaving} onClick={() => scheduleAuthority ? void scheduleAuthority.redo() : void restoreTasks(redo[redo.length - 1], 'redo')}><Redo2 size={16}/></button>
         <button onClick={jumpToday}>Today</button><button onClick={fitProject} aria-pressed={fitted}>Fit</button>
         <select aria-label="Timeline zoom" value={fitted ? 'fit' : zoom} onChange={e => e.target.value === 'fit' ? fitProject() : switchZoom(e.target.value as ProjectTimelineZoom)}><option value="fit">Fit project</option>{zoomOptions.map(value => <option key={value} value={value}>{value[0].toUpperCase() + value.slice(1)}</option>)}</select>
+        <button aria-pressed={baselineVisible} onClick={() => setBaselineVisible((value) => !value)}>Baseline</button>
+        <button aria-pressed={criticalOnly} onClick={() => setCriticalOnly((value) => !value)}>Critical</button>
         <button aria-expanded={filtersOpen} aria-controls="sg-gantt-filters" onClick={() => setFiltersOpen(!filtersOpen)}>Filters{search || statusFilter !== 'ALL' || ownerFilter !== 'ALL' || criticalOnly ? ' •' : ''}</button>
+        {scheduleAuthority ? <button onClick={scheduleAuthority.openScheduleChanges}>Schedule changes</button> : null}
+        {compact ? <select aria-label="Timeline mobile pane" value={mobilePane} onChange={(event) => setMobilePane(event.target.value as 'split' | 'schedule')}><option value="split">WBS + schedule</option><option value="schedule">Schedule only</option></select> : null}
       </div>
     </div>
     {filtersOpen && <div className="sg-gantt-filters" id="sg-gantt-filters">
@@ -430,13 +538,14 @@ function ProjectsModernGanttSession({ project, onPersist, isSaving = false }: Mo
     <div ref={scrollRef} className="sg-gantt-scroll" onScroll={updateScroll} data-project-timeline-scroll="true" data-project-timeline-scrollport="true" data-project-semantic-id="timeline-scrollport" tabIndex={0} aria-label="Scrollable timeline">
       <div className="sg-gantt-canvas" style={{ width: railWidth + timelineWidth, minWidth: '100%' }}>
         <div className="sg-axis" style={{ height: AXIS_HEIGHT }}>
-          <div className="sg-rail sg-axis-rail" style={{ width: railWidth }}>Task / WBS</div>
+          {railWidth > 0 ? <div className="sg-rail sg-axis-rail" style={{ width: railWidth }}>Task / WBS<button type="button" className="sg-rail-divider" role="separator" aria-label="Resize WBS rail" aria-orientation="vertical" aria-valuemin={GANTT_RAIL_MIN} aria-valuemax={GANTT_RAIL_MAX} aria-valuenow={railWidth} onPointerDown={beginRailResize} onKeyDown={(event) => { if (event.key === 'ArrowLeft' || event.key === 'ArrowRight') { event.preventDefault(); setRailPreference((value) => Math.max(GANTT_RAIL_MIN, Math.min(GANTT_RAIL_MAX, value + (event.key === 'ArrowLeft' ? -GANTT_RAIL_KEY_STEP : GANTT_RAIL_KEY_STEP)))) } }} /></div> : null}
           <div className="sg-axis-time" style={{ width: timelineWidth }}>
             {ticks.map(t => <div key={t.start} className="sg-axis-cell" data-project-timeline-tick="true" style={{ left: xFor(t.start), width: (t.end - t.start) * pxPerDay }}><span>{t.major}</span><strong>{t.label}</strong></div>)}
             <span className="sg-today-axis" style={{ left: todayX }} aria-label="Today"/>
           </div>
         </div>
-        <div className="sg-gantt-body" role="treegrid" aria-label="Project WBS timeline tasks" aria-rowcount={visibleRows.length} aria-colcount={2} style={{ height: Math.max(totalHeight, 100) }}>
+        <div className="sg-gantt-body" role="treegrid" aria-label="Project WBS timeline tasks" aria-rowcount={visibleRows.length + 1} aria-colcount={2} style={{ height: Math.max(totalHeight, 100) }}>
+          <div className="sg-sr" role="row" aria-rowindex={1}><span role="columnheader">Task / WBS</span><span role="columnheader">Schedule</span></div>
           <div className="sg-time-grid" style={{ left: railWidth, width: timelineWidth }} aria-hidden="true">
             {ticks.map(t => <span key={t.start} data-project-timeline-grid="true" style={{ left: xFor(t.start) }}/>) }
             <span className="sg-today-line" style={{ left: todayX }}/>
@@ -464,20 +573,21 @@ function ProjectsModernGanttSession({ project, onPersist, isSaving = false }: Mo
             const baselineTask: any = baselineById.get(String(row.id))
             const parseDate = (v: string | null) => v ? Math.floor(Date.parse(v.slice(0,10) + 'T00:00:00Z') / 86400000) : null
             const baselineStart = parseDate(baselineTask?.start_date) ?? row.baselineStartOrdinal, baselineEnd = parseDate(baselineTask?.end_date) ?? row.baselineEndOrdinal
-            return <div key={String(row.id)} role="row" aria-rowindex={index + 1} aria-level={row.depth + 1} aria-selected={selected} aria-expanded={row.hasChildren ? !collapsed.has(String(row.id)) : undefined} className={`sg-task-row ${selected ? 'selected' : ''}`} style={{ top: index * GANTT_ROW_HEIGHT, height: GANTT_ROW_HEIGHT, width: railWidth + timelineWidth }} data-project-timeline-row="true" data-task-id={String(row.id)} data-critical={String(critical)} data-milestone={String(row.milestone)}>
-              <div className="sg-rail sg-task-rail" role="rowheader" style={{ width: railWidth }}>
+            const position = siblingMeta.get(String(row.id)) || { pos: 1, size: 1 }
+            return <div key={String(row.id)} role="row" aria-rowindex={index + 2} aria-level={row.depth + 1} aria-posinset={position.pos} aria-setsize={position.size} aria-selected={selected} aria-expanded={row.hasChildren ? !collapsed.has(String(row.id)) : undefined} tabIndex={selected || (!selectedId && index === 0) ? 0 : -1} onFocusCapture={() => setFocusedId(String(row.id))} onBlurCapture={(event) => { if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setFocusedId(null) }} onKeyDown={(event) => { if (event.target !== event.currentTarget) return; if (event.key === 'ArrowUp' || event.key === 'ArrowDown') { event.preventDefault(); focusVisibleRow(index + (event.key === 'ArrowUp' ? -1 : 1)) } else if (event.key === 'ArrowLeft' && row.hasChildren && !collapsed.has(String(row.id))) { event.preventDefault(); setCollapsed((current) => new Set([...current, String(row.id)])) } else if (event.key === 'ArrowRight' && row.hasChildren && collapsed.has(String(row.id))) { event.preventDefault(); setCollapsed((current) => { const next = new Set(current); next.delete(String(row.id)); return next }) } else if (event.key === 'Enter') openTask(String(row.id)) }} className={`sg-task-row ${selected ? 'selected' : ''}`} style={{ top: index * GANTT_ROW_HEIGHT, height: GANTT_ROW_HEIGHT, width: railWidth + timelineWidth }} data-project-timeline-row="true" data-task-id={String(row.id)} data-critical={String(critical)} data-milestone={String(row.milestone)}>
+              {railWidth > 0 ? <div className="sg-rail sg-task-rail" role="rowheader" style={{ width: railWidth }}>
                 <button className="sg-task-link" data-project-timeline-dependency-keyboard="true" data-project-semantic-id={`dependency-source-${row.id}`} aria-pressed={dependencySource?.id === String(row.id)} aria-label={!dependencySource ? `Start dependency from ${row.task.name}` : dependencySource.id === String(row.id) ? `Cancel dependency from ${row.task.name}` : `Add dependency from ${dependencySource.name} to ${row.task.name}`} onClick={() => keyboardDependency(row)}><GitBranch size={15}/></button>
                 {row.hasChildren && <button className="sg-collapse" aria-label={`${collapsed.has(String(row.id)) ? 'Expand' : 'Collapse'} ${row.task.name}`} onClick={() => setCollapsed(s => { const next = new Set(s); next.has(String(row.id)) ? next.delete(String(row.id)) : next.add(String(row.id)); return next })}>{collapsed.has(String(row.id)) ? <ChevronRight size={14}/> : <ChevronDown size={14}/>}</button>}
                 <button className="sg-task-name" title={`${row.task.name} · ${getTaskOwnerLabel(row.task)}`} style={{ paddingLeft: Math.min(row.depth, 4) * 8 }} onClick={() => setSelectedId(String(row.id))} onDoubleClick={() => openTask(String(row.id))}><span>{row.task.name}</span><small>{getTaskOwnerLabel(row.task)}</small></button>
                 {violation && <span title={violation} aria-label={violation}>!</span>}
-              </div>
+              </div> : null}
               <div className="sg-row-time" role="gridcell" aria-label={`${row.task.name} schedule`} style={{ width: timelineWidth }}>
-                {baselineStart != null && baselineEnd != null && <span className="sg-baseline" title="Baseline" style={{ left: xFor(baselineStart), width: widthFor(baselineStart, baselineEnd) }}/>} 
+                {baselineVisible && baselineStart != null && baselineEnd != null && <span className="sg-baseline" title="Baseline" style={{ left: xFor(baselineStart), width: widthFor(baselineStart, baselineEnd) }}/>} 
                 {row.forecastStartOrdinal != null && row.forecastEndOrdinal != null && <span className="sg-forecast" title="Forecast" style={{ left: xFor(row.forecastStartOrdinal), width: widthFor(row.forecastStartOrdinal, row.forecastEndOrdinal) }}/>} 
-                {!scheduled ? <button className="sg-unscheduled" style={{ left: Math.max(8, scroll.left) }} disabled={isSaving} onClick={() => void persist(appendProjectAudit(scheduleProjectTask(project,row.id,projectOrdinalToDate(range.todayOrdinal) || '',1),'Timeline task scheduled',row.task.name),'Timeline task scheduled')}>Schedule today</button> : <>
-                  <div data-project-timeline-bar="true" data-task-id={String(row.id)} data-project-semantic-id={`task-bar-${row.id}`} data-move-surface="true" role="button" tabIndex={0} aria-keyshortcuts="ArrowLeft ArrowRight Enter Space" aria-label={`${row.task.name} timeline task. Left or Right moves one day. Enter opens details.`} title={`${row.task.name}\n${readableProjectDate(row.task.start_date)} – ${readableProjectDate(row.task.end_date)}\n${canonicalTaskStatus(row.task.status)} · ${row.progress}%`} className={`sg-task-bar ${row.milestone ? 'milestone' : ''} ${row.blocked ? 'blocked' : ''} ${critical ? 'critical' : ''}`} style={{ left: row.milestone ? geom.left - 10 : geom.left, width: row.milestone ? 40 : geom.width }} onPointerDown={e => { e.stopPropagation(); beginDrag(e,String(row.id),'move') }} onPointerMove={e => moveDrag(e,String(row.id),'move')} onPointerUp={endDrag} onMouseDown={e => beginMouseFallback(e,String(row.id),'move')} onClick={() => { if (!suppressClick.current) setSelectedId(String(row.id)); suppressClick.current = false }} onDoubleClick={() => openTask(String(row.id))} onKeyDown={e => { if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') { e.preventDefault(); e.stopPropagation(); keyboardSchedule(row,'move',e.key === 'ArrowLeft' ? -1 : 1) } else if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openTask(String(row.id)) } }}>
+                {!scheduled ? <button className="sg-unscheduled" style={{ left: Math.max(8, scroll.left) }} disabled={isSaving} onClick={() => void scheduleUnscheduled(row)}>Schedule today</button> : <>
+                  <div data-project-timeline-bar="true" data-task-id={String(row.id)} data-project-semantic-id={`task-bar-${row.id}`} data-move-surface="true" role="button" tabIndex={selected || (!selectedId && index === 0) ? 0 : -1} aria-keyshortcuts="ArrowLeft ArrowRight Shift+ArrowLeft Shift+ArrowRight Enter Space" aria-label={`${row.task.name} timeline task. Left or Right moves one working day; Shift moves five. Enter opens details.`} title={`${row.task.name}\n${readableProjectDate(row.task.start_date)} – ${readableProjectDate(row.task.end_date)}\n${canonicalTaskStatus(row.task.status)} · ${row.progress}%`} className={`sg-task-bar ${row.milestone ? 'milestone' : ''} ${row.blocked ? 'blocked' : ''} ${critical ? 'critical' : ''}`} style={{ left: row.milestone ? geom.left - 12 : geom.left, width: row.milestone ? 44 : geom.width }} onPointerDown={e => { e.stopPropagation(); beginDrag(e,String(row.id),'move') }} onPointerMove={e => moveDrag(e,String(row.id),'move')} onPointerUp={endDrag} onMouseDown={e => beginMouseFallback(e,String(row.id),'move')} onClick={() => { if (!suppressClick.current) setSelectedId(String(row.id)); suppressClick.current = false }} onDoubleClick={() => openTask(String(row.id))} onKeyDown={e => { if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') { e.preventDefault(); e.stopPropagation(); keyboardSchedule(row,'move',(e.key === 'ArrowLeft' ? -1 : 1) * (e.shiftKey ? 5 : 1)) } else if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openTask(String(row.id)) } }}>
                     {row.milestone ? <span className="sg-milestone-glyph"/> : <><span className="sg-progress" style={{ width: `${row.progress}%` }}/>{geom.width >= 96 && <span className="sg-bar-label">{row.task.name}</span>}</>}
-                    {!row.milestone && geom.width >= 96 && (['start','end'] as const).map(edge => <button type="button" key={edge} data-project-resize-edge={edge} data-project-semantic-id={`resize-${edge}-${row.id}`} aria-keyshortcuts="ArrowLeft ArrowRight" aria-label={`Resize ${edge} ${row.task.name}. Left or Right adjusts one day; activate to extend one day ${edge === 'start' ? 'earlier' : 'later'}.`} className={`sg-resize ${edge}`} onClick={e => { e.stopPropagation(); if (e.detail === 0) keyboardSchedule(row,edge,edge === 'start' ? -1 : 1) }} onKeyDown={e => { if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') { e.preventDefault(); e.stopPropagation(); keyboardSchedule(row,edge,e.key === 'ArrowLeft' ? -1 : 1) } }} onPointerDown={e => { e.stopPropagation(); beginDrag(e,String(row.id),edge) }} onPointerMove={e => moveDrag(e,String(row.id),edge)} onPointerUp={endDrag} onMouseDown={e => { e.stopPropagation(); beginMouseFallback(e,String(row.id),edge) }}/>) }
+                    {!row.milestone && geom.width >= (coarsePointer ? 132 : 120) && (['start','end'] as const).map(edge => <button type="button" key={edge} data-project-resize-edge={edge} data-project-semantic-id={`resize-${edge}-${row.id}`} aria-keyshortcuts="ArrowLeft ArrowRight Shift+ArrowLeft Shift+ArrowRight" aria-label={`Resize ${edge} ${row.task.name}. Left or Right adjusts one working day; Shift adjusts five.`} className={`sg-resize ${edge}`} onClick={e => { e.stopPropagation(); if (e.detail === 0) keyboardSchedule(row,edge,edge === 'start' ? -1 : 1) }} onKeyDown={e => { if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') { e.preventDefault(); e.stopPropagation(); keyboardSchedule(row,edge,(e.key === 'ArrowLeft' ? -1 : 1) * (e.shiftKey ? 5 : 1)) } }} onPointerDown={e => { e.stopPropagation(); beginDrag(e,String(row.id),edge) }} onPointerMove={e => moveDrag(e,String(row.id),edge)} onPointerUp={endDrag} onMouseDown={e => { e.stopPropagation(); beginMouseFallback(e,String(row.id),edge) }}/>) }
                   </div>
                   {(['start','finish'] as GanttEdge[]).map(edge => <span key={edge} className="sg-port" data-project-dependency-port="true" data-edge={edge} aria-hidden="true" style={{ left: geom[edge] }}/>) }
                 </>}

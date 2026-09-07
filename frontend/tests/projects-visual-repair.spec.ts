@@ -77,8 +77,8 @@ test('wide resize and bounded realized DOM after scroll',async({page})=>{
 
 test('virtual WBS semantics and keyboard schedule parity stay bounded',async({page},info)=>{
  const s=await setup(page)
- const tree=page.getByRole('treegrid',{name:'Project WBS timeline tasks',exact:true});await expect(tree).toHaveAttribute('aria-rowcount','120')
- const parent=page.locator('[data-project-timeline-row][data-task-id="1002"]');await expect(parent).toHaveAttribute('role','row');await expect(parent).toHaveAttribute('aria-level','1');await expect(parent).toHaveAttribute('aria-rowindex','2');await expect(parent).toHaveAttribute('aria-expanded','true')
+ const tree=page.getByRole('treegrid',{name:'Project WBS timeline tasks',exact:true});await expect(tree).toHaveAttribute('aria-rowcount','121') // 120 data rows plus the indexed column-header row.
+ const parent=page.locator('[data-project-timeline-row][data-task-id="1002"]');await expect(parent).toHaveAttribute('role','row');await expect(parent).toHaveAttribute('aria-level','1');await expect(parent).toHaveAttribute('aria-rowindex','3');await expect(parent).toHaveAttribute('aria-expanded','true')
  const child=page.locator('[data-project-timeline-row][data-task-id="1003"]');await expect(child).toHaveAttribute('aria-level','2')
  await parent.getByRole('button',{name:'Collapse Visual task 2',exact:true}).click();await expect(parent).toHaveAttribute('aria-expanded','false');await expect(child).toHaveCount(0)
  await parent.getByRole('button',{name:'Expand Visual task 2',exact:true}).click();await expect(parent).toHaveAttribute('aria-expanded','true')

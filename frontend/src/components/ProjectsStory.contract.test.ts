@@ -11,7 +11,9 @@ describe('P04 creation, Portfolio, and Home ownership', () => {
   it('routes only the P04 story surfaces to v2 and preserves retained workspace ownership elsewhere', () => {
     for (const route of ["pathname === '/projects'", "pathname === '/projects/new'", '/projects\\/([^/]+)\\/home']) expect(source).toContain(route)
     expect(source).toContain("new URLSearchParams(search).has('id')")
-    expect(scheduling).toContain('shouldUseProjectsStory(location.pathname, location.search) ? <ProjectsStory /> : <ProjectsSchedulingWorkspace />')
+    expect(scheduling).toContain('if (shouldUseProjectsStory(location.pathname, location.search)) return <ProjectsStory />')
+    expect(scheduling).toContain('if (shouldUseProjectsWorkPlan(location.pathname, location.search)) return <ProjectsWorkPlan />')
+    expect(scheduling).toContain('const timeline = shouldUseProjectsTimeline(location.pathname)')
     expect(api).toContain("/api/v2/projects")
     expect(scheduling).toContain("apiFetch('/api/v1/projects')")
   })

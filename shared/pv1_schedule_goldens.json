@@ -1,0 +1,36 @@
+{
+  "schema_version": 1,
+  "calendar": {
+    "timezone": "America/Chicago",
+    "working_weekdays": [0, 1, 2, 3, 4],
+    "exceptions": [],
+    "revision": 1
+  },
+  "journey_3": {
+    "tasks": [
+      {"id": "A", "title": "A", "kind": "Task", "start_date": "2026-10-05", "end_date": "2026-10-07", "duration_workdays": 3},
+      {"id": "B", "title": "B", "kind": "Task", "start_date": "2026-10-08", "end_date": "2026-10-09", "duration_workdays": 2},
+      {"id": "C", "title": "C", "kind": "Task", "start_date": "2026-10-06", "end_date": "2026-10-07", "duration_workdays": 2},
+      {"id": "D", "title": "D", "kind": "Task", "start_date": "2026-10-12", "end_date": "2026-10-12", "duration_workdays": 1},
+      {"id": "delivery", "title": "Delivery", "kind": "Milestone", "point_date": "2026-10-12", "anchor": "finish", "duration_workdays": 0}
+    ],
+    "dependencies": [
+      {"id": "A-B", "predecessor_id": "A", "successor_id": "B", "dependency_type": "FS", "lag_days": 0},
+      {"id": "A-C", "predecessor_id": "A", "successor_id": "C", "dependency_type": "SS", "lag_days": 1},
+      {"id": "B-D", "predecessor_id": "B", "successor_id": "D", "dependency_type": "FS", "lag_days": 0},
+      {"id": "C-D", "predecessor_id": "C", "successor_id": "D", "dependency_type": "FS", "lag_days": 0},
+      {"id": "D-delivery", "predecessor_id": "D", "successor_id": "delivery", "dependency_type": "FS", "lag_days": 0}
+    ],
+    "expected": {
+      "critical_task_ids": ["A", "B", "D", "delivery"],
+      "slack_workdays": {"A": 0, "B": 0, "C": 2, "D": 0, "delivery": 0},
+      "move_b_two_workdays": {
+        "B": {"start_date": "2026-10-12", "end_date": "2026-10-13"},
+        "C": {"start_date": "2026-10-06", "end_date": "2026-10-07"},
+        "D": {"start_date": "2026-10-14", "end_date": "2026-10-14"},
+        "delivery": {"point_date": "2026-10-14", "anchor": "finish"},
+        "project_finish_delta_workdays": 2
+      }
+    }
+  }
+}

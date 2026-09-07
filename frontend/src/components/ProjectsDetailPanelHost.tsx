@@ -22,7 +22,10 @@ export function DetailPanelHost({ open, title, onClose, children, restoreFocusRe
     const page = document.querySelector<HTMLElement>('[data-pv1-projects-route]')
     const modal = window.innerWidth < 1200
     if (modal && page) page.inert = true
-    const frame = requestAnimationFrame(() => focusable(panelRef.current!).find((element) => element.dataset.pv1PanelClose === 'true')?.focus())
+    const frame = requestAnimationFrame(() => {
+      const panel = panelRef.current
+      if (panel) focusable(panel).find((element) => element.dataset.pv1PanelClose === 'true')?.focus()
+    })
     const keydown = (event: KeyboardEvent) => {
       if (event.key === 'Escape') { event.preventDefault(); onClose(); return }
       if (event.key !== 'Tab' || !panelRef.current) return

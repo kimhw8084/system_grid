@@ -43,6 +43,21 @@ const installIdentity = async (page: Page) => {
 
 const installRoutes = async (page: Page) => {
   const project = projectFixture()
+  await page.route('**/api/v2/**', async (route) => {
+    const request = route.request()
+    const path = new URL(request.url()).pathname
+    const json = (value: unknown) => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(value) })
+    if (request.method() === 'GET' && path === '/api/v2/projects') return json({
+      items: [{ id: '901', display_key: 'PRJ-901', name: project.name, objective: project.objective, owner_id: 'proof_operator', team_id: 1, phase: 'Executing', run_state: 'Active', outcome_phase: 'Planned', outcome_result: null, priority: 'High', target_date: project.end_date, parent_project_id: null, child_count: 0, updated_at: '2026-09-01T00:00:00Z', capabilities: { edit: true }, story: { attention_count: 0, attention: [], health: { level: 'On track', reason: 'Fixture schedule is current.' }, delivery: { percent: 55, label: '55%', method: 'Canonical task progress' }, next_milestone: null, milestones: [], acceptance_criteria: [], primary_metric: null, latest_update: null, governance: [], architecture: { assessment: 'Not assessed' }, resources: [], freshness: { updated_at: '2026-09-01T00:00:00Z', source: 'accessible-audit-fixture' }, coverage: { resources: 'complete' } } }],
+      summary: { Planned: 0, Active: 1, Delivered: 0, Paused: 0, Cancelled: 0, 'Needs attention': 0, Measuring: 0, Realized: 0, 'Closed below target': 0 },
+      next_cursor: null,
+      as_of: '2026-09-01T00:00:00Z',
+      source_revision: 'accessible-audit-fixture',
+      coverage: { projects: 'complete', rollups: 'complete', resources: 'complete' },
+    })
+    if (request.method() === 'GET') return json({})
+    return json({})
+  })
   await page.route('**/api/v1/**', async (route) => {
     const request = route.request()
     const url = new URL(request.url())

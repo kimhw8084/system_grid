@@ -70,6 +70,8 @@ class PV1Task(Base, PV1TimestampMixin):
         CheckConstraint("revision >= 1", name="pv1_task_revision_positive"),
         CheckConstraint("progress >= 0 AND progress <= 100", name="pv1_task_progress_range"),
         CheckConstraint("planning_weight >= 1 AND planning_weight <= 100", name="pv1_task_planning_weight_range"),
+        CheckConstraint("milestone_anchor IN ('start', 'finish')", name="pv1_task_milestone_anchor"),
+        CheckConstraint("duration_workdays IS NULL OR (kind = 'Milestone' AND duration_workdays = 0) OR (kind != 'Milestone' AND duration_workdays >= 1)", name="pv1_task_duration_positive"),
     )
 
     id = Column(String(80), primary_key=True)
@@ -88,6 +90,11 @@ class PV1Task(Base, PV1TimestampMixin):
     start_date = Column(Date, nullable=True)
     end_date = Column(Date, nullable=True)
     point_date = Column(Date, nullable=True)
+    milestone_anchor = Column(String(8), nullable=False, default="start")
+    duration_workdays = Column(Integer, nullable=True)
+    start_pinned = Column(Boolean, nullable=False, default=False)
+    finish_pinned = Column(Boolean, nullable=False, default=False)
+    not_before_date = Column(Date, nullable=True)
     estimate_hours = Column(Numeric(18, 4), nullable=True)
     remaining_workdays = Column(Integer, nullable=True)
     planning_weight = Column(Integer, nullable=False, default=1)
@@ -143,6 +150,73 @@ class PV1Dependency(Base, PV1TimestampMixin):
     successor_id = Column(String(80), ForeignKey("pv1_tasks.id", ondelete="CASCADE"), nullable=False)
     dependency_type = Column(String(2), nullable=False)
     lag_days = Column(Integer, nullable=False, default=0)
+    active = Column(Boolean, nullable=False, default=True)
+    revision = Column(Integer, nullable=False, default=1)
+
+
+class PV1ProjectCalendar(Base, PV1TimestampMixin):
+    __tablename__ = "pv1_project_calendars"
+    __table_args__ = (
+        UniqueConstraint("tenant_id", "project_id", name="uq_pv1_project_calendars_project"),
+        CheckConstraint("revision >= 1", name="pv1_project_calendar_revision_positive"),
+    )
+
+    id = Column(String(80), primary_key=True)
+    tenant_id = Column(Integer, nullable=False, index=True)
+    project_id = Column(String(80), ForeignKey("pv1_projects.id", ondelete="CASCADE"), nullable=False)
+    timezone = Column(String(64), nullable=False, default="UTC")
+    working_weekdays = Column(JSON, nullable=False)
+    exceptions = Column(JSON, nullable=False)
+    revision = Column(Integer, nullable=False, default=1)
+
+
+class PV1ScheduleBaseline(Base):
+    __tablename__ = "pv1_schedule_baselines"
+    __table_args__ = (
+        Index("ix_pv1_schedule_baselines_project_created", "tenant_id", "project_id", "created_at"),
+    )
+
+    id = Column(String(80), primary_key=True)
+    tenant_id = Column(Integer, nullable=False, index=True)
+    project_id = Column(String(80), ForeignKey("pv1_projects.id", ondelete="CASCADE"), nullable=False)
+    owner_id = Column(String(200), nullable=False)
+    label = Column(String(120), nullable=False)
+    rationale = Column(Text, nullable=True)
+    calendar_revision = Column(Integer, nullable=False)
+    graph_revision = Column(Integer, nullable=False)
+    snapshot = Column(JSON, nullable=False)
+    is_default = Column(Boolean, nullable=False, default=False)
+    created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+
+
+class PV1ExternalDependency(Base, PV1TimestampMixin):
+    __tablename__ = "pv1_external_dependencies"
+    __table_args__ = (
+        Index("ix_pv1_external_dependencies_task", "tenant_id", "project_id", "local_task_id"),
+        CheckConstraint("dependency_type IN ('FS', 'SS', 'FF', 'SF')", name="pv1_external_dependency_type"),
+        CheckConstraint("lag_days >= -365 AND lag_days <= 365", name="pv1_external_dependency_lag"),
+        CheckConstraint("external_anchor IN ('start', 'finish')", name="pv1_external_dependency_anchor"),
+        CheckConstraint("access_policy IN ('Visible', 'Redacted', 'Unavailable')", name="pv1_external_dependency_access"),
+        CheckConstraint("external_milestone_revision >= 1", name="pv1_external_dependency_revision_positive"),
+        CheckConstraint("observed_milestone_revision IS NULL OR observed_milestone_revision >= 1", name="pv1_external_dependency_observed_revision_positive"),
+        CheckConstraint("NOT confirmed OR external_date IS NOT NULL", name="pv1_external_dependency_confirmed_date"),
+    )
+
+    id = Column(String(80), primary_key=True)
+    tenant_id = Column(Integer, nullable=False, index=True)
+    project_id = Column(String(80), ForeignKey("pv1_projects.id", ondelete="CASCADE"), nullable=False)
+    local_task_id = Column(String(80), ForeignKey("pv1_tasks.id", ondelete="CASCADE"), nullable=False)
+    external_project_ref = Column(String(200), nullable=False)
+    external_task_ref = Column(String(200), nullable=False)
+    external_milestone_revision = Column(Integer, nullable=False)
+    external_date = Column(Date, nullable=True)
+    observed_milestone_revision = Column(Integer, nullable=True)
+    observed_date = Column(Date, nullable=True)
+    external_anchor = Column(String(8), nullable=False, default="finish")
+    access_policy = Column(String(16), nullable=False, default="Visible")
+    dependency_type = Column(String(2), nullable=False)
+    lag_days = Column(Integer, nullable=False, default=0)
+    confirmed = Column(Boolean, nullable=False, default=False)
     active = Column(Boolean, nullable=False, default=True)
     revision = Column(Integer, nullable=False, default=1)
 

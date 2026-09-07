@@ -1,7 +1,10 @@
 import hashlib
+import base64
 import csv
+import hmac
 import io
 import json
+from dataclasses import replace
 from datetime import date, datetime, timedelta, timezone
 from decimal import Decimal
 from typing import Any
@@ -13,7 +16,8 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..models import models as legacy_models
-from . import focus, models
+from ..core.config import settings
+from . import focus, models, schedule
 
 
 PHASES = ["Draft", "Proposed", "Planning", "Ready", "Executing", "Validating", "Delivered"]
@@ -136,6 +140,11 @@ def task_dict(task: models.PV1Task) -> dict[str, Any]:
         "start_date": _serialize(task.start_date),
         "end_date": _serialize(task.end_date),
         "point_date": _serialize(task.point_date),
+        "milestone_anchor": task.milestone_anchor,
+        "duration_workdays": task.duration_workdays,
+        "start_pinned": task.start_pinned,
+        "finish_pinned": task.finish_pinned,
+        "not_before_date": _serialize(task.not_before_date),
         "estimate_hours": _serialize(task.estimate_hours),
         "remaining_workdays": task.remaining_workdays,
         "planning_weight": task.planning_weight,
@@ -147,6 +156,496 @@ def task_dict(task: models.PV1Task) -> dict[str, Any]:
         "tags": task.tags or [],
         "revision": task.revision,
     }
+
+
+def _schedule_calendar_value(project: models.PV1Project, item: models.PV1ProjectCalendar | None) -> schedule.ProjectCalendar:
+    if item is None:
+        return schedule.ProjectCalendar(
+            timezone=project.timezone or "UTC",
+            working_weekdays=tuple(range(7)) if project.calendar_id == "legacy-seven-day" else (0, 1, 2, 3, 4),
+            revision=project.calendar_revision or 1,
+        )
+    exceptions: list[tuple[date, bool]] = []
+    for raw in item.exceptions or []:
+        if isinstance(raw, dict) and raw.get("date") and isinstance(raw.get("working"), bool):
+            exceptions.append((_date(raw["date"]), raw["working"]))  # type: ignore[arg-type]
+    return schedule.ProjectCalendar(
+        timezone=item.timezone,
+        working_weekdays=tuple(item.working_weekdays or []),
+        exceptions=tuple(exceptions),
+        revision=item.revision,
+    )
+
+
+def _schedule_task_value(task: models.PV1Task) -> schedule.ScheduleTask:
+    return schedule.ScheduleTask(
+        id=task.id,
+        title=task.title,
+        kind=task.kind,
+        start=task.start_date,
+        finish=task.end_date,
+        point_date=task.point_date,
+        anchor=task.milestone_anchor or ("finish" if task.kind == "Milestone" else "start"),
+        duration=task.duration_workdays,
+        parent_id=task.parent_task_id,
+        status=task.status,
+        progress=task.progress,
+        remaining_workdays=task.remaining_workdays,
+        actual_finish=task.finished_at.date() if task.finished_at else None,
+        pinned=bool(task.start_pinned or task.finish_pinned),
+        not_before=task.not_before_date,
+        revision=task.revision,
+    )
+
+
+def _schedule_edge_value(edge: models.PV1Dependency, cancelled_task_ids: set[str] | None = None) -> schedule.ScheduleEdge:
+    cancelled_task_ids = cancelled_task_ids or set()
+    return schedule.ScheduleEdge(
+        id=edge.id,
+        predecessor_id=edge.predecessor_id,
+        successor_id=edge.successor_id,
+        dependency_type=edge.dependency_type,
+        lag_days=edge.lag_days,
+        active=edge.active and edge.predecessor_id not in cancelled_task_ids and edge.successor_id not in cancelled_task_ids,
+    )
+
+
+def _schedule_tasks_with_external_constraints(
+    tasks: list[schedule.ScheduleTask],
+    external_records: list[models.PV1ExternalDependency],
+    calendar: schedule.ProjectCalendar,
+) -> tuple[list[schedule.ScheduleTask], list[dict[str, Any]]]:
+    """Project external milestones into local not-before constraints only after confirmation."""
+    by_id = {task.id: task for task in tasks}
+    warnings: list[dict[str, Any]] = []
+    for item in external_records:
+        if not item.active or item.local_task_id not in by_id:
+            continue
+        warning = {
+            "external_dependency_id": item.id,
+            "local_task_id": item.local_task_id,
+            "external_project_ref": item.external_project_ref if item.access_policy == "Visible" else None,
+        }
+        if item.access_policy != "Visible":
+            warnings.append({**warning, "code": "EXTERNAL_DEPENDENCY_UNAVAILABLE"})
+            continue
+        if item.observed_milestone_revision and item.observed_milestone_revision != item.external_milestone_revision:
+            warnings.append({**warning, "code": "EXTERNAL_MILESTONE_CHANGED", "pinned_revision": item.external_milestone_revision, "observed_revision": item.observed_milestone_revision})
+            continue
+        if not item.confirmed or item.external_date is None:
+            warnings.append({**warning, "code": "EXTERNAL_DEPENDENCY_UNCONFIRMED"})
+            continue
+        task = by_id[item.local_task_id]
+        duration = task.resolved_duration(calendar)
+        if duration is None:
+            warnings.append({**warning, "code": "EXTERNAL_LOCAL_TASK_UNSCHEDULED"})
+            continue
+        external_point = calendar.normalize(item.external_date)
+        external_boundary = calendar.shift(external_point, 1) if item.external_anchor == "finish" else external_point
+        if item.dependency_type in {"FS", "SS"}:
+            required = calendar.shift(external_boundary, item.lag_days)
+        else:
+            required = calendar.shift(external_boundary, item.lag_days - duration)
+        by_id[task.id] = replace(task, not_before=max(value for value in (task.not_before, required) if value is not None))
+    return [by_id[task.id] for task in tasks], warnings
+
+
+async def _schedule_records(
+    session: AsyncSession,
+    *,
+    tenant_id: int,
+    project_id: str,
+) -> tuple[models.PV1ProjectCalendar | None, list[models.PV1Task], list[models.PV1Dependency], list[models.PV1ExternalDependency], list[models.PV1ScheduleBaseline]]:
+    calendar_record = await session.scalar(select(models.PV1ProjectCalendar).where(
+        models.PV1ProjectCalendar.tenant_id == tenant_id,
+        models.PV1ProjectCalendar.project_id == project_id,
+    ))
+    task_result = await session.execute(select(models.PV1Task).where(
+        models.PV1Task.tenant_id == tenant_id,
+        models.PV1Task.project_id == project_id,
+    ).order_by(models.PV1Task.order_key, models.PV1Task.id))
+    dependency_result = await session.execute(select(models.PV1Dependency).where(
+        models.PV1Dependency.tenant_id == tenant_id,
+        models.PV1Dependency.project_id == project_id,
+    ).order_by(models.PV1Dependency.created_at, models.PV1Dependency.id))
+    external_result = await session.execute(select(models.PV1ExternalDependency).where(
+        models.PV1ExternalDependency.tenant_id == tenant_id,
+        models.PV1ExternalDependency.project_id == project_id,
+    ).order_by(models.PV1ExternalDependency.created_at, models.PV1ExternalDependency.id))
+    baseline_result = await session.execute(select(models.PV1ScheduleBaseline).where(
+        models.PV1ScheduleBaseline.tenant_id == tenant_id,
+        models.PV1ScheduleBaseline.project_id == project_id,
+    ).order_by(models.PV1ScheduleBaseline.created_at, models.PV1ScheduleBaseline.id))
+    return calendar_record, list(task_result.scalars()), list(dependency_result.scalars()), list(external_result.scalars()), list(baseline_result.scalars())
+
+
+def _dependency_dict(item: models.PV1Dependency, cancelled_task_ids: set[str] | None = None) -> dict[str, Any]:
+    cancelled_task_ids = cancelled_task_ids or set()
+    effective_active = item.active and item.predecessor_id not in cancelled_task_ids and item.successor_id not in cancelled_task_ids
+    return {
+        "id": item.id,
+        "predecessor_id": item.predecessor_id,
+        "successor_id": item.successor_id,
+        "dependency_type": item.dependency_type,
+        "lag_days": item.lag_days,
+        "active": effective_active,
+        "retained_active": item.active,
+        "disabled_reason": "Cancelled endpoint" if item.active and not effective_active else None,
+        "revision": item.revision,
+    }
+
+
+def _baseline_dict(item: models.PV1ScheduleBaseline) -> dict[str, Any]:
+    return {
+        "id": item.id,
+        "owner_id": item.owner_id,
+        "label": item.label,
+        "rationale": item.rationale,
+        "calendar_revision": item.calendar_revision,
+        "graph_revision": item.graph_revision,
+        "snapshot": item.snapshot,
+        "is_default": item.is_default,
+        "created_at": _serialize(item.created_at),
+    }
+
+
+def _preview_token_encode(payload: dict[str, Any]) -> str:
+    encoded = json.dumps(payload, sort_keys=True, separators=(",", ":"), default=str).encode()
+    body = base64.urlsafe_b64encode(encoded).decode().rstrip("=")
+    signature = hmac.new(settings.SCHEDULE_PREVIEW_SIGNING_KEY.encode(), body.encode(), hashlib.sha256).hexdigest()
+    return f"{body}.{signature}"
+
+
+def _preview_token_decode(token: str) -> dict[str, Any]:
+    try:
+        body, signature = token.rsplit(".", 1)
+        expected = hmac.new(settings.SCHEDULE_PREVIEW_SIGNING_KEY.encode(), body.encode(), hashlib.sha256).hexdigest()
+        if not hmac.compare_digest(signature, expected):
+            raise ValueError("signature")
+        padding = "=" * (-len(body) % 4)
+        value = json.loads(base64.urlsafe_b64decode(body + padding))
+    except (ValueError, json.JSONDecodeError, UnicodeDecodeError) as exc:
+        raise PV1DomainError("PREVIEW_INVALID", "Schedule preview identity is invalid.", http_status=status.HTTP_409_CONFLICT) from exc
+    if not isinstance(value, dict):
+        raise PV1DomainError("PREVIEW_INVALID", "Schedule preview identity is invalid.", http_status=status.HTTP_409_CONFLICT)
+    return value
+
+
+def _schedule_error(error: schedule.ScheduleError) -> PV1DomainError:
+    conflict_codes = {"DEPENDENCY_CYCLE", "SCHEDULE_CONFLICT"}
+    return PV1DomainError(
+        error.code,
+        str(error),
+        http_status=status.HTTP_409_CONFLICT if error.code in conflict_codes else status.HTTP_422_UNPROCESSABLE_ENTITY,
+        details=error.details,
+    )
+
+
+async def schedule_projection(
+    session: AsyncSession,
+    *,
+    tenant_id: int,
+    project_id: str,
+    actor_id: str,
+    request_role: str | None,
+    as_of: date | None = None,
+) -> dict[str, Any]:
+    project = await get_pv1_project(session, tenant_id, project_id)
+    if not project:
+        if project_id.isdigit():
+            raise PV1DomainError("MIGRATION_REQUIRED", "Legacy Project schedule data remains readable through v1 and must be migrated before v2 scheduling.", http_status=status.HTTP_409_CONFLICT)
+        raise PV1DomainError("NOT_FOUND", "Project not found.", http_status=status.HTTP_404_NOT_FOUND)
+    await require_project_role(session, tenant_id=tenant_id, project_id=project_id, actor_id=actor_id, request_role=request_role)
+    calendar_record, task_records, dependency_records, external_records, baselines = await _schedule_records(session, tenant_id=tenant_id, project_id=project_id)
+    try:
+        calendar = _schedule_calendar_value(project, calendar_record)
+        tasks, external_warnings = _schedule_tasks_with_external_constraints(
+            [_schedule_task_value(item) for item in task_records], external_records, calendar
+        )
+        cancelled_task_ids = {item.id for item in task_records if item.status == "Cancelled"}
+        edges = [_schedule_edge_value(item, cancelled_task_ids) for item in dependency_records]
+        analysis = schedule.critical_path(tasks, edges, calendar, completion_anchor=project.target_date)
+        if external_warnings:
+            analysis = {**analysis, "status": "Critical path incomplete", "external_warnings": external_warnings}
+        blocker_result = await session.execute(select(models.PV1TaskBlocker.task_id).where(
+            models.PV1TaskBlocker.tenant_id == tenant_id,
+            models.PV1TaskBlocker.project_id == project_id,
+            models.PV1TaskBlocker.state == "Open",
+        ))
+        forecast = schedule.forecast_schedule(tasks, edges, calendar, as_of=as_of or _now().date(), unresolved_blocker_ids=set(blocker_result.scalars()))
+    except schedule.ScheduleError as error:
+        raise _schedule_error(error) from error
+    history_result = await session.execute(select(models.PV1Event).where(
+        models.PV1Event.tenant_id == tenant_id,
+        models.PV1Event.project_id == project_id,
+        models.PV1Event.event_type.in_(["schedule.apply", "dependency.create", "dependency.update", "dependency.remove", "external_dependency.create", "external_dependency.refresh", "external_dependency.confirm", "external_dependency.remove", "baseline.capture", "baseline.set_default", "task.undo", "task.redo"]),
+    ).order_by(models.PV1Event.sequence.desc()).limit(50))
+    baseline_variance: list[dict[str, Any]] = []
+    default_baseline = next((item for item in baselines if item.is_default), baselines[0] if baselines else None)
+    if default_baseline:
+        try:
+            baseline_calendar = schedule.calendar_from_dict(default_baseline.snapshot.get("calendar") or {})
+            current_by_id = {item.id: item for item in task_records}
+            baseline_by_id = {str(item.get("id")): item for item in default_baseline.snapshot.get("tasks") or [] if isinstance(item, dict) and item.get("id")}
+            all_ids = sorted(set(current_by_id) | set(baseline_by_id))
+            for task_id in all_ids:
+                current = current_by_id.get(task_id)
+                baseline_task = baseline_by_id.get(task_id)
+                if current is None or baseline_task is None:
+                    baseline_variance.append({"task_id": task_id, "scope_change": "Added" if baseline_task is None else "Removed", "start_delta_workdays": None, "finish_delta_workdays": None})
+                    continue
+                milestone = current.kind == "Milestone"
+                baseline_start = _date(baseline_task.get("point_date") if milestone else baseline_task.get("start_date"))
+                baseline_finish = _date(baseline_task.get("point_date") if milestone else baseline_task.get("end_date"))
+                current_start = current.point_date if milestone else current.start_date
+                current_finish = current.point_date if milestone else current.end_date
+                baseline_variance.append({
+                    "task_id": task_id,
+                    "scope_change": None,
+                    "start_delta_workdays": baseline_calendar.boundary_delta(baseline_start, current_start) if baseline_start and current_start else None,
+                    "finish_delta_workdays": baseline_calendar.boundary_delta(baseline_finish, current_finish) if baseline_finish and current_finish else None,
+                })
+        except schedule.ScheduleError:
+            baseline_variance = [{"baseline_id": default_baseline.id, "status": "Baseline calendar unavailable"}]
+    return {
+        "project_id": project_id,
+        "project": project_dict(project),
+        "project_revision": project.revision,
+        "graph_revision": project.graph_revision,
+        "calendar": calendar.to_dict() | {"id": project.calendar_id},
+        "tasks": [task_dict(item) for item in task_records],
+        "dependencies": [_dependency_dict(item, cancelled_task_ids) for item in dependency_records],
+        "external_dependencies": [{
+            "id": item.id,
+            "local_task_id": item.local_task_id,
+            "external_project_ref": item.external_project_ref if item.access_policy == "Visible" else None,
+            "external_task_ref": item.external_task_ref if item.access_policy == "Visible" else None,
+            "external_milestone_revision": item.external_milestone_revision,
+            "external_date": _serialize(item.external_date),
+            "observed_milestone_revision": item.observed_milestone_revision,
+            "observed_date": _serialize(item.observed_date),
+            "external_anchor": item.external_anchor,
+            "access_policy": item.access_policy,
+            "dependency_type": item.dependency_type,
+            "lag_days": item.lag_days,
+            "confirmed": item.confirmed,
+            "active": item.active,
+            "revision": item.revision,
+        } for item in external_records],
+        "baselines": [_baseline_dict(item) for item in baselines],
+        "baseline_variance": baseline_variance,
+        "analysis": analysis,
+        "forecast": forecast,
+        "external_warnings": external_warnings,
+        "history": [{"event_id": item.event_id, "command_id": item.command_id, "sequence": item.sequence, "event_type": item.event_type, "actor_id": item.actor_id, "timestamp": _serialize(item.timestamp), "delta": item.delta or {}} for item in history_result.scalars()],
+        "as_of": _now().isoformat(),
+        "source_revisions": {"project_revision": project.revision, "graph_revision": project.graph_revision, "calendar_revision": calendar.revision},
+    }
+
+
+async def preview_project_schedule(
+    session: AsyncSession,
+    *,
+    tenant_id: int,
+    project_id: str,
+    actor_id: str,
+    request_role: str | None,
+    operation: str,
+    selection_ids: list[str],
+    parameters: dict[str, Any],
+    graph_revision: int,
+    calendar_revision: int,
+) -> dict[str, Any]:
+    project = await get_pv1_project(session, tenant_id, project_id)
+    if not project:
+        raise PV1DomainError("NOT_FOUND", "Project not found.", http_status=status.HTTP_404_NOT_FOUND)
+    await require_project_role(session, tenant_id=tenant_id, project_id=project_id, actor_id=actor_id, request_role=request_role, write=True)
+    if graph_revision != project.graph_revision or calendar_revision != project.calendar_revision:
+        raise PV1DomainError("REVISION_CONFLICT", "The schedule changed before preview.", http_status=status.HTTP_409_CONFLICT, details={"current_revisions": {"graph_revision": project.graph_revision, "calendar_revision": project.calendar_revision}})
+    calendar_record, task_records, dependency_records, external_records, _ = await _schedule_records(session, tenant_id=tenant_id, project_id=project_id)
+    try:
+        project_calendar = _schedule_calendar_value(project, calendar_record)
+        constrained_tasks, external_warnings = _schedule_tasks_with_external_constraints(
+            [_schedule_task_value(item) for item in task_records], external_records, project_calendar
+        )
+        cancelled_task_ids = {item.id for item in task_records if item.status == "Cancelled"}
+        preview = schedule.preview_schedule(
+            constrained_tasks,
+            [_schedule_edge_value(item, cancelled_task_ids) for item in dependency_records],
+            project_calendar,
+            operation=operation,
+            selection_ids=selection_ids,
+            parameters=parameters,
+            graph_revision=graph_revision,
+        )
+    except schedule.ScheduleError as error:
+        raise _schedule_error(error) from error
+    issued_at = int(_now().timestamp())
+    token_payload = {
+        "version": 1,
+        "tenant_id": tenant_id,
+        "project_id": project_id,
+        "actor_id": actor_id,
+        "base_graph_revision": graph_revision,
+        "calendar_revision": calendar_revision,
+        "operation": operation,
+        "selection_ids": sorted(selection_ids),
+        "parameters": parameters,
+        "content_hash": preview["content_hash"],
+        "issued_at": issued_at,
+        "expires_at": issued_at + 300,
+    }
+    return {**preview, "external_warnings": external_warnings, "preview_id": _preview_token_encode(token_payload), "expires_at": datetime.fromtimestamp(token_payload["expires_at"], timezone.utc).isoformat()}
+
+
+async def _apply_project_schedule(
+    session: AsyncSession,
+    *,
+    tenant_id: int,
+    project: models.PV1Project,
+    actor_id: str,
+    command_id: str,
+    payload: dict[str, Any],
+) -> dict[str, Any]:
+    preview_id = str(payload.get("preview_id") or "")
+    preview_hash = str(payload.get("preview_hash") or "")
+    token = _preview_token_decode(preview_id)
+    if any(token.get(field) != value for field, value in (("tenant_id", tenant_id), ("project_id", project.id), ("actor_id", actor_id))):
+        raise PV1DomainError("PREVIEW_INVALID", "Schedule preview does not belong to this actor and project.", http_status=status.HTTP_409_CONFLICT)
+    if int(token.get("expires_at") or 0) < int(_now().timestamp()):
+        raise PV1DomainError("PREVIEW_EXPIRED", "Schedule preview expired; calculate it again.", http_status=status.HTTP_409_CONFLICT)
+    if token.get("content_hash") != preview_hash:
+        raise PV1DomainError("PREVIEW_HASH_MISMATCH", "Schedule preview hash does not match the reviewed result.", http_status=status.HTTP_409_CONFLICT)
+    if token.get("base_graph_revision") != project.graph_revision or token.get("calendar_revision") != project.calendar_revision:
+        raise PV1DomainError("REVISION_CONFLICT", "The schedule changed after preview; calculate it again before applying.", http_status=status.HTTP_409_CONFLICT, details={"current_revisions": {"graph_revision": project.graph_revision, "calendar_revision": project.calendar_revision}})
+
+    calendar_record, task_records, dependency_records, external_records, _ = await _schedule_records(session, tenant_id=tenant_id, project_id=project.id)
+    calendar = _schedule_calendar_value(project, calendar_record)
+    try:
+        constrained_tasks, _ = _schedule_tasks_with_external_constraints(
+            [_schedule_task_value(item) for item in task_records], external_records, calendar
+        )
+        cancelled_task_ids = {item.id for item in task_records if item.status == "Cancelled"}
+        preview = schedule.preview_schedule(
+            constrained_tasks,
+            [_schedule_edge_value(item, cancelled_task_ids) for item in dependency_records],
+            calendar,
+            operation=str(token.get("operation") or ""),
+            selection_ids=[str(item) for item in token.get("selection_ids") or []],
+            parameters=token.get("parameters") or {},
+            graph_revision=project.graph_revision,
+        )
+    except schedule.ScheduleError as error:
+        raise _schedule_error(error) from error
+    if preview["content_hash"] != preview_hash:
+        raise PV1DomainError("REVISION_CONFLICT", "The reviewed schedule result no longer matches current truth.", http_status=status.HTTP_409_CONFLICT)
+
+    tasks_by_id = {task.id: task for task in task_records}
+    before_values: dict[str, Any] = {}
+    after_values: dict[str, Any] = {}
+    before_revisions: dict[str, int] = {}
+    after_revisions: dict[str, int] = {}
+    for change in preview["changes"]:
+        task_id = str(change["task_id"])
+        task = tasks_by_id.get(task_id)
+        if task is None:
+            raise PV1DomainError("REVISION_CONFLICT", "A preview task no longer exists.", http_status=status.HTTP_409_CONFLICT)
+        before = {
+            "start_date": _serialize(task.start_date),
+            "end_date": _serialize(task.end_date),
+            "point_date": _serialize(task.point_date),
+            "milestone_anchor": task.milestone_anchor,
+            "duration_workdays": task.duration_workdays,
+            "start_pinned": task.start_pinned,
+            "finish_pinned": task.finish_pinned,
+            "not_before_date": _serialize(task.not_before_date),
+        }
+        raw_after = change["after"]
+        after = {
+            "start_date": raw_after.get("start_date"),
+            "end_date": raw_after.get("end_date"),
+            "point_date": raw_after.get("point_date"),
+            "milestone_anchor": raw_after.get("anchor") or task.milestone_anchor,
+            "duration_workdays": raw_after.get("duration_workdays"),
+            "start_pinned": task.start_pinned,
+            "finish_pinned": task.finish_pinned,
+            "not_before_date": _serialize(task.not_before_date),
+        }
+        before_values[task_id] = before
+        after_values[task_id] = after
+        before_revisions[task_id] = task.revision
+        after_revisions[task_id] = task.revision + 1
+        task.start_date = _date(after["start_date"])
+        task.end_date = _date(after["end_date"])
+        task.point_date = _date(after["point_date"])
+        task.milestone_anchor = after["milestone_anchor"]
+        task.duration_workdays = after["duration_workdays"]
+        task.revision += 1
+        task.updated_by = actor_id
+        task.updated_at = _now()
+
+    next_calendar_revision = project.calendar_revision or 1
+    project_values: dict[str, Any] = {}
+    if token["operation"] == "change_calendar":
+        if calendar_record is None:
+            raise PV1DomainError("SCHEDULE_UNAVAILABLE", "Project calendar is unavailable.", http_status=status.HTTP_409_CONFLICT)
+        try:
+            target_calendar = schedule.calendar_from_dict({**(token.get("parameters") or {}), "revision": calendar.revision + 1})
+        except schedule.ScheduleError as error:
+            raise _schedule_error(error) from error
+        calendar_record.timezone = target_calendar.timezone
+        calendar_record.working_weekdays = list(target_calendar.working_weekdays)
+        calendar_record.exceptions = target_calendar.to_dict()["exceptions"]
+        calendar_record.revision = target_calendar.revision
+        calendar_record.updated_by = actor_id
+        calendar_record.updated_at = _now()
+        next_calendar_revision = target_calendar.revision
+        project_values.update({"timezone": target_calendar.timezone, "calendar_revision": next_calendar_revision})
+
+    project_result = await session.execute(update(models.PV1Project).execution_options(synchronize_session=False).where(
+        models.PV1Project.id == project.id,
+        models.PV1Project.revision == project.revision,
+        models.PV1Project.graph_revision == project.graph_revision,
+    ).values(
+        revision=models.PV1Project.revision + 1,
+        graph_revision=models.PV1Project.graph_revision + 1,
+        updated_by=actor_id,
+        updated_at=func.now(),
+        **project_values,
+    ))
+    if project_result.rowcount != 1:
+        raise PV1DomainError("REVISION_CONFLICT", "The graph changed while applying the schedule.", http_status=status.HTTP_409_CONFLICT)
+    event_id, _ = await append_event(
+        session,
+        tenant_id=tenant_id,
+        project_id=project.id,
+        actor_id=actor_id,
+        command_id=command_id,
+        event_type="schedule.apply",
+        aggregate_type="task_set",
+        aggregate_id=project.id,
+        aggregate_revision=project.graph_revision + 1,
+        delta={"operation": token["operation"], "preview_hash": preview_hash, "task_ids": sorted(before_values), "change_count": len(before_values)},
+    )
+    if before_values:
+        await _record_task_history(
+            session,
+            tenant_id=tenant_id,
+            project_id=project.id,
+            actor_id=actor_id,
+            command_id=command_id,
+            command_type="schedule.apply",
+            before_values=before_values,
+            after_values=after_values,
+            before_revisions=before_revisions,
+            after_revisions=after_revisions,
+        )
+    return _success(
+        command_id,
+        revisions={"project_revision": project.revision + 1, "graph_revision": project.graph_revision + 1, "calendar_revision": next_calendar_revision, "task_revisions": after_revisions},
+        changed_entities=[{"kind": "task", "id": task_id} for task_id in sorted(before_values)],
+        event_id=event_id,
+    )
 
 
 def legacy_phase(status_value: str | None) -> tuple[str, str]:
@@ -686,6 +1185,10 @@ async def create_project(session: AsyncSession, *, tenant_id: int, actor_id: str
         raise PV1DomainError("VALIDATION_FAILED", "name is required and must be at most 120 characters.")
     owner_id = str(payload.get("owner_id") or actor_id)
     project_id = _new_id()
+    calendar_record_id = _new_id()
+    inherited_calendar_id = str(payload.get("calendar_id") or "").strip() or None
+    inherited_calendar_revision = payload.get("calendar_revision")
+    calendar_revision = inherited_calendar_revision if isinstance(inherited_calendar_revision, int) and not isinstance(inherited_calendar_revision, bool) and inherited_calendar_revision >= 1 else 1
     project = models.PV1Project(
         id=project_id,
         tenant_id=tenant_id,
@@ -705,8 +1208,8 @@ async def create_project(session: AsyncSession, *, tenant_id: int, actor_id: str
         target_date=_date(payload.get("target_date")),
         no_deadline_reason=payload.get("no_deadline_reason"),
         timezone=payload.get("timezone", "UTC"),
-        calendar_id=payload.get("calendar_id"),
-        calendar_revision=payload.get("calendar_revision"),
+        calendar_id=inherited_calendar_id or calendar_record_id,
+        calendar_revision=calendar_revision,
         visibility=payload.get("visibility", "Team"),
         created_by=actor_id,
         updated_by=actor_id,
@@ -714,6 +1217,21 @@ async def create_project(session: AsyncSession, *, tenant_id: int, actor_id: str
     if project.target_date and project.start_date and project.target_date < project.start_date:
         raise PV1DomainError("VALIDATION_FAILED", "target_date must be on or after start_date.", details={"field": "target_date"})
     session.add(project)
+    try:
+        schedule.ProjectCalendar(timezone=project.timezone)
+    except schedule.ScheduleError as error:
+        raise PV1DomainError(error.code, str(error), details=error.details) from error
+    session.add(models.PV1ProjectCalendar(
+        id=calendar_record_id,
+        tenant_id=tenant_id,
+        project_id=project_id,
+        timezone=project.timezone,
+        working_weekdays=[0, 1, 2, 3, 4],
+        exceptions=[],
+        revision=calendar_revision,
+        created_by=actor_id,
+        updated_by=actor_id,
+    ))
     session.add(models.PV1ProjectMember(id=_new_id(), tenant_id=tenant_id, project_id=project_id, user_id=owner_id, role="Owner", capabilities={"financial.view": False}, created_by=actor_id, updated_by=actor_id))
     await session.flush()
     event_id, _ = await append_event(session, tenant_id=tenant_id, project_id=project_id, actor_id=actor_id, command_id=command_id, event_type="project.created", aggregate_type="project", aggregate_id=project_id, aggregate_revision=1, delta={"phase": project.phase})
@@ -1066,7 +1584,7 @@ async def execute_command(session: AsyncSession, *, tenant_id: int, actor_id: st
             task.revision += 1
             task.updated_by = actor_id
             task.updated_at = _now()
-        project_result = await session.execute(update(models.PV1Project).where(models.PV1Project.id == project_id, models.PV1Project.revision == project.revision, models.PV1Project.graph_revision == project.graph_revision).values(revision=models.PV1Project.revision + 1, graph_revision=models.PV1Project.graph_revision + 1, updated_by=actor_id, updated_at=func.now()))
+        project_result = await session.execute(update(models.PV1Project).execution_options(synchronize_session=False).where(models.PV1Project.id == project_id, models.PV1Project.revision == project.revision, models.PV1Project.graph_revision == project.graph_revision).values(revision=models.PV1Project.revision + 1, graph_revision=models.PV1Project.graph_revision + 1, updated_by=actor_id, updated_at=func.now()))
         if project_result.rowcount != 1: raise PV1DomainError("REVISION_CONFLICT", "Project graph changed during the bulk write.", http_status=status.HTTP_409_CONFLICT)
         event_id, _ = await append_event(session, tenant_id=tenant_id, project_id=project_id, actor_id=actor_id, command_id=command_id, event_type="task.bulk", aggregate_type="task_set", aggregate_id=project_id, aggregate_revision=project.graph_revision + 1, delta={"operation": operation, "task_ids": task_ids})
         await _record_task_history(session, tenant_id=tenant_id, project_id=project_id, actor_id=actor_id, command_id=command_id, command_type=command_type, before_values=before_values, after_values=after_values, before_revisions=before_revisions, after_revisions=after_revisions)
@@ -1087,10 +1605,12 @@ async def execute_command(session: AsyncSession, *, tenant_id: int, actor_id: st
         for task_id, values in next_values.items():
             task = tasks_by_id[task_id]
             for field_name, field_value in values.items():
-                if field_name not in {"title", "description", "owner_id", "priority", "progress", "estimate_hours", "remaining_workdays", "planning_weight", "mandatory", "tags", "status", "parent_task_id", "actual_started_at", "finished_at"}:
+                if field_name not in {"title", "description", "owner_id", "priority", "progress", "estimate_hours", "remaining_workdays", "planning_weight", "mandatory", "tags", "status", "parent_task_id", "actual_started_at", "finished_at", "start_date", "end_date", "point_date", "milestone_anchor", "duration_workdays", "start_pinned", "finish_pinned", "not_before_date"}:
                     continue
                 if field_name in {"actual_started_at", "finished_at"} and isinstance(field_value, str):
                     field_value = datetime.fromisoformat(field_value)
+                if field_name in {"start_date", "end_date", "point_date", "not_before_date"}:
+                    field_value = _date(field_value)
                 setattr(task, field_name, field_value)
             task.revision += 1
             task.updated_by = actor_id
@@ -1105,7 +1625,7 @@ async def execute_command(session: AsyncSession, *, tenant_id: int, actor_id: st
         if graph_expected != project.graph_revision: raise PV1DomainError("REVISION_CONFLICT", "The task graph changed. Refresh before adding work.", http_status=status.HTTP_409_CONFLICT, details={"current_revisions": {"graph_revision": project.graph_revision}})
         title = str(payload.get("title") or "").strip()
         if not title or len(title) > 120: raise PV1DomainError("VALIDATION_FAILED", "Task title is required and must be at most 120 characters.")
-        allowed = {"title", "kind", "parent_task_id", "owner_id", "milestone_id", "description", "priority", "status", "progress", "start_date", "end_date", "point_date", "estimate_hours", "remaining_workdays", "planning_weight", "mandatory", "order_key", "tags"}
+        allowed = {"title", "kind", "parent_task_id", "owner_id", "milestone_id", "description", "priority", "status", "progress", "start_date", "end_date", "point_date", "milestone_anchor", "duration_workdays", "start_pinned", "finish_pinned", "not_before_date", "estimate_hours", "remaining_workdays", "planning_weight", "mandatory", "order_key", "tags"}
         unknown = set(payload) - allowed
         if unknown:
             raise PV1DomainError("VALIDATION_FAILED", "Unlisted task fields are rejected.", details={"fields": sorted(unknown)})
@@ -1132,13 +1652,16 @@ async def execute_command(session: AsyncSession, *, tenant_id: int, actor_id: st
         start_date = _date(payload.get("start_date"))
         end_date = _date(payload.get("end_date"))
         point_date = _date(payload.get("point_date"))
+        milestone_anchor = payload.get("milestone_anchor", "finish" if kind == "Milestone" else "start")
+        if milestone_anchor not in {"start", "finish"}:
+            raise PV1DomainError("VALIDATION_FAILED", "milestone_anchor must be start or finish.")
         if start_date and end_date and end_date < start_date:
             raise PV1DomainError("VALIDATION_FAILED", "Task end_date must be on or after start_date.")
         progress = int(payload.get("progress", 0))
         if progress < 0 or progress > 100: raise PV1DomainError("VALIDATION_FAILED", "progress must be an integer from 0 to 100.")
-        if kind == "Milestone" and (start_date or end_date or payload.get("estimate_hours") or payload.get("remaining_workdays")):
+        if kind == "Milestone" and (start_date or end_date or payload.get("estimate_hours") or payload.get("remaining_workdays") or payload.get("duration_workdays") not in {None, 0}):
             raise PV1DomainError("VALIDATION_FAILED", "Milestones use a point date and cannot carry duration or effort.")
-        if kind == "Summary" and (payload.get("status") or payload.get("progress") or start_date or end_date):
+        if kind == "Summary" and (payload.get("status") or payload.get("progress") or start_date or end_date or point_date or payload.get("duration_workdays") is not None):
             raise PV1DomainError("VALIDATION_FAILED", "Summary rows derive status, progress, and dates from descendants.")
         if payload.get("milestone_id"):
             milestone = await session.get(models.PV1Task, str(payload["milestone_id"]))
@@ -1148,7 +1671,25 @@ async def execute_command(session: AsyncSession, *, tenant_id: int, actor_id: st
         owner_member = await session.scalar(select(models.PV1ProjectMember).where(models.PV1ProjectMember.tenant_id == tenant_id, models.PV1ProjectMember.project_id == project_id, models.PV1ProjectMember.user_id == owner_id))
         if not owner_member and role != "Tenant administrator":
             raise PV1DomainError("VALIDATION_FAILED", "Task owner must be an authorized project member.")
-        session.add(models.PV1Task(id=task_id, tenant_id=tenant_id, project_id=project_id, parent_task_id=parent_id, milestone_id=payload.get("milestone_id"), kind=kind, title=title, description=payload.get("description"), owner_id=owner_id, status=task_status, priority=payload.get("priority", "Medium"), progress=progress, start_date=start_date, end_date=end_date, point_date=point_date, estimate_hours=payload.get("estimate_hours"), remaining_workdays=payload.get("remaining_workdays"), planning_weight=int(payload.get("planning_weight", 1)), mandatory=bool(payload.get("mandatory", True)), order_key=payload.get("order_key", 1024), tags=payload.get("tags") or [], created_by=actor_id, updated_by=actor_id))
+        calendar_record = await session.scalar(select(models.PV1ProjectCalendar).where(models.PV1ProjectCalendar.tenant_id == tenant_id, models.PV1ProjectCalendar.project_id == project_id))
+        project_calendar = _schedule_calendar_value(project, calendar_record)
+        try:
+            if start_date: start_date = project_calendar.normalize(start_date)
+            if end_date: end_date = project_calendar.normalize(end_date)
+            if point_date: point_date = project_calendar.normalize(point_date)
+            duration_workdays = 0 if kind == "Milestone" else payload.get("duration_workdays")
+            if kind == "Task" and start_date and end_date:
+                calculated_duration = project_calendar.duration(start_date, end_date)
+                if duration_workdays is not None and duration_workdays != calculated_duration:
+                    raise schedule.ScheduleError("INVALID_DURATION", "duration_workdays does not match the inclusive working-date range.")
+                duration_workdays = calculated_duration
+            if duration_workdays is not None and (not isinstance(duration_workdays, int) or isinstance(duration_workdays, bool) or duration_workdays < (0 if kind == "Milestone" else 1)):
+                raise schedule.ScheduleError("INVALID_DURATION", "duration_workdays must be a positive integer for tasks.")
+            not_before_date = _date(payload.get("not_before_date"))
+            if not_before_date: not_before_date = project_calendar.normalize(not_before_date)
+        except schedule.ScheduleError as error:
+            raise PV1DomainError(error.code, str(error), details=error.details) from error
+        session.add(models.PV1Task(id=task_id, tenant_id=tenant_id, project_id=project_id, parent_task_id=parent_id, milestone_id=payload.get("milestone_id"), kind=kind, title=title, description=payload.get("description"), owner_id=owner_id, status=task_status, priority=payload.get("priority", "Medium"), progress=progress, start_date=start_date, end_date=end_date, point_date=point_date, milestone_anchor=milestone_anchor, duration_workdays=duration_workdays, start_pinned=bool(payload.get("start_pinned", False)), finish_pinned=bool(payload.get("finish_pinned", False)), not_before_date=not_before_date, estimate_hours=payload.get("estimate_hours"), remaining_workdays=payload.get("remaining_workdays"), planning_weight=int(payload.get("planning_weight", 1)), mandatory=bool(payload.get("mandatory", True)), order_key=payload.get("order_key", 1024), tags=payload.get("tags") or [], created_by=actor_id, updated_by=actor_id))
         project_result = await session.execute(update(models.PV1Project).execution_options(synchronize_session=False).where(models.PV1Project.id == project_id, models.PV1Project.graph_revision == project.graph_revision, models.PV1Project.revision == project.revision).values(graph_revision=models.PV1Project.graph_revision + 1, revision=models.PV1Project.revision + 1, updated_by=actor_id, updated_at=func.now()))
         if project_result.rowcount != 1: raise PV1DomainError("REVISION_CONFLICT", "Project graph changed while creating the task.", http_status=status.HTTP_409_CONFLICT)
         project_revision = project.revision + 1
@@ -1280,37 +1821,225 @@ async def execute_command(session: AsyncSession, *, tenant_id: int, actor_id: st
         if project_result.rowcount != 1: raise PV1DomainError("REVISION_CONFLICT", "Project changed while resolving the blocker.", http_status=status.HTTP_409_CONFLICT)
         event_id, _ = await append_event(session, tenant_id=tenant_id, project_id=project_id, actor_id=actor_id, command_id=command_id, event_type=command_type, aggregate_type="blocker", aggregate_id=blocker_id, aggregate_revision=blocker.revision, delta={"resolution": resolution})
         response = _success(command_id, revisions={"project_revision": project.revision + 1, "graph_revision": project.graph_revision}, changed_entities=[{"kind": "blocker", "id": blocker_id}], event_id=event_id)
-    elif command_type == "dependency.create":
-        predecessor_id = str(payload.get("predecessor_id") or "")
-        successor_id = str(payload.get("successor_id") or "")
-        if predecessor_id == successor_id:
-            raise PV1DomainError("VALIDATION_FAILED", "A task cannot depend on itself.")
-        task_result = await session.execute(select(models.PV1Task).where(models.PV1Task.tenant_id == tenant_id, models.PV1Task.project_id == project_id, models.PV1Task.id.in_([predecessor_id, successor_id])))
-        if len(list(task_result.scalars())) != 2:
-            raise PV1DomainError("VALIDATION_FAILED", "Both dependency endpoints must be tasks in this project.")
-        dependency_type = payload.get("dependency_type", "FS")
-        if dependency_type not in {"FS", "SS", "FF", "SF"}:
-            raise PV1DomainError("VALIDATION_FAILED", "Dependency type is invalid.")
+    elif command_type == "schedule.apply":
+        graph_expected = _require_expected(expected, "graph_revision")
+        calendar_expected = _require_expected(expected, "calendar_revision")
+        if graph_expected != project.graph_revision or calendar_expected != project.calendar_revision:
+            raise PV1DomainError("REVISION_CONFLICT", "The schedule changed after preview.", http_status=status.HTTP_409_CONFLICT, details={"current_revisions": {"graph_revision": project.graph_revision, "calendar_revision": project.calendar_revision}})
+        response = await _apply_project_schedule(session, tenant_id=tenant_id, project=project, actor_id=actor_id, command_id=command_id, payload=payload)
+        event_id = response["event_id"]
+    elif command_type in {"dependency.create", "dependency.update", "dependency.remove"}:
+        graph_expected = _require_expected(expected, "graph_revision")
+        if graph_expected != project.graph_revision:
+            raise PV1DomainError("REVISION_CONFLICT", "The dependency graph changed.", http_status=status.HTTP_409_CONFLICT, details={"current_revisions": {"graph_revision": project.graph_revision}})
+        dependency: models.PV1Dependency | None = None
+        if command_type == "dependency.create":
+            predecessor_id = str(payload.get("predecessor_id") or "")
+            successor_id = str(payload.get("successor_id") or "")
+            dependency_type = str(payload.get("dependency_type") or "FS")
+            lag_days = payload.get("lag_days", 0)
+            if predecessor_id == successor_id:
+                raise PV1DomainError("INVALID_DEPENDENCY", "A task cannot depend on itself.")
+            task_result = await session.execute(select(models.PV1Task).where(models.PV1Task.tenant_id == tenant_id, models.PV1Task.project_id == project_id, models.PV1Task.id.in_([predecessor_id, successor_id])))
+            endpoints = {item.id: item for item in task_result.scalars()}
+            if len(endpoints) != 2:
+                raise PV1DomainError("MISSING_ENDPOINT", "Both dependency endpoints must be tasks in this project.")
+            if any(item.kind == "Summary" for item in endpoints.values()):
+                raise PV1DomainError("INVALID_DEPENDENCY", "Summary rows cannot be dependency endpoints.")
+            duplicate = await session.scalar(select(models.PV1Dependency).where(
+                models.PV1Dependency.tenant_id == tenant_id,
+                models.PV1Dependency.project_id == project_id,
+                models.PV1Dependency.predecessor_id == predecessor_id,
+                models.PV1Dependency.successor_id == successor_id,
+                models.PV1Dependency.dependency_type == dependency_type,
+            ))
+            if duplicate:
+                raise PV1DomainError("DUPLICATE_DEPENDENCY", "That dependency type already exists between these tasks.", http_status=status.HTTP_409_CONFLICT, details={"dependency_id": duplicate.id})
+            dependency_id = _new_id()
+            dependency = models.PV1Dependency(id=dependency_id, tenant_id=tenant_id, project_id=project_id, predecessor_id=predecessor_id, successor_id=successor_id, dependency_type=dependency_type, lag_days=lag_days, active=True, created_by=actor_id, updated_by=actor_id)
+        else:
+            dependency_id = str(payload.get("dependency_id") or "")
+            dependency = await session.get(models.PV1Dependency, dependency_id)
+            if not dependency or dependency.tenant_id != tenant_id or dependency.project_id != project_id:
+                raise PV1DomainError("NOT_FOUND", "Dependency not found.", http_status=status.HTTP_404_NOT_FOUND)
+            dependency_expected = _require_expected(expected, "dependency_revision")
+            if dependency_expected != dependency.revision:
+                raise PV1DomainError("REVISION_CONFLICT", "The dependency changed.", http_status=status.HTTP_409_CONFLICT, details={"current_revisions": {"dependency_revision": dependency.revision}})
+            predecessor_id = dependency.predecessor_id
+            successor_id = dependency.successor_id
+            dependency_type = str(payload.get("dependency_type") or dependency.dependency_type)
+            lag_days = payload.get("lag_days", dependency.lag_days)
+            if command_type == "dependency.update":
+                duplicate = await session.scalar(select(models.PV1Dependency).where(
+                    models.PV1Dependency.tenant_id == tenant_id,
+                    models.PV1Dependency.project_id == project_id,
+                    models.PV1Dependency.predecessor_id == predecessor_id,
+                    models.PV1Dependency.successor_id == successor_id,
+                    models.PV1Dependency.dependency_type == dependency_type,
+                    models.PV1Dependency.id != dependency.id,
+                ))
+                if duplicate:
+                    raise PV1DomainError("DUPLICATE_DEPENDENCY", "That dependency type already exists between these tasks.", http_status=status.HTTP_409_CONFLICT)
+        try:
+            candidate = schedule.ScheduleEdge(id=dependency_id, predecessor_id=predecessor_id, successor_id=successor_id, dependency_type=dependency_type, lag_days=lag_days, active=command_type != "dependency.remove")
+        except schedule.ScheduleError as error:
+            raise _schedule_error(error) from error
         graph_result = await session.execute(select(models.PV1Dependency).where(models.PV1Dependency.tenant_id == tenant_id, models.PV1Dependency.project_id == project_id, models.PV1Dependency.active.is_(True)))
-        edges = [(str(item.predecessor_id), str(item.successor_id)) for item in graph_result.scalars()]
-        edges.append((predecessor_id, successor_id))
-        graph = {task_id: [] for task_id in {item for edge in edges for item in edge}}
-        for source, target in edges: graph.setdefault(source, []).append(target)
-        visiting: set[str] = set(); visited: set[str] = set()
-        def visit(node: str) -> bool:
-            if node in visiting: return True
-            if node in visited: return False
-            visiting.add(node)
-            if any(visit(child) for child in graph.get(node, [])): return True
-            visiting.remove(node); visited.add(node); return False
-        if any(visit(node) for node in graph):
-            raise PV1DomainError("VALIDATION_FAILED", f"This dependency would create a cycle: {predecessor_id} → {successor_id} → {predecessor_id}")
-        dependency_id = _new_id()
-        session.add(models.PV1Dependency(id=dependency_id, tenant_id=tenant_id, project_id=project_id, predecessor_id=predecessor_id, successor_id=successor_id, dependency_type=dependency_type, lag_days=int(payload.get("lag_days", 0)), active=True, created_by=actor_id, updated_by=actor_id))
-        project_result = await session.execute(update(models.PV1Project).where(models.PV1Project.id == project_id, models.PV1Project.revision == project.revision, models.PV1Project.graph_revision == project.graph_revision).values(revision=models.PV1Project.revision + 1, graph_revision=models.PV1Project.graph_revision + 1, updated_by=actor_id, updated_at=func.now()))
-        if project_result.rowcount != 1: raise PV1DomainError("REVISION_CONFLICT", "Project graph changed while adding the dependency.", http_status=status.HTTP_409_CONFLICT)
-        event_id, _ = await append_event(session, tenant_id=tenant_id, project_id=project_id, actor_id=actor_id, command_id=command_id, event_type=command_type, aggregate_type="dependency", aggregate_id=dependency_id, aggregate_revision=1, delta={"predecessor_id": predecessor_id, "successor_id": successor_id})
-        response = _success(command_id, revisions={"project_revision": project.revision + 1, "graph_revision": project.graph_revision + 1}, changed_entities=[{"kind": "dependency", "id": dependency_id}], event_id=event_id)
+        graph_edges = [_schedule_edge_value(item) for item in graph_result.scalars() if item.id != dependency_id]
+        if candidate.active:
+            graph_edges.append(candidate)
+        task_ids_result = await session.execute(select(models.PV1Task.id).where(models.PV1Task.tenant_id == tenant_id, models.PV1Task.project_id == project_id))
+        path = schedule.cycle_path(list(task_ids_result.scalars()), graph_edges)
+        if path:
+            raise PV1DomainError("DEPENDENCY_CYCLE", "This dependency would create a cycle.", http_status=status.HTTP_409_CONFLICT, details={"cycle_path": path})
+        if command_type == "dependency.create":
+            session.add(dependency)
+            dependency_revision = 1
+        else:
+            dependency.dependency_type = dependency_type
+            dependency.lag_days = lag_days
+            dependency.active = command_type != "dependency.remove"
+            dependency.revision += 1
+            dependency.updated_by = actor_id
+            dependency.updated_at = _now()
+            dependency_revision = dependency.revision
+        project_result = await session.execute(update(models.PV1Project).execution_options(synchronize_session=False).where(models.PV1Project.id == project_id, models.PV1Project.revision == project.revision, models.PV1Project.graph_revision == project.graph_revision).values(revision=models.PV1Project.revision + 1, graph_revision=models.PV1Project.graph_revision + 1, updated_by=actor_id, updated_at=func.now()))
+        if project_result.rowcount != 1:
+            raise PV1DomainError("REVISION_CONFLICT", "Project graph changed while saving the dependency.", http_status=status.HTTP_409_CONFLICT)
+        event_id, _ = await append_event(session, tenant_id=tenant_id, project_id=project_id, actor_id=actor_id, command_id=command_id, event_type=command_type, aggregate_type="dependency", aggregate_id=dependency_id, aggregate_revision=dependency_revision, delta={"predecessor_id": predecessor_id, "successor_id": successor_id, "dependency_type": dependency_type, "lag_days": lag_days, "active": candidate.active})
+        response = _success(command_id, revisions={"project_revision": project.revision + 1, "graph_revision": project.graph_revision + 1, "dependency_revision": dependency_revision}, changed_entities=[{"kind": "dependency", "id": dependency_id}], event_id=event_id)
+    elif command_type in {"external_dependency.create", "external_dependency.refresh", "external_dependency.confirm", "external_dependency.remove"}:
+        graph_expected = _require_expected(expected, "graph_revision")
+        if graph_expected != project.graph_revision:
+            raise PV1DomainError("REVISION_CONFLICT", "The dependency graph changed.", http_status=status.HTTP_409_CONFLICT, details={"current_revisions": {"graph_revision": project.graph_revision}})
+        calendar_record = await session.scalar(select(models.PV1ProjectCalendar).where(models.PV1ProjectCalendar.tenant_id == tenant_id, models.PV1ProjectCalendar.project_id == project_id))
+        project_calendar = _schedule_calendar_value(project, calendar_record)
+        if command_type == "external_dependency.create":
+            local_task_id = str(payload.get("local_task_id") or "")
+            local_task = await session.get(models.PV1Task, local_task_id)
+            if not local_task or local_task.tenant_id != tenant_id or local_task.project_id != project_id:
+                raise PV1DomainError("MISSING_ENDPOINT", "The local dependency endpoint is unavailable.")
+            if local_task.kind == "Summary":
+                raise PV1DomainError("INVALID_DEPENDENCY", "Summary rows cannot be dependency endpoints.")
+            external_project_ref = str(payload.get("external_project_ref") or "").strip()
+            external_task_ref = str(payload.get("external_task_ref") or "").strip()
+            published_revision = payload.get("external_milestone_revision")
+            if not external_project_ref or not external_task_ref or not isinstance(published_revision, int) or isinstance(published_revision, bool) or published_revision < 1:
+                raise PV1DomainError("VALIDATION_FAILED", "External dependencies require opaque project/task references and a positive published milestone revision.")
+            access_policy = str(payload.get("access_policy") or "Visible")
+            if access_policy not in {"Visible", "Redacted", "Unavailable"}:
+                raise PV1DomainError("VALIDATION_FAILED", "External dependency access policy is invalid.")
+            dependency_type = str(payload.get("dependency_type") or "FS")
+            lag_days = payload.get("lag_days", 0)
+            external_anchor = str(payload.get("external_anchor") or "finish")
+            if external_anchor not in {"start", "finish"}:
+                raise PV1DomainError("VALIDATION_FAILED", "External milestone anchor must be start or finish.")
+            try:
+                schedule.ScheduleEdge(id="external-validation", predecessor_id="external", successor_id=local_task_id, dependency_type=dependency_type, lag_days=lag_days)
+                external_date = _date(payload.get("external_date"))
+                if external_date:
+                    external_date = project_calendar.normalize(external_date)
+            except schedule.ScheduleError as error:
+                raise _schedule_error(error) from error
+            confirmed = bool(payload.get("confirmed", False))
+            if confirmed and (access_policy != "Visible" or external_date is None):
+                raise PV1DomainError("VALIDATION_FAILED", "Only a visible external milestone date can be confirmed.")
+            duplicate = await session.scalar(select(models.PV1ExternalDependency).where(
+                models.PV1ExternalDependency.tenant_id == tenant_id,
+                models.PV1ExternalDependency.project_id == project_id,
+                models.PV1ExternalDependency.local_task_id == local_task_id,
+                models.PV1ExternalDependency.external_project_ref == external_project_ref,
+                models.PV1ExternalDependency.external_task_ref == external_task_ref,
+                models.PV1ExternalDependency.dependency_type == dependency_type,
+                models.PV1ExternalDependency.active.is_(True),
+            ))
+            if duplicate:
+                raise PV1DomainError("DUPLICATE_DEPENDENCY", "That external dependency already exists.", http_status=status.HTTP_409_CONFLICT, details={"external_dependency_id": duplicate.id})
+            external_dependency_id = _new_id()
+            external_dependency = models.PV1ExternalDependency(
+                id=external_dependency_id, tenant_id=tenant_id, project_id=project_id, local_task_id=local_task_id,
+                external_project_ref=external_project_ref, external_task_ref=external_task_ref,
+                external_milestone_revision=published_revision, external_date=external_date,
+                observed_milestone_revision=published_revision, observed_date=external_date,
+                external_anchor=external_anchor, access_policy=access_policy, dependency_type=dependency_type,
+                lag_days=lag_days, confirmed=confirmed, active=True, created_by=actor_id, updated_by=actor_id,
+            )
+            session.add(external_dependency)
+            external_revision = 1
+        else:
+            external_dependency_id = str(payload.get("external_dependency_id") or "")
+            external_dependency = await session.get(models.PV1ExternalDependency, external_dependency_id)
+            if not external_dependency or external_dependency.tenant_id != tenant_id or external_dependency.project_id != project_id:
+                raise PV1DomainError("NOT_FOUND", "External dependency not found.", http_status=status.HTTP_404_NOT_FOUND)
+            external_expected = _require_expected(expected, "external_dependency_revision")
+            if external_expected != external_dependency.revision:
+                raise PV1DomainError("REVISION_CONFLICT", "The external dependency changed.", http_status=status.HTTP_409_CONFLICT, details={"current_revisions": {"external_dependency_revision": external_dependency.revision}})
+            if command_type == "external_dependency.refresh":
+                observed_revision = payload.get("observed_milestone_revision")
+                if not isinstance(observed_revision, int) or isinstance(observed_revision, bool) or observed_revision < 1:
+                    raise PV1DomainError("VALIDATION_FAILED", "Observed milestone revision must be positive.")
+                observed_date = _date(payload.get("observed_date"))
+                try:
+                    if observed_date:
+                        observed_date = project_calendar.normalize(observed_date)
+                except schedule.ScheduleError as error:
+                    raise _schedule_error(error) from error
+                external_dependency.observed_milestone_revision = observed_revision
+                external_dependency.observed_date = observed_date
+                if observed_revision != external_dependency.external_milestone_revision or observed_date != external_dependency.external_date:
+                    external_dependency.confirmed = False
+            elif command_type == "external_dependency.confirm":
+                if external_dependency.access_policy != "Visible" or external_dependency.observed_date is None or external_dependency.observed_milestone_revision is None:
+                    raise PV1DomainError("VALIDATION_FAILED", "A visible observed milestone revision and date are required before confirmation.")
+                external_dependency.external_milestone_revision = external_dependency.observed_milestone_revision
+                external_dependency.external_date = external_dependency.observed_date
+                external_dependency.confirmed = True
+            else:
+                external_dependency.active = False
+                external_dependency.confirmed = False
+            external_dependency.revision += 1
+            external_dependency.updated_by = actor_id
+            external_dependency.updated_at = _now()
+            external_revision = external_dependency.revision
+        project_result = await session.execute(update(models.PV1Project).execution_options(synchronize_session=False).where(models.PV1Project.id == project_id, models.PV1Project.revision == project.revision, models.PV1Project.graph_revision == project.graph_revision).values(revision=models.PV1Project.revision + 1, graph_revision=models.PV1Project.graph_revision + 1, updated_by=actor_id, updated_at=func.now()))
+        if project_result.rowcount != 1:
+            raise PV1DomainError("REVISION_CONFLICT", "Project graph changed while saving the external dependency.", http_status=status.HTTP_409_CONFLICT)
+        event_id, _ = await append_event(session, tenant_id=tenant_id, project_id=project_id, actor_id=actor_id, command_id=command_id, event_type=command_type, aggregate_type="external_dependency", aggregate_id=external_dependency_id, aggregate_revision=external_revision, delta={"local_task_id": external_dependency.local_task_id, "confirmed": external_dependency.confirmed, "active": external_dependency.active, "pinned_revision": external_dependency.external_milestone_revision, "observed_revision": external_dependency.observed_milestone_revision})
+        response = _success(command_id, revisions={"project_revision": project.revision + 1, "graph_revision": project.graph_revision + 1, "external_dependency_revision": external_revision}, changed_entities=[{"kind": "external_dependency", "id": external_dependency_id}], event_id=event_id)
+    elif command_type in {"baseline.capture", "baseline.set_default"}:
+        if command_type == "baseline.capture":
+            graph_expected = _require_expected(expected, "graph_revision")
+            calendar_expected = _require_expected(expected, "calendar_revision")
+            if graph_expected != project.graph_revision or calendar_expected != project.calendar_revision:
+                raise PV1DomainError("REVISION_CONFLICT", "Schedule changed before baseline capture.", http_status=status.HTTP_409_CONFLICT)
+            label = str(payload.get("label") or "").strip()
+            rationale = str(payload.get("rationale") or "").strip() or None
+            if not label or len(label) > 120:
+                raise PV1DomainError("VALIDATION_FAILED", "Baseline label is required and must be at most 120 characters.")
+            calendar_record, task_records, dependency_records, _, baselines = await _schedule_records(session, tenant_id=tenant_id, project_id=project_id)
+            if calendar_record is None:
+                raise PV1DomainError("SCHEDULE_UNAVAILABLE", "Project calendar is unavailable.", http_status=status.HTTP_409_CONFLICT)
+            baseline_id = _new_id()
+            is_default = not baselines
+            snapshot = {
+                "calendar": _schedule_calendar_value(project, calendar_record).to_dict(),
+                "tasks": [task_dict(item) for item in task_records],
+                "dependencies": [_dependency_dict(item) for item in dependency_records],
+            }
+            session.add(models.PV1ScheduleBaseline(id=baseline_id, tenant_id=tenant_id, project_id=project_id, owner_id=actor_id, label=label, rationale=rationale, calendar_revision=calendar_record.revision, graph_revision=project.graph_revision, snapshot=snapshot, is_default=is_default))
+        else:
+            baseline_id = str(payload.get("baseline_id") or "")
+            baseline = await session.get(models.PV1ScheduleBaseline, baseline_id)
+            if not baseline or baseline.tenant_id != tenant_id or baseline.project_id != project_id:
+                raise PV1DomainError("NOT_FOUND", "Schedule baseline not found.", http_status=status.HTTP_404_NOT_FOUND)
+            await session.execute(update(models.PV1ScheduleBaseline).where(models.PV1ScheduleBaseline.tenant_id == tenant_id, models.PV1ScheduleBaseline.project_id == project_id).values(is_default=False))
+            baseline.is_default = True
+            is_default = True
+        project_result = await session.execute(update(models.PV1Project).execution_options(synchronize_session=False).where(models.PV1Project.id == project_id, models.PV1Project.revision == project.revision).values(comparison_baseline_id=baseline_id, revision=models.PV1Project.revision + 1, updated_by=actor_id, updated_at=func.now()))
+        if project_result.rowcount != 1:
+            raise PV1DomainError("REVISION_CONFLICT", "Project changed while saving the baseline.", http_status=status.HTTP_409_CONFLICT)
+        event_id, _ = await append_event(session, tenant_id=tenant_id, project_id=project_id, actor_id=actor_id, command_id=command_id, event_type=command_type, aggregate_type="baseline", aggregate_id=baseline_id, aggregate_revision=1, delta={"is_default": is_default})
+        response = _success(command_id, revisions={"project_revision": project.revision + 1, "graph_revision": project.graph_revision, "calendar_revision": project.calendar_revision}, changed_entities=[{"kind": "baseline", "id": baseline_id}], event_id=event_id)
     elif command_type in {"risk.save", "decision.request", "decision.decide"}:
         if command_type == "decision.request":
             title = str(payload.get("title") or "").strip(); record_type = "Decision"; state = "Requested"

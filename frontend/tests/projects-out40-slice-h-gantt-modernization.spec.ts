@@ -204,6 +204,7 @@ test('OUT-40 Slice H bar move and resize each commit one Project PUT @out40-slic
 
   await page.goto('/projects?id=901&view=timeline'); await expect(gantt).toBeVisible(); state.resetWrites()
   const resize = gantt.locator('[data-project-semantic-id="resize-end-1005"]')
+  await resize.scrollIntoViewIfNeeded()
   await expectMinTarget(resize)
   const rb = await resize.boundingBox(); expect(rb).not.toBeNull()
   await page.mouse.move(rb!.x + rb!.width / 2, rb!.y + rb!.height / 2); await page.mouse.down(); await page.mouse.move(rb!.x + rb!.width / 2 + 28, rb!.y + rb!.height / 2, { steps: 3 }); await page.mouse.up()

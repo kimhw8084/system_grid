@@ -68,7 +68,7 @@ const apiFailureDescription = (error: unknown, fallback: string) => {
 function StoryShell({ children, active, project, projects = [], teams = [], teamId = '', onTeamChange, onRefresh, refreshing = false, showProjectNavigation = true }: { children: React.ReactNode; active: 'portfolio' | 'new' | 'home'; project?: ProjectStoryItem | null; projects?: ProjectStoryItem[]; teams?: any[]; teamId?: string; onTeamChange?: (value: string) => void; onRefresh?: () => void; refreshing?: boolean; showProjectNavigation?: boolean }) {
   const navigate = useNavigate()
   const selectorProjects = project ? [project, ...projects.filter((item) => item.id !== project.id)] : projects
-  return <div data-pv1-projects-route="true" data-p04-projects-story="true" className="p04-page">
+  return <div data-workspace="projects" data-pv1-projects-route="true" data-p04-projects-story="true" className="p04-page">
     <div className="p04-shell">
       <header className="p04-global-header">
         <div className="p04-brand"><span>Projects</span><nav aria-label="Projects global navigation"><a href="/projects" aria-current={active === 'portfolio' ? 'page' : undefined}>Portfolio</a><a href="/projects/my-day">My day</a></nav></div>

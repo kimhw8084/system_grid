@@ -20,6 +20,27 @@ const projects = [
 ]
 
 const installRoutes = async (page: Page) => {
+  await page.route('**/api/v2/**', async (route) => {
+    const request = route.request(); const url = new URL(request.url()); const path = url.pathname
+    const json = (value: unknown) => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(value) })
+    if (request.method() === 'GET' && path === '/api/v2/projects') return json({
+      items: projects.map((project, index) => ({ id: String(project.id), display_key: `PRJ-${project.id}`, name: project.name, objective: project.objective, owner_id: 'proof_operator', team_id: 1, phase: project.status === 'Blocked' ? 'Executing' : 'Planning', run_state: 'Active', outcome_phase: 'Planned', outcome_result: null, priority: project.priority, target_date: project.end_date, parent_project_id: null, child_count: 0, updated_at: '2026-09-01T00:00:00Z', capabilities: { edit: true }, story: { attention_count: project.status === 'Blocked' ? 1 : 0, attention: project.status === 'Blocked' ? [{ id: `attention-${index}`, kind: 'Blocker', reason: 'Fixture blocker', accountable: 'Proof Operator', action: 'Open work' }] : [], health: { level: project.status === 'Blocked' ? 'At risk' : 'On track', reason: 'Navigation fixture' }, delivery: { percent: 50, label: '50%', method: 'Canonical task progress' }, next_milestone: null, milestones: [], acceptance_criteria: [], primary_metric: null, latest_update: null, governance: [], architecture: { assessment: 'Not assessed' }, resources: [], freshness: { updated_at: '2026-09-01T00:00:00Z', source: 'navigation-fixture' }, coverage: { resources: 'complete' } } })),
+      summary: { Planned: 2, Active: 1, Delivered: 0, Paused: 0, Cancelled: 0, 'Needs attention': 1, Measuring: 0, Realized: 0, 'Closed below target': 0 }, as_of: '2026-09-01T00:00:00Z', source_revision: 'navigation-fixture', coverage: { projects: 'complete', rollups: 'complete', resources: 'complete' }, next_cursor: null,
+    })
+    if (request.method() === 'GET' && path === '/api/v2/focus') return json({ scope: 'project', engine_version: 'pv-focus-1', total: 0, items: [], all_priorities: [] })
+    const work = path.match(/^\/api\/v2\/projects\/(\d+)\/work$/)
+    if (request.method() === 'GET' && work) {
+      const project = projects.find((item) => String(item.id) === work[1])!
+      return json({ project_id: work[1], project_revision: 1, graph_revision: 1, items: project.tasks.map((item: any, index: number) => ({ id: String(item.id), title: item.name, kind: 'Task', parent_task_id: null, order_key: String((index + 1) * 1024), owner_id: 'proof_operator', status: item.status === 'Completed' ? 'Done' : item.status === 'In Progress' ? 'In progress' : item.status, progress: item.progress, revision: 1, start_date: item.start_date, end_date: item.end_date })), blockers: [] })
+    }
+    const plan = path.match(/^\/api\/v2\/projects\/(\d+)\/plan$/)
+    if (request.method() === 'GET' && plan) {
+      const project = projects.find((item) => String(item.id) === plan[1])!
+      return json({ brief: { problem: 'Navigation fixture', objective: project.objective, in_scope: 'Canonical route proof', out_of_scope: 'Feature implementation', delivery_acceptance: [] }, milestones: [], work_breakdown: [], architecture: { assessment: 'Not assessed' }, governance: [], resources: [], guidance: [] })
+    }
+    if (request.method() === 'GET') return json({})
+    return json({ status: 'applied' })
+  })
   await page.route('**/api/v1/**', async (route) => {
     const request = route.request(); const url = new URL(request.url()); const path = url.pathname
     if (request.method() === 'GET' && path.endsWith('/settings/bootstrap')) return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ VITE_API_BASE_URL: url.origin, DEFAULT_USER_ID: 'proof_operator' }) })
@@ -47,8 +68,8 @@ test.beforeEach(async ({ page }) => {
 const expectIntentNav = async (page: Page) => {
   const primary = page.locator('[data-project-primary-nav="true"] > nav')
   await expect(primary).toBeVisible()
-  for (const label of ['Overview', 'Work', 'Plan', 'Discuss', 'Evidence', 'Outcomes']) await expect(primary.getByRole('button', { name: label, exact: true })).toBeVisible()
-  await expect(primary.getByRole('button')).toHaveCount(6)
+  for (const label of ['Home', 'Work', 'Plan', 'Timeline', 'Updates', 'Outcomes']) await expect(primary.getByRole('link', { name: label, exact: true })).toBeVisible()
+  await expect(primary.getByRole('link')).toHaveCount(6)
 }
 
 test('P01 central-navigation rehearsal exposes six intents and persistent context @navigation-rehearsal', async ({ page }) => {
@@ -60,36 +81,33 @@ test('P01 central-navigation rehearsal exposes six intents and persistent contex
   await expectIntentNav(page)
 })
 
-test('P01 Work progressively reveals Tasks and Board without losing project context @navigation-acceptance', async ({ page }) => {
+test('P01 Work deep link opens the canonical task graph and Board projection @navigation-acceptance', async ({ page }) => {
   await page.goto('/projects?id=901&view=overview')
   const primary = page.locator('[data-project-primary-nav="true"]')
-  await primary.getByRole('button', { name: 'Work', exact: true }).click()
-  await expect(page).toHaveURL(/view=tasks/)
-  const modes = page.locator('[data-project-progressive-modes="work"]')
-  await expect(modes).toBeVisible(); await expect(modes.getByRole('button')).toHaveCount(2)
-  await modes.getByRole('button', { name: 'Board', exact: true }).click()
-  await expect(page).toHaveURL(/view=board/)
-  await expect(page.locator('[data-project-execution-hub="true"]')).toBeVisible()
-  await expect(page.locator('[data-project-workbench-header="true"]')).toContainText('P01 — Yield Guardian')
+  await primary.getByRole('link', { name: 'Work', exact: true }).click()
+  await expect(page).toHaveURL(/\/projects\/901\/work\?layout=list$/)
+  await expect(page.getByRole('treegrid', { name: 'Project work breakdown' })).toBeVisible()
+  await page.getByRole('link', { name: 'Board', exact: true }).click()
+  await expect(page).toHaveURL(/\/projects\/901\/work\?layout=board/)
+  await expect(page.getByLabel('Move Yield Guardian task B to')).toBeVisible()
 })
 
-test('P02 Plan Discuss Evidence are direct intent paths with persistent context @navigation-acceptance', async ({ page }) => {
+test('P02 fixed project navigation exposes canonical Plan, Timeline, Updates and Outcomes deep links @navigation-acceptance', async ({ page }) => {
   await page.goto('/projects?id=902&view=overview')
   const primary = page.locator('[data-project-primary-nav="true"]')
-  await primary.getByRole('button', { name: 'Plan', exact: true }).click(); await expect(page).toHaveURL(/view=timeline/); await expect(page.locator('[data-project-flagship-gantt="true"]')).toBeVisible()
-  await primary.getByRole('button', { name: 'Discuss', exact: true }).click(); await expect(page).toHaveURL(/view=updates/); await expect(page.locator('[data-project-updates-native="true"]')).toBeVisible()
-  await primary.getByRole('button', { name: 'Evidence', exact: true }).click(); await expect(page).toHaveURL(/view=files/); await expect(page.locator('[data-project-files-foundation="true"]')).toBeVisible()
+  await expect(primary.getByRole('link', { name: 'Plan', exact: true })).toHaveAttribute('href', '/projects/902/plan?section=brief')
+  await expect(primary.getByRole('link', { name: 'Timeline', exact: true })).toHaveAttribute('href', '/projects/902/timeline')
+  await expect(primary.getByRole('link', { name: 'Updates', exact: true })).toHaveAttribute('href', '/projects/902/updates?section=updates')
+  await expect(primary.getByRole('link', { name: 'Outcomes', exact: true })).toHaveAttribute('href', '/projects/902/outcomes?section=summary')
+  await primary.getByRole('link', { name: 'Plan', exact: true }).click(); await expect(page).toHaveURL(/\/projects\/902\/plan\?section=brief$/); await expect(page.getByRole('heading', { name: 'Plan', exact: true })).toBeVisible()
+  await page.goto('/projects?id=902&view=timeline'); await expect(page.locator('[data-project-flagship-gantt="true"]')).toBeVisible()
   await expect(page.locator('[data-project-workbench-header="true"]')).toContainText('P02 — Recipe Release Guardrail')
 })
 
 test('P09 Outcomes reveals Reports and Insights and legacy governance link canonicalizes @navigation-acceptance', async ({ page }) => {
   await page.goto('/projects?id=909&view=overview')
   const primary = page.locator('[data-project-primary-nav="true"]')
-  await primary.getByRole('button', { name: 'Outcomes', exact: true }).click()
-  await expect(page).toHaveURL(/view=reports/)
-  const modes = page.locator('[data-project-progressive-modes="outcomes"]')
-  await expect(modes).toBeVisible(); await expect(modes.getByRole('button')).toHaveCount(2)
-  await modes.getByRole('button', { name: 'Insights', exact: true }).click(); await expect(page).toHaveURL(/view=insights/); await expect(page.locator('[data-project-insights-hub="true"]')).toBeVisible()
+  await expect(primary.getByRole('link', { name: 'Outcomes', exact: true })).toHaveAttribute('href', '/projects/909/outcomes?section=summary')
   await page.goto('/projects?id=909&view=governance')
   await expect(page).toHaveURL(/view=insights.*section=governance|section=governance.*view=insights/)
   await expect(page.locator('[data-project-insights-hub="true"]')).toBeVisible()
@@ -98,17 +116,17 @@ test('P09 Outcomes reveals Reports and Insights and legacy governance link canon
 test('central Add/edit and intent navigation reuse existing project flows @navigation-acceptance', async ({ page }) => {
   await page.goto('/projects?id=901&view=overview')
   const addEdit = page.locator('.sg-context-actions details')
-  await addEdit.locator('summary').click(); await addEdit.getByRole('button', { name: 'Write update', exact: true }).click(); await expect(page).toHaveURL(/view=updates/)
+  await addEdit.locator('summary').click(); await addEdit.getByRole('button', { name: 'Write update', exact: true }).click(); await expect(page).toHaveURL(/\/projects\/901\/updates\?section=updates$/)
   await page.goto('/projects?id=901&view=overview')
   const primary = page.locator('[data-project-primary-nav="true"]')
-  await primary.getByRole('button', { name: 'Plan', exact: true }).click(); await expect(page).toHaveURL(/view=timeline/)
-  await expect(page.locator('[data-project-flagship-gantt="true"]')).toBeVisible()
+  await expect(primary.getByRole('link', { name: 'Timeline', exact: true })).toHaveAttribute('href', '/projects/901/timeline')
+  await page.goto('/projects?id=901&view=timeline'); await expect(page.locator('[data-project-flagship-gantt="true"]')).toBeVisible()
   await expect(page.locator('[data-project-workbench-header="true"]')).toContainText('P01 — Yield Guardian')
 })
 
 test('Portfolio remains a separate cross-project utility @navigation-acceptance', async ({ page }) => {
   await page.goto('/projects?view=portfolio&section=control')
-  await expect(page.locator('[data-project-portfolio-hub="true"]')).toBeVisible()
+  await expect(page.locator('[data-p04-portfolio="true"]')).toBeVisible()
   await expect(page.locator('[data-project-workbench-header="true"]')).toHaveCount(0)
   await expect(page.locator('[data-project-primary-nav="true"]')).toHaveCount(0)
 })
