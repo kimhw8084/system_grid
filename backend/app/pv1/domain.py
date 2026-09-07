@@ -17,7 +17,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..models import models as legacy_models
 from ..core.config import settings
-from . import focus, models, schedule
+from . import focus, models, outcomes, schedule
 
 
 PHASES = ["Draft", "Proposed", "Planning", "Ready", "Executing", "Validating", "Delivered"]
@@ -78,6 +78,20 @@ def _serialize(value: Any) -> Any:
     return value
 
 
+def _parse_datetime(value: Any) -> datetime | None:
+    if value is None:
+        return None
+    if isinstance(value, datetime):
+        return value
+    if isinstance(value, str):
+        try:
+            parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
+        except ValueError as exc:
+            raise PV1DomainError("VALIDATION_FAILED", "observed_at must be an ISO timestamp.") from exc
+        return parsed if parsed.tzinfo else parsed.replace(tzinfo=timezone.utc)
+    raise PV1DomainError("VALIDATION_FAILED", "observed_at must be an ISO timestamp.")
+
+
 def project_dict(project: models.PV1Project) -> dict[str, Any]:
     return {
         "id": project.id,
@@ -108,6 +122,7 @@ def project_dict(project: models.PV1Project) -> dict[str, Any]:
         "architecture_rationale": project.architecture_rationale,
         "outcome_phase": project.outcome_phase,
         "outcome_result": project.outcome_result,
+        "outcome_currency": project.outcome_currency,
         "update_cadence": project.update_cadence,
         "update_cadence_kind": project.update_cadence_kind,
         "update_weekday": project.update_weekday,
@@ -1122,6 +1137,102 @@ def _next_working_day(value: date) -> date:
     return candidate
 
 
+def measurement_dict(measurement: models.PV1Measurement, metric: models.PV1Metric | None = None) -> dict[str, Any]:
+    value, state = outcomes.measurement_value(metric, measurement) if metric is not None else (None, "Unknown")
+    return {
+        "id": measurement.id,
+        "project_id": measurement.project_id,
+        "metric_id": measurement.metric_id,
+        "definition_revision": measurement.definition_revision,
+        "period_start": measurement.period_start.isoformat(),
+        "period_end": measurement.period_end.isoformat(),
+        "observed_numeric": _serialize(measurement.observed_numeric),
+        "observed_binary": measurement.observed_binary,
+        "numerator": measurement.numerator,
+        "denominator": measurement.denominator,
+        "imported_percentage": _serialize(getattr(measurement, "imported_percentage", None)),
+        "calculated_value": outcomes.decimal_text(value) if isinstance(value, Decimal) else value,
+        "calculated_state": state,
+        "unit": measurement.unit,
+        "source": measurement.source,
+        "evidence": measurement.evidence or [],
+        "observed_at": _serialize(measurement.observed_at),
+        "recorded_at": _serialize(measurement.recorded_at),
+        "recorder_id": measurement.recorder_id,
+        "quality": measurement.quality,
+        "reviewer_id": measurement.reviewer_id,
+        "reviewed_at": _serialize(measurement.reviewed_at),
+        "supersedes_id": measurement.supersedes_id,
+        "revision": measurement.revision,
+        "population_version": getattr(measurement, "population_version", None),
+    }
+
+
+async def outcome_projection(session: AsyncSession, project: models.PV1Project, *, include_financial: bool = False, as_of: date | None = None) -> dict[str, Any]:
+    metric_result = await session.execute(select(models.PV1Metric).where(
+        models.PV1Metric.tenant_id == project.tenant_id,
+        models.PV1Metric.project_id == project.id,
+        models.PV1Metric.archived_at.is_(None),
+    ).order_by(models.PV1Metric.created_at, models.PV1Metric.id))
+    metrics = list(metric_result.scalars())
+    metric_payload: list[dict[str, Any]] = []
+    all_measurements: list[models.PV1Measurement] = []
+    for metric in metrics:
+        measurement_result = await session.execute(select(models.PV1Measurement).where(
+            models.PV1Measurement.tenant_id == project.tenant_id,
+            models.PV1Measurement.project_id == project.id,
+            models.PV1Measurement.metric_id == metric.id,
+        ).order_by(models.PV1Measurement.period_end.desc(), models.PV1Measurement.recorded_at.desc(), models.PV1Measurement.id.desc()))
+        measurements = list(measurement_result.scalars())
+        all_measurements.extend(measurements)
+        metric_payload.append({
+            **outcomes.metric_definition(metric),
+            "qualification": outcomes.evaluate_metric(metric, measurements, as_of=as_of),
+            "latest_measurement": measurement_dict(measurements[0], metric) if measurements else None,
+        })
+    acceptance_result = await session.execute(select(models.PV1DeliveryAcceptance).where(
+        models.PV1DeliveryAcceptance.tenant_id == project.tenant_id,
+        models.PV1DeliveryAcceptance.project_id == project.id,
+    ).order_by(models.PV1DeliveryAcceptance.accepted_at.desc(), models.PV1DeliveryAcceptance.id.desc()))
+    deliveries = list(acceptance_result.scalars())
+    checkpoint_result = await session.execute(select(models.PV1OutcomeCheckpoint).where(
+        models.PV1OutcomeCheckpoint.tenant_id == project.tenant_id,
+        models.PV1OutcomeCheckpoint.project_id == project.id,
+    ).order_by(models.PV1OutcomeCheckpoint.due_date, models.PV1OutcomeCheckpoint.id))
+    checkpoints = list(checkpoint_result.scalars())
+    value_result = await session.execute(select(models.PV1ValueEntry).where(
+        models.PV1ValueEntry.tenant_id == project.tenant_id,
+        models.PV1ValueEntry.project_id == project.id,
+    ).order_by(models.PV1ValueEntry.period_end, models.PV1ValueEntry.id))
+    values = list(value_result.scalars())
+    legacy = (project.metadata_json or {}).get("project_outcome_realization_v1")
+    legacy_history = []
+    if isinstance(legacy, dict):
+        legacy_history.append({"source": "Legacy Project metadata", "quality": "Unverified", "status": "Historical only", "payload": legacy})
+    return {
+        "project_id": project.id,
+        "delivery": {
+            "phase": project.phase,
+            "actual_delivery_at": _serialize(project.actual_delivery_at),
+            "latest_acceptance": {
+                "id": deliveries[0].id,
+                "accepted_at": _serialize(deliveries[0].accepted_at),
+                "reviewer_id": deliveries[0].reviewer_id,
+                "followups": deliveries[0].followups or [],
+                "source_snapshot": deliveries[0].source_snapshot or {},
+            } if deliveries else None,
+        },
+        "outcomes": {"phase": project.outcome_phase, "result": project.outcome_result},
+        "metrics": metric_payload,
+        "measurements": [measurement_dict(row, next((metric for metric in metrics if metric.id == row.metric_id), None)) for row in sorted(all_measurements, key=lambda item: (item.period_end, item.id), reverse=True)],
+        "checkpoints": [{"id": item.id, "kind": item.kind, "due_date": item.due_date.isoformat(), "metric_ids": item.metric_ids or [], "state": item.state, "completed_at": _serialize(item.completed_at)} for item in checkpoints],
+        "financial": outcomes.calculate_value_summary(values) if include_financial else {"restricted": True, "reason": "Financial capability is not granted."},
+        "legacy_history": legacy_history,
+        "source_revisions": {"project_revision": project.revision, "metric_revisions": {item.id: item.definition_revision for item in metrics}},
+        "as_of": _now().isoformat(),
+    }
+
+
 async def _last_non_done_progress(session: AsyncSession, *, tenant_id: int, project_id: str, task_id: str) -> int:
     result = await session.execute(select(models.PV1Event).where(
         models.PV1Event.tenant_id == tenant_id,
@@ -1343,7 +1454,9 @@ async def _materialize_creation_draft(session: AsyncSession, project: models.PV1
     metric = creation.get("metric") or {}
     if metric.get("name") and metric.get("unit") and metric.get("measurement_method") and metric.get("steward_id"):
         metric_id = _new_id()
-        session.add(models.PV1Metric(id=metric_id, tenant_id=project.tenant_id, project_id=project.id, name=metric["name"], kind=metric["kind"], unit=metric["unit"], direction=metric["direction"], target_spec=metric.get("target_spec"), steward_id=metric["steward_id"], measurement_method=metric["measurement_method"], required_for_success=True, created_by=actor_id, updated_by=actor_id))
+        required_periods = 2 if metric["kind"] == "Adoption" else 1
+        session.add(models.PV1Metric(id=metric_id, tenant_id=project.tenant_id, project_id=project.id, name=metric["name"], kind=metric["kind"], unit=metric["unit"], direction=metric["direction"], target_spec=metric.get("target_spec"), steward_id=metric["steward_id"], measurement_method=metric["measurement_method"], required_for_success=True, required_consecutive_periods=required_periods, created_by=actor_id, updated_by=actor_id))
+        session.add(models.PV1MetricDefinitionRevision(id=_new_id(), tenant_id=project.tenant_id, project_id=project.id, metric_id=metric_id, definition_revision=1, definition={**metric, "required_for_success": True, "required_consecutive_periods": required_periods}, rationale="Created from the versioned project creation draft.", status="Current", created_by=actor_id, updated_by=actor_id))
         changed.append({"kind": "metric", "id": metric_id})
     graph_delta = 1 if any(item["kind"] == "task" for item in changed) else 0
     return changed, graph_delta
@@ -1371,7 +1484,8 @@ async def execute_command(session: AsyncSession, *, tenant_id: int, actor_id: st
             "criterion.create", "criterion.review", "blocker.resolve", "risk.save", "decision.request", "decision.decide",
             "resource.save", "resource.link", "resource.unlink", "resource.scan", "update.draft", "update.autosave",
             "update.publish", "update.correct", "update.withdraw", "update.cadence.set", "notification.subscription.save",
-            "report.capture",
+            "report.capture", "metric.define", "metric.amend", "measurement.record", "measurement.correct", "measurement.verify",
+            "value.record", "delivery.accept", "delivery.reopen", "outcomes.close", "outcomes.reopen",
         }:
             pass
         else:
@@ -2179,9 +2293,52 @@ async def execute_command(session: AsyncSession, *, tenant_id: int, actor_id: st
         unknown = set(payload) - list_fields
         if unknown or any(not isinstance(payload.get(field, []), list) for field in list_fields):
             raise PV1DomainError("VALIDATION_FAILED", "Delivery acceptance requires bounded revision and evidence lists.", details={"fields": sorted(unknown)})
+        if role not in {"Owner", "Lead", "Tenant administrator"}:
+            raise PV1DomainError("FORBIDDEN", "Only the Owner, Lead or tenant administrator may accept delivery.", http_status=status.HTTP_403_FORBIDDEN)
         if project.phase != "Validating":
             raise PV1DomainError("VALIDATION_FAILED", "Delivery can be accepted only from Validating.")
+        task_result = await session.execute(select(models.PV1Task).where(models.PV1Task.tenant_id == tenant_id, models.PV1Task.project_id == project_id, models.PV1Task.mandatory.is_(True), models.PV1Task.kind != "Summary"))
+        mandatory_tasks = list(task_result.scalars())
+        if any(task.status != "Done" for task in mandatory_tasks):
+            raise PV1DomainError("VALIDATION_FAILED", "Every mandatory delivery task must be Done before acceptance.", details={"task_ids": [task.id for task in mandatory_tasks if task.status != "Done"]})
+        criterion_result = await session.execute(select(models.PV1TaskCriterion).where(models.PV1TaskCriterion.tenant_id == tenant_id, models.PV1TaskCriterion.project_id == project_id, models.PV1TaskCriterion.mandatory.is_(True)))
+        mandatory_criteria = list(criterion_result.scalars())
+        residual_ids = {str(item) for item in (payload.get("residual_obligation_ids") or [])}
+        unmet_criteria = [criterion for criterion in mandatory_criteria if criterion.state not in {"Passed", "Waived"} or criterion.state == "Waived" and criterion.id not in residual_ids]
+        if unmet_criteria:
+            raise PV1DomainError("VALIDATION_FAILED", "Every mandatory delivery criterion must be Passed or explicitly Waived with a residual obligation.", details={"criterion_ids": [criterion.id for criterion in unmet_criteria]})
+        evidence_ids = payload.get("evidence_revision_ids") or []
+        if not evidence_ids:
+            raise PV1DomainError("VALIDATION_FAILED", "Delivery acceptance requires an evidence snapshot.")
+        delivered_on = _now().date()
+        raw_followups = payload.get("followups") or [
+            {"kind": "Adoption checkpoint", "due_date": _next_working_day(delivered_on + timedelta(days=14)).isoformat(), "state": "Pending"},
+            {"kind": "Outcome checkpoint", "due_date": _next_working_day(delivered_on + timedelta(days=30)).isoformat(), "state": "Pending"},
+        ]
+        # Keep the compact P02 {days: N} command readable while persisting
+        # the durable PV1 date-based checkpoint shape.
+        followups = []
+        for index, item in enumerate(raw_followups):
+            if isinstance(item, dict) and not item.get("due_date") and isinstance(item.get("days"), int) and item["days"] >= 0:
+                item = {
+                    **item,
+                    "kind": item.get("kind") or ("Adoption checkpoint" if index == 0 else "Outcome checkpoint"),
+                    "due_date": _next_working_day(delivered_on + timedelta(days=item["days"])).isoformat(),
+                    "state": item.get("state") or "Pending",
+                }
+            followups.append(item)
+        if any(not isinstance(item, dict) or not item.get("due_date") for item in followups):
+            raise PV1DomainError("VALIDATION_FAILED", "Every delivery follow-up requires a due_date and structured kind.")
+        metric_result = await session.execute(select(models.PV1Metric).where(models.PV1Metric.tenant_id == tenant_id, models.PV1Metric.project_id == project_id, models.PV1Metric.archived_at.is_(None)))
+        delivery_outcome_phase = "Measuring" if list(metric_result.scalars()) else "Planned"
         acceptance_id = _new_id()
+        source_snapshot = {
+            "project_revision": project.revision,
+            "task_revisions": {task.id: task.revision for task in mandatory_tasks},
+            "criterion_revisions": {criterion.id: criterion.revision for criterion in mandatory_criteria},
+            "evidence_revision_ids": evidence_ids,
+            "captured_at": _now().isoformat(),
+        }
         session.add(models.PV1DeliveryAcceptance(
             id=acceptance_id,
             tenant_id=tenant_id,
@@ -2190,17 +2347,21 @@ async def execute_command(session: AsyncSession, *, tenant_id: int, actor_id: st
             criterion_revision_ids=payload.get("criterion_revision_ids") or [],
             evidence_revision_ids=payload.get("evidence_revision_ids") or [],
             residual_obligation_ids=payload.get("residual_obligation_ids") or [],
-            followups=payload.get("followups") or [],
+            followups=followups,
+            source_snapshot=source_snapshot,
             reviewer_id=actor_id,
             created_by=actor_id,
             updated_by=actor_id,
         ))
         await session.flush()
-        result = await session.execute(update(models.PV1Project).execution_options(synchronize_session=False).where(models.PV1Project.id == project_id, models.PV1Project.revision == project.revision).values(phase="Delivered", actual_delivery_at=_now(), revision=models.PV1Project.revision + 1, updated_by=actor_id, updated_at=func.now()))
+        result = await session.execute(update(models.PV1Project).execution_options(synchronize_session=False).where(models.PV1Project.id == project_id, models.PV1Project.revision == project.revision).values(phase="Delivered", outcome_phase=delivery_outcome_phase, actual_delivery_at=_now(), revision=models.PV1Project.revision + 1, updated_by=actor_id, updated_at=func.now()))
         if result.rowcount != 1:
             raise PV1DomainError("REVISION_CONFLICT", "Delivery state changed concurrently.", http_status=status.HTTP_409_CONFLICT)
         revision = project.revision + 1
-        event_id, _ = await append_event(session, tenant_id=tenant_id, project_id=project_id, actor_id=actor_id, command_id=command_id, event_type="delivery.accepted", aggregate_type="delivery_acceptance", aggregate_id=acceptance_id, aggregate_revision=1, delta={"phase": "Delivered", "acceptance_id": acceptance_id})
+        for item in followups:
+            due_date = _date(item.get("due_date"))
+            session.add(models.PV1OutcomeCheckpoint(id=_new_id(), tenant_id=tenant_id, project_id=project_id, delivery_acceptance_id=acceptance_id, kind=str(item.get("kind") or "Outcome checkpoint"), due_date=due_date, metric_ids=item.get("metric_ids") or [], state=str(item.get("state") or "Pending"), created_by=actor_id, updated_by=actor_id))
+        event_id, _ = await append_event(session, tenant_id=tenant_id, project_id=project_id, actor_id=actor_id, command_id=command_id, event_type="delivery.accepted", aggregate_type="delivery_acceptance", aggregate_id=acceptance_id, aggregate_revision=1, delta={"phase": "Delivered", "acceptance_id": acceptance_id, "followups": followups, "source_snapshot": source_snapshot})
         response = _success(command_id, revisions={"project_revision": revision, "graph_revision": project.graph_revision}, changed_entities=[{"kind": "delivery_acceptance", "id": acceptance_id}, {"kind": "project", "id": project_id}], event_id=event_id)
     elif command_type == "delivery.reopen":
         reason = str(payload.get("reason") or "").strip()
@@ -2215,7 +2376,7 @@ async def execute_command(session: AsyncSession, *, tenant_id: int, actor_id: st
         event_id, _ = await append_event(session, tenant_id=tenant_id, project_id=project_id, actor_id=actor_id, command_id=command_id, event_type="delivery.reopened", aggregate_type="project", aggregate_id=project_id, aggregate_revision=revision, delta={"reason": reason})
         response = _success(command_id, revisions={"project_revision": revision, "graph_revision": project.graph_revision}, changed_entities=[{"kind": "project", "id": project_id}], event_id=event_id)
     elif command_type == "metric.define":
-        allowed = {"name", "kind", "description", "unit", "direction", "baseline", "target_spec", "target_date", "steward_id", "measurement_method", "population_definition", "cadence_days", "required_for_success", "required_consecutive_periods"}
+        allowed = {"name", "kind", "description", "unit", "direction", "baseline", "target_spec", "target_date", "steward_id", "measurement_method", "population_definition", "population_version", "cadence_days", "required_for_success", "required_consecutive_periods"}
         unknown = set(payload) - allowed
         if unknown:
             raise PV1DomainError("VALIDATION_FAILED", "Unlisted metric fields are rejected.", details={"fields": sorted(unknown)})
@@ -2227,32 +2388,108 @@ async def execute_command(session: AsyncSession, *, tenant_id: int, actor_id: st
             raise PV1DomainError("VALIDATION_FAILED", "Metric kind or direction is invalid.")
         if not isinstance(payload.get("target_spec"), dict):
             raise PV1DomainError("VALIDATION_FAILED", "target_spec must be an object.")
+        consecutive = payload.get("required_consecutive_periods")
+        if consecutive is None:
+            consecutive = 2 if payload.get("kind") == "Adoption" else 1
+        if not isinstance(consecutive, int) or consecutive < 1:
+            raise PV1DomainError("VALIDATION_FAILED", "required_consecutive_periods must be a positive integer.")
         metric_id = _new_id()
-        metric = models.PV1Metric(id=metric_id, tenant_id=tenant_id, project_id=project_id, name=payload.get("name"), kind=payload.get("kind"), description=payload.get("description"), unit=payload.get("unit"), direction=payload.get("direction"), baseline=payload.get("baseline"), target_spec=payload.get("target_spec"), target_date=_date(payload.get("target_date")), steward_id=payload.get("steward_id") or actor_id, measurement_method=payload.get("measurement_method"), population_definition=payload.get("population_definition"), cadence_days=payload.get("cadence_days", 14), required_for_success=payload.get("required_for_success", False), required_consecutive_periods=payload.get("required_consecutive_periods", 1), created_by=actor_id, updated_by=actor_id)
+        metric = models.PV1Metric(id=metric_id, tenant_id=tenant_id, project_id=project_id, name=str(payload.get("name")).strip(), kind=payload.get("kind"), description=payload.get("description"), unit=payload.get("unit"), direction=payload.get("direction"), baseline=payload.get("baseline"), target_spec=payload.get("target_spec"), target_date=_date(payload.get("target_date")), steward_id=payload.get("steward_id") or actor_id, measurement_method=payload.get("measurement_method"), population_definition=payload.get("population_definition"), population_version=payload.get("population_version"), cadence_days=payload.get("cadence_days", 14), required_for_success=payload.get("required_for_success", False), required_consecutive_periods=consecutive, created_by=actor_id, updated_by=actor_id)
         session.add(metric)
+        await session.flush()
+        session.add(models.PV1MetricDefinitionRevision(id=_new_id(), tenant_id=tenant_id, project_id=project_id, metric_id=metric_id, definition_revision=1, definition=outcomes.metric_definition(metric), created_by=actor_id, updated_by=actor_id))
         event_id, _ = await append_event(session, tenant_id=tenant_id, project_id=project_id, actor_id=actor_id, command_id=command_id, event_type="metric.defined", aggregate_type="metric", aggregate_id=metric_id, aggregate_revision=1, delta={"definition_revision": 1})
         response = _success(command_id, revisions={"project_revision": project.revision, "graph_revision": project.graph_revision, "metric_revision": 1}, changed_entities=[{"kind": "metric", "id": metric_id}], event_id=event_id)
-    elif command_type == "measurement.record":
+    elif command_type == "metric.amend":
         metric_id = str(payload.get("metric_id") or "")
         metric = await session.get(models.PV1Metric, metric_id)
-        if not metric or metric.project_id != project_id or metric.tenant_id != tenant_id: raise PV1DomainError("NOT_FOUND", "Metric not found.", http_status=status.HTTP_404_NOT_FOUND)
-        if payload.get("definition_revision") != metric.definition_revision: raise PV1DomainError("REVISION_CONFLICT", "Metric definition changed.", http_status=status.HTTP_409_CONFLICT)
-        period_start, period_end = _date(payload.get("period_start")), _date(payload.get("period_end"))
-        if not period_start or not period_end or period_end <= period_start: raise PV1DomainError("VALIDATION_FAILED", "Measurement period must be nonempty and end after start.")
-        numerator, denominator = payload.get("numerator"), payload.get("denominator")
-        if not payload.get("unit") or not payload.get("source"):
+        patch = payload.get("patch") if isinstance(payload.get("patch"), dict) else {}
+        if not metric or metric.project_id != project_id or metric.tenant_id != tenant_id:
+            raise PV1DomainError("NOT_FOUND", "Metric not found.", http_status=status.HTTP_404_NOT_FOUND)
+        if not str(payload.get("rationale") or "").strip():
+            raise PV1DomainError("VALIDATION_FAILED", "Metric amendments require a visible rationale.")
+        allowed = {"name", "kind", "description", "unit", "direction", "baseline", "target_spec", "target_date", "steward_id", "measurement_method", "population_definition", "population_version", "cadence_days", "required_for_success", "required_consecutive_periods"}
+        if set(patch) - allowed:
+            raise PV1DomainError("VALIDATION_FAILED", "Unlisted metric amendment fields are rejected.", details={"fields": sorted(set(patch) - allowed)})
+        current_definition = outcomes.metric_definition(metric)
+        next_definition = {**current_definition, **patch, "definition_revision": metric.definition_revision + 1}
+        if next_definition.get("kind") == "Adoption" and "required_consecutive_periods" not in patch:
+            next_definition["required_consecutive_periods"] = 2
+        metric.definition_revision += 1
+        metric.revision += 1
+        for field in allowed:
+            if field in patch:
+                value = _date(patch[field]) if field == "target_date" else patch[field]
+                setattr(metric, field, value)
+        metric.updated_by = actor_id
+        metric.updated_at = _now()
+        await session.execute(update(models.PV1MetricDefinitionRevision).where(models.PV1MetricDefinitionRevision.tenant_id == tenant_id, models.PV1MetricDefinitionRevision.metric_id == metric_id, models.PV1MetricDefinitionRevision.status == "Current").values(status="Superseded", updated_by=actor_id, updated_at=_now()))
+        session.add(models.PV1MetricDefinitionRevision(id=_new_id(), tenant_id=tenant_id, project_id=project_id, metric_id=metric_id, definition_revision=metric.definition_revision, definition=outcomes.metric_definition(metric), rationale=str(payload.get("rationale")), created_by=actor_id, updated_by=actor_id))
+        event_id, _ = await append_event(session, tenant_id=tenant_id, project_id=project_id, actor_id=actor_id, command_id=command_id, event_type="metric.amended", aggregate_type="metric", aggregate_id=metric_id, aggregate_revision=metric.revision, delta={"definition_revision": metric.definition_revision, "rationale": str(payload.get("rationale"))})
+        response = _success(command_id, revisions={"project_revision": project.revision, "graph_revision": project.graph_revision, "metric_revision": metric.definition_revision}, changed_entities=[{"kind": "metric", "id": metric_id}], event_id=event_id)
+    elif command_type in {"measurement.record", "measurement.correct"}:
+        replacement = payload.get("replacement") if command_type == "measurement.correct" and isinstance(payload.get("replacement"), dict) else payload
+        supersedes_id = None
+        prior = None
+        if command_type == "measurement.correct":
+            prior = await session.get(models.PV1Measurement, str(payload.get("measurement_id") or ""))
+            if not prior or prior.project_id != project_id or prior.tenant_id != tenant_id:
+                raise PV1DomainError("NOT_FOUND", "Measurement not found.", http_status=status.HTTP_404_NOT_FOUND)
+            if not str(payload.get("rationale") or "").strip():
+                raise PV1DomainError("VALIDATION_FAILED", "Measurement corrections require a rationale.")
+            metric_id = prior.metric_id
+            supersedes_id = prior.id
+        else:
+            metric_id = str(replacement.get("metric_id") or "")
+        metric = await session.get(models.PV1Metric, metric_id)
+        if not metric or metric.project_id != project_id or metric.tenant_id != tenant_id:
+            raise PV1DomainError("NOT_FOUND", "Metric not found.", http_status=status.HTTP_404_NOT_FOUND)
+        if replacement.get("definition_revision") != metric.definition_revision and command_type == "measurement.record":
+            raise PV1DomainError("REVISION_CONFLICT", "Metric definition changed.", http_status=status.HTTP_409_CONFLICT)
+        period_start = _date(replacement.get("period_start", prior.period_start if prior else None))
+        period_end = _date(replacement.get("period_end", prior.period_end if prior else None))
+        if not period_start or not period_end or period_end <= period_start:
+            raise PV1DomainError("VALIDATION_FAILED", "Measurement period must be nonempty and end after start.")
+        numerator, denominator = replacement.get("numerator"), replacement.get("denominator")
+        if metric.kind == "Adoption" and (numerator is not None or denominator is not None):
+            if numerator is None or denominator is None or numerator > denominator or numerator < 0 or denominator < 0:
+                raise PV1DomainError("VALIDATION_FAILED", "Adoption numerator and denominator must be nonnegative and numerator cannot exceed denominator.")
+        if not replacement.get("unit", prior.unit if prior else None) or not replacement.get("source", prior.source if prior else None):
             raise PV1DomainError("VALIDATION_FAILED", "Measurement unit and source are required.")
-        if numerator is None and payload.get("observed_numeric") is None and payload.get("observed_binary") is None:
-            raise PV1DomainError("VALIDATION_FAILED", "A measurement value or numerator/denominator is required.")
-        if numerator is not None and denominator is None:
-            raise PV1DomainError("VALIDATION_FAILED", "A numerator requires a denominator.")
-        if numerator is not None and denominator is not None and numerator > denominator: raise PV1DomainError("VALIDATION_FAILED", "Active eligible count cannot exceed eligible count.")
-        if denominator == 0 and numerator is not None:
-            raise PV1DomainError("VALIDATION_FAILED", "A zero-eligible period is not a numeric adoption result.")
+        imported_percentage = replacement.get("reported_percentage", replacement.get("imported_percentage"))
+        if numerator is None and replacement.get("observed_numeric") is None and replacement.get("observed_binary") is None and imported_percentage is None:
+            raise PV1DomainError("VALIDATION_FAILED", "A measurement value, count population, or reported percentage is required.")
+        quality = replacement.get("quality", prior.quality if prior else "Unverified")
+        evidence = replacement.get("evidence", prior.evidence if prior else []) or []
+        if quality == "Verified" and not evidence:
+            raise PV1DomainError("VALIDATION_FAILED", "Verified measurements require evidence.")
         measurement_id = _new_id()
-        session.add(models.PV1Measurement(id=measurement_id, tenant_id=tenant_id, project_id=project_id, metric_id=metric_id, definition_revision=metric.definition_revision, period_start=period_start, period_end=period_end, observed_numeric=payload.get("observed_numeric"), observed_binary=payload.get("observed_binary"), numerator=numerator, denominator=denominator, unit=payload.get("unit"), source=payload.get("source"), evidence=payload.get("evidence") or [], recorder_id=actor_id, quality=payload.get("quality", "Unverified"), created_by=actor_id, updated_by=actor_id))
-        event_id, _ = await append_event(session, tenant_id=tenant_id, project_id=project_id, actor_id=actor_id, command_id=command_id, event_type="measurement.recorded", aggregate_type="measurement", aggregate_id=measurement_id, aggregate_revision=1, delta={"metric_id": metric_id, "quality": payload.get("quality", "Unverified")})
+        measurement = models.PV1Measurement(id=measurement_id, tenant_id=tenant_id, project_id=project_id, metric_id=metric_id, definition_revision=metric.definition_revision, period_start=period_start, period_end=period_end, observed_numeric=replacement.get("observed_numeric", prior.observed_numeric if prior else None), observed_binary=replacement.get("observed_binary", prior.observed_binary if prior else None), numerator=numerator, denominator=denominator, imported_percentage=imported_percentage, population_version=replacement.get("population_version", prior.population_version if prior else metric.population_version), unit=replacement.get("unit", prior.unit if prior else metric.unit), source=replacement.get("source", prior.source if prior else ""), evidence=evidence, observed_at=_parse_datetime(replacement.get("observed_at")), recorder_id=actor_id, quality=quality, reviewer_id=actor_id if quality == "Verified" else None, reviewed_at=_now() if quality == "Verified" else None, supersedes_id=supersedes_id, revision=(prior.revision + 1 if prior else 1), created_by=actor_id, updated_by=actor_id)
+        session.add(measurement)
+        await session.flush()
+        event_type = "measurement.corrected" if prior else "measurement.recorded"
+        event_id, _ = await append_event(session, tenant_id=tenant_id, project_id=project_id, actor_id=actor_id, command_id=command_id, event_type=event_type, aggregate_type="measurement", aggregate_id=measurement_id, aggregate_revision=measurement.revision, delta={"metric_id": metric_id, "quality": quality, "supersedes_id": supersedes_id, "rationale": payload.get("rationale")})
         response = _success(command_id, revisions={"project_revision": project.revision, "graph_revision": project.graph_revision, "metric_revision": metric.definition_revision}, changed_entities=[{"kind": "measurement", "id": measurement_id}], event_id=event_id)
+    elif command_type == "measurement.verify":
+        measurement = await session.get(models.PV1Measurement, str(payload.get("measurement_id") or ""))
+        if not measurement or measurement.project_id != project_id or measurement.tenant_id != tenant_id:
+            raise PV1DomainError("NOT_FOUND", "Measurement not found.", http_status=status.HTTP_404_NOT_FOUND)
+        metric = await session.get(models.PV1Metric, measurement.metric_id)
+        if role not in {"Owner", "Lead", "Tenant administrator"} and actor_id != metric.steward_id:
+            raise PV1DomainError("FORBIDDEN", "Only the metric steward or an Owner/Lead can verify a measurement.", http_status=status.HTTP_403_FORBIDDEN)
+        evidence_ids = payload.get("evidence_ids") or []
+        if not isinstance(evidence_ids, list) or not evidence_ids:
+            raise PV1DomainError("VALIDATION_FAILED", "Verification requires at least one evidence reference.")
+        existing = measurement.evidence or []
+        measurement.evidence = [*existing, *[item for item in evidence_ids if item not in existing]]
+        measurement.quality = "Verified"
+        measurement.reviewer_id = actor_id
+        measurement.reviewed_at = _now()
+        measurement.revision += 1
+        measurement.updated_by = actor_id
+        measurement.updated_at = _now()
+        event_id, _ = await append_event(session, tenant_id=tenant_id, project_id=project_id, actor_id=actor_id, command_id=command_id, event_type="measurement.verified", aggregate_type="measurement", aggregate_id=measurement.id, aggregate_revision=measurement.revision, delta={"measurement_id": measurement.id, "evidence_ids": evidence_ids})
+        response = _success(command_id, revisions={"project_revision": project.revision, "graph_revision": project.graph_revision}, changed_entities=[{"kind": "measurement", "id": measurement.id}], event_id=event_id)
     elif command_type == "value.record":
         required = {"classification", "amount", "currency_or_unit", "period_start", "period_end", "attribution_key", "source"}
         missing = sorted(field for field in required if payload.get(field) in (None, ""))
@@ -2260,45 +2497,87 @@ async def execute_command(session: AsyncSession, *, tenant_id: int, actor_id: st
             raise PV1DomainError("VALIDATION_FAILED", "Value entry is missing required fields.", details={"fields": missing})
         if payload.get("classification") not in {"Cash saving", "Capacity value", "Revenue", "Cost avoidance", "Cost"}:
             raise PV1DomainError("VALIDATION_FAILED", "Invalid value classification.")
+        kind = payload.get("kind", "Measured")
+        if kind not in {"Measured", "Estimated", "Forecast"}:
+            raise PV1DomainError("VALIDATION_FAILED", "Invalid value kind.")
         fraction = _decimal(payload.get("fraction", "1"), "fraction")
         if fraction < 0 or fraction > 1: raise PV1DomainError("VALIDATION_FAILED", "fraction must be between 0 and 1.")
+        amount = _decimal(payload.get("amount"), "amount")
         attribution_key = str(payload.get("attribution_key") or "")
         period_start, period_end = _date(payload.get("period_start")), _date(payload.get("period_end"))
         if not period_start or not period_end or period_end <= period_start:
             raise PV1DomainError("VALIDATION_FAILED", "Value period must be nonempty and end after start.")
+        classification_is_financial = payload.get("classification") in {"Cash saving", "Revenue", "Cost avoidance", "Cost"}
+        currency = str(payload.get("currency_or_unit"))
+        if classification_is_financial and project.outcome_currency and project.outcome_currency != currency:
+            raise PV1DomainError("VALIDATION_FAILED", "A project must use one reporting currency; automatic FX conversion is not performed.")
+        if classification_is_financial and not project.outcome_currency:
+            project.outcome_currency = currency
         result = await session.execute(select(func.coalesce(func.sum(models.PV1ValueEntry.fraction), 0)).where(models.PV1ValueEntry.tenant_id == tenant_id, models.PV1ValueEntry.attribution_key == attribution_key))
         if Decimal(str(result.scalar_one())) + fraction > 1: raise PV1DomainError("VALIDATION_FAILED", "Approved attribution fractions cannot exceed 1.")
+        value_quality = payload.get("quality", "Unverified")
+        value_evidence = payload.get("evidence") or []
+        if value_quality == "Verified" and not value_evidence:
+            raise PV1DomainError("VALIDATION_FAILED", "Verified value entries require evidence.")
+        if project.parent_project_id:
+            duplicate_parent = await session.scalar(select(func.count()).select_from(models.PV1ValueEntry).where(models.PV1ValueEntry.tenant_id == tenant_id, models.PV1ValueEntry.project_id == project.parent_project_id, models.PV1ValueEntry.attribution_key == attribution_key))
+            if duplicate_parent:
+                raise PV1DomainError("VALIDATION_FAILED", "A child benefit cannot be claimed again as a parent direct benefit.")
         value_id = _new_id()
-        session.add(models.PV1ValueEntry(id=value_id, tenant_id=tenant_id, project_id=project_id, classification=payload.get("classification"), amount=_decimal(payload.get("amount"), "amount"), currency_or_unit=payload.get("currency_or_unit"), period_start=period_start, period_end=period_end, attribution_key=attribution_key, fraction=fraction, source=payload.get("source"), quality=payload.get("quality", "Unverified"), evidence=payload.get("evidence") or [], created_by=actor_id, updated_by=actor_id))
-        event_id, _ = await append_event(session, tenant_id=tenant_id, project_id=project_id, actor_id=actor_id, command_id=command_id, event_type="value.recorded", aggregate_type="value", aggregate_id=value_id, aggregate_revision=1, delta={"attribution_key": attribution_key, "fraction": str(fraction)})
+        session.add(models.PV1ValueEntry(id=value_id, tenant_id=tenant_id, project_id=project_id, kind=kind, classification=payload.get("classification"), amount=amount, currency_or_unit=currency, period_start=period_start, period_end=period_end, attribution_key=attribution_key, fraction=fraction, valuation_rate=payload.get("valuation_rate"), parent_value_id=payload.get("parent_value_id"), approved_by=actor_id if value_quality == "Verified" else None, approved_at=_now() if value_quality == "Verified" else None, source=payload.get("source"), quality=value_quality, evidence=value_evidence, created_by=actor_id, updated_by=actor_id))
+        event_id, _ = await append_event(session, tenant_id=tenant_id, project_id=project_id, actor_id=actor_id, command_id=command_id, event_type="value.recorded", aggregate_type="value", aggregate_id=value_id, aggregate_revision=1, delta={"attribution_key": attribution_key, "fraction": str(fraction), "kind": kind})
         response = _success(command_id, revisions={"project_revision": project.revision, "graph_revision": project.graph_revision}, changed_entities=[{"kind": "value", "id": value_id}], event_id=event_id)
     elif command_type == "outcomes.close":
         outcome_result = payload.get("result")
         if outcome_result not in OUTCOME_RESULTS or outcome_result == "Unassessed": raise PV1DomainError("VALIDATION_FAILED", "Invalid outcome result.")
         if project.phase != "Delivered": raise PV1DomainError("VALIDATION_FAILED", "Outcomes can close only after delivery is Delivered.")
-        measurement_ids = [str(value) for value in (payload.get("measurement_ids") or [])]
-        metric_ids = [str(value) for value in (payload.get("metric_revision_ids") or [])]
-        if outcome_result == "Realized" and (not measurement_ids or not metric_ids):
-            raise PV1DomainError("VALIDATION_FAILED", "Realized requires explicit metric and measurement evidence.")
-        if outcome_result == "Realized" and not str(payload.get("rationale") or "").strip():
-            raise PV1DomainError("VALIDATION_FAILED", "Realized requires a review rationale.")
-        if measurement_ids:
-            measurement_result = await session.execute(select(models.PV1Measurement).where(models.PV1Measurement.tenant_id == tenant_id, models.PV1Measurement.project_id == project_id, models.PV1Measurement.id.in_(measurement_ids)))
-            measurements = list(measurement_result.scalars())
-            if len(measurements) != len(set(measurement_ids)):
-                raise PV1DomainError("VALIDATION_FAILED", "Every measurement evidence reference must belong to this project.")
-            if outcome_result == "Realized" and any(item.quality != "Verified" or not item.evidence for item in measurements):
-                raise PV1DomainError("VALIDATION_FAILED", "Realized requires verified measurement evidence.")
-        if metric_ids:
-            metric_result = await session.execute(select(models.PV1Metric).where(models.PV1Metric.tenant_id == tenant_id, models.PV1Metric.project_id == project_id, models.PV1Metric.id.in_(metric_ids)))
-            if len(list(metric_result.scalars())) != len(set(metric_ids)):
-                raise PV1DomainError("VALIDATION_FAILED", "Every metric evidence reference must belong to this project.")
+        rationale = str(payload.get("rationale") or "").strip()
+        if not rationale and outcome_result != "Realized":
+            raise PV1DomainError("VALIDATION_FAILED", "Outcome closure requires a review rationale.")
+        metric_result = await session.execute(select(models.PV1Metric).where(models.PV1Metric.tenant_id == tenant_id, models.PV1Metric.project_id == project_id, models.PV1Metric.archived_at.is_(None)))
+        metrics = list(metric_result.scalars())
+        measurement_result = await session.execute(select(models.PV1Measurement).where(models.PV1Measurement.tenant_id == tenant_id, models.PV1Measurement.project_id == project_id))
+        measurements = list(measurement_result.scalars())
+        selected_metric_ids = [str(value) for value in (payload.get("metric_revision_ids") or [])]
+        selected_measurement_ids = [str(value) for value in (payload.get("measurement_ids") or [])]
+        required_metrics = [metric for metric in metrics if metric.required_for_success]
+        selected_metrics = [metric for metric in metrics if metric.id in selected_metric_ids] if selected_metric_ids else required_metrics
+        if selected_metric_ids and len(selected_metrics) != len(set(selected_metric_ids)):
+            raise PV1DomainError("VALIDATION_FAILED", "Every metric evidence reference must belong to this project.")
+        qualifications = {metric.id: outcomes.evaluate_metric(metric, [row for row in measurements if row.metric_id == metric.id]) for metric in metrics}
+        if outcome_result == "Realized" and (not required_metrics or any(not qualifications[metric.id]["qualified"] for metric in required_metrics)):
+            raise PV1DomainError("VALIDATION_FAILED", "Realized requires every required metric to have current verified consecutive qualification.", details={"qualifications": qualifications})
+        if outcome_result == "Realized":
+            selected_evidence = set(selected_measurement_ids)
+            missing_period_evidence = {
+                metric.id: [item for item in qualifications[metric.id]["periods"] if item not in selected_evidence]
+                for metric in required_metrics
+                if any(item not in selected_evidence for item in qualifications[metric.id]["periods"])
+            }
+            if missing_period_evidence:
+                raise PV1DomainError("VALIDATION_FAILED", "Realized closure must snapshot every qualifying verified period.", details={"missing_measurement_ids": missing_period_evidence})
+        if outcome_result == "Partial" and not any(qualifications[metric.id]["qualified"] for metric in required_metrics):
+            raise PV1DomainError("VALIDATION_FAILED", "Partial requires at least one qualified required metric.")
+        if outcome_result == "Not applicable" and required_metrics:
+            raise PV1DomainError("VALIDATION_FAILED", "Not applicable requires no applicable required metrics or a reviewed amendment first.")
+        evidence_measurements = [row for row in measurements if row.id in selected_measurement_ids] if selected_measurement_ids else []
+        if selected_measurement_ids and len(evidence_measurements) != len(set(selected_measurement_ids)):
+            raise PV1DomainError("VALIDATION_FAILED", "Every measurement evidence reference must belong to this project.")
         acceptance_id = _new_id()
-        session.add(models.PV1OutcomeAcceptance(id=acceptance_id, tenant_id=tenant_id, project_id=project_id, result=outcome_result, metric_revision_ids=metric_ids, measurement_ids=measurement_ids, reviewer_id=actor_id, rationale=payload.get("rationale") or "", created_by=actor_id, updated_by=actor_id))
+        source_snapshot = {"project_revision": project.revision, "metric_qualifications": qualifications, "metric_revision_ids": [metric.definition_revision for metric in selected_metrics], "measurement_ids": selected_measurement_ids, "captured_at": _now().isoformat()}
+        session.add(models.PV1OutcomeAcceptance(id=acceptance_id, tenant_id=tenant_id, project_id=project_id, result=outcome_result, metric_revision_ids=[metric.id for metric in selected_metrics], measurement_ids=selected_measurement_ids, reviewer_id=actor_id, rationale=rationale, source_snapshot=source_snapshot, created_by=actor_id, updated_by=actor_id))
         result = await session.execute(update(models.PV1Project).execution_options(synchronize_session=False).where(models.PV1Project.id == project_id, models.PV1Project.revision == project.revision).values(outcome_phase="Closed", outcome_result=outcome_result, revision=models.PV1Project.revision + 1, updated_by=actor_id, updated_at=func.now()))
         if result.rowcount != 1: raise PV1DomainError("REVISION_CONFLICT", "Outcome state changed concurrently.", http_status=status.HTTP_409_CONFLICT)
-        event_id, _ = await append_event(session, tenant_id=tenant_id, project_id=project_id, actor_id=actor_id, command_id=command_id, event_type="outcomes.closed", aggregate_type="outcome_acceptance", aggregate_id=acceptance_id, aggregate_revision=1, delta={"result": outcome_result})
+        event_id, _ = await append_event(session, tenant_id=tenant_id, project_id=project_id, actor_id=actor_id, command_id=command_id, event_type="outcomes.closed", aggregate_type="outcome_acceptance", aggregate_id=acceptance_id, aggregate_revision=1, delta={"result": outcome_result, "source_snapshot": source_snapshot})
         response = _success(command_id, revisions={"project_revision": project.revision + 1, "graph_revision": project.graph_revision}, changed_entities=[{"kind": "outcome_acceptance", "id": acceptance_id}], event_id=event_id)
+    elif command_type == "outcomes.reopen":
+        reason = str(payload.get("reason") or "").strip()
+        if not reason or project.outcome_phase != "Closed":
+            raise PV1DomainError("VALIDATION_FAILED", "Closed outcomes require a reopen reason.")
+        result = await session.execute(update(models.PV1Project).execution_options(synchronize_session=False).where(models.PV1Project.id == project_id, models.PV1Project.revision == project.revision).values(outcome_phase="Measuring", outcome_result="Unassessed", revision=models.PV1Project.revision + 1, updated_by=actor_id, updated_at=func.now()))
+        if result.rowcount != 1: raise PV1DomainError("REVISION_CONFLICT", "Outcome state changed concurrently.", http_status=status.HTTP_409_CONFLICT)
+        event_id, _ = await append_event(session, tenant_id=tenant_id, project_id=project_id, actor_id=actor_id, command_id=command_id, event_type="outcomes.reopened", aggregate_type="project", aggregate_id=project_id, aggregate_revision=project.revision + 1, delta={"reason": reason})
+        response = _success(command_id, revisions={"project_revision": project.revision + 1, "graph_revision": project.graph_revision}, changed_entities=[{"kind": "project", "id": project_id}], event_id=event_id)
     else:
         raise PV1DomainError("VALIDATION_FAILED", f"Unsupported command type: {command_type}.", details={"type": command_type})
 

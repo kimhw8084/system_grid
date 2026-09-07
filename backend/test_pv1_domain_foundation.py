@@ -263,7 +263,7 @@ async def test_outcome_does_not_follow_progress_and_attribution_is_bounded(clien
 
 
 @pytest.mark.asyncio
-async def test_metric_delivery_acceptance_and_verified_outcome_are_independent(client, seeded_admin_tenant):
+async def test_metric_delivery_acceptance_and_verified_outcome_are_independent(client, seeded_admin_tenant, setup_db):
     tenant_id = seeded_admin_tenant["tenant_id"]
     created = await client.post(
         "/api/v2/projects",
@@ -331,9 +331,10 @@ async def test_metric_delivery_acceptance_and_verified_outcome_are_independent(c
                 "unit": "%",
                 "direction": "Increase",
                 "steward_id": "admin_root",
-                "measurement_method": "Verified sample",
-                "target_spec": {"type": "number", "operator": ">=", "value": "80"},
-                "required_for_success": True,
+                    "measurement_method": "Verified sample",
+                    "target_spec": {"type": "number", "operator": ">=", "value": "80"},
+                    "required_for_success": True,
+                    "required_consecutive_periods": 1,
             },
         ),
     )
@@ -351,8 +352,8 @@ async def test_metric_delivery_acceptance_and_verified_outcome_are_independent(c
             payload={
                 "metric_id": metric_id,
                 "definition_revision": 1,
-                "period_start": "2026-01-01",
-                "period_end": "2026-02-01",
+                "period_start": "2026-08-01",
+                "period_end": "2026-09-01",
                 "observed_numeric": "85",
                 "unit": "%",
                 "source": "verified sample",
@@ -374,6 +375,7 @@ async def test_metric_delivery_acceptance_and_verified_outcome_are_independent(c
         "fraction": "0.75",
         "source": "approved ledger",
         "quality": "Verified",
+        "evidence": [{"id": "value-evidence-1"}],
     }
     value_id = str(uuid4())
     value = await client.post(
@@ -399,13 +401,59 @@ async def test_metric_delivery_acceptance_and_verified_outcome_are_independent(c
     )
     assert task.status_code == 200, task.text
 
+    # P09 delivery acceptance is deliberately strict: every mandatory task,
+    # including the creation-template milestone, must be explicitly Done.
+    task_revisions = task.json()["revisions"]
+    milestone_session = await _tenant_session(await _tenant_db_url(setup_db[1], tenant_id))
+    try:
+        milestone_rows = list((await milestone_session.execute(select(pv1_models.PV1Task).where(pv1_models.PV1Task.project_id == project_id, pv1_models.PV1Task.mandatory.is_(True), pv1_models.PV1Task.status != "Done"))).scalars())
+        milestone_ids = [row.id for row in milestone_rows if row.id != task.json()["changed_entities"][0]["id"]]
+    finally:
+        await milestone_session.close()
+    current_project_revision = task_revisions["project_revision"]
+    current_graph_revision = task_revisions["graph_revision"]
+    for task_to_finish in [task.json()["changed_entities"][0]["id"], *milestone_ids]:
+        finish_id = str(uuid4())
+        finished = await client.post(
+            f"/api/v2/projects/{project_id}/commands",
+            headers=_headers(tenant_id, command_id=finish_id),
+            json=_command(finish_id, "task.transition", expected={"project_revision": current_project_revision, "graph_revision": current_graph_revision, "task_revision": 1}, payload={"task_id": task_to_finish, "to_status": "Done", "completion_exception": "Owner verified the delivery evidence for this retained regression."}),
+        )
+        assert finished.status_code == 200, finished.text
+        current_project_revision = finished.json()["revisions"]["project_revision"]
+        current_graph_revision = finished.json()["revisions"]["graph_revision"]
+
+    # The retained fixture now reviews the creation-draft acceptance criterion
+    # explicitly so delivery acceptance remains evidence-backed under PV1.
+    criterion_session = await _tenant_session(await _tenant_db_url(setup_db[1], tenant_id))
+    try:
+        open_criteria = list((await criterion_session.execute(select(pv1_models.PV1TaskCriterion).where(pv1_models.PV1TaskCriterion.project_id == project_id, pv1_models.PV1TaskCriterion.state == "Open"))).scalars())
+    finally:
+        await criterion_session.close()
+    for criterion in open_criteria:
+        review_id = str(uuid4())
+        reviewed = await client.post(
+            f"/api/v2/projects/{project_id}/commands",
+            headers=_headers(tenant_id, command_id=review_id),
+            json=_command(review_id, "criterion.review", expected={"project_revision": current_project_revision}, payload={"criterion_id": criterion.id, "to_state": "Passed", "evidence_ids": ["evidence-1"]}),
+        )
+        assert reviewed.status_code == 200, reviewed.text
+        current_project_revision = reviewed.json()["revisions"]["project_revision"]
+
+    # Re-read after the independently committed checklist reviews so this
+    # retained regression follows the server's authoritative revision.
+    latest_project = await client.get(f"/api/v2/projects/{project_id}", headers=_headers(tenant_id))
+    assert latest_project.status_code == 200, latest_project.text
+    current_project_revision = latest_project.json()["revision"]
+
     transition_id = str(uuid4())
     transition = await client.post(
         f"/api/v2/projects/{project_id}/commands",
         headers=_headers(tenant_id, command_id=transition_id),
-        json=_command(transition_id, "project.transition", expected={"project_revision": 5}, payload={"to_phase": "Validating"}),
+        json=_command(transition_id, "project.transition", expected={"project_revision": current_project_revision}, payload={"to_phase": "Validating"}),
     )
     assert transition.status_code == 200, transition.text
+    delivery_expected_revision = transition.json()["revisions"]["project_revision"]
 
     delivery_id = str(uuid4())
     delivery = await client.post(
@@ -414,11 +462,12 @@ async def test_metric_delivery_acceptance_and_verified_outcome_are_independent(c
         json=_command(
             delivery_id,
             "delivery.accept",
-            expected={"project_revision": 6},
+            expected={"project_revision": delivery_expected_revision},
             payload={"task_revision_ids": [], "criterion_revision_ids": [], "evidence_revision_ids": ["evidence-1"], "residual_obligation_ids": [], "followups": [{"days": 14}]},
         ),
     )
     assert delivery.status_code == 200, delivery.text
+    outcome_expected_revision = delivery.json()["revisions"]["project_revision"]
 
     outcome_id = str(uuid4())
     outcome = await client.post(
@@ -427,7 +476,7 @@ async def test_metric_delivery_acceptance_and_verified_outcome_are_independent(c
         json=_command(
             outcome_id,
             "outcomes.close",
-            expected={"project_revision": 7},
+            expected={"project_revision": outcome_expected_revision},
             payload={"result": "Realized", "metric_revision_ids": [metric_id], "measurement_ids": [measurement_id], "rationale": "Verified target evidence reviewed."},
         ),
     )

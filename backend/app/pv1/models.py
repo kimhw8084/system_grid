@@ -48,6 +48,7 @@ class PV1Project(Base, PV1TimestampMixin):
     architecture_rationale = Column(Text, nullable=True)
     outcome_phase = Column(String(32), nullable=False, default="Not configured")
     outcome_result = Column(String(32), nullable=False, default="Unassessed")
+    outcome_currency = Column(String(16), nullable=True)
     update_cadence = Column(Integer, nullable=False, default=7)
     update_cadence_kind = Column(String(16), nullable=False, default="weekly")
     update_weekday = Column(Integer, nullable=False, default=4)
@@ -495,6 +496,7 @@ class PV1Metric(Base, PV1TimestampMixin):
     cadence_days = Column(Integer, nullable=False, default=14)
     required_for_success = Column(Boolean, nullable=False, default=False)
     required_consecutive_periods = Column(Integer, nullable=False, default=1)
+    population_version = Column(String(80), nullable=True)
     definition_revision = Column(Integer, nullable=False, default=1)
     archived_at = Column(DateTime(timezone=True), nullable=True)
     revision = Column(Integer, nullable=False, default=1)
@@ -514,6 +516,8 @@ class PV1Measurement(Base, PV1TimestampMixin):
     observed_binary = Column(Boolean, nullable=True)
     numerator = Column(Integer, nullable=True)
     denominator = Column(Integer, nullable=True)
+    population_version = Column(String(80), nullable=True)
+    imported_percentage = Column(Numeric(24, 8), nullable=True)
     unit = Column(String(64), nullable=False)
     source = Column(Text, nullable=False)
     evidence = Column(JSON, nullable=True)
@@ -533,6 +537,7 @@ class PV1ValueEntry(Base, PV1TimestampMixin):
     id = Column(String(80), primary_key=True)
     tenant_id = Column(Integer, nullable=False, index=True)
     project_id = Column(String(80), ForeignKey("pv1_projects.id", ondelete="CASCADE"), nullable=False)
+    kind = Column(String(16), nullable=False, default="Measured")
     classification = Column(String(32), nullable=False)
     amount = Column(Numeric(24, 8), nullable=False)
     currency_or_unit = Column(String(64), nullable=False)
@@ -540,6 +545,10 @@ class PV1ValueEntry(Base, PV1TimestampMixin):
     period_end = Column(Date, nullable=False)
     attribution_key = Column(String(160), nullable=False)
     fraction = Column(Numeric(10, 8), nullable=False, default=1)
+    valuation_rate = Column(Numeric(24, 8), nullable=True)
+    parent_value_id = Column(String(80), nullable=True)
+    approved_by = Column(String(200), nullable=True)
+    approved_at = Column(DateTime(timezone=True), nullable=True)
     source = Column(Text, nullable=False)
     quality = Column(String(16), nullable=False, default="Unverified")
     evidence = Column(JSON, nullable=True)
@@ -556,6 +565,7 @@ class PV1OutcomeAcceptance(Base, PV1TimestampMixin):
     measurement_ids = Column(JSON, nullable=True)
     reviewer_id = Column(String(200), nullable=False)
     rationale = Column(Text, nullable=False)
+    source_snapshot = Column(JSON, nullable=False, default=dict)
     accepted_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
     revision = Column(Integer, nullable=False, default=1)
 
@@ -570,8 +580,44 @@ class PV1DeliveryAcceptance(Base, PV1TimestampMixin):
     evidence_revision_ids = Column(JSON, nullable=True)
     residual_obligation_ids = Column(JSON, nullable=True)
     followups = Column(JSON, nullable=True)
+    source_snapshot = Column(JSON, nullable=False, default=dict)
     reviewer_id = Column(String(200), nullable=False)
     accepted_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+    revision = Column(Integer, nullable=False, default=1)
+
+
+class PV1MetricDefinitionRevision(Base, PV1TimestampMixin):
+    __tablename__ = "pv1_metric_definition_revisions"
+    __table_args__ = (
+        UniqueConstraint("tenant_id", "metric_id", "definition_revision", name="uq_pv1_metric_definition_revision"),
+        Index("ix_pv1_metric_definition_revisions_metric", "tenant_id", "project_id", "metric_id", "definition_revision"),
+    )
+
+    id = Column(String(80), primary_key=True)
+    tenant_id = Column(Integer, nullable=False, index=True)
+    project_id = Column(String(80), ForeignKey("pv1_projects.id", ondelete="CASCADE"), nullable=False)
+    metric_id = Column(String(80), ForeignKey("pv1_metrics.id", ondelete="CASCADE"), nullable=False)
+    definition_revision = Column(Integer, nullable=False)
+    definition = Column(JSON, nullable=False, default=dict)
+    rationale = Column(Text, nullable=True)
+    status = Column(String(16), nullable=False, default="Current")
+
+
+class PV1OutcomeCheckpoint(Base, PV1TimestampMixin):
+    __tablename__ = "pv1_outcome_checkpoints"
+    __table_args__ = (
+        Index("ix_pv1_outcome_checkpoints_project_due", "tenant_id", "project_id", "due_date", "state"),
+    )
+
+    id = Column(String(80), primary_key=True)
+    tenant_id = Column(Integer, nullable=False, index=True)
+    project_id = Column(String(80), ForeignKey("pv1_projects.id", ondelete="CASCADE"), nullable=False)
+    delivery_acceptance_id = Column(String(80), ForeignKey("pv1_delivery_acceptances.id", ondelete="SET NULL"), nullable=True)
+    kind = Column(String(32), nullable=False)
+    due_date = Column(Date, nullable=False)
+    metric_ids = Column(JSON, nullable=False, default=list)
+    state = Column(String(16), nullable=False, default="Pending")
+    completed_at = Column(DateTime(timezone=True), nullable=True)
     revision = Column(Integer, nullable=False, default=1)
 
 

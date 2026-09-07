@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from datetime import date
+from decimal import Decimal
 from typing import Any
 from uuid import UUID
 
@@ -67,6 +68,23 @@ async def _require_capability(session: AsyncSession, request: Request, project_i
 
 
 def _measurement_dict(item: models.PV1Measurement) -> dict[str, Any]:
+    calculated_value = None
+    calculated_state = "No observation"
+    if item.numerator is not None or item.denominator is not None:
+        if item.denominator == 0:
+            calculated_state = "Not applicable to this period"
+        elif item.numerator is not None and item.denominator is not None:
+            calculated_value = domain._serialize(Decimal(str(item.numerator)) * Decimal("100") / Decimal(str(item.denominator)))
+            calculated_state = "Count-based"
+    elif getattr(item, "imported_percentage", None) is not None:
+        calculated_value = domain._serialize(item.imported_percentage)
+        calculated_state = "Reported percentage — denominator unavailable"
+    elif item.observed_numeric is not None:
+        calculated_value = domain._serialize(item.observed_numeric)
+        calculated_state = "Observed"
+    elif item.observed_binary is not None:
+        calculated_value = item.observed_binary
+        calculated_state = "Observed"
     return {
         "id": item.id,
         "project_id": item.project_id,
@@ -78,11 +96,18 @@ def _measurement_dict(item: models.PV1Measurement) -> dict[str, Any]:
         "observed_binary": item.observed_binary,
         "numerator": item.numerator,
         "denominator": item.denominator,
+        "calculated_value": calculated_value,
+        "calculated_state": calculated_state,
+        "imported_percentage": domain._serialize(getattr(item, "imported_percentage", None)),
         "unit": item.unit,
         "source": item.source,
+        "evidence": item.evidence or [],
         "quality": item.quality,
         "recorder_id": item.recorder_id,
         "recorded_at": domain._serialize(item.recorded_at),
+        "reviewer_id": item.reviewer_id,
+        "reviewed_at": domain._serialize(item.reviewed_at),
+        "population_version": getattr(item, "population_version", None),
         "supersedes_id": item.supersedes_id,
         "revision": item.revision,
     }
@@ -466,6 +491,35 @@ async def list_metrics(project_id: str, request: Request, db: AsyncSession = Dep
     return {"items": [_metric_dict(item) for item in result.scalars()], "next_cursor": None, "as_of": domain._now().isoformat(), "source_revision": "metrics"}
 
 
+@router.get("/projects/{project_id}/outcomes")
+async def get_outcomes(project_id: str, request: Request, db: AsyncSession = Depends(get_db)):
+    project = await domain.get_pv1_project(db, _tenant_id(request), project_id)
+    if not project:
+        return _error(request, domain.PV1DomainError("NOT_FOUND", "Project not found.", http_status=404))
+    try:
+        await domain.require_project_role(db, tenant_id=_tenant_id(request), project_id=project_id, actor_id=_actor(request), request_role=getattr(request.state, "sysgrid_access_role", None))
+        include_financial = True
+        try:
+            await _require_capability(db, request, project_id, "financial.view")
+        except domain.PV1DomainError as error:
+            if error.code != "FORBIDDEN":
+                raise
+            include_financial = False
+        return await domain.outcome_projection(db, project, include_financial=include_financial)
+    except domain.PV1DomainError as error:
+        return _error(request, error)
+
+
+@router.get("/projects/{project_id}/metrics/{metric_id}/revisions")
+async def list_metric_definition_revisions(project_id: str, metric_id: str, request: Request, db: AsyncSession = Depends(get_db)):
+    try:
+        await domain.require_project_role(db, tenant_id=_tenant_id(request), project_id=project_id, actor_id=_actor(request), request_role=getattr(request.state, "sysgrid_access_role", None))
+    except domain.PV1DomainError as error:
+        return _error(request, error)
+    result = await db.execute(select(models.PV1MetricDefinitionRevision).where(models.PV1MetricDefinitionRevision.tenant_id == _tenant_id(request), models.PV1MetricDefinitionRevision.project_id == project_id, models.PV1MetricDefinitionRevision.metric_id == metric_id).order_by(models.PV1MetricDefinitionRevision.definition_revision))
+    return {"items": [{"id": item.id, "metric_id": item.metric_id, "definition_revision": item.definition_revision, "definition": item.definition, "rationale": item.rationale, "status": item.status, "created_at": domain._serialize(item.created_at), "created_by": item.created_by} for item in result.scalars()], "as_of": domain._now().isoformat()}
+
+
 @router.get("/projects/{project_id}/measurements")
 async def list_measurements(project_id: str, request: Request, db: AsyncSession = Depends(get_db)):
     try: await domain.require_project_role(db, tenant_id=_tenant_id(request), project_id=project_id, actor_id=_actor(request), request_role=getattr(request.state, "sysgrid_access_role", None))
@@ -478,10 +532,18 @@ async def list_measurements(project_id: str, request: Request, db: AsyncSession 
 async def list_values(project_id: str, request: Request, db: AsyncSession = Depends(get_db)):
     try:
         await domain.require_project_role(db, tenant_id=_tenant_id(request), project_id=project_id, actor_id=_actor(request), request_role=getattr(request.state, "sysgrid_access_role", None))
-        await _require_capability(db, request, project_id, "financial.view")
+        try:
+            await _require_capability(db, request, project_id, "financial.view")
+            include_financial = True
+        except domain.PV1DomainError as error:
+            if error.code != "FORBIDDEN":
+                raise
+            include_financial = False
     except domain.PV1DomainError as error: return _error(request, error)
+    if not include_financial:
+        return {"restricted": True, "items": [], "as_of": domain._now().isoformat(), "source_revision": "values-restricted"}
     result = await db.execute(select(models.PV1ValueEntry).where(models.PV1ValueEntry.tenant_id == _tenant_id(request), models.PV1ValueEntry.project_id == project_id).order_by(models.PV1ValueEntry.period_end.desc()))
-    return {"items": [{"id": item.id, "classification": item.classification, "amount": domain._serialize(item.amount), "currency_or_unit": item.currency_or_unit, "period_start": domain._serialize(item.period_start), "period_end": domain._serialize(item.period_end), "attribution_key": item.attribution_key, "fraction": domain._serialize(item.fraction), "quality": item.quality, "source": item.source} for item in result.scalars()], "next_cursor": None, "as_of": domain._now().isoformat(), "source_revision": "values"}
+    return {"items": [{"id": item.id, "kind": item.kind, "classification": item.classification, "amount": domain._serialize(item.amount), "currency_or_unit": item.currency_or_unit, "period_start": domain._serialize(item.period_start), "period_end": domain._serialize(item.period_end), "attribution_key": item.attribution_key, "fraction": domain._serialize(item.fraction), "valuation_rate": domain._serialize(item.valuation_rate), "quality": item.quality, "source": item.source} for item in result.scalars()], "next_cursor": None, "as_of": domain._now().isoformat(), "source_revision": "values"}
 
 
 @router.post("/projects/{project_id}/commands")
