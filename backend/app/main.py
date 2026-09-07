@@ -18,7 +18,7 @@ from .api import (
     audit, dashboard, data_flows, devices, far, import_engine, intelligence,
     investigations, knowledge, logical_services, maintenance, monitoring, networks,
     projects, pv1, racks, rca, security, settings as settings_api, sites, tenants, workspaces,
-    troubleshoot, vendors,
+    troubleshoot, vendors, pv1_communication,
 )
 from .api.error_utils import standardize_validation_errors
 from .api.import_engine import ROUND_TRIP_EXPOSE_HEADER_NAMES, ROUND_TRIP_EXPOSE_HEADERS
@@ -192,6 +192,7 @@ for router in (
     app.include_router(router, prefix=settings.API_V1_STR)
 
 app.include_router(pv1.router, prefix="/api/v2")
+app.include_router(pv1_communication.router, prefix="/api/v2")
 from .architecture import api as architecture_api
 app.include_router(architecture_api.router, prefix="/api/v2")
 

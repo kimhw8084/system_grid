@@ -7,6 +7,7 @@ import toast from 'react-hot-toast'
 import ProjectsGolden from './ProjectsGolden'
 import ProjectsStory, { shouldUseProjectsStory } from './ProjectsStory'
 import ProjectsWorkPlan, { shouldUseProjectsWorkPlan } from './ProjectsWorkPlan'
+import ProjectsCommunication, { shouldUseProjectsCommunication } from './ProjectsCommunication'
 import { shouldUseProjectsTimeline } from './ProjectsTimeline.route'
 import { ProjectsTimelineAuthority } from './ProjectsWorkspaceLayout'
 import { apiFetch } from '../api/apiClient'
@@ -125,6 +126,7 @@ export default function ProjectsSchedulingCompletion() {
   const location = useLocation()
   if (shouldUseProjectsStory(location.pathname, location.search)) return <ProjectsStory />
   if (shouldUseProjectsWorkPlan(location.pathname, location.search)) return <ProjectsWorkPlan />
+  if (shouldUseProjectsCommunication(location.pathname)) return <ProjectsCommunication />
   const timeline = shouldUseProjectsTimeline(location.pathname)
   if (timeline) return <React.Suspense fallback={<main className="sg-pv1-state" aria-busy="true">Loading Timeline…</main>}><ProjectsTimeline projectId={timeline.projectId} /></React.Suspense>
   return <ProjectsSchedulingWorkspace />

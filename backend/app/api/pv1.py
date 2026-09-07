@@ -206,6 +206,11 @@ async def get_capabilities(request: Request, db: AsyncSession = Depends(get_db))
             "architecture_edit": {"supported": True, "contract_version": "1.0"},
             "architecture_change_sets": {"supported": True, "contract_version": "1.0"},
             "architecture_assessment": {"supported": True, "contract_version": "1.0"},
+            "resources": {"supported": True, "contract_version": "1.0"},
+            "updates": {"supported": True, "contract_version": "1.0", "ai_required": False},
+            "activity": {"supported": True, "contract_version": "1.0"},
+            "notifications": {"supported": True, "contract_version": "1.0"},
+            "reports": {"supported": True, "contract_version": "1.0", "formats": ["html", "print", "pdf", "json"]},
         },
     }
 

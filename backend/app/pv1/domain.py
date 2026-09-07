@@ -109,6 +109,10 @@ def project_dict(project: models.PV1Project) -> dict[str, Any]:
         "outcome_phase": project.outcome_phase,
         "outcome_result": project.outcome_result,
         "update_cadence": project.update_cadence,
+        "update_cadence_kind": project.update_cadence_kind,
+        "update_weekday": project.update_weekday,
+        "update_time": project.update_time,
+        "update_disabled_reason": project.update_disabled_reason,
         "cancellation_reason": project.cancellation_reason,
         "pause_reason": project.pause_reason,
         "resume_review_date": _serialize(project.resume_review_date),
@@ -842,6 +846,8 @@ async def project_story_projection(session: AsyncSession, project: models.PV1Pro
     blockers = list(blocker_result.scalars())
     governance_result = await session.execute(select(models.PV1GovernanceRecord).where(models.PV1GovernanceRecord.tenant_id == tenant_id, models.PV1GovernanceRecord.project_id == project_id, models.PV1GovernanceRecord.state.not_in(["Closed", "Resolved", "Approved"])).order_by(models.PV1GovernanceRecord.created_at.desc()))
     governance = list(governance_result.scalars())
+    resource_result = await session.execute(select(models.PV1Resource).where(models.PV1Resource.tenant_id == tenant_id, models.PV1Resource.project_id == project_id).order_by(models.PV1Resource.pinned.desc(), models.PV1Resource.updated_at.desc(), models.PV1Resource.id).limit(4))
+    resources = list(resource_result.scalars())
     update_result = await session.execute(select(models.PV1Update).where(models.PV1Update.tenant_id == tenant_id, models.PV1Update.project_id == project_id, models.PV1Update.state == "Published").order_by(models.PV1Update.published_at.desc()).limit(1))
     latest_update = update_result.scalar_one_or_none()
     metric_result = await session.execute(select(models.PV1Metric).where(models.PV1Metric.tenant_id == tenant_id, models.PV1Metric.project_id == project_id, models.PV1Metric.archived_at.is_(None)).order_by(models.PV1Metric.required_for_success.desc(), models.PV1Metric.created_at, models.PV1Metric.id))
@@ -897,7 +903,13 @@ async def project_story_projection(session: AsyncSession, project: models.PV1Pro
         attention.append({"id": f"outcome-checkpoint:{primary_metric.id}", "kind": "Overdue outcome checkpoint", "reason": primary_metric.name, "accountable": primary_metric.steward_id, "due_date": _serialize(primary_metric.target_date), "action": "Record measurement", "entity_id": primary_metric.id})
     if project.phase in {"Executing", "Validating"}:
         freshness_cutoff = _now() - timedelta(days=max(1, project.update_cadence or 7))
-        if not latest_update or not latest_update.published_at or latest_update.published_at < freshness_cutoff:
+        published_at = latest_update.published_at if latest_update else None
+        if published_at and published_at.tzinfo is None:
+            # SQLite returns timestamps without tzinfo even when the model
+            # column is declared timezone-aware; persisted PV1 timestamps are
+            # UTC, so normalize before comparing with the UTC cutoff.
+            published_at = published_at.replace(tzinfo=timezone.utc)
+        if not published_at or published_at < freshness_cutoff:
             attention.append({"id": f"late-update:{project.id}", "kind": "Late update", "reason": "The published project update is overdue.", "accountable": project.owner_id, "due_date": None, "action": "Draft update", "entity_id": None})
 
     metric_current: Any = None
@@ -934,9 +946,9 @@ async def project_story_projection(session: AsyncSession, project: models.PV1Pro
         "latest_update": ({"id": latest_update.id, "content": latest_update.content, "published_at": _serialize(latest_update.published_at), "author_id": latest_update.author_id} if latest_update else None),
         "governance": [{"id": item.id, "type": item.record_type, "title": item.title, "state": item.state, "owner_id": item.owner_id, "approver_id": (item.payload or {}).get("approver_id")} for item in governance[:3]],
         "architecture": {"assessment": project.architecture_assessment, "rationale": project.architecture_rationale},
-        "resources": [],
+        "resources": [{"id": item.id, "resource_kind": item.resource_kind, "title": item.title, "scan_state": item.scan_state, "pinned": item.pinned, "links": item.links or [], "revision": item.revision} for item in resources],
         "freshness": {"updated_at": _serialize(project.updated_at), "source": "Canonical Project projection"},
-        "coverage": {"resources": "unavailable", "architecture": "assessment-only", "updates": "available"},
+        "coverage": {"resources": "available", "architecture": "assessment-only", "updates": "available"},
     }
 
 
@@ -1017,6 +1029,21 @@ async def append_event(session: AsyncSession, *, tenant_id: int, project_id: str
         event_id=event_id,
         topic=f"project.{event_type}",
         payload={"event_id": event_id, "project_id": project_id, "sequence": sequence, "type": event_type},
+    ))
+    # Activity is a durable, redacted projection of the canonical event.  The
+    # full event remains privileged domain evidence; user-facing activity gets
+    # only bounded change detail and never raw document/file payloads.
+    from .communication import activity_summary, _activity_category
+    safe_delta = {key: value for key, value in (delta or {}).items() if key not in {"content", "body", "raw", "token", "secret", "credential"}}
+    session.add(models.PV1ActivityProjection(
+        id=_new_id(),
+        tenant_id=tenant_id,
+        project_id=project_id,
+        source_event_id=event_id,
+        actor_id=actor_id,
+        category=_activity_category(event_type),
+        summary=activity_summary(event_type, safe_delta),
+        details=safe_delta,
     ))
     return event_id, sequence
 
@@ -1340,7 +1367,12 @@ async def execute_command(session: AsyncSession, *, tenant_id: int, actor_id: st
             task_for_permission = await session.get(models.PV1Task, str(payload.get("task_id") or ""))
             if role != "Contributor" or not task_for_permission or task_for_permission.owner_id != actor_id:
                 raise PV1DomainError("FORBIDDEN", "Contributors may update only their own tasks.", http_status=status.HTTP_403_FORBIDDEN)
-        elif command_type in {"criterion.create", "criterion.review", "blocker.resolve", "risk.save", "decision.request", "decision.decide", "resource.save", "resource.link", "resource.unlink"}:
+        elif command_type in {
+            "criterion.create", "criterion.review", "blocker.resolve", "risk.save", "decision.request", "decision.decide",
+            "resource.save", "resource.link", "resource.unlink", "resource.scan", "update.draft", "update.autosave",
+            "update.publish", "update.correct", "update.withdraw", "update.cadence.set", "notification.subscription.save",
+            "report.capture",
+        }:
             pass
         else:
             raise PV1DomainError("FORBIDDEN", "You do not have permission to perform this command.", http_status=status.HTTP_403_FORBIDDEN)
@@ -2085,21 +2117,39 @@ async def execute_command(session: AsyncSession, *, tenant_id: int, actor_id: st
         event_id, _ = await append_event(session, tenant_id=tenant_id, project_id=project_id, actor_id=actor_id, command_id=command_id, event_type=command_type, aggregate_type=record_type.lower(), aggregate_id=record_id, aggregate_revision=(record.revision if command_type == "decision.decide" else 1), delta={"state": state})
         response = _success(command_id, revisions={"project_revision": project.revision + 1, "graph_revision": project.graph_revision}, changed_entities=[{"kind": record_type.lower(), "id": record_id}], event_id=event_id)
     elif command_type in {"resource.save", "resource.link", "resource.unlink"}:
+        from .communication import RESOURCE_KINDS, sanitize_markdown, validate_upload
         resource_id = str(payload.get("resource_id") or payload.get("id") or _new_id())
         resource = await session.get(models.PV1Resource, resource_id)
         if resource and resource.tenant_id != tenant_id:
             raise PV1DomainError("NOT_FOUND", "Resource not found.", http_status=status.HTTP_404_NOT_FOUND)
         if command_type == "resource.save":
             title = str(payload.get("title") or "").strip(); kind = payload.get("resource_kind", "General note")
-            if not title or len(title) > 120 or kind not in {"Brief supplement", "Specification", "Runbook", "Test evidence", "Design decision", "General note"}:
+            if not title or len(title) > 120 or kind not in RESOURCE_KINDS:
                 raise PV1DomainError("VALIDATION_FAILED", "Resource title and document type are required.")
-            content = str(payload.get("content") or "")
-            if "<script" in content.casefold(): raise PV1DomainError("VALIDATION_FAILED", "Unsafe resource content is rejected.")
+            content = sanitize_markdown(payload.get("content") or "")
+            upload = validate_upload(payload["upload"]) if payload.get("upload") is not None else None
+            if kind == "External link":
+                link = str(payload.get("external_url") or "").strip()
+                if not re.match(r"^https?://[^\s<>]+$", link, re.I):
+                    raise PV1DomainError("VALIDATION_FAILED", "External links must use http or https.")
+                content = link
+            pinned = bool(payload.get("pinned", resource.pinned if resource else False))
+            if pinned and not resource:
+                pinned_count = await session.scalar(select(func.count()).select_from(models.PV1Resource).where(models.PV1Resource.tenant_id == tenant_id, models.PV1Resource.project_id == project_id, models.PV1Resource.pinned.is_(True)))
+                if pinned_count >= 4:
+                    raise PV1DomainError("VALIDATION_FAILED", "A project can pin at most four resources.")
             if resource:
                 if resource.project_id != project_id or resource.revision != int(payload.get("revision", resource.revision)): raise PV1DomainError("REVISION_CONFLICT", "This resource changed. Review the latest version.", http_status=status.HTTP_409_CONFLICT)
-                resource.title = title; resource.content = content; resource.resource_kind = kind; resource.pinned = bool(payload.get("pinned", resource.pinned)); resource.revision += 1; resource.updated_by = actor_id; resource.updated_at = _now()
+                next_resource_version = resource.revision + 1
+                resource.title = title; resource.content = content; resource.resource_kind = kind; resource.pinned = pinned; resource.revision = next_resource_version; resource.updated_by = actor_id; resource.updated_at = _now()
+                if upload:
+                    resource.upload_ref = upload["storage_ref"]; resource.mime_type = upload["mime_type"]; resource.size_bytes = upload["size_bytes"]; resource.content_sha256 = upload["content_sha256"]; resource.scan_state = upload["scan_state"]
+                session.add(models.PV1ResourceVersion(id=_new_id(), tenant_id=tenant_id, project_id=project_id, resource_id=resource.id, version=resource.revision, title=resource.title, content=resource.content, upload_ref=resource.upload_ref, mime_type=resource.mime_type, size_bytes=resource.size_bytes, content_sha256=resource.content_sha256, scan_state=resource.scan_state, snapshot={"links": resource.links or [], "pinned": resource.pinned}, created_by=actor_id, updated_by=actor_id))
             else:
-                session.add(models.PV1Resource(id=resource_id, tenant_id=tenant_id, project_id=project_id, resource_kind=kind, title=title, content=content, upload_ref=payload.get("upload_ref"), scan_state="Available", sensitivity=payload.get("sensitivity", "Project"), pinned=bool(payload.get("pinned", False)), links=[], created_by=actor_id, updated_by=actor_id))
+                resource = models.PV1Resource(id=resource_id, tenant_id=tenant_id, project_id=project_id, resource_kind=kind, title=title, content=content, upload_ref=(upload["storage_ref"] if upload else payload.get("upload_ref")), scan_state=(upload["scan_state"] if upload else "Available"), mime_type=(upload["mime_type"] if upload else None), size_bytes=(upload["size_bytes"] if upload else None), content_sha256=(upload["content_sha256"] if upload else None), sensitivity=payload.get("sensitivity", "Project"), pinned=pinned, links=list(payload.get("links") or []), created_by=actor_id, updated_by=actor_id)
+                session.add(resource)
+                await session.flush()
+                session.add(models.PV1ResourceVersion(id=_new_id(), tenant_id=tenant_id, project_id=project_id, resource_id=resource_id, version=1, title=title, content=content, upload_ref=resource.upload_ref, mime_type=resource.mime_type, size_bytes=resource.size_bytes, content_sha256=resource.content_sha256, scan_state=resource.scan_state, snapshot={"links": resource.links or [], "pinned": pinned}, created_by=actor_id, updated_by=actor_id))
         else:
             if not resource or resource.project_id != project_id: raise PV1DomainError("NOT_FOUND", "Resource not found.", http_status=status.HTTP_404_NOT_FOUND)
             links = list(resource.links or [])
@@ -2109,8 +2159,21 @@ async def execute_command(session: AsyncSession, *, tenant_id: int, actor_id: st
             resource.links = links; resource.revision += 1; resource.updated_by = actor_id; resource.updated_at = _now()
         project_result = await session.execute(update(models.PV1Project).where(models.PV1Project.id == project_id, models.PV1Project.revision == project.revision).values(revision=models.PV1Project.revision + 1, updated_by=actor_id, updated_at=func.now()))
         if project_result.rowcount != 1: raise PV1DomainError("REVISION_CONFLICT", "Project changed while saving the resource.", http_status=status.HTTP_409_CONFLICT)
+        project.revision += 1
         event_id, _ = await append_event(session, tenant_id=tenant_id, project_id=project_id, actor_id=actor_id, command_id=command_id, event_type=command_type, aggregate_type="resource", aggregate_id=resource_id, aggregate_revision=(resource.revision if resource else 1), delta={"resource_id": resource_id})
-        response = _success(command_id, revisions={"project_revision": project.revision + 1, "graph_revision": project.graph_revision}, changed_entities=[{"kind": "resource", "id": resource_id}], event_id=event_id)
+        response = _success(command_id, revisions={"project_revision": project.revision, "graph_revision": project.graph_revision}, changed_entities=[{"kind": "resource", "id": resource_id}], event_id=event_id)
+    elif command_type in {"update.draft", "update.autosave", "update.publish", "update.correct", "update.withdraw", "update.cadence.set", "resource.scan", "notification.subscription.save", "report.capture"}:
+        from .communication import execute_communication_command
+        response, event_id = await execute_communication_command(
+            session,
+            project=project,
+            actor_id=actor_id,
+            role=role,
+            command_id=command_id,
+            command_type=command_type,
+            expected=expected,
+            payload=payload,
+        )
     elif command_type == "delivery.accept":
         list_fields = {"task_revision_ids", "criterion_revision_ids", "evidence_revision_ids", "residual_obligation_ids", "followups"}
         unknown = set(payload) - list_fields

@@ -49,6 +49,10 @@ class PV1Project(Base, PV1TimestampMixin):
     outcome_phase = Column(String(32), nullable=False, default="Not configured")
     outcome_result = Column(String(32), nullable=False, default="Unassessed")
     update_cadence = Column(Integer, nullable=False, default=7)
+    update_cadence_kind = Column(String(16), nullable=False, default="weekly")
+    update_weekday = Column(Integer, nullable=False, default=4)
+    update_time = Column(String(5), nullable=False, default="15:00")
+    update_disabled_reason = Column(String(500), nullable=True)
     measurement_followups = Column(JSON, nullable=True)
     comparison_baseline_id = Column(String(80), nullable=True)
     actual_delivery_at = Column(DateTime(timezone=True), nullable=True)
@@ -304,10 +308,134 @@ class PV1Resource(Base, PV1TimestampMixin):
     content = Column(Text, nullable=True)
     upload_ref = Column(String(500), nullable=True)
     scan_state = Column(String(16), nullable=False, default="Available")
+    mime_type = Column(String(120), nullable=True)
+    size_bytes = Column(Integer, nullable=True)
+    content_sha256 = Column(String(64), nullable=True)
     sensitivity = Column(String(32), nullable=False, default="Project")
     pinned = Column(Boolean, nullable=False, default=False)
     links = Column(JSON, nullable=True)
     revision = Column(Integer, nullable=False, default=1)
+
+
+class PV1ResourceVersion(Base, PV1TimestampMixin):
+    __tablename__ = "pv1_resource_versions"
+    __table_args__ = (
+        UniqueConstraint("tenant_id", "resource_id", "version", name="uq_pv1_resource_versions_number"),
+        Index("ix_pv1_resource_versions_resource", "tenant_id", "project_id", "resource_id", "version"),
+    )
+
+    id = Column(String(80), primary_key=True)
+    tenant_id = Column(Integer, nullable=False, index=True)
+    project_id = Column(String(80), ForeignKey("pv1_projects.id", ondelete="CASCADE"), nullable=False)
+    resource_id = Column(String(80), ForeignKey("pv1_resources.id", ondelete="CASCADE"), nullable=False)
+    version = Column(Integer, nullable=False)
+    title = Column(String(120), nullable=False)
+    content = Column(Text, nullable=True)
+    upload_ref = Column(String(500), nullable=True)
+    mime_type = Column(String(120), nullable=True)
+    size_bytes = Column(Integer, nullable=True)
+    content_sha256 = Column(String(64), nullable=True)
+    scan_state = Column(String(16), nullable=False, default="Available")
+    snapshot = Column(JSON, nullable=False, default=dict)
+
+
+class PV1ResourceAttachment(Base, PV1TimestampMixin):
+    __tablename__ = "pv1_resource_attachments"
+    __table_args__ = (
+        Index("ix_pv1_resource_attachments_resource", "tenant_id", "project_id", "resource_id"),
+    )
+
+    id = Column(String(80), primary_key=True)
+    tenant_id = Column(Integer, nullable=False, index=True)
+    project_id = Column(String(80), ForeignKey("pv1_projects.id", ondelete="CASCADE"), nullable=False)
+    resource_id = Column(String(80), ForeignKey("pv1_resources.id", ondelete="CASCADE"), nullable=False)
+    filename = Column(String(255), nullable=False)
+    mime_type = Column(String(120), nullable=False)
+    size_bytes = Column(Integer, nullable=False)
+    content_sha256 = Column(String(64), nullable=False)
+    scan_state = Column(String(16), nullable=False, default="Pending")
+    storage_ref = Column(String(500), nullable=False)
+    version = Column(Integer, nullable=False, default=1)
+
+
+class PV1ActivityProjection(Base):
+    __tablename__ = "pv1_activity_projection"
+    __table_args__ = (
+        UniqueConstraint("tenant_id", "source_event_id", name="uq_pv1_activity_source_event"),
+        Index("ix_pv1_activity_project_time", "tenant_id", "project_id", "timestamp"),
+    )
+
+    id = Column(String(80), primary_key=True)
+    tenant_id = Column(Integer, nullable=False, index=True)
+    project_id = Column(String(80), ForeignKey("pv1_projects.id", ondelete="CASCADE"), nullable=False)
+    source_event_id = Column(String(80), nullable=False)
+    actor_id = Column(String(200), nullable=False)
+    timestamp = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+    category = Column(String(32), nullable=False)
+    summary = Column(String(500), nullable=False)
+    details = Column(JSON, nullable=False, default=dict)
+    visibility_policy = Column(String(32), nullable=False, default="project_members")
+
+
+class PV1NotificationSubscription(Base, PV1TimestampMixin):
+    __tablename__ = "pv1_notification_subscriptions"
+    __table_args__ = (
+        UniqueConstraint("tenant_id", "project_id", "user_id", name="uq_pv1_notification_subscription"),
+    )
+
+    id = Column(String(80), primary_key=True)
+    tenant_id = Column(Integer, nullable=False, index=True)
+    project_id = Column(String(80), ForeignKey("pv1_projects.id", ondelete="CASCADE"), nullable=False)
+    user_id = Column(String(200), nullable=False)
+    enabled = Column(Boolean, nullable=False, default=True)
+    digest_enabled = Column(Boolean, nullable=False, default=True)
+    quiet_start = Column(String(5), nullable=False, default="18:00")
+    quiet_end = Column(String(5), nullable=False, default="08:00")
+    preferences = Column(JSON, nullable=False, default=dict)
+    revision = Column(Integer, nullable=False, default=1)
+
+
+class PV1Notification(Base):
+    __tablename__ = "pv1_notifications"
+    __table_args__ = (
+        UniqueConstraint("tenant_id", "recipient_id", "dedupe_key", name="uq_pv1_notification_dedupe"),
+        Index("ix_pv1_notifications_recipient_due", "tenant_id", "recipient_id", "due_at", "read_at"),
+    )
+
+    id = Column(String(80), primary_key=True)
+    tenant_id = Column(Integer, nullable=False, index=True)
+    project_id = Column(String(80), ForeignKey("pv1_projects.id", ondelete="CASCADE"), nullable=False)
+    recipient_id = Column(String(200), nullable=False)
+    kind = Column(String(32), nullable=False)
+    dedupe_key = Column(String(240), nullable=False)
+    payload = Column(JSON, nullable=False, default=dict)
+    due_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+    sent_at = Column(DateTime(timezone=True), nullable=True)
+    read_at = Column(DateTime(timezone=True), nullable=True)
+    access_epoch = Column(String(120), nullable=False, default="")
+    delivery_state = Column(String(16), nullable=False, default="Pending")
+    attempt_count = Column(Integer, nullable=False, default=0)
+
+
+class PV1ReportSnapshot(Base):
+    __tablename__ = "pv1_report_snapshots"
+    __table_args__ = (
+        Index("ix_pv1_report_snapshots_project_created", "tenant_id", "project_id", "created_at"),
+    )
+
+    id = Column(String(80), primary_key=True)
+    tenant_id = Column(Integer, nullable=False, index=True)
+    project_id = Column(String(80), ForeignKey("pv1_projects.id", ondelete="CASCADE"), nullable=False)
+    report_type = Column(String(32), nullable=False)
+    period_start = Column(Date, nullable=False)
+    period_end = Column(Date, nullable=False)
+    project_revision = Column(Integer, nullable=False)
+    source_revisions = Column(JSON, nullable=False, default=dict)
+    payload = Column(JSON, nullable=False, default=dict)
+    html = Column(Text, nullable=False)
+    confidentiality = Column(String(32), nullable=False, default="Project")
+    author_id = Column(String(200), nullable=False)
+    created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
 
 
 class PV1GovernanceRecord(Base, PV1TimestampMixin):
@@ -337,8 +465,14 @@ class PV1Update(Base, PV1TimestampMixin):
     period_end = Column(Date, nullable=True)
     author_id = Column(String(200), nullable=False)
     content = Column(JSON, nullable=False)
+    source_revisions = Column(JSON, nullable=False, default=dict)
+    health_assessment = Column(String(16), nullable=True)
+    health_rationale = Column(Text, nullable=True)
+    reporting_timezone = Column(String(64), nullable=False, default="UTC")
     published_at = Column(DateTime(timezone=True), nullable=True)
     supersedes_id = Column(String(80), nullable=True)
+    withdrawn_at = Column(DateTime(timezone=True), nullable=True)
+    withdrawal_reason = Column(Text, nullable=True)
     revision = Column(Integer, nullable=False, default=1)
 
 
