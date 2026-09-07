@@ -26,6 +26,7 @@ import NetworkReal from "./components/NetworkReal"
 import VendorsReal from "./components/VendorsReal"
 import Knowledge from "./components/Knowledge"
 import FAR from "./components/FAR"
+import ArchitectureWorkspace from "./components/ArchitectureWorkspace"
 import DataFlowDesigner from "./components/DataFlowDesigner"
 import Projects from "./components/ProjectsSchedulingCompletion"
 import External from "./components/External"
@@ -40,6 +41,12 @@ import { ShellHeader, ToolbarButton } from "./components/shared/LayoutPrimitives
 
 const APP_VERSION = metadata.version
 const PATCH_HISTORY = metadata.patchHistory
+
+function ArchitectureRoute() {
+  const location = useLocation()
+  const legacy = new URLSearchParams(location.search).get('legacy') === 'true'
+  return legacy ? <DataFlowDesigner /> : <ArchitectureWorkspace />
+}
 
 const normalizeTheme = (theme?: string | null) => {
   if (theme === 'dark') return 'nordic-frost-v1'
@@ -792,7 +799,7 @@ function MainLayout() {
               <Route path="/external" element={<ProtectedRoute view="external" userProfile={userProfile}><External /></ProtectedRoute>} />
               <Route path="/network" element={<ProtectedRoute view="network" userProfile={userProfile}><NetworkReal /></ProtectedRoute>} />
               <Route path="/network-real" element={<ProtectedRoute view="network" userProfile={userProfile}><LegacyNetworkRedirect /></ProtectedRoute>} />
-              <Route path="/architecture" element={<ProtectedRoute view="architecture" userProfile={userProfile}><DataFlowDesigner /></ProtectedRoute>} />
+              <Route path="/architecture" element={<ProtectedRoute view="architecture" userProfile={userProfile}><ArchitectureRoute /></ProtectedRoute>} />
               <Route path="/research" element={<ProtectedRoute view="research" userProfile={userProfile}><Research /></ProtectedRoute>} />
               <Route path="/far" element={<ProtectedRoute view="far" userProfile={userProfile}><FAR /></ProtectedRoute>} />
               <Route path="/monitoring" element={<ProtectedRoute view="monitoring" userProfile={userProfile}><MonitoringGrid /></ProtectedRoute>} />

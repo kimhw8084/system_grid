@@ -26,6 +26,7 @@ from .core.config import settings
 from .database import config_engine, default_engine
 from .runtime_diagnostics import build_readiness_payload
 from .pv1 import models as pv1_models  # noqa: F401 - register PV1 tables with Base.metadata
+from .architecture import models as architecture_models  # noqa: F401 - register canonical Architecture tables
 
 logging.basicConfig(
     level=os.getenv("LOG_LEVEL", "INFO").upper(),
@@ -191,6 +192,8 @@ for router in (
     app.include_router(router, prefix=settings.API_V1_STR)
 
 app.include_router(pv1.router, prefix="/api/v2")
+from .architecture import api as architecture_api
+app.include_router(architecture_api.router, prefix="/api/v2")
 
 
 @app.get(f"{settings.API_V1_STR}/health")

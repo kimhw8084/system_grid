@@ -29,7 +29,7 @@ test.describe('Architecture workflows', () => {
     const vendor = await vendorResponse.json()
     const architectureName = `PW-ARCH-${stamp}`
 
-    await page.goto('/architecture')
+    await page.goto('/architecture?legacy=true')
     await expect(page.getByRole('heading', { name: 'Architecture Matrix' })).toBeVisible()
 
     await clickResilientButton(page, /New Architecture/i)
@@ -102,7 +102,7 @@ test.describe('Architecture workflows', () => {
     expect(updatedFlow.nodes.some((node: any) => node.id === `device-${primary.id}`)).toBeTruthy()
     expect(updatedFlow.nodes.some((node: any) => node.id === `external-${externalEntity.id}`)).toBeTruthy()
 
-    await page.goto('/architecture')
+    await page.goto('/architecture?legacy=true')
     await expect(page.getByRole('heading', { name: 'Architecture Matrix' })).toBeVisible()
     await page.getByPlaceholder('Search architectures...').fill(architectureName)
     await expect(page.locator('.ag-center-cols-container')).toContainText(architectureName)
@@ -221,7 +221,7 @@ test.describe('Architecture workflows', () => {
     })
     expect(flowResponse.ok()).toBeTruthy()
 
-    await page.goto('/architecture')
+    await page.goto('/architecture?legacy=true')
     await expect(page.getByRole('heading', { name: 'Architecture Matrix' })).toBeVisible()
     await page.getByPlaceholder('Search architectures...').fill(flowName)
     const flowRow = page.locator('.ag-center-cols-container .ag-row').filter({ hasText: flowName }).first()

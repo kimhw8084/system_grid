@@ -202,8 +202,10 @@ async def get_capabilities(request: Request, db: AsyncSession = Depends(get_db))
             "schedule_preview": {"supported": True, "contract_version": "1.0"},
             "schedule_apply": {"supported": True, "contract_version": "1.0"},
             "schedule_baselines": {"supported": True, "contract_version": "1.0"},
-            "architecture_read": {"supported": False, "contract_version": None},
-            "architecture_edit": {"supported": False, "contract_version": None},
+            "architecture_read": {"supported": True, "contract_version": "1.0"},
+            "architecture_edit": {"supported": True, "contract_version": "1.0"},
+            "architecture_change_sets": {"supported": True, "contract_version": "1.0"},
+            "architecture_assessment": {"supported": True, "contract_version": "1.0"},
         },
     }
 
