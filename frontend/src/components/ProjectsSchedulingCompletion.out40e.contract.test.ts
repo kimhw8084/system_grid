@@ -1,7 +1,10 @@
 import { describe, expect, it } from 'vitest'
 import { syncTimelineDependencyButtonGlyph, timelineDependencyControlLabel, timelineDependencyRelationMatches } from './ProjectsSchedulingCompletion'
 
-const fixture = () => ({
+type TimelineDependency = number | { id: string; type: string; lag_days: number }
+type TimelineFixtureTask = { id: number; name: string; dependencies_json: TimelineDependency[]; metadata_json: Record<string, unknown> }
+
+const fixture = (): { id: number; name: string; metadata_json: Record<string, unknown>; tasks: TimelineFixtureTask[] } => ({
   id: 901,
   name: 'P01 — Timeline keyboard dependency fixture',
   metadata_json: { adoption_state: 'Pilot' },

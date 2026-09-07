@@ -161,6 +161,81 @@ class PV1TaskBlocker(Base, PV1TimestampMixin):
     revision = Column(Integer, nullable=False, default=1)
 
 
+class PV1FocusPin(Base, PV1TimestampMixin):
+    __tablename__ = "pv1_focus_pins"
+    __table_args__ = (
+        UniqueConstraint("tenant_id", "user_id", "entity_kind", "entity_id", name="uq_pv1_focus_pin_user_entity"),
+        Index("ix_pv1_focus_pins_user", "tenant_id", "user_id", "project_id"),
+    )
+
+    id = Column(String(80), primary_key=True)
+    tenant_id = Column(Integer, nullable=False, index=True)
+    user_id = Column(String(200), nullable=False)
+    project_id = Column(String(80), ForeignKey("pv1_projects.id", ondelete="CASCADE"), nullable=False)
+    entity_kind = Column(String(32), nullable=False)
+    entity_id = Column(String(80), nullable=False)
+    revision = Column(Integer, nullable=False, default=1)
+
+
+class PV1FocusSnooze(Base, PV1TimestampMixin):
+    __tablename__ = "pv1_focus_snoozes"
+    __table_args__ = (
+        UniqueConstraint("tenant_id", "user_id", "entity_kind", "entity_id", name="uq_pv1_focus_snooze_user_entity"),
+        Index("ix_pv1_focus_snoozes_user_until", "tenant_id", "user_id", "until_date"),
+    )
+
+    id = Column(String(80), primary_key=True)
+    tenant_id = Column(Integer, nullable=False, index=True)
+    user_id = Column(String(200), nullable=False)
+    project_id = Column(String(80), ForeignKey("pv1_projects.id", ondelete="CASCADE"), nullable=False)
+    entity_kind = Column(String(32), nullable=False)
+    entity_id = Column(String(80), nullable=False)
+    until_date = Column(Date, nullable=False)
+    revision = Column(Integer, nullable=False, default=1)
+
+
+class PV1TaskCommandHistory(Base):
+    __tablename__ = "pv1_task_command_history"
+    __table_args__ = (
+        UniqueConstraint("tenant_id", "actor_id", "original_command_id", name="uq_pv1_task_history_command"),
+        Index("ix_pv1_task_history_session", "tenant_id", "actor_id", "project_id", "created_at"),
+    )
+
+    id = Column(String(80), primary_key=True)
+    tenant_id = Column(Integer, nullable=False, index=True)
+    project_id = Column(String(80), ForeignKey("pv1_projects.id", ondelete="CASCADE"), nullable=False)
+    actor_id = Column(String(200), nullable=False)
+    original_command_id = Column(String(80), nullable=False)
+    command_type = Column(String(80), nullable=False)
+    task_ids = Column(JSON, nullable=False)
+    before_values = Column(JSON, nullable=False)
+    after_values = Column(JSON, nullable=False)
+    before_revisions = Column(JSON, nullable=False)
+    after_revisions = Column(JSON, nullable=False)
+    state = Column(String(16), nullable=False, default="Active")
+    created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+
+
+class PV1Resource(Base, PV1TimestampMixin):
+    __tablename__ = "pv1_resources"
+    __table_args__ = (
+        Index("ix_pv1_resources_project_pinned", "tenant_id", "project_id", "pinned"),
+    )
+
+    id = Column(String(80), primary_key=True)
+    tenant_id = Column(Integer, nullable=False, index=True)
+    project_id = Column(String(80), ForeignKey("pv1_projects.id", ondelete="CASCADE"), nullable=False)
+    resource_kind = Column(String(32), nullable=False)
+    title = Column(String(120), nullable=False)
+    content = Column(Text, nullable=True)
+    upload_ref = Column(String(500), nullable=True)
+    scan_state = Column(String(16), nullable=False, default="Available")
+    sensitivity = Column(String(32), nullable=False, default="Project")
+    pinned = Column(Boolean, nullable=False, default=False)
+    links = Column(JSON, nullable=True)
+    revision = Column(Integer, nullable=False, default=1)
+
+
 class PV1GovernanceRecord(Base, PV1TimestampMixin):
     __tablename__ = "pv1_governance_records"
     __table_args__ = (

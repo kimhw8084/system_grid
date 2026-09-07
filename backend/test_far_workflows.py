@@ -30,6 +30,20 @@ async def test_far_cause_and_mitigation_deletes_cleanly(seeded_admin_tenant):
     assert device_res.status_code == 200, device_res.text
     device = device_res.json()
 
+    await client.post("/api/v1/settings/teams", json={"name": "Operations"}, headers=headers)
+    monitoring_res = await client.post("/api/v1/monitoring", json={
+        "device_id": device["id"],
+        "category": "Hardware",
+        "status": "Existing",
+        "title": "FAR-DEL-MON-01",
+        "platform": "Zabbix",
+        "purpose": "Validate the FAR mitigation",
+        "notification_method": "Slack",
+        "owner_team": "Operations",
+    }, headers=headers)
+    assert monitoring_res.status_code == 200, monitoring_res.text
+    monitoring = monitoring_res.json()
+
     mode_res = await client.post("/api/v1/far/modes", json={
         "system_name": "FAR-DEL-SYS",
         "title": "FAR-DEL-MODE-01",
@@ -41,8 +55,11 @@ async def test_far_cause_and_mitigation_deletes_cleanly(seeded_admin_tenant):
     }, headers=headers)
     assert mode_res.status_code == 200, mode_res.text
     mode = mode_res.json()
+    mode_version = mode["version"]
 
     cause_res = await client.post("/api/v1/far/causes", json={
+        "mode_id": mode["id"],
+        "expected_version": mode_version,
         "cause_text": "Transient dependency fault",
         "occurrence_level": 4,
         "responsible_team": "Operations",
@@ -50,27 +67,33 @@ async def test_far_cause_and_mitigation_deletes_cleanly(seeded_admin_tenant):
     }, headers=headers)
     assert cause_res.status_code == 200, cause_res.text
     cause = cause_res.json()
+    mode_version += 1
 
     mitigation_res = await client.post("/api/v1/far/mitigations", json={
+        "mode_id": mode["id"],
+        "expected_version": mode_version,
         "mitigation_type": "Monitoring",
         "mitigation_steps": "Watch the service and alert on regression",
         "responsible_team": "Operations",
         "status": "Not Started",
         "cause_id": cause["id"],
+        "monitoring_item_id": monitoring["id"],
         "mode_ids": [mode["id"]],
     }, headers=headers)
     assert mitigation_res.status_code == 200, mitigation_res.text
     mitigation = mitigation_res.json()
+    mode_version += 1
 
-    delete_mitigation_res = await client.delete(f"/api/v1/far/mitigations/{mitigation['id']}", headers=headers)
+    delete_mitigation_res = await client.request("DELETE", f"/api/v1/far/mitigations/{mitigation['id']}", json={"mode_id": mode["id"], "expected_version": mode_version}, headers=headers)
     assert delete_mitigation_res.status_code == 200, delete_mitigation_res.text
+    mode_version += 1
 
     modes_after_mitigation = await client.get("/api/v1/far/modes", headers=headers)
     assert modes_after_mitigation.status_code == 200, modes_after_mitigation.text
     refreshed_mode = next(item for item in modes_after_mitigation.json() if item["id"] == mode["id"])
     assert refreshed_mode["mitigations"] == []
 
-    delete_cause_res = await client.delete(f"/api/v1/far/causes/{cause['id']}", headers=headers)
+    delete_cause_res = await client.request("DELETE", f"/api/v1/far/causes/{cause['id']}", json={"mode_id": mode["id"], "expected_version": mode_version}, headers=headers)
     assert delete_cause_res.status_code == 200, delete_cause_res.text
 
     final_modes_res = await client.get("/api/v1/far/modes", headers=headers)
@@ -106,6 +129,7 @@ async def test_far_mode_metadata_updates_persist_research_links(seeded_admin_ten
     mode = mode_res.json()
 
     update_res = await client.put(f"/api/v1/far/modes/{mode['id']}", json={
+        "expected_version": mode["version"],
         "metadata_json": {"linked_research_ids": [101, 202]}
     }, headers=headers)
     assert update_res.status_code == 200, update_res.text

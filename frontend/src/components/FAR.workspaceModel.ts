@@ -116,7 +116,7 @@ export const groupFarModes = (modes: any[], groupBy: FarGroupBy) => {
   const sections = Array.from(groups.entries())
     .map(([label, items]) => ({ key: `${groupBy}:${label}`, label, items }))
   if (groupBy === 'risk_band') {
-    const order = new Map(FAR_RISK_BAND_OPTIONS.map((option, index) => [option.label, index]))
+    const order = new Map<string, number>(FAR_RISK_BAND_OPTIONS.map((option, index) => [option.label, index]))
     return sections.sort((a, b) => (order.get(a.label) ?? 999) - (order.get(b.label) ?? 999))
   }
   return sections.sort((a, b) => a.label.localeCompare(b.label))

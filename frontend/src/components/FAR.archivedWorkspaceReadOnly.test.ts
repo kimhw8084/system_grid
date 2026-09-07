@@ -26,8 +26,12 @@ describe('FAR archived workspace read-only integrity', () => {
 
   it('keeps both changed TSX files syntactically valid', () => {
     for (const [path, source] of [[farPath, farSource], [controlsPath, controlsSource]] as const) {
-      const parsed = ts.createSourceFile(path, source, ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX)
-      expect(parsed.parseDiagnostics, `${path} parse diagnostics`).toHaveLength(0)
+      const parsed = ts.transpileModule(source, {
+        fileName: path,
+        compilerOptions: { jsx: ts.JsxEmit.ReactJSX },
+        reportDiagnostics: true,
+      })
+      expect(parsed.diagnostics || [], `${path} parse diagnostics`).toHaveLength(0)
     }
   })
 })

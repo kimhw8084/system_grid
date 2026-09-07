@@ -194,6 +194,10 @@ async def get_capabilities(request: Request, db: AsyncSession = Depends(get_db))
             "idempotency": {"supported": True, "contract_version": "1.0"},
             "outcomes": {"supported": True, "contract_version": "1.0"},
             "metrics": {"supported": True, "contract_version": "1.0"},
+            "focus": {"supported": True, "contract_version": "1.0"},
+            "work_plan": {"supported": True, "contract_version": "1.0"},
+            "task_bulk": {"supported": True, "contract_version": "1.0"},
+            "task_import": {"supported": True, "contract_version": "1.0"},
             "saved_views": {"supported": False, "contract_version": None},
             "schedule_preview": {"supported": False, "contract_version": None},
             "architecture_read": {"supported": False, "contract_version": None},
@@ -202,16 +206,34 @@ async def get_capabilities(request: Request, db: AsyncSession = Depends(get_db))
     }
 
 
+@router.get("/focus")
+async def get_focus(request: Request, db: AsyncSession = Depends(get_db), project_id: str | None = Query(default=None), as_of: date | None = Query(default=None)):
+    try:
+        return await domain.focus_projection(db, tenant_id=_tenant_id(request), actor_id=_actor(request), request_role=getattr(request.state, "sysgrid_access_role", None), project_id=project_id, today=as_of)
+    except domain.PV1DomainError as error:
+        return _error(request, error)
+
+
+@router.post("/focus/commands")
+async def focus_preference_command(request: Request, envelope: schemas.CommandEnvelope, db: AsyncSession = Depends(get_db), idempotency_key: str | None = Header(default=None, alias="Idempotency-Key")):
+    try:
+        command_id = _parse_command_id(idempotency_key)
+        if command_id != str(envelope.command_id):
+            raise domain.PV1DomainError("VALIDATION_FAILED", "command_id must equal Idempotency-Key.", details={"field": "command_id"})
+        result = await domain.focus_command(db, tenant_id=_tenant_id(request), actor_id=_actor(request), request_role=getattr(request.state, "sysgrid_access_role", None), command_id=command_id, command_type=envelope.type, payload=envelope.payload)
+        await db.commit()
+        return result
+    except domain.PV1DomainError as error:
+        await db.rollback()
+        return _error(request, error)
+
+
 @router.get("/projects/my-day")
 async def get_my_day(request: Request, db: AsyncSession = Depends(get_db), limit: int = Query(default=50, ge=1, le=200)):
-    actor = _actor(request)
-    tenant_id = _tenant_id(request)
-    member_result = await db.execute(select(models.PV1ProjectMember.project_id).where(models.PV1ProjectMember.tenant_id == tenant_id, models.PV1ProjectMember.user_id == actor))
-    project_ids = list(member_result.scalars())
-    if not project_ids:
-        return {"items": [], "next_cursor": None, "as_of": domain._now().isoformat(), "source_revision": "pv1-projects:0"}
-    result = await db.execute(select(models.PV1Task).where(models.PV1Task.tenant_id == tenant_id, models.PV1Task.project_id.in_(project_ids), models.PV1Task.owner_id == actor, models.PV1Task.status != "Done").limit(limit))
-    return {"items": [domain.task_dict(task) for task in result.scalars()], "next_cursor": None, "as_of": domain._now().isoformat(), "source_revision": "pv1-tasks"}
+    projection = await domain.focus_projection(db, tenant_id=_tenant_id(request), actor_id=_actor(request), request_role=getattr(request.state, "sysgrid_access_role", None))
+    projection["items"] = projection["items"][:limit]
+    projection["all_priorities"] = projection["all_priorities"][: max(limit, 5)]
+    return projection
 
 
 @router.get("/projects")
@@ -349,6 +371,44 @@ async def list_tasks(project_id: str, request: Request, db: AsyncSession = Depen
         legacy_result = await db.execute(select(legacy_models.ProjectTask).where(legacy_models.ProjectTask.project_id == int(project_id)).order_by(legacy_models.ProjectTask.id))
         return {"items": [domain.legacy_task_dict(task, project_id) for task in legacy_result.scalars()], "next_cursor": None, "as_of": domain._now().isoformat(), "source_revision": "legacy-adapter"}
     return _error(request, domain.PV1DomainError("NOT_FOUND", "Project not found.", http_status=404))
+
+
+@router.get("/projects/{project_id}/work")
+async def get_work_projection(project_id: str, request: Request, db: AsyncSession = Depends(get_db)):
+    try:
+        return await domain.work_projection(db, tenant_id=_tenant_id(request), project_id=project_id, actor_id=_actor(request), request_role=getattr(request.state, "sysgrid_access_role", None))
+    except domain.PV1DomainError as error:
+        return _error(request, error)
+
+
+@router.get("/projects/{project_id}/plan")
+async def get_plan_projection(project_id: str, request: Request, db: AsyncSession = Depends(get_db)):
+    try:
+        return await domain.plan_projection(db, tenant_id=_tenant_id(request), project_id=project_id, actor_id=_actor(request), request_role=getattr(request.state, "sysgrid_access_role", None))
+    except domain.PV1DomainError as error:
+        return _error(request, error)
+
+
+@router.post("/projects/{project_id}/tasks/import/preview")
+async def preview_task_import(project_id: str, request: Request, raw: dict[str, Any], db: AsyncSession = Depends(get_db)):
+    try:
+        await domain.require_project_role(db, tenant_id=_tenant_id(request), project_id=project_id, actor_id=_actor(request), request_role=getattr(request.state, "sysgrid_access_role", None))
+        return domain.parse_task_import(raw)
+    except domain.PV1DomainError as error:
+        return _error(request, error)
+
+
+@router.post("/projects/{project_id}/tasks/import")
+async def import_tasks(project_id: str, request: Request, raw: dict[str, Any], db: AsyncSession = Depends(get_db), idempotency_key: str | None = Header(default=None, alias="Idempotency-Key")):
+    try:
+        command_id = _parse_command_id(idempotency_key)
+        await domain.require_project_role(db, tenant_id=_tenant_id(request), project_id=project_id, actor_id=_actor(request), request_role=getattr(request.state, "sysgrid_access_role", None), write=True)
+        result = await domain.import_tasks(db, tenant_id=_tenant_id(request), project_id=project_id, actor_id=_actor(request), command_id=command_id, expected=raw.get("expected") or {}, raw=raw)
+        await db.commit()
+        return result
+    except domain.PV1DomainError as error:
+        await db.rollback()
+        return _error(request, error)
 
 
 @router.get("/projects/{project_id}/events")

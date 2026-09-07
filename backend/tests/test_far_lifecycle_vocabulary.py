@@ -53,8 +53,23 @@ def _has_deleted_assignment(function_name: str, value: bool) -> bool:
     return False
 
 
+def _uses_lifecycle_transition(function_name: str, value: bool) -> bool:
+    function = FUNCTIONS[function_name]
+    return any(
+        isinstance(node, ast.Call)
+        and isinstance(node.func, ast.Name)
+        and node.func.id == "apply_far_lifecycle_state"
+        and len(node.args) >= 2
+        and isinstance(node.args[1], ast.Constant)
+        and node.args[1].value is value
+        for node in ast.walk(function)
+    )
+
+
 def _has_version_increment(function_name: str) -> bool:
     function = FUNCTIONS[function_name]
+    if _uses_lifecycle_transition(function_name, True) or _uses_lifecycle_transition(function_name, False):
+        return True
     for node in ast.walk(function):
         if not isinstance(node, ast.Assign) or len(node.targets) != 1:
             continue
@@ -120,15 +135,16 @@ def test_far_archive_restore_vocabulary_keeps_legacy_aliases_hidden():
     assert _router_decorators("bulk_restore_failure_modes") == [
         ("post", "/modes/bulk-restore", True),
     ]
+    assert _has_version_increment("apply_far_lifecycle_state")
 
     for function_name in ("archive_failure_mode", "bulk_archive_failure_modes"):
-        assert _has_deleted_assignment(function_name, True)
+        assert _uses_lifecycle_transition(function_name, True)
         assert _has_version_increment(function_name)
         assert "Archived failure vector" in _history_messages(function_name)
         assert not _has_db_delete(function_name)
 
     for function_name in ("restore_failure_mode", "bulk_restore_failure_modes"):
-        assert _has_deleted_assignment(function_name, False)
+        assert _uses_lifecycle_transition(function_name, False)
         assert _has_version_increment(function_name)
         assert "Restored failure vector" in _history_messages(function_name)
         assert not _has_db_delete(function_name)

@@ -1,11 +1,104 @@
 import hashlib
 import os
 from pathlib import Path
+import sqlite3
 import sys
+import tempfile
 
-# Test mode must be selected before importing the application settings singleton.
-os.environ.setdefault("TESTING", "1")
-os.environ.setdefault("ENVIRONMENT", "test")
+_REPO_BACKEND_DIR = Path(__file__).resolve().parent
+
+
+def _dotenv_value(name: str) -> str | None:
+    env_path = _REPO_BACKEND_DIR / ".env"
+    if not env_path.is_file():
+        return None
+    for raw_line in env_path.read_text(encoding="utf-8").splitlines():
+        line = raw_line.strip()
+        if not line or line.startswith("#") or "=" not in line:
+            continue
+        key, value = line.split("=", 1)
+        if key.strip() != name:
+            continue
+        return value.strip().strip('"').strip("'")
+    return None
+
+
+def _configured_value(name: str, default: str) -> str:
+    return os.environ.get(name) or _dotenv_value(name) or default
+
+
+def _sqlite_file_from_url(db_url: str | None) -> Path | None:
+    if not db_url:
+        return None
+    raw = None
+    for prefix in ("sqlite+aiosqlite:///", "sqlite:///"):
+        if db_url.startswith(prefix):
+            raw = db_url[len(prefix):]
+            break
+    if not raw or raw == ":memory:":
+        return None
+    path = Path(raw).expanduser()
+    return (path if path.is_absolute() else _REPO_BACKEND_DIR / path).resolve()
+
+
+def _registered_local_demo_path(config_path: Path | None) -> Path | None:
+    if config_path is None or not config_path.is_file():
+        return None
+    try:
+        connection = sqlite3.connect(f"file:{config_path}?mode=ro", uri=True)
+        row = connection.execute(
+            "SELECT db_url FROM tenants WHERE name = 'Local Demo' LIMIT 1"
+        ).fetchone()
+        connection.close()
+    except sqlite3.Error:
+        return None
+    return _sqlite_file_from_url(row[0]) if row and row[0] else None
+
+
+def _file_snapshot(path: Path | None) -> dict:
+    if path is None or not path.is_file():
+        return {"path": str(path) if path else None, "exists": False}
+    digest = hashlib.sha256(path.read_bytes()).hexdigest()
+    stat = path.stat()
+    return {
+        "path": str(path),
+        "exists": True,
+        "size": stat.st_size,
+        "mtime_ns": stat.st_mtime_ns,
+        "sha256": digest,
+    }
+
+
+_ORIGINAL_CONFIG_PATH = _sqlite_file_from_url(
+    _configured_value("CONFIG_DATABASE_URL", f"sqlite+aiosqlite:///{_REPO_BACKEND_DIR / 'config.db'}")
+)
+_ORIGINAL_DATABASE_PATH = _sqlite_file_from_url(
+    _configured_value("DATABASE_URL", f"sqlite+aiosqlite:///{_REPO_BACKEND_DIR / 'system_grid.db'}")
+)
+_ORIGINAL_LOCAL_DEMO_PATH = _registered_local_demo_path(_ORIGINAL_CONFIG_PATH)
+_ORIGINAL_USER_DATABASE_PATHS = tuple(
+    dict.fromkeys(
+        path
+        for path in (_ORIGINAL_CONFIG_PATH, _ORIGINAL_DATABASE_PATH, _ORIGINAL_LOCAL_DEMO_PATH)
+        if path is not None
+    )
+)
+_ORIGINAL_USER_DATABASE_SNAPSHOT = {
+    str(path): _file_snapshot(path) for path in _ORIGINAL_USER_DATABASE_PATHS
+}
+
+# Establish the disposable namespace before importing app.database, app.main,
+# or app.core.config. No application singleton may be constructed from a
+# developer's configured Local Demo paths during test collection.
+_TEST_ISOLATION_ROOT = Path(tempfile.mkdtemp(prefix="sysgrid-pytest-"))
+_TEST_CONFIG_PATH = _TEST_ISOLATION_ROOT / "config.db"
+_TEST_DATABASE_PATH = _TEST_ISOLATION_ROOT / "tenant.db"
+_TEST_TENANT_ROOT = _TEST_ISOLATION_ROOT / "tenants"
+os.environ["TESTING"] = "1"
+os.environ["ENVIRONMENT"] = "test"
+os.environ["CONFIG_DATABASE_URL"] = f"sqlite+aiosqlite:///{_TEST_CONFIG_PATH}"
+os.environ["DATABASE_URL"] = f"sqlite+aiosqlite:///{_TEST_DATABASE_PATH}"
+os.environ["TENANT_STORAGE_ROOT"] = str(_TEST_TENANT_ROOT)
 
 import pytest_asyncio
 import pytest
@@ -28,16 +121,6 @@ from app.models import models  # noqa: F401
 from fastapi import Request
 
 
-def _sqlite_file_from_url(db_url: str) -> Path | None:
-    for prefix in ("sqlite+aiosqlite:///", "sqlite:///"):
-        if db_url.startswith(prefix):
-            raw = db_url[len(prefix):]
-            if not raw or raw == ":memory:":
-                return None
-            return Path(raw).expanduser().resolve()
-    return None
-
-
 def _sha256_if_file(path: Path | None) -> str | None:
     if path is None or not path.is_file():
         return None
@@ -49,15 +132,22 @@ def _sha256_if_file(path: Path | None) -> str | None:
 
 
 @pytest.fixture(scope="session", autouse=True)
-def protect_live_config_registry():
-    """Fail the test session if any test mutates the configured live registry."""
-    live_config_path = _sqlite_file_from_url(settings.CONFIG_DATABASE_URL)
-    before = _sha256_if_file(live_config_path)
+def protect_user_databases():
+    """Fail if qualification tests touch any configured user database."""
+    configured_paths = {
+        _sqlite_file_from_url(settings.CONFIG_DATABASE_URL),
+        _sqlite_file_from_url(settings.DATABASE_URL),
+        Path(settings.TENANT_STORAGE_ROOT).resolve(),
+    }
+    if any(path in _ORIGINAL_USER_DATABASE_PATHS for path in configured_paths if path is not None):
+        raise RuntimeError("Backend tests were not bound to the disposable database namespace.")
     yield
-    after = _sha256_if_file(live_config_path)
-    assert before == after, (
-        "Backend tests modified the configured live SysGrid config database. "
-        "All config sessions must use the per-test temporary registry."
+    after = {
+        str(path): _file_snapshot(path) for path in _ORIGINAL_USER_DATABASE_PATHS
+    }
+    assert after == _ORIGINAL_USER_DATABASE_SNAPSHOT, (
+        "Qualification tests modified a configured user database. "
+        f"before={_ORIGINAL_USER_DATABASE_SNAPSHOT!r} after={after!r}"
     )
 
 @pytest_asyncio.fixture(scope="function", autouse=True)
@@ -274,4 +364,3 @@ async def seeded_admin_tenant(client, tmp_path, tmp_path_factory, setup_db):
     # We don't need to dispose the engine here as run_alembic_upgrade uses subprocess.
     
     return {"tenant_id": tenant_id, "tenant_name": tenant_name, "client": client}
-

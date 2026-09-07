@@ -1,4 +1,6 @@
 import hashlib
+import csv
+import io
 import json
 from datetime import date, datetime, timedelta, timezone
 from decimal import Decimal
@@ -6,12 +8,12 @@ from typing import Any
 from uuid import UUID, uuid4
 
 from fastapi import status
-from sqlalchemy import func, select, update
+from sqlalchemy import delete, func, select, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..models import models as legacy_models
-from . import models
+from . import focus, models
 
 
 PHASES = ["Draft", "Proposed", "Planning", "Ready", "Executing", "Validating", "Delivered"]
@@ -141,6 +143,7 @@ def task_dict(task: models.PV1Task) -> dict[str, Any]:
         "order_key": _serialize(task.order_key),
         "actual_started_at": _serialize(task.actual_started_at),
         "finished_at": _serialize(task.finished_at),
+        "actual_finished_at": _serialize(task.finished_at),
         "tags": task.tags or [],
         "revision": task.revision,
     }
@@ -586,6 +589,94 @@ def _require_expected(expected: dict[str, Any], field: str) -> int:
     return value
 
 
+def _next_working_day(value: date) -> date:
+    candidate = value + timedelta(days=1)
+    while candidate.weekday() >= 5:
+        candidate += timedelta(days=1)
+    return candidate
+
+
+async def _last_non_done_progress(session: AsyncSession, *, tenant_id: int, project_id: str, task_id: str) -> int:
+    result = await session.execute(select(models.PV1Event).where(
+        models.PV1Event.tenant_id == tenant_id,
+        models.PV1Event.project_id == project_id,
+        models.PV1Event.aggregate_type == "task",
+        models.PV1Event.aggregate_id == task_id,
+        models.PV1Event.event_type == "task.transition",
+    ).order_by(models.PV1Event.sequence.desc()).limit(10))
+    for event in result.scalars():
+        delta = event.delta or {}
+        progress = delta.get("previous_progress")
+        if isinstance(progress, int) and 0 <= progress < 100:
+            return progress
+    return 0
+
+
+async def _record_task_history(
+    session: AsyncSession,
+    *,
+    tenant_id: int,
+    project_id: str,
+    actor_id: str,
+    command_id: str,
+    command_type: str,
+    before_values: dict[str, Any],
+    after_values: dict[str, Any],
+    before_revisions: dict[str, int],
+    after_revisions: dict[str, int],
+) -> None:
+    session.add(models.PV1TaskCommandHistory(
+        id=_new_id(), tenant_id=tenant_id, project_id=project_id, actor_id=actor_id,
+        original_command_id=command_id, command_type=command_type,
+        task_ids=list(before_values), before_values=before_values, after_values=after_values,
+        before_revisions=before_revisions, after_revisions=after_revisions, state="Active",
+    ))
+    await session.flush()
+    history_result = await session.execute(select(models.PV1TaskCommandHistory).where(
+        models.PV1TaskCommandHistory.tenant_id == tenant_id,
+        models.PV1TaskCommandHistory.project_id == project_id,
+        models.PV1TaskCommandHistory.actor_id == actor_id,
+    ).order_by(models.PV1TaskCommandHistory.created_at.desc(), models.PV1TaskCommandHistory.id.desc()))
+    for stale in list(history_result.scalars())[50:]:
+        await session.delete(stale)
+
+
+async def _validate_done_requirements(
+    session: AsyncSession,
+    *,
+    task: models.PV1Task,
+    actor_id: str,
+    role: str | None,
+    payload: dict[str, Any],
+) -> None:
+    exception = str(payload.get("completion_exception") or "").strip()
+    criteria_result = await session.execute(select(models.PV1TaskCriterion).where(
+        models.PV1TaskCriterion.tenant_id == task.tenant_id,
+        models.PV1TaskCriterion.project_id == task.project_id,
+        models.PV1TaskCriterion.task_id == task.id,
+        models.PV1TaskCriterion.mandatory.is_(True),
+    ))
+    criteria = list(criteria_result.scalars())
+    open_criteria = [item for item in criteria if item.state not in {"Passed", "Waived"}]
+    if open_criteria and not exception:
+        raise PV1DomainError("COMPLETION_CRITERIA_REQUIRED", "Complete mandatory checklist evidence or provide a named Owner/Lead exception.", details={"criterion_ids": [item.id for item in open_criteria]})
+    if not criteria and not exception:
+        raise PV1DomainError("COMPLETION_CRITERIA_REQUIRED", "Done requires task-level acceptance evidence or a named Owner/Lead exception.")
+    if exception and role not in {"Owner", "Lead", "Tenant administrator"}:
+        raise PV1DomainError("FORBIDDEN", "Only the named Owner or Lead may record a completion exception.", http_status=status.HTTP_403_FORBIDDEN)
+    if task.kind == "Milestone":
+        linked_result = await session.execute(select(models.PV1Task).where(
+            models.PV1Task.tenant_id == task.tenant_id,
+            models.PV1Task.project_id == task.project_id,
+            models.PV1Task.milestone_id == task.id,
+            models.PV1Task.mandatory.is_(True),
+            models.PV1Task.status.notin_({"Done", "Cancelled"}),
+        ))
+        linked = list(linked_result.scalars())
+        if linked and not exception:
+            raise PV1DomainError("MILESTONE_LINKED_WORK_REQUIRED", "Complete mandatory linked work or record a named milestone exception.", details={"task_ids": [item.id for item in linked]})
+
+
 async def create_project(session: AsyncSession, *, tenant_id: int, actor_id: str, request_role: str | None, command_id: str, payload: dict[str, Any]) -> dict[str, Any]:
     existing = await _idempotency_start(session, tenant_id=tenant_id, actor_id=actor_id, command_type="project.create", command_id=command_id, request_payload=payload)
     if existing:
@@ -731,6 +822,8 @@ async def execute_command(session: AsyncSession, *, tenant_id: int, actor_id: st
             task_for_permission = await session.get(models.PV1Task, str(payload.get("task_id") or ""))
             if role != "Contributor" or not task_for_permission or task_for_permission.owner_id != actor_id:
                 raise PV1DomainError("FORBIDDEN", "Contributors may update only their own tasks.", http_status=status.HTTP_403_FORBIDDEN)
+        elif command_type in {"criterion.create", "criterion.review", "blocker.resolve", "risk.save", "decision.request", "decision.decide", "resource.save", "resource.link", "resource.unlink"}:
+            pass
         else:
             raise PV1DomainError("FORBIDDEN", "You do not have permission to perform this command.", http_status=status.HTTP_403_FORBIDDEN)
     owner_commands = {"project.pause", "project.resume", "project.reactivate", "project.cancel", "project.archive", "project.restore", "project.transfer_owner"}
@@ -911,23 +1004,153 @@ async def execute_command(session: AsyncSession, *, tenant_id: int, actor_id: st
         event_id, _ = await append_event(session, tenant_id=tenant_id, project_id=project_id, actor_id=actor_id, command_id=command_id, event_type="project.access_changed", aggregate_type="project", aggregate_id=project_id, aggregate_revision=revision, delta={"member_count": len(members)})
         changed.append({"kind": "project", "id": project_id})
         response = _success(command_id, revisions={"project_revision": revision, "graph_revision": project.graph_revision}, changed_entities=changed, event_id=event_id)
+    elif command_type == "task.bulk":
+        graph_expected = _require_expected(expected, "graph_revision")
+        task_ids = [str(value) for value in (payload.get("task_ids") or [])]
+        if not task_ids or len(task_ids) > 500 or len(task_ids) != len(set(task_ids)):
+            raise PV1DomainError("VALIDATION_FAILED", "Bulk task operations require 1–500 unique task IDs.")
+        task_result = await session.execute(select(models.PV1Task).where(models.PV1Task.tenant_id == tenant_id, models.PV1Task.project_id == project_id, models.PV1Task.id.in_(task_ids)))
+        tasks_by_id = {task.id: task for task in task_result.scalars()}
+        if len(tasks_by_id) != len(task_ids):
+            raise PV1DomainError("NOT_FOUND", "Every selected task must belong to this project.", http_status=status.HTTP_404_NOT_FOUND)
+        revisions = expected.get("task_revisions")
+        if graph_expected != project.graph_revision or not isinstance(revisions, dict) or any(revisions.get(task_id) != tasks_by_id[task_id].revision for task_id in task_ids):
+            raise PV1DomainError("REVISION_CONFLICT", "The selected task set changed. Review the latest version before applying bulk work.", http_status=status.HTTP_409_CONFLICT, details={"current_revisions": {"graph_revision": project.graph_revision, "task_revisions": {task_id: task.revision for task_id, task in tasks_by_id.items()}}})
+        operation = payload.get("operation")
+        value = payload.get("value")
+        if operation not in {"owner", "priority", "status", "cancel", "reparent"}:
+            raise PV1DomainError("VALIDATION_FAILED", "Unsupported bulk operation.")
+        if operation == "priority" and value not in {"Critical", "High", "Medium", "Low"}:
+            raise PV1DomainError("VALIDATION_FAILED", "Priority is invalid.")
+        if operation == "status" and value not in focus.WORK_STATUSES:
+            raise PV1DomainError("VALIDATION_FAILED", "Status is invalid.")
+        if operation == "owner" and value is not None and not str(value).strip():
+            raise PV1DomainError("VALIDATION_FAILED", "Owner cannot be blank.")
+        if operation == "reparent":
+            parent_id = str(value) if value else None
+            if parent_id and (parent_id in task_ids or parent_id not in tasks_by_id and not await session.get(models.PV1Task, parent_id)):
+                raise PV1DomainError("VALIDATION_FAILED", "Parent must be another task in this project.")
+        before_values: dict[str, Any] = {}
+        after_values: dict[str, Any] = {}
+        before_revisions: dict[str, int] = {}
+        after_revisions: dict[str, int] = {}
+        for task_id in task_ids:
+            task = tasks_by_id[task_id]
+            if task.kind == "Summary" and operation in {"status", "cancel"}:
+                raise PV1DomainError("VALIDATION_FAILED", "Summary status is derived from descendants.", details={"task_id": task_id})
+            if operation == "status" and value == "Done":
+                await _validate_done_requirements(session, task=task, actor_id=actor_id, role=role, payload=payload)
+            before = {"title": task.title, "description": task.description, "owner_id": task.owner_id, "priority": task.priority, "progress": task.progress, "estimate_hours": _serialize(task.estimate_hours), "remaining_workdays": task.remaining_workdays, "planning_weight": task.planning_weight, "mandatory": task.mandatory, "tags": task.tags or [], "status": task.status, "actual_started_at": _serialize(task.actual_started_at), "finished_at": _serialize(task.finished_at), "parent_task_id": task.parent_task_id}
+            after = dict(before)
+            if operation == "owner": after["owner_id"] = str(value) if value is not None else None
+            elif operation == "priority": after["priority"] = value
+            elif operation == "reparent": after["parent_task_id"] = str(value) if value else None
+            else:
+                after["status"] = "Cancelled" if operation == "cancel" else value
+                if after["status"] == "Done": after.update({"progress": 100, "finished_at": _now().isoformat()})
+                if after["status"] == "In progress" and not task.actual_started_at: after["actual_started_at"] = _now().isoformat()
+            before_values[task_id] = before
+            after_values[task_id] = after
+            before_revisions[task_id] = task.revision
+            after_revisions[task_id] = task.revision + 1
+        for task_id in task_ids:
+            task = tasks_by_id[task_id]
+            after = after_values[task_id]
+            for field_name in ("owner_id", "priority", "parent_task_id", "status", "progress", "actual_started_at", "finished_at"):
+                if field_name not in after:
+                    continue
+                value_to_set = after[field_name]
+                if field_name in {"actual_started_at", "finished_at"} and isinstance(value_to_set, str):
+                    value_to_set = datetime.fromisoformat(value_to_set)
+                setattr(task, field_name, value_to_set)
+            task.revision += 1
+            task.updated_by = actor_id
+            task.updated_at = _now()
+        project_result = await session.execute(update(models.PV1Project).where(models.PV1Project.id == project_id, models.PV1Project.revision == project.revision, models.PV1Project.graph_revision == project.graph_revision).values(revision=models.PV1Project.revision + 1, graph_revision=models.PV1Project.graph_revision + 1, updated_by=actor_id, updated_at=func.now()))
+        if project_result.rowcount != 1: raise PV1DomainError("REVISION_CONFLICT", "Project graph changed during the bulk write.", http_status=status.HTTP_409_CONFLICT)
+        event_id, _ = await append_event(session, tenant_id=tenant_id, project_id=project_id, actor_id=actor_id, command_id=command_id, event_type="task.bulk", aggregate_type="task_set", aggregate_id=project_id, aggregate_revision=project.graph_revision + 1, delta={"operation": operation, "task_ids": task_ids})
+        await _record_task_history(session, tenant_id=tenant_id, project_id=project_id, actor_id=actor_id, command_id=command_id, command_type=command_type, before_values=before_values, after_values=after_values, before_revisions=before_revisions, after_revisions=after_revisions)
+        response = _success(command_id, revisions={"project_revision": project.revision + 1, "graph_revision": project.graph_revision + 1, "task_revisions": after_revisions}, changed_entities=[{"kind": "task", "id": task_id} for task_id in task_ids], event_id=event_id)
+    elif command_type in {"task.undo", "task.redo"}:
+        original_command_id = str(payload.get("original_command_id") or "")
+        history_result = await session.execute(select(models.PV1TaskCommandHistory).where(models.PV1TaskCommandHistory.tenant_id == tenant_id, models.PV1TaskCommandHistory.project_id == project_id, models.PV1TaskCommandHistory.actor_id == actor_id, models.PV1TaskCommandHistory.original_command_id == original_command_id))
+        history = history_result.scalar_one_or_none()
+        required_state = "Active" if command_type == "task.undo" else "Undone"
+        if not history or history.state != required_state:
+            raise PV1DomainError("VALIDATION_FAILED", "That task action is not available for undo/redo in this session.")
+        expected_revisions = history.after_revisions if command_type == "task.undo" else {task_id: revision + 1 for task_id, revision in history.after_revisions.items()}
+        next_values = history.before_values if command_type == "task.undo" else history.after_values
+        task_result = await session.execute(select(models.PV1Task).where(models.PV1Task.tenant_id == tenant_id, models.PV1Task.project_id == project_id, models.PV1Task.id.in_(list(expected_revisions))))
+        tasks_by_id = {task.id: task for task in task_result.scalars()}
+        if any(task_id not in tasks_by_id or tasks_by_id[task_id].revision != revision for task_id, revision in expected_revisions.items()):
+            raise PV1DomainError("REVISION_CONFLICT", "This action cannot be undone because another edit changed a touched task.", http_status=status.HTTP_409_CONFLICT, details={"conflict_diff": True})
+        for task_id, values in next_values.items():
+            task = tasks_by_id[task_id]
+            for field_name, field_value in values.items():
+                if field_name not in {"title", "description", "owner_id", "priority", "progress", "estimate_hours", "remaining_workdays", "planning_weight", "mandatory", "tags", "status", "parent_task_id", "actual_started_at", "finished_at"}:
+                    continue
+                if field_name in {"actual_started_at", "finished_at"} and isinstance(field_value, str):
+                    field_value = datetime.fromisoformat(field_value)
+                setattr(task, field_name, field_value)
+            task.revision += 1
+            task.updated_by = actor_id
+            task.updated_at = _now()
+        project_result = await session.execute(update(models.PV1Project).where(models.PV1Project.id == project_id, models.PV1Project.revision == project.revision, models.PV1Project.graph_revision == project.graph_revision).values(revision=models.PV1Project.revision + 1, graph_revision=models.PV1Project.graph_revision + 1, updated_by=actor_id, updated_at=func.now()))
+        if project_result.rowcount != 1: raise PV1DomainError("REVISION_CONFLICT", "Project graph changed during undo/redo.", http_status=status.HTTP_409_CONFLICT)
+        history.state = "Undone" if command_type == "task.undo" else "Active"
+        event_id, _ = await append_event(session, tenant_id=tenant_id, project_id=project_id, actor_id=actor_id, command_id=command_id, event_type=command_type, aggregate_type="task_set", aggregate_id=project_id, aggregate_revision=project.graph_revision + 1, delta={"original_command_id": original_command_id})
+        response = _success(command_id, revisions={"project_revision": project.revision + 1, "graph_revision": project.graph_revision + 1, "task_revisions": {task_id: task.revision for task_id, task in tasks_by_id.items()}}, changed_entities=[{"kind": "task", "id": task_id} for task_id in tasks_by_id], event_id=event_id)
     elif command_type == "task.create":
         graph_expected = _require_expected(expected, "graph_revision")
         if graph_expected != project.graph_revision: raise PV1DomainError("REVISION_CONFLICT", "The task graph changed. Refresh before adding work.", http_status=status.HTTP_409_CONFLICT, details={"current_revisions": {"graph_revision": project.graph_revision}})
         title = str(payload.get("title") or "").strip()
         if not title or len(title) > 120: raise PV1DomainError("VALIDATION_FAILED", "Task title is required and must be at most 120 characters.")
+        allowed = {"title", "kind", "parent_task_id", "owner_id", "milestone_id", "description", "priority", "status", "progress", "start_date", "end_date", "point_date", "estimate_hours", "remaining_workdays", "planning_weight", "mandatory", "order_key", "tags"}
+        unknown = set(payload) - allowed
+        if unknown:
+            raise PV1DomainError("VALIDATION_FAILED", "Unlisted task fields are rejected.", details={"fields": sorted(unknown)})
+        kind = payload.get("kind", "Task")
+        if kind not in {"Task", "Summary", "Milestone"}:
+            raise PV1DomainError("VALIDATION_FAILED", "Task kind must be Task, Summary, or Milestone.")
+        task_status = payload.get("status", "To Do")
+        if task_status not in focus.WORK_STATUSES:
+            raise PV1DomainError("VALIDATION_FAILED", "Task status must be To do, In progress, Blocked, Review, Done, or Cancelled.")
+        if task_status == "Done":
+            raise PV1DomainError("VALIDATION_FAILED", "Create the task first, then complete its acceptance criteria before marking it Done.")
         task_id = _new_id()
         parent_id = payload.get("parent_task_id")
         if parent_id:
             parent = await session.get(models.PV1Task, parent_id)
             if not parent or parent.project_id != project_id: raise PV1DomainError("VALIDATION_FAILED", "Parent task must belong to the same project.")
+            depth = 1
+            ancestor = parent
+            while ancestor.parent_task_id:
+                depth += 1
+                ancestor = await session.get(models.PV1Task, ancestor.parent_task_id)
+                if depth > 8:
+                    raise PV1DomainError("VALIDATION_FAILED", "Outline depth cannot exceed 8 levels.")
         start_date = _date(payload.get("start_date"))
         end_date = _date(payload.get("end_date"))
         point_date = _date(payload.get("point_date"))
         if start_date and end_date and end_date < start_date:
             raise PV1DomainError("VALIDATION_FAILED", "Task end_date must be on or after start_date.")
-        session.add(models.PV1Task(id=task_id, tenant_id=tenant_id, project_id=project_id, parent_task_id=parent_id, kind=payload.get("kind", "Task"), title=title, description=payload.get("description"), owner_id=payload.get("owner_id"), status=payload.get("status", "To Do"), priority=payload.get("priority", "Medium"), progress=int(payload.get("progress", 0)), start_date=start_date, end_date=end_date, point_date=point_date, planning_weight=int(payload.get("planning_weight", 1)), mandatory=bool(payload.get("mandatory", True)), order_key=payload.get("order_key", 1024), tags=payload.get("tags") or [], created_by=actor_id, updated_by=actor_id))
-        await session.execute(update(models.PV1Project).execution_options(synchronize_session=False).where(models.PV1Project.id == project_id, models.PV1Project.graph_revision == project.graph_revision).values(graph_revision=models.PV1Project.graph_revision + 1, revision=models.PV1Project.revision + 1, updated_by=actor_id, updated_at=func.now()))
+        progress = int(payload.get("progress", 0))
+        if progress < 0 or progress > 100: raise PV1DomainError("VALIDATION_FAILED", "progress must be an integer from 0 to 100.")
+        if kind == "Milestone" and (start_date or end_date or payload.get("estimate_hours") or payload.get("remaining_workdays")):
+            raise PV1DomainError("VALIDATION_FAILED", "Milestones use a point date and cannot carry duration or effort.")
+        if kind == "Summary" and (payload.get("status") or payload.get("progress") or start_date or end_date):
+            raise PV1DomainError("VALIDATION_FAILED", "Summary rows derive status, progress, and dates from descendants.")
+        if payload.get("milestone_id"):
+            milestone = await session.get(models.PV1Task, str(payload["milestone_id"]))
+            if not milestone or milestone.project_id != project_id or milestone.kind != "Milestone":
+                raise PV1DomainError("VALIDATION_FAILED", "Milestone must belong to the same project and be a Milestone task.")
+        owner_id = str(payload.get("owner_id") or actor_id)
+        owner_member = await session.scalar(select(models.PV1ProjectMember).where(models.PV1ProjectMember.tenant_id == tenant_id, models.PV1ProjectMember.project_id == project_id, models.PV1ProjectMember.user_id == owner_id))
+        if not owner_member and role != "Tenant administrator":
+            raise PV1DomainError("VALIDATION_FAILED", "Task owner must be an authorized project member.")
+        session.add(models.PV1Task(id=task_id, tenant_id=tenant_id, project_id=project_id, parent_task_id=parent_id, milestone_id=payload.get("milestone_id"), kind=kind, title=title, description=payload.get("description"), owner_id=owner_id, status=task_status, priority=payload.get("priority", "Medium"), progress=progress, start_date=start_date, end_date=end_date, point_date=point_date, estimate_hours=payload.get("estimate_hours"), remaining_workdays=payload.get("remaining_workdays"), planning_weight=int(payload.get("planning_weight", 1)), mandatory=bool(payload.get("mandatory", True)), order_key=payload.get("order_key", 1024), tags=payload.get("tags") or [], created_by=actor_id, updated_by=actor_id))
+        project_result = await session.execute(update(models.PV1Project).execution_options(synchronize_session=False).where(models.PV1Project.id == project_id, models.PV1Project.graph_revision == project.graph_revision, models.PV1Project.revision == project.revision).values(graph_revision=models.PV1Project.graph_revision + 1, revision=models.PV1Project.revision + 1, updated_by=actor_id, updated_at=func.now()))
+        if project_result.rowcount != 1: raise PV1DomainError("REVISION_CONFLICT", "Project graph changed while creating the task.", http_status=status.HTTP_409_CONFLICT)
         project_revision = project.revision + 1
         graph_revision = project.graph_revision + 1
         event_id, _ = await append_event(session, tenant_id=tenant_id, project_id=project_id, actor_id=actor_id, command_id=command_id, event_type="task.created", aggregate_type="task", aggregate_id=task_id, aggregate_revision=1, delta={"title": title})
@@ -941,23 +1164,224 @@ async def execute_command(session: AsyncSession, *, tenant_id: int, actor_id: st
         graph_expected = expected.get("graph_revision")
         if not isinstance(task_expected, int) or task_expected != task.revision or not isinstance(graph_expected, int) or graph_expected != project.graph_revision:
             raise PV1DomainError("REVISION_CONFLICT", "This task or graph changed. Review the latest version before saving.", http_status=status.HTTP_409_CONFLICT, details={"current_revisions": {"task_revision": task.revision, "graph_revision": project.graph_revision}})
+        before_values = {"title": task.title, "description": task.description, "owner_id": task.owner_id, "priority": task.priority, "progress": task.progress, "estimate_hours": _serialize(task.estimate_hours), "remaining_workdays": task.remaining_workdays, "planning_weight": task.planning_weight, "mandatory": task.mandatory, "tags": task.tags or [], "status": task.status, "actual_started_at": _serialize(task.actual_started_at), "finished_at": _serialize(task.finished_at)}
         if command_type == "task.transition":
-            changes = {"status": payload.get("to_status")}
+            to_status = payload.get("to_status")
+            if to_status not in focus.WORK_STATUSES:
+                raise PV1DomainError("VALIDATION_FAILED", "Task status must be To do, In progress, Blocked, Review, Done, or Cancelled.")
+            if task.kind == "Summary":
+                raise PV1DomainError("VALIDATION_FAILED", "Summary status is derived from descendants.")
+            if to_status == "Done":
+                await _validate_done_requirements(session, task=task, actor_id=actor_id, role=role, payload=payload)
+            if to_status == "Blocked":
+                reason = str(payload.get("blocker_reason") or "").strip()
+                resolver_id = str(payload.get("resolver_id") or "").strip()
+                if payload.get("blocker_source", "Manual") not in {"Manual", "Issue"}:
+                    raise PV1DomainError("VALIDATION_FAILED", "Blocker source must be Manual or Issue.")
+                resolver_member = await session.scalar(select(models.PV1ProjectMember).where(models.PV1ProjectMember.tenant_id == tenant_id, models.PV1ProjectMember.project_id == project_id, models.PV1ProjectMember.user_id == resolver_id))
+                if not resolver_member and role != "Tenant administrator":
+                    raise PV1DomainError("VALIDATION_FAILED", "Blocker resolver must be an authorized project member.")
+                if not reason or not resolver_id:
+                    raise PV1DomainError("VALIDATION_FAILED", "Blocked requires a blocker reason and resolver.", details={"field_errors": [{"field": "blocker_reason", "message": "Explain what is blocked."}, {"field": "resolver_id", "message": "Choose a blocker resolver."}]})
+                review_date = _date(payload.get("review_date")) or _next_working_day(_now().date())
+                session.add(models.PV1TaskBlocker(id=_new_id(), tenant_id=tenant_id, project_id=project_id, task_id=task_id, source=payload.get("blocker_source", "Manual"), reason=reason, resolver_id=resolver_id, review_date=review_date, state="Open", created_by=actor_id, updated_by=actor_id))
+            changes = {"status": to_status}
+            if to_status == "Done":
+                changes.update({"progress": 100, "finished_at": _now()})
+            elif task.status == "Done":
+                reason = str(payload.get("reopen_reason") or "").strip()
+                if not reason:
+                    raise PV1DomainError("VALIDATION_FAILED", "Reopening Done requires a reason.")
+                changes.update({"progress": await _last_non_done_progress(session, tenant_id=tenant_id, project_id=project_id, task_id=task_id), "finished_at": None})
+            if to_status == "In progress" and task.actual_started_at is None:
+                changes["actual_started_at"] = _now()
         else:
             allowed = {"title", "description", "owner_id", "priority", "progress", "estimate_hours", "remaining_workdays", "planning_weight", "mandatory", "tags"}
             unknown = set(payload) - allowed - {"task_id"}
             if unknown: raise PV1DomainError("VALIDATION_FAILED", "Unlisted task fields are rejected.", details={"fields": sorted(unknown)})
             changes = {key: value for key, value in payload.items() if key in allowed}
+            if "owner_id" in changes:
+                owner_member = await session.scalar(select(models.PV1ProjectMember).where(models.PV1ProjectMember.tenant_id == tenant_id, models.PV1ProjectMember.project_id == project_id, models.PV1ProjectMember.user_id == str(changes["owner_id"])))
+                if not owner_member and role != "Tenant administrator":
+                    raise PV1DomainError("VALIDATION_FAILED", "Task owner must be an authorized project member.")
         if "progress" in changes and (not isinstance(changes["progress"], int) or not 0 <= changes["progress"] <= 100): raise PV1DomainError("VALIDATION_FAILED", "progress must be an integer from 0 to 100.")
-        event_delta = dict(changes)
+        if "title" in changes and (not str(changes["title"]).strip() or len(str(changes["title"])) > 120): raise PV1DomainError("VALIDATION_FAILED", "Task title is required and must be at most 120 characters.")
+        if "planning_weight" in changes and (not isinstance(changes["planning_weight"], int) or not 1 <= changes["planning_weight"] <= 100): raise PV1DomainError("VALIDATION_FAILED", "planning_weight must be an integer from 1 to 100.")
+        event_delta = {key: _serialize(value) for key, value in changes.items()}
+        event_delta["previous_progress"] = task.progress
         changes.update({"revision": task.revision + 1, "updated_by": actor_id, "updated_at": func.now()})
         result = await session.execute(update(models.PV1Task).execution_options(synchronize_session=False).where(models.PV1Task.id == task_id, models.PV1Task.revision == task.revision).values(**changes))
         if result.rowcount != 1: raise PV1DomainError("REVISION_CONFLICT", "Task changed during the write.", http_status=status.HTTP_409_CONFLICT)
         project_result = await session.execute(update(models.PV1Project).execution_options(synchronize_session=False).where(models.PV1Project.id == project_id, models.PV1Project.revision == project.revision, models.PV1Project.graph_revision == project.graph_revision).values(revision=models.PV1Project.revision + 1, graph_revision=models.PV1Project.graph_revision + 1, updated_by=actor_id, updated_at=func.now()))
         if project_result.rowcount != 1: raise PV1DomainError("REVISION_CONFLICT", "Project graph changed during the task write.", http_status=status.HTTP_409_CONFLICT)
         event_id, _ = await append_event(session, tenant_id=tenant_id, project_id=project_id, actor_id=actor_id, command_id=command_id, event_type=command_type, aggregate_type="task", aggregate_id=task_id, aggregate_revision=task.revision + 1, delta=event_delta)
+        after_values = dict(before_values)
+        after_values.update({key: _serialize(value) for key, value in changes.items() if key in before_values})
+        await _record_task_history(session, tenant_id=tenant_id, project_id=project_id, actor_id=actor_id, command_id=command_id, command_type=command_type, before_values={task_id: before_values}, after_values={task_id: after_values}, before_revisions={task_id: task.revision}, after_revisions={task_id: task.revision + 1})
+        if task.status == "Blocked" and changes.get("status") != "Blocked":
+            await session.execute(update(models.PV1TaskBlocker).where(models.PV1TaskBlocker.tenant_id == tenant_id, models.PV1TaskBlocker.project_id == project_id, models.PV1TaskBlocker.task_id == task_id, models.PV1TaskBlocker.source != "Dependency", models.PV1TaskBlocker.state == "Open").values(state="Resolved", updated_by=actor_id, updated_at=func.now(), revision=models.PV1TaskBlocker.revision + 1))
         changed.append({"kind": "task", "id": task_id})
         response = _success(command_id, revisions={"project_revision": project.revision + 1, "graph_revision": project.graph_revision + 1, "task_revision": task.revision + 1}, changed_entities=changed, event_id=event_id)
+    elif command_type == "criterion.create":
+        description = str(payload.get("description") or "").strip()
+        if not description or len(description) > 2000:
+            raise PV1DomainError("VALIDATION_FAILED", "Acceptance criterion description is required and must be at most 2000 characters.")
+        parent_kind = payload.get("parent_kind", "Project")
+        task_id = str(payload.get("parent_id") or "") if parent_kind == "Task" else None
+        parent_task = await session.get(models.PV1Task, task_id) if task_id else None
+        if parent_kind not in {"Project", "Task"} or (task_id and (not parent_task or parent_task.project_id != project_id or parent_task.tenant_id != tenant_id)):
+            raise PV1DomainError("VALIDATION_FAILED", "Criterion parent must be this project or a task in this project.")
+        criterion_id = _new_id()
+        session.add(models.PV1TaskCriterion(id=criterion_id, tenant_id=tenant_id, project_id=project_id, task_id=task_id, description=description, mandatory=bool(payload.get("mandatory", True)), created_by=actor_id, updated_by=actor_id))
+        project_result = await session.execute(update(models.PV1Project).where(models.PV1Project.id == project_id, models.PV1Project.revision == project.revision).values(revision=models.PV1Project.revision + 1, updated_by=actor_id, updated_at=func.now()))
+        if project_result.rowcount != 1: raise PV1DomainError("REVISION_CONFLICT", "Project changed while adding acceptance.", http_status=status.HTTP_409_CONFLICT)
+        event_id, _ = await append_event(session, tenant_id=tenant_id, project_id=project_id, actor_id=actor_id, command_id=command_id, event_type=command_type, aggregate_type="criterion", aggregate_id=criterion_id, aggregate_revision=1, delta={"description": description})
+        response = _success(command_id, revisions={"project_revision": project.revision + 1, "graph_revision": project.graph_revision}, changed_entities=[{"kind": "criterion", "id": criterion_id}], event_id=event_id)
+    elif command_type == "criterion.review":
+        criterion_id = str(payload.get("criterion_id") or "")
+        criterion = await session.get(models.PV1TaskCriterion, criterion_id)
+        if not criterion or criterion.tenant_id != tenant_id or criterion.project_id != project_id:
+            raise PV1DomainError("NOT_FOUND", "Acceptance criterion not found.", http_status=status.HTTP_404_NOT_FOUND)
+        to_state = payload.get("to_state")
+        if to_state not in {"Open", "Passed", "Waived"}:
+            raise PV1DomainError("VALIDATION_FAILED", "Criterion state is invalid.")
+        evidence_ids = payload.get("evidence_ids") or []
+        if to_state == "Passed" and not evidence_ids:
+            raise PV1DomainError("VALIDATION_FAILED", "Passed acceptance requires evidence references.")
+        waiver_reason = str(payload.get("waiver_reason") or "").strip()
+        if to_state == "Waived" and (not waiver_reason or role not in {"Owner", "Lead", "Tenant administrator"}):
+            raise PV1DomainError("FORBIDDEN" if role not in {"Owner", "Lead", "Tenant administrator"} else "VALIDATION_FAILED", "Waived acceptance requires an Owner/Lead rationale.", http_status=status.HTTP_403_FORBIDDEN if role not in {"Owner", "Lead", "Tenant administrator"} else 422)
+        criterion.state = to_state
+        criterion.evidence_refs = evidence_ids
+        criterion.reviewer = actor_id
+        criterion.waiver_reason = waiver_reason or None
+        criterion.revision += 1
+        criterion.updated_by = actor_id
+        criterion.updated_at = _now()
+        project_result = await session.execute(update(models.PV1Project).where(models.PV1Project.id == project_id, models.PV1Project.revision == project.revision).values(revision=models.PV1Project.revision + 1, updated_by=actor_id, updated_at=func.now()))
+        if project_result.rowcount != 1: raise PV1DomainError("REVISION_CONFLICT", "Project changed while reviewing acceptance.", http_status=status.HTTP_409_CONFLICT)
+        event_id, _ = await append_event(session, tenant_id=tenant_id, project_id=project_id, actor_id=actor_id, command_id=command_id, event_type=command_type, aggregate_type="criterion", aggregate_id=criterion_id, aggregate_revision=criterion.revision, delta={"state": to_state})
+        response = _success(command_id, revisions={"project_revision": project.revision + 1, "graph_revision": project.graph_revision}, changed_entities=[{"kind": "criterion", "id": criterion_id}], event_id=event_id)
+    elif command_type == "blocker.resolve":
+        blocker_id = str(payload.get("blocker_id") or "")
+        blocker = await session.get(models.PV1TaskBlocker, blocker_id)
+        if not blocker or blocker.tenant_id != tenant_id or blocker.project_id != project_id:
+            raise PV1DomainError("NOT_FOUND", "Blocker not found.", http_status=status.HTTP_404_NOT_FOUND)
+        if blocker.source == "Dependency":
+            raise PV1DomainError("VALIDATION_FAILED", "Dependency blockers recompute from the dependency graph and cannot be manually falsified.")
+        resolution = str(payload.get("resolution") or "").strip()
+        if not resolution:
+            raise PV1DomainError("VALIDATION_FAILED", "A blocker resolution is required.")
+        blocker.state = "Resolved"
+        blocker.updated_by = actor_id
+        blocker.updated_at = _now()
+        blocker.revision += 1
+        project_result = await session.execute(update(models.PV1Project).where(models.PV1Project.id == project_id, models.PV1Project.revision == project.revision).values(revision=models.PV1Project.revision + 1, updated_by=actor_id, updated_at=func.now()))
+        if project_result.rowcount != 1: raise PV1DomainError("REVISION_CONFLICT", "Project changed while resolving the blocker.", http_status=status.HTTP_409_CONFLICT)
+        event_id, _ = await append_event(session, tenant_id=tenant_id, project_id=project_id, actor_id=actor_id, command_id=command_id, event_type=command_type, aggregate_type="blocker", aggregate_id=blocker_id, aggregate_revision=blocker.revision, delta={"resolution": resolution})
+        response = _success(command_id, revisions={"project_revision": project.revision + 1, "graph_revision": project.graph_revision}, changed_entities=[{"kind": "blocker", "id": blocker_id}], event_id=event_id)
+    elif command_type == "dependency.create":
+        predecessor_id = str(payload.get("predecessor_id") or "")
+        successor_id = str(payload.get("successor_id") or "")
+        if predecessor_id == successor_id:
+            raise PV1DomainError("VALIDATION_FAILED", "A task cannot depend on itself.")
+        task_result = await session.execute(select(models.PV1Task).where(models.PV1Task.tenant_id == tenant_id, models.PV1Task.project_id == project_id, models.PV1Task.id.in_([predecessor_id, successor_id])))
+        if len(list(task_result.scalars())) != 2:
+            raise PV1DomainError("VALIDATION_FAILED", "Both dependency endpoints must be tasks in this project.")
+        dependency_type = payload.get("dependency_type", "FS")
+        if dependency_type not in {"FS", "SS", "FF", "SF"}:
+            raise PV1DomainError("VALIDATION_FAILED", "Dependency type is invalid.")
+        graph_result = await session.execute(select(models.PV1Dependency).where(models.PV1Dependency.tenant_id == tenant_id, models.PV1Dependency.project_id == project_id, models.PV1Dependency.active.is_(True)))
+        edges = [(str(item.predecessor_id), str(item.successor_id)) for item in graph_result.scalars()]
+        edges.append((predecessor_id, successor_id))
+        graph = {task_id: [] for task_id in {item for edge in edges for item in edge}}
+        for source, target in edges: graph.setdefault(source, []).append(target)
+        visiting: set[str] = set(); visited: set[str] = set()
+        def visit(node: str) -> bool:
+            if node in visiting: return True
+            if node in visited: return False
+            visiting.add(node)
+            if any(visit(child) for child in graph.get(node, [])): return True
+            visiting.remove(node); visited.add(node); return False
+        if any(visit(node) for node in graph):
+            raise PV1DomainError("VALIDATION_FAILED", f"This dependency would create a cycle: {predecessor_id} → {successor_id} → {predecessor_id}")
+        dependency_id = _new_id()
+        session.add(models.PV1Dependency(id=dependency_id, tenant_id=tenant_id, project_id=project_id, predecessor_id=predecessor_id, successor_id=successor_id, dependency_type=dependency_type, lag_days=int(payload.get("lag_days", 0)), active=True, created_by=actor_id, updated_by=actor_id))
+        project_result = await session.execute(update(models.PV1Project).where(models.PV1Project.id == project_id, models.PV1Project.revision == project.revision, models.PV1Project.graph_revision == project.graph_revision).values(revision=models.PV1Project.revision + 1, graph_revision=models.PV1Project.graph_revision + 1, updated_by=actor_id, updated_at=func.now()))
+        if project_result.rowcount != 1: raise PV1DomainError("REVISION_CONFLICT", "Project graph changed while adding the dependency.", http_status=status.HTTP_409_CONFLICT)
+        event_id, _ = await append_event(session, tenant_id=tenant_id, project_id=project_id, actor_id=actor_id, command_id=command_id, event_type=command_type, aggregate_type="dependency", aggregate_id=dependency_id, aggregate_revision=1, delta={"predecessor_id": predecessor_id, "successor_id": successor_id})
+        response = _success(command_id, revisions={"project_revision": project.revision + 1, "graph_revision": project.graph_revision + 1}, changed_entities=[{"kind": "dependency", "id": dependency_id}], event_id=event_id)
+    elif command_type in {"risk.save", "decision.request", "decision.decide"}:
+        if command_type == "decision.request":
+            title = str(payload.get("title") or "").strip(); record_type = "Decision"; state = "Requested"
+            approver_ids = [str(item).strip() for item in (payload.get("approver_ids") or []) if str(item).strip()]
+            if not title or not approver_ids: raise PV1DomainError("VALIDATION_FAILED", "A decision request requires a title and at least one named approver.")
+            record_payload = {key: payload.get(key) for key in ("context", "options", "recommendation", "due_date", "impact_summary", "related_task_ids", "related_milestone_ids", "related_architecture_ids") if key in payload}
+            record_payload["approver_ids"] = approver_ids
+        elif command_type == "decision.decide":
+            record_id = str(payload.get("decision_id") or "")
+            record = await session.get(models.PV1GovernanceRecord, record_id)
+            if not record or record.tenant_id != tenant_id or record.project_id != project_id or record.record_type != "Decision": raise PV1DomainError("NOT_FOUND", "Decision not found.", http_status=status.HTTP_404_NOT_FOUND)
+            if record.state in {"Approved", "Rejected", "Superseded"}: raise PV1DomainError("VALIDATION_FAILED", "Approved decisions are immutable; create a superseding decision to amend one.")
+            if actor_id not in (record.payload or {}).get("approver_ids", []) and actor_id != (record.payload or {}).get("approver_id"):
+                raise PV1DomainError("FORBIDDEN", "Only a named approver may decide this request.", http_status=status.HTTP_403_FORBIDDEN)
+            outcome = payload.get("outcome")
+            if outcome not in {"Approved", "Rejected"}: raise PV1DomainError("VALIDATION_FAILED", "Decision outcome must be Approved or Rejected.")
+            current_payload = record.payload or {}
+            approvers = set(current_payload.get("approver_ids") or [current_payload.get("approver_id")]) - {None, ""}
+            approvals = set(current_payload.get("approvals") or [])
+            approvals.add(actor_id)
+            record.state = outcome if outcome == "Rejected" or approvals >= approvers else "Requested"
+            record.payload = {**current_payload, "approvals": sorted(approvals), "decision_rationale": str(payload.get("rationale") or ""), "decided_by": actor_id}
+            record.revision += 1; record.updated_by = actor_id; record.updated_at = _now()
+            record_payload = record.payload; title = record.title; record_type = "Decision"; state = record.state; record_id = record.id
+        else:
+            record_type = payload.get("kind") or "Risk"; title = str(payload.get("title") or "").strip(); state = payload.get("state", "Open")
+            if record_type not in {"Risk", "Issue", "Assumption"} or not title: raise PV1DomainError("VALIDATION_FAILED", "Risk, Issue, and Assumption require a typed kind and title.")
+            record_payload = dict(payload.get("fields") or {})
+            if record_type == "Risk":
+                probability, impact = int(record_payload.get("probability", 0)), int(record_payload.get("impact", 0))
+                if probability not in range(1, 6) or impact not in range(1, 6): raise PV1DomainError("VALIDATION_FAILED", "Risk probability and impact must be integers from 1 to 5.")
+                exposure = probability * impact; record_payload["exposure"] = exposure; record_payload["exposure_level"] = "Low" if exposure <= 4 else "Medium" if exposure <= 9 else "High" if exposure <= 15 else "Critical"
+        if command_type != "decision.decide":
+            record_id = str(payload.get("id") or _new_id())
+            existing_record = await session.get(models.PV1GovernanceRecord, record_id)
+            if existing_record:
+                if existing_record.state in {"Approved", "Rejected", "Superseded"}: raise PV1DomainError("VALIDATION_FAILED", "This governance record is immutable; create a new version.")
+                existing_record.title = title; existing_record.state = state; existing_record.payload = record_payload; existing_record.owner_id = payload.get("owner_id") or actor_id; existing_record.revision += 1; existing_record.updated_by = actor_id; existing_record.updated_at = _now()
+            else:
+                session.add(models.PV1GovernanceRecord(id=record_id, tenant_id=tenant_id, project_id=project_id, record_type=record_type, title=title, state=state, owner_id=payload.get("owner_id") or actor_id, payload=record_payload, created_by=actor_id, updated_by=actor_id))
+        project_result = await session.execute(update(models.PV1Project).where(models.PV1Project.id == project_id, models.PV1Project.revision == project.revision).values(revision=models.PV1Project.revision + 1, updated_by=actor_id, updated_at=func.now()))
+        if project_result.rowcount != 1: raise PV1DomainError("REVISION_CONFLICT", "Project changed while saving the planning record.", http_status=status.HTTP_409_CONFLICT)
+        event_id, _ = await append_event(session, tenant_id=tenant_id, project_id=project_id, actor_id=actor_id, command_id=command_id, event_type=command_type, aggregate_type=record_type.lower(), aggregate_id=record_id, aggregate_revision=(record.revision if command_type == "decision.decide" else 1), delta={"state": state})
+        response = _success(command_id, revisions={"project_revision": project.revision + 1, "graph_revision": project.graph_revision}, changed_entities=[{"kind": record_type.lower(), "id": record_id}], event_id=event_id)
+    elif command_type in {"resource.save", "resource.link", "resource.unlink"}:
+        resource_id = str(payload.get("resource_id") or payload.get("id") or _new_id())
+        resource = await session.get(models.PV1Resource, resource_id)
+        if resource and resource.tenant_id != tenant_id:
+            raise PV1DomainError("NOT_FOUND", "Resource not found.", http_status=status.HTTP_404_NOT_FOUND)
+        if command_type == "resource.save":
+            title = str(payload.get("title") or "").strip(); kind = payload.get("resource_kind", "General note")
+            if not title or len(title) > 120 or kind not in {"Brief supplement", "Specification", "Runbook", "Test evidence", "Design decision", "General note"}:
+                raise PV1DomainError("VALIDATION_FAILED", "Resource title and document type are required.")
+            content = str(payload.get("content") or "")
+            if "<script" in content.casefold(): raise PV1DomainError("VALIDATION_FAILED", "Unsafe resource content is rejected.")
+            if resource:
+                if resource.project_id != project_id or resource.revision != int(payload.get("revision", resource.revision)): raise PV1DomainError("REVISION_CONFLICT", "This resource changed. Review the latest version.", http_status=status.HTTP_409_CONFLICT)
+                resource.title = title; resource.content = content; resource.resource_kind = kind; resource.pinned = bool(payload.get("pinned", resource.pinned)); resource.revision += 1; resource.updated_by = actor_id; resource.updated_at = _now()
+            else:
+                session.add(models.PV1Resource(id=resource_id, tenant_id=tenant_id, project_id=project_id, resource_kind=kind, title=title, content=content, upload_ref=payload.get("upload_ref"), scan_state="Available", sensitivity=payload.get("sensitivity", "Project"), pinned=bool(payload.get("pinned", False)), links=[], created_by=actor_id, updated_by=actor_id))
+        else:
+            if not resource or resource.project_id != project_id: raise PV1DomainError("NOT_FOUND", "Resource not found.", http_status=status.HTTP_404_NOT_FOUND)
+            links = list(resource.links or [])
+            parent_ref = {"parent_kind": payload.get("parent_kind"), "parent_id": str(payload.get("parent_id") or "")}
+            if command_type == "resource.link" and parent_ref not in links: links.append(parent_ref)
+            if command_type == "resource.unlink": links = [item for item in links if item != parent_ref]
+            resource.links = links; resource.revision += 1; resource.updated_by = actor_id; resource.updated_at = _now()
+        project_result = await session.execute(update(models.PV1Project).where(models.PV1Project.id == project_id, models.PV1Project.revision == project.revision).values(revision=models.PV1Project.revision + 1, updated_by=actor_id, updated_at=func.now()))
+        if project_result.rowcount != 1: raise PV1DomainError("REVISION_CONFLICT", "Project changed while saving the resource.", http_status=status.HTTP_409_CONFLICT)
+        event_id, _ = await append_event(session, tenant_id=tenant_id, project_id=project_id, actor_id=actor_id, command_id=command_id, event_type=command_type, aggregate_type="resource", aggregate_id=resource_id, aggregate_revision=(resource.revision if resource else 1), delta={"resource_id": resource_id})
+        response = _success(command_id, revisions={"project_revision": project.revision + 1, "graph_revision": project.graph_revision}, changed_entities=[{"kind": "resource", "id": resource_id}], event_id=event_id)
     elif command_type == "delivery.accept":
         list_fields = {"task_revision_ids", "criterion_revision_ids", "evidence_revision_ids", "residual_obligation_ids", "followups"}
         unknown = set(payload) - list_fields
@@ -1087,4 +1511,235 @@ async def execute_command(session: AsyncSession, *, tenant_id: int, actor_id: st
         raise PV1DomainError("VALIDATION_FAILED", f"Unsupported command type: {command_type}.", details={"type": command_type})
 
     await _idempotency_finish(session, tenant_id=tenant_id, actor_id=actor_id, command_type=command_type, command_id=command_id, response=response, event_id=event_id)
+    return response
+
+
+async def focus_projection(
+    session: AsyncSession,
+    *,
+    tenant_id: int,
+    actor_id: str,
+    request_role: str | None,
+    project_id: str | None = None,
+    today: date | None = None,
+) -> dict[str, Any]:
+    if project_id is not None:
+        project = await get_pv1_project(session, tenant_id, project_id)
+        if not project:
+            raise PV1DomainError("NOT_FOUND", "Project not found.", http_status=status.HTTP_404_NOT_FOUND)
+        await require_project_role(session, tenant_id=tenant_id, project_id=project_id, actor_id=actor_id, request_role=request_role)
+        projects = [project]
+        project_ids = [project_id]
+    else:
+        if (request_role or "").upper() == "ADMIN":
+            project_result = await session.execute(select(models.PV1Project).where(models.PV1Project.tenant_id == tenant_id, models.PV1Project.archived_at.is_(None)).order_by(models.PV1Project.display_key))
+        else:
+            member_result = await session.execute(select(models.PV1ProjectMember.project_id).where(models.PV1ProjectMember.tenant_id == tenant_id, models.PV1ProjectMember.user_id == actor_id))
+            project_ids = list(member_result.scalars())
+            project_result = await session.execute(select(models.PV1Project).where(models.PV1Project.tenant_id == tenant_id, models.PV1Project.id.in_(project_ids), models.PV1Project.archived_at.is_(None)).order_by(models.PV1Project.display_key)) if project_ids else None
+        projects = list(project_result.scalars()) if project_result is not None else []
+        project_ids = [project.id for project in projects]
+    if not project_ids:
+        return focus.build_focus(actor_id=actor_id, projects=[], tasks=[], today=today)
+    task_result = await session.execute(select(models.PV1Task).where(models.PV1Task.tenant_id == tenant_id, models.PV1Task.project_id.in_(project_ids)).order_by(models.PV1Task.order_key, models.PV1Task.id))
+    dependency_result = await session.execute(select(models.PV1Dependency).where(models.PV1Dependency.tenant_id == tenant_id, models.PV1Dependency.project_id.in_(project_ids), models.PV1Dependency.active.is_(True)))
+    blocker_result = await session.execute(select(models.PV1TaskBlocker).where(models.PV1TaskBlocker.tenant_id == tenant_id, models.PV1TaskBlocker.project_id.in_(project_ids), models.PV1TaskBlocker.state == "Open"))
+    governance_result = await session.execute(select(models.PV1GovernanceRecord).where(models.PV1GovernanceRecord.tenant_id == tenant_id, models.PV1GovernanceRecord.project_id.in_(project_ids)))
+    metric_result = await session.execute(select(models.PV1Metric).where(models.PV1Metric.tenant_id == tenant_id, models.PV1Metric.project_id.in_(project_ids), models.PV1Metric.archived_at.is_(None)))
+    pin_result = await session.execute(select(models.PV1FocusPin).where(models.PV1FocusPin.tenant_id == tenant_id, models.PV1FocusPin.user_id == actor_id, models.PV1FocusPin.project_id.in_(project_ids)))
+    snooze_result = await session.execute(select(models.PV1FocusSnooze).where(models.PV1FocusSnooze.tenant_id == tenant_id, models.PV1FocusSnooze.user_id == actor_id, models.PV1FocusSnooze.project_id.in_(project_ids)))
+    result = focus.build_focus(
+        actor_id=actor_id, projects=projects, tasks=list(task_result.scalars()), dependencies=list(dependency_result.scalars()),
+        blockers=list(blocker_result.scalars()), governance=list(governance_result.scalars()), metrics=list(metric_result.scalars()),
+        pins=list(pin_result.scalars()), snoozes=list(snooze_result.scalars()), today=today, project_id=project_id,
+    )
+    result["source_revision"] = ":".join(f"{project.id}:{project.graph_revision}" for project in projects)
+    return result
+
+
+async def work_projection(session: AsyncSession, *, tenant_id: int, project_id: str, actor_id: str, request_role: str | None) -> dict[str, Any]:
+    project = await get_pv1_project(session, tenant_id, project_id)
+    if not project:
+        raise PV1DomainError("NOT_FOUND", "Project not found.", http_status=status.HTTP_404_NOT_FOUND)
+    await require_project_role(session, tenant_id=tenant_id, project_id=project_id, actor_id=actor_id, request_role=request_role)
+    task_result = await session.execute(select(models.PV1Task).where(models.PV1Task.tenant_id == tenant_id, models.PV1Task.project_id == project_id).order_by(models.PV1Task.order_key, models.PV1Task.id))
+    dependency_result = await session.execute(select(models.PV1Dependency).where(models.PV1Dependency.tenant_id == tenant_id, models.PV1Dependency.project_id == project_id, models.PV1Dependency.active.is_(True)))
+    blocker_result = await session.execute(select(models.PV1TaskBlocker).where(models.PV1TaskBlocker.tenant_id == tenant_id, models.PV1TaskBlocker.project_id == project_id, models.PV1TaskBlocker.state == "Open"))
+    criteria_result = await session.execute(select(models.PV1TaskCriterion).where(models.PV1TaskCriterion.tenant_id == tenant_id, models.PV1TaskCriterion.project_id == project_id).order_by(models.PV1TaskCriterion.created_at, models.PV1TaskCriterion.id))
+    return {
+        "project_id": project_id,
+        "project_revision": project.revision,
+        "graph_revision": project.graph_revision,
+        "items": [task_dict(task) for task in task_result.scalars()],
+        "dependencies": [{"id": item.id, "predecessor_id": item.predecessor_id, "successor_id": item.successor_id, "dependency_type": item.dependency_type, "lag_days": item.lag_days, "revision": item.revision} for item in dependency_result.scalars()],
+        "blockers": [{"id": item.id, "task_id": item.task_id, "source": item.source, "reason": item.reason, "resolver_id": item.resolver_id, "review_date": _serialize(item.review_date), "state": item.state, "revision": item.revision} for item in blocker_result.scalars()],
+        "criteria": [{"id": item.id, "task_id": item.task_id, "description": item.description, "mandatory": item.mandatory, "state": item.state, "evidence_refs": item.evidence_refs or [], "revision": item.revision} for item in criteria_result.scalars()],
+        "as_of": _now().isoformat(),
+    }
+
+
+async def plan_projection(session: AsyncSession, *, tenant_id: int, project_id: str, actor_id: str, request_role: str | None) -> dict[str, Any]:
+    await require_project_role(session, tenant_id=tenant_id, project_id=project_id, actor_id=actor_id, request_role=request_role)
+    project = await get_pv1_project(session, tenant_id, project_id)
+    if not project:
+        raise PV1DomainError("NOT_FOUND", "Project not found.", http_status=status.HTTP_404_NOT_FOUND)
+    governance_result = await session.execute(select(models.PV1GovernanceRecord).where(models.PV1GovernanceRecord.tenant_id == tenant_id, models.PV1GovernanceRecord.project_id == project_id).order_by(models.PV1GovernanceRecord.created_at, models.PV1GovernanceRecord.id))
+    resource_result = await session.execute(select(models.PV1Resource).where(models.PV1Resource.tenant_id == tenant_id, models.PV1Resource.project_id == project_id).order_by(models.PV1Resource.pinned.desc(), models.PV1Resource.updated_at.desc(), models.PV1Resource.id))
+    task_result = await session.execute(select(models.PV1Task).where(models.PV1Task.tenant_id == tenant_id, models.PV1Task.project_id == project_id).order_by(models.PV1Task.order_key, models.PV1Task.id))
+    tasks = list(task_result.scalars())
+    records = list(governance_result.scalars())
+    resources = list(resource_result.scalars())
+    guidance = []
+    if not (project.problem or "").strip(): guidance.append({"code": "MISSING_PROBLEM", "message": "Add the problem statement to Brief.", "fix": "brief"})
+    if not (project.in_scope or "").strip(): guidance.append({"code": "MISSING_IN_SCOPE", "message": "Define In scope.", "fix": "brief"})
+    if not (project.out_of_scope or "").strip(): guidance.append({"code": "MISSING_OUT_SCOPE", "message": "Define Out of scope.", "fix": "brief"})
+    if not any(task.kind == "Milestone" and task.status != "Cancelled" for task in tasks): guidance.append({"code": "MISSING_MILESTONE", "message": "Add a delivery milestone.", "fix": "milestones"})
+    return {
+        "project": project_dict(project),
+        "sections": ["Brief", "Milestones", "Architecture", "Risks & decisions", "Resources"],
+        "brief": {"problem": project.problem, "objective": project.objective, "in_scope": project.in_scope, "out_of_scope": project.out_of_scope, "delivery_acceptance": []},
+        "milestones": [task_dict(task) for task in tasks if task.kind == "Milestone"],
+        "work_breakdown": [task_dict(task) for task in tasks],
+        "architecture": {"assessment": project.architecture_assessment, "rationale": project.architecture_rationale},
+        "governance": [{"id": item.id, "type": item.record_type, "title": item.title, "state": item.state, "owner_id": item.owner_id, "fields": item.payload or {}, "revision": item.revision} for item in records],
+        "resources": [{"id": item.id, "resource_kind": item.resource_kind, "title": item.title, "content": item.content, "scan_state": item.scan_state, "pinned": item.pinned, "links": item.links or [], "revision": item.revision} for item in resources],
+        "guidance": guidance,
+        "source_revisions": {"project_revision": project.revision, "graph_revision": project.graph_revision},
+        "as_of": _now().isoformat(),
+    }
+
+
+async def focus_command(
+    session: AsyncSession,
+    *,
+    tenant_id: int,
+    actor_id: str,
+    request_role: str | None,
+    command_id: str,
+    command_type: str,
+    payload: dict[str, Any],
+) -> dict[str, Any]:
+    if command_type not in {"focus.pin", "focus.unpin", "focus.snooze", "focus.unsnooze"}:
+        raise PV1DomainError("VALIDATION_FAILED", "Unsupported Focus preference command.")
+    existing = await _idempotency_start(session, tenant_id=tenant_id, actor_id=actor_id, command_type=command_type, command_id=command_id, request_payload=payload)
+    if existing:
+        return existing.response_json
+    project_id = str(payload.get("project_id") or "")
+    entity_kind = str(payload.get("entity_kind") or "task")
+    entity_id = str(payload.get("entity_id") or "")
+    project = await get_pv1_project(session, tenant_id, project_id)
+    if not project or not entity_id:
+        raise PV1DomainError("NOT_FOUND", "Focus item not found.", http_status=status.HTTP_404_NOT_FOUND)
+    await require_project_role(session, tenant_id=tenant_id, project_id=project_id, actor_id=actor_id, request_role=request_role)
+    entity_exists = False
+    if entity_kind == "task":
+        entity_exists = await session.scalar(select(func.count()).select_from(models.PV1Task).where(models.PV1Task.tenant_id == tenant_id, models.PV1Task.project_id == project_id, models.PV1Task.id == entity_id)) > 0
+    elif entity_kind == "blocker":
+        entity_exists = await session.scalar(select(func.count()).select_from(models.PV1TaskBlocker).where(models.PV1TaskBlocker.tenant_id == tenant_id, models.PV1TaskBlocker.project_id == project_id, models.PV1TaskBlocker.id == entity_id)) > 0
+    elif entity_kind == "decision":
+        entity_exists = await session.scalar(select(func.count()).select_from(models.PV1GovernanceRecord).where(models.PV1GovernanceRecord.tenant_id == tenant_id, models.PV1GovernanceRecord.project_id == project_id, models.PV1GovernanceRecord.id == entity_id, models.PV1GovernanceRecord.record_type == "Decision")) > 0
+    elif entity_kind == "measurement":
+        entity_exists = await session.scalar(select(func.count()).select_from(models.PV1Metric).where(models.PV1Metric.tenant_id == tenant_id, models.PV1Metric.project_id == project_id, models.PV1Metric.id == entity_id)) > 0
+    if not entity_exists:
+        raise PV1DomainError("NOT_FOUND", "Focus item not found.", http_status=status.HTTP_404_NOT_FOUND)
+    if command_type == "focus.pin":
+        count = await session.scalar(select(func.count()).select_from(models.PV1FocusPin).where(models.PV1FocusPin.tenant_id == tenant_id, models.PV1FocusPin.user_id == actor_id))
+        existing_pin = await session.scalar(select(models.PV1FocusPin).where(models.PV1FocusPin.tenant_id == tenant_id, models.PV1FocusPin.user_id == actor_id, models.PV1FocusPin.entity_kind == entity_kind, models.PV1FocusPin.entity_id == entity_id))
+        if not existing_pin and count >= 3:
+            raise PV1DomainError("VALIDATION_FAILED", "You can pin up to three Focus items.")
+        if not existing_pin:
+            session.add(models.PV1FocusPin(id=_new_id(), tenant_id=tenant_id, user_id=actor_id, project_id=project_id, entity_kind=entity_kind, entity_id=entity_id, created_by=actor_id, updated_by=actor_id))
+    elif command_type == "focus.unpin":
+        await session.execute(delete(models.PV1FocusPin).where(models.PV1FocusPin.tenant_id == tenant_id, models.PV1FocusPin.user_id == actor_id, models.PV1FocusPin.entity_kind == entity_kind, models.PV1FocusPin.entity_id == entity_id))
+    elif command_type == "focus.snooze":
+        until_date = _date(payload.get("until_date"))
+        if not until_date or until_date <= _now().date():
+            raise PV1DomainError("VALIDATION_FAILED", "Snooze date must be a future ISO date.")
+        snooze = await session.scalar(select(models.PV1FocusSnooze).where(models.PV1FocusSnooze.tenant_id == tenant_id, models.PV1FocusSnooze.user_id == actor_id, models.PV1FocusSnooze.entity_kind == entity_kind, models.PV1FocusSnooze.entity_id == entity_id))
+        if snooze:
+            snooze.until_date = until_date; snooze.revision += 1; snooze.updated_by = actor_id; snooze.updated_at = _now()
+        else:
+            session.add(models.PV1FocusSnooze(id=_new_id(), tenant_id=tenant_id, user_id=actor_id, project_id=project_id, entity_kind=entity_kind, entity_id=entity_id, until_date=until_date, created_by=actor_id, updated_by=actor_id))
+    else:
+        await session.execute(delete(models.PV1FocusSnooze).where(models.PV1FocusSnooze.tenant_id == tenant_id, models.PV1FocusSnooze.user_id == actor_id, models.PV1FocusSnooze.entity_kind == entity_kind, models.PV1FocusSnooze.entity_id == entity_id))
+    event_id, _ = await append_event(session, tenant_id=tenant_id, project_id=project_id, actor_id=actor_id, command_id=command_id, event_type=command_type, aggregate_type="focus_preference", aggregate_id=f"{entity_kind}:{entity_id}", aggregate_revision=1, delta={"entity_kind": entity_kind, "entity_id": entity_id})
+    response = _success(command_id, revisions={"project_revision": project.revision, "graph_revision": project.graph_revision}, changed_entities=[{"kind": "focus_preference", "id": f"{entity_kind}:{entity_id}"}], event_id=event_id)
+    await _idempotency_finish(session, tenant_id=tenant_id, actor_id=actor_id, command_type=command_type, command_id=command_id, response=response, event_id=event_id)
+    return response
+
+
+def parse_task_import(raw: dict[str, Any]) -> dict[str, Any]:
+    text = raw.get("text")
+    if text is not None:
+        if not isinstance(text, str):
+            raise PV1DomainError("VALIDATION_FAILED", "Import text must be a string.")
+        delimiter = "\t" if raw.get("format") == "tsv" or ("\t" in text and "," not in text.splitlines()[0]) else ","
+        reader = csv.DictReader(io.StringIO(text), delimiter=delimiter)
+        rows = [dict(row) for row in reader]
+    else:
+        rows = raw.get("rows")
+        if not isinstance(rows, list):
+            raise PV1DomainError("VALIDATION_FAILED", "Import requires CSV/TSV text or a rows array.")
+    if len(rows) > 500:
+        raise PV1DomainError("VALIDATION_FAILED", "Bulk/paste import is limited to 500 tasks.")
+    normalized: list[dict[str, Any]] = []
+    errors: list[dict[str, Any]] = []
+    seen_keys: set[str] = set()
+    for index, raw_row in enumerate(rows, start=1):
+        row = {str(key).strip().casefold().replace(" ", "_"): value for key, value in (raw_row.items() if isinstance(raw_row, dict) else [])}
+        title = str(row.get("title") or row.get("name") or "").strip()
+        item_errors: list[str] = []
+        if not title or len(title) > 120: item_errors.append("title is required and must be at most 120 characters")
+        status_value = str(row.get("status") or "To Do").strip()
+        if status_value not in focus.WORK_STATUSES: item_errors.append("status is invalid")
+        priority = str(row.get("priority") or "Medium").strip()
+        if priority not in {"Critical", "High", "Medium", "Low"}: item_errors.append("priority is invalid")
+        start_date = _date(row.get("start") or row.get("start_date")) if row.get("start") or row.get("start_date") else None
+        end_date = _date(row.get("finish") or row.get("end_date")) if row.get("finish") or row.get("end_date") else None
+        if start_date and end_date and end_date < start_date: item_errors.append("Finish must be on or after start")
+        try: progress = int(row.get("progress") or 0)
+        except (TypeError, ValueError): progress = -1
+        if progress < 0 or progress > 100: item_errors.append("progress must be an integer from 0 to 100")
+        row_key = str(row.get("key") or row.get("id") or index).strip()
+        if row_key in seen_keys: item_errors.append("duplicate identifier")
+        seen_keys.add(row_key)
+        normalized.append({"key": row_key, "title": title, "owner_id": str(row.get("owner") or row.get("owner_id") or "").strip() or None, "status": status_value, "priority": priority, "start_date": start_date, "end_date": end_date, "parent_key": str(row.get("parent_key") or row.get("parent") or "").strip() or None, "progress": progress, "kind": str(row.get("kind") or "Task").strip(), "estimate_hours": row.get("estimate_hours") or None, "remaining_workdays": row.get("remaining_workdays") or None, "mandatory": str(row.get("mandatory") or "true").casefold() not in {"false", "0", "no"}})
+        if item_errors: errors.append({"row": index, "errors": item_errors})
+    keys = {item["key"] for item in normalized}
+    for index, item in enumerate(normalized, start=1):
+        if item["parent_key"] and item["parent_key"] not in keys:
+            errors.append({"row": index, "errors": ["unknown parent key"]})
+    return {"rows": normalized, "errors": errors, "valid": not errors, "count": len(normalized)}
+
+
+async def import_tasks(session: AsyncSession, *, tenant_id: int, project_id: str, actor_id: str, command_id: str, expected: dict[str, Any], raw: dict[str, Any]) -> dict[str, Any]:
+    existing = await _idempotency_start(session, tenant_id=tenant_id, actor_id=actor_id, command_type="task.import", command_id=command_id, request_payload={"expected": expected, "raw": raw})
+    if existing: return existing.response_json
+    project = await get_pv1_project(session, tenant_id, project_id)
+    if not project: raise PV1DomainError("NOT_FOUND", "Project not found.", http_status=status.HTTP_404_NOT_FOUND)
+    graph_expected = _require_expected(expected, "graph_revision")
+    if graph_expected != project.graph_revision: raise PV1DomainError("REVISION_CONFLICT", "The task graph changed. Refresh before importing.", http_status=status.HTTP_409_CONFLICT)
+    parsed = parse_task_import(raw)
+    if not parsed["valid"]: raise PV1DomainError("VALIDATION_FAILED", "Import contains invalid rows; nothing was created.", details={"row_errors": parsed["errors"]})
+    member_result = await session.execute(select(models.PV1ProjectMember.user_id).where(models.PV1ProjectMember.tenant_id == tenant_id, models.PV1ProjectMember.project_id == project_id))
+    members = set(member_result.scalars())
+    for row in parsed["rows"]:
+        if row["owner_id"] and row["owner_id"] not in members: raise PV1DomainError("VALIDATION_FAILED", "Owner is ambiguous or is not an authorized project member.", details={"field": "owner_id", "value": row["owner_id"]})
+        if row["status"] == "Done": raise PV1DomainError("VALIDATION_FAILED", "Imported Done tasks require acceptance evidence; import them as Review or To Do first.")
+    key_to_id: dict[str, str] = {}
+    pending = list(parsed["rows"])
+    created: list[dict[str, Any]] = []
+    order = 1
+    while pending:
+        progress = False
+        for row in list(pending):
+            if row["parent_key"] and row["parent_key"] not in key_to_id: continue
+            task_id = _new_id(); key_to_id[row["key"]] = task_id
+            session.add(models.PV1Task(id=task_id, tenant_id=tenant_id, project_id=project_id, parent_task_id=key_to_id.get(row["parent_key"]), kind=row["kind"], title=row["title"], owner_id=row["owner_id"] or actor_id, status=row["status"], priority=row["priority"], progress=row["progress"], start_date=row["start_date"], end_date=row["end_date"], estimate_hours=row["estimate_hours"], remaining_workdays=row["remaining_workdays"], planning_weight=1, mandatory=row["mandatory"], order_key=order * 1024, created_by=actor_id, updated_by=actor_id))
+            created.append({"kind": "task", "id": task_id}); order += 1; pending.remove(row); progress = True
+        if not progress: raise PV1DomainError("VALIDATION_FAILED", "Parent hierarchy contains a cycle.")
+    await session.execute(update(models.PV1Project).where(models.PV1Project.id == project_id, models.PV1Project.graph_revision == project.graph_revision, models.PV1Project.revision == project.revision).values(graph_revision=models.PV1Project.graph_revision + len(created), revision=models.PV1Project.revision + 1, updated_by=actor_id, updated_at=func.now()))
+    event_id, _ = await append_event(session, tenant_id=tenant_id, project_id=project_id, actor_id=actor_id, command_id=command_id, event_type="task.import", aggregate_type="task_set", aggregate_id=project_id, aggregate_revision=project.graph_revision + len(created), delta={"count": len(created)})
+    response = _success(command_id, revisions={"project_revision": project.revision + 1, "graph_revision": project.graph_revision + len(created)}, changed_entities=created, event_id=event_id)
+    await _idempotency_finish(session, tenant_id=tenant_id, actor_id=actor_id, command_type="task.import", command_id=command_id, response=response, event_id=event_id)
     return response

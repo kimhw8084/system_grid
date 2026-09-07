@@ -6,6 +6,7 @@ import { AlertTriangle, BarChart3, CalendarDays, CheckCircle2, ChevronRight, Git
 import toast from 'react-hot-toast'
 import ProjectsGolden from './ProjectsGolden'
 import ProjectsStory, { shouldUseProjectsStory } from './ProjectsStory'
+import ProjectsWorkPlan, { shouldUseProjectsWorkPlan } from './ProjectsWorkPlan'
 import { ProjectsTimelineAuthority } from './ProjectsWorkspaceLayout'
 import { apiFetch } from '../api/apiClient'
 import { PROJECT_TASK_STATUSES, buildProjectTaskHierarchy, projectFingerprint, type ProjectTaskStatus } from './ProjectsGolden.model'
@@ -120,7 +121,9 @@ const signed = (value: number | null) => value == null ? 'Unknown' : `${value > 
 
 export default function ProjectsSchedulingCompletion() {
   const location = useLocation()
-  return shouldUseProjectsStory(location.pathname, location.search) ? <ProjectsStory /> : <ProjectsSchedulingWorkspace />
+  if (shouldUseProjectsStory(location.pathname, location.search)) return <ProjectsStory />
+  if (shouldUseProjectsWorkPlan(location.pathname, location.search)) return <ProjectsWorkPlan />
+  return <ProjectsSchedulingWorkspace />
 }
 
 function ProjectsSchedulingWorkspace() {

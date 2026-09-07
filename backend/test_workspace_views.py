@@ -50,7 +50,7 @@ async def test_workspace_definition_registry_is_complete_and_typed(seeded_admin_
     assert response.status_code == 200, response.text
     definitions = response.json()["definitions"]
     by_key = {entry["key"]: entry for entry in definitions}
-    assert set(by_key) == {"monitoring", "assets", "services", "external", "network", "far", "research", "vendors"}
+    assert set(by_key) == {"monitoring", "assets", "services", "external", "network", "far", "research", "projects", "vendors"}
     assert by_key["network"]["archetype"] == "topology_hybrid"
     assert by_key["far"]["archetype"] == "investigation"
     assert by_key["research"]["archetype"] == "research"
@@ -61,6 +61,8 @@ async def test_workspace_definition_registry_is_complete_and_typed(seeded_admin_
     assert by_key["assets"]["state_schema"]["quick_filter_keys"] == ["status", "system", "type", "owner"]
     assert "primary_personnel_email" in by_key["vendors"]["state_schema"]["column_ids"]
     assert by_key["vendors"]["state_schema"]["group_by"] == ["raw", "country"]
+    assert by_key["projects"]["route"] == "/projects"
+    assert "deep_links" in by_key["projects"]["capabilities"]
 
 
 @pytest.mark.anyio
