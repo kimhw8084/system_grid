@@ -99,8 +99,14 @@ def project_dict(project: models.PV1Project) -> dict[str, Any]:
         "visibility": project.visibility,
         "parent_project_id": project.parent_project_id,
         "architecture_assessment": project.architecture_assessment,
+        "architecture_rationale": project.architecture_rationale,
         "outcome_phase": project.outcome_phase,
         "outcome_result": project.outcome_result,
+        "update_cadence": project.update_cadence,
+        "cancellation_reason": project.cancellation_reason,
+        "pause_reason": project.pause_reason,
+        "resume_review_date": _serialize(project.resume_review_date),
+        "creation_draft": (project.metadata_json or {}).get("creation_draft_v1"),
         "revision": project.revision,
         "graph_revision": project.graph_revision,
         "created_at": _serialize(project.created_at),
@@ -180,8 +186,14 @@ def legacy_project_dict(project: legacy_models.Project, tenant_id: int) -> dict[
         "visibility": "Team",
         "parent_project_id": str(project.parent_project_id) if project.parent_project_id else None,
         "architecture_assessment": "Not assessed",
+        "architecture_rationale": None,
         "outcome_phase": "Not configured",
         "outcome_result": "Unassessed",
+        "update_cadence": 7,
+        "cancellation_reason": None,
+        "pause_reason": None,
+        "resume_review_date": None,
+        "creation_draft": None,
         "revision": 1,
         "graph_revision": 1,
         "created_at": _serialize(project.created_at),
@@ -249,6 +261,226 @@ async def require_project_role(session: AsyncSession, *, tenant_id: int, project
     if write and role not in EDIT_ROLES:
         raise PV1DomainError("FORBIDDEN", "You do not have permission to edit this project.", http_status=status.HTTP_403_FORBIDDEN)
     return role
+
+
+def project_capabilities(role: str | None, explicit: dict[str, Any] | None = None, *, legacy: bool = False) -> dict[str, bool]:
+    explicit = explicit or {}
+    can_edit = not legacy and role in EDIT_ROLES
+    can_manage = not legacy and role in {"Owner", "Tenant administrator"}
+    is_tenant_admin = role == "Tenant administrator"
+    return {
+        "view": role in READ_ROLES,
+        "edit": can_edit,
+        "manage_people": can_manage,
+        "transition": can_edit,
+        "pause": can_manage,
+        "cancel": can_manage,
+        "archive": can_manage,
+        "restore": can_manage,
+        "export": role in READ_ROLES,
+        "financial_view": (is_tenant_admin or bool(explicit.get("financial.view", False))) and role in READ_ROLES,
+        "financial_edit": (is_tenant_admin or bool(explicit.get("financial.edit", False))) and can_edit,
+    }
+
+
+async def project_capabilities_for_actor(
+    session: AsyncSession,
+    *,
+    tenant_id: int,
+    project_id: str,
+    actor_id: str,
+    request_role: str | None,
+    legacy: bool = False,
+) -> dict[str, bool]:
+    role = await get_member_role(session, tenant_id, project_id, actor_id, request_role)
+    explicit: dict[str, Any] = {}
+    if role != "Tenant administrator" and not legacy:
+        result = await session.execute(select(models.PV1ProjectMember).where(
+            models.PV1ProjectMember.tenant_id == tenant_id,
+            models.PV1ProjectMember.project_id == project_id,
+            models.PV1ProjectMember.user_id == actor_id,
+        ))
+        member = result.scalar_one_or_none()
+        explicit = member.capabilities or {} if member else {}
+    return project_capabilities(role, explicit, legacy=legacy)
+
+
+def _health_projection(project: models.PV1Project, tasks: list[models.PV1Task], blockers: list[models.PV1TaskBlocker]) -> dict[str, Any]:
+    today = _now().date()
+    if project.run_state in {"Paused", "Cancelled"}:
+        return {"level": "Unknown", "reason": f"Project is {project.run_state.lower()}."}
+    if blockers:
+        return {"level": "Off track", "reason": blockers[0].reason}
+    overdue = [task for task in tasks if task.status not in {"Done", "Cancelled"} and (task.point_date or task.end_date) and (task.point_date or task.end_date) < today]
+    if overdue or (project.target_date and project.phase != "Delivered" and project.target_date < today):
+        return {"level": "At risk", "reason": "A delivery commitment is overdue."}
+    executable_tasks = [task for task in tasks if task.kind not in {"Summary", "Milestone"} and task.status != "Cancelled"]
+    if project.phase in {"Draft", "Proposed", "Planning"} and not executable_tasks:
+        return {"level": "Unknown", "reason": "Delivery work is not planned yet."}
+    return {"level": "On track", "reason": "No current blocker or missed commitment is recorded."}
+
+
+def _delivery_projection(tasks: list[models.PV1Task]) -> dict[str, Any]:
+    delivery_tasks = [task for task in tasks if task.kind not in {"Summary", "Milestone"} and task.status != "Cancelled"]
+    if not delivery_tasks:
+        return {"percent": None, "label": "Not planned", "method": "No executable work is recorded."}
+    denominator = sum(max(1, task.planning_weight or 1) for task in delivery_tasks)
+    numerator = sum(max(1, task.planning_weight or 1) * max(0, min(100, task.progress or 0)) for task in delivery_tasks)
+    percent = round(numerator / denominator)
+    return {"percent": percent, "label": f"{percent}%", "method": "Weighted by canonical planning weight."}
+
+
+async def project_story_projection(session: AsyncSession, project: models.PV1Project) -> dict[str, Any]:
+    tenant_id, project_id = project.tenant_id, project.id
+    task_result = await session.execute(select(models.PV1Task).where(models.PV1Task.tenant_id == tenant_id, models.PV1Task.project_id == project_id).order_by(models.PV1Task.order_key, models.PV1Task.id))
+    tasks = list(task_result.scalars())
+    criterion_result = await session.execute(select(models.PV1TaskCriterion).where(models.PV1TaskCriterion.tenant_id == tenant_id, models.PV1TaskCriterion.project_id == project_id).order_by(models.PV1TaskCriterion.created_at, models.PV1TaskCriterion.id))
+    criteria = list(criterion_result.scalars())
+    blocker_result = await session.execute(select(models.PV1TaskBlocker).where(models.PV1TaskBlocker.tenant_id == tenant_id, models.PV1TaskBlocker.project_id == project_id, models.PV1TaskBlocker.state == "Open").order_by(models.PV1TaskBlocker.review_date, models.PV1TaskBlocker.id))
+    blockers = list(blocker_result.scalars())
+    governance_result = await session.execute(select(models.PV1GovernanceRecord).where(models.PV1GovernanceRecord.tenant_id == tenant_id, models.PV1GovernanceRecord.project_id == project_id, models.PV1GovernanceRecord.state.not_in(["Closed", "Resolved", "Approved"])).order_by(models.PV1GovernanceRecord.created_at.desc()))
+    governance = list(governance_result.scalars())
+    update_result = await session.execute(select(models.PV1Update).where(models.PV1Update.tenant_id == tenant_id, models.PV1Update.project_id == project_id, models.PV1Update.state == "Published").order_by(models.PV1Update.published_at.desc()).limit(1))
+    latest_update = update_result.scalar_one_or_none()
+    metric_result = await session.execute(select(models.PV1Metric).where(models.PV1Metric.tenant_id == tenant_id, models.PV1Metric.project_id == project_id, models.PV1Metric.archived_at.is_(None)).order_by(models.PV1Metric.required_for_success.desc(), models.PV1Metric.created_at, models.PV1Metric.id))
+    metrics = list(metric_result.scalars())
+    primary_metric = metrics[0] if metrics else None
+    measurement = None
+    if primary_metric:
+        measurement_result = await session.execute(select(models.PV1Measurement).where(models.PV1Measurement.tenant_id == tenant_id, models.PV1Measurement.project_id == project_id, models.PV1Measurement.metric_id == primary_metric.id).order_by(models.PV1Measurement.period_end.desc(), models.PV1Measurement.recorded_at.desc()).limit(1))
+        measurement = measurement_result.scalar_one_or_none()
+
+    open_milestones = [task for task in tasks if task.kind == "Milestone" and task.status not in {"Done", "Cancelled"}]
+    open_milestones.sort(key=lambda task: (task.point_date or task.end_date or date.max, task.order_key, task.id))
+    next_milestone = open_milestones[0] if open_milestones else None
+    today = _now().date()
+    overdue = [task for task in tasks if task.status not in {"Done", "Cancelled"} and (task.point_date or task.end_date) and (task.point_date or task.end_date) < today]
+    attention: list[dict[str, Any]] = []
+    seen_reasons: set[str] = set()
+    for blocker in blockers:
+        reason_key = blocker.reason.strip().casefold()
+        if reason_key in seen_reasons:
+            continue
+        seen_reasons.add(reason_key)
+        attention.append({"id": blocker.id, "kind": "Blocker", "reason": blocker.reason, "accountable": blocker.resolver_id or project.owner_id, "due_date": _serialize(blocker.review_date), "action": "Open work", "entity_id": blocker.task_id})
+    for task in overdue:
+        if any(blocker.task_id == task.id for blocker in blockers):
+            continue
+        reason_key = f"commitment:{task.id}"
+        if reason_key in seen_reasons:
+            continue
+        seen_reasons.add(reason_key)
+        attention.append({"id": reason_key, "kind": "Missed commitment", "reason": task.title, "accountable": task.owner_id or project.owner_id, "due_date": _serialize(task.point_date or task.end_date), "action": "Open work", "entity_id": task.id})
+    if project.target_date and project.phase != "Delivered" and project.target_date < today and not overdue:
+        attention.append({"id": f"project-target:{project.id}", "kind": "Missed commitment", "reason": "The Project target date has passed.", "accountable": project.owner_id, "due_date": _serialize(project.target_date), "action": "Open work", "entity_id": None})
+    for record in governance:
+        if record.record_type != "Decision":
+            continue
+        payload = record.payload or {}
+        due_date = payload.get("due_date") or payload.get("review_date")
+        try:
+            parsed_due_date = date.fromisoformat(str(due_date)[:10]) if due_date else None
+        except ValueError:
+            parsed_due_date = None
+        if parsed_due_date is None or parsed_due_date >= today:
+            continue
+        reason_key = f"decision:{record.id}"
+        if reason_key in seen_reasons:
+            continue
+        seen_reasons.add(reason_key)
+        attention.append({"id": record.id, "kind": "Overdue decision", "reason": record.title, "accountable": payload.get("approver_id") or record.owner_id or project.owner_id, "due_date": due_date, "action": "Open decision", "entity_id": record.id})
+    if not project.owner_id or project.owner_id.startswith("legacy:unresolved"):
+        attention.append({"id": f"owner-missing:{project.id}", "kind": "Owner missing", "reason": "Assign one accountable Project Owner.", "accountable": "Team administrator", "due_date": None, "action": "Manage people", "entity_id": None})
+    if primary_metric and primary_metric.target_date and primary_metric.target_date < today and (not measurement or measurement.period_end < primary_metric.target_date):
+        attention.append({"id": f"outcome-checkpoint:{primary_metric.id}", "kind": "Overdue outcome checkpoint", "reason": primary_metric.name, "accountable": primary_metric.steward_id, "due_date": _serialize(primary_metric.target_date), "action": "Record measurement", "entity_id": primary_metric.id})
+    if project.phase in {"Executing", "Validating"}:
+        freshness_cutoff = _now() - timedelta(days=max(1, project.update_cadence or 7))
+        if not latest_update or not latest_update.published_at or latest_update.published_at < freshness_cutoff:
+            attention.append({"id": f"late-update:{project.id}", "kind": "Late update", "reason": "The published project update is overdue.", "accountable": project.owner_id, "due_date": None, "action": "Draft update", "entity_id": None})
+
+    metric_current: Any = None
+    if measurement:
+        if measurement.observed_numeric is not None:
+            metric_current = _serialize(measurement.observed_numeric)
+        elif measurement.observed_binary is not None:
+            metric_current = measurement.observed_binary
+        elif measurement.numerator is not None and measurement.denominator:
+            metric_current = _serialize(Decimal(measurement.numerator) * Decimal(100) / Decimal(measurement.denominator))
+    target_value = None
+    next_measurement_date = None
+    if primary_metric and isinstance(primary_metric.target_spec, dict):
+        target_value = primary_metric.target_spec.get("value")
+    if primary_metric:
+        if measurement and primary_metric.cadence_days:
+            cadence_days = max(1, primary_metric.cadence_days)
+            next_measurement_date = measurement.period_end + timedelta(days=cadence_days)
+            if next_measurement_date <= today:
+                elapsed_days = (today - next_measurement_date).days
+                next_measurement_date += timedelta(days=((elapsed_days // cadence_days) + 1) * cadence_days)
+        elif primary_metric.target_date and primary_metric.target_date >= today:
+            next_measurement_date = primary_metric.target_date
+
+    return {
+        "health": _health_projection(project, tasks, blockers),
+        "delivery": _delivery_projection(tasks),
+        "next_milestone": task_dict(next_milestone) if next_milestone else None,
+        "milestones": [task_dict(task) for task in open_milestones[:3]],
+        "attention": attention,
+        "attention_count": len(attention),
+        "acceptance_criteria": [{"id": item.id, "description": item.description, "state": item.state, "mandatory": item.mandatory} for item in criteria],
+        "primary_metric": ({"id": primary_metric.id, "name": primary_metric.name, "kind": primary_metric.kind, "unit": primary_metric.unit, "target": target_value, "current": metric_current, "quality": measurement.quality if measurement else None, "measured_at": _serialize(measurement.recorded_at) if measurement else None, "next_measurement_date": _serialize(next_measurement_date), "steward_id": primary_metric.steward_id} if primary_metric else None),
+        "latest_update": ({"id": latest_update.id, "content": latest_update.content, "published_at": _serialize(latest_update.published_at), "author_id": latest_update.author_id} if latest_update else None),
+        "governance": [{"id": item.id, "type": item.record_type, "title": item.title, "state": item.state, "owner_id": item.owner_id, "approver_id": (item.payload or {}).get("approver_id")} for item in governance[:3]],
+        "architecture": {"assessment": project.architecture_assessment, "rationale": project.architecture_rationale},
+        "resources": [],
+        "freshness": {"updated_at": _serialize(project.updated_at), "source": "Canonical Project projection"},
+        "coverage": {"resources": "unavailable", "architecture": "assessment-only", "updates": "available"},
+    }
+
+
+async def project_readiness_gaps(session: AsyncSession, project: models.PV1Project, to_phase: str) -> list[dict[str, Any]]:
+    if to_phase not in PHASES:
+        raise PV1DomainError("VALIDATION_FAILED", "Unknown delivery phase.", details={"field": "to_phase"})
+    gaps: list[dict[str, Any]] = []
+
+    def add(code: str, field: str, message: str, action: str) -> None:
+        gaps.append({"code": code, "field": field, "message": message, "action": action, "blocking": True})
+
+    target_index = PHASES.index(to_phase)
+    approved_exception_result = await session.execute(select(models.PV1GovernanceRecord).where(models.PV1GovernanceRecord.tenant_id == project.tenant_id, models.PV1GovernanceRecord.project_id == project.id, models.PV1GovernanceRecord.record_type == "Decision", models.PV1GovernanceRecord.state == "Approved"))
+    approved_exceptions = {
+        str((record.payload or {}).get("exception_type"))
+        for record in approved_exception_result.scalars()
+        if (record.payload or {}).get("rationale") and ((record.payload or {}).get("approver_id") or record.owner_id)
+    }
+    if target_index >= PHASES.index("Proposed"):
+        if not project.name.strip(): add("MISSING_NAME", "name", "Add a project name.", "Add purpose")
+        if not project.owner_id.strip(): add("MISSING_OWNER", "owner_id", "Assign one accountable Owner.", "Add purpose")
+        if not (project.objective or "").strip(): add("MISSING_OBJECTIVE", "objective", "Describe what will change.", "Add purpose")
+    if target_index >= PHASES.index("Ready"):
+        if not (project.in_scope or "").strip(): add("MISSING_IN_SCOPE", "in_scope", "Define what is in scope.", "Add purpose")
+        if not (project.out_of_scope or "").strip(): add("MISSING_OUT_SCOPE", "out_of_scope", "Define what is out of scope.", "Add purpose")
+        criteria_count = await session.scalar(select(func.count()).select_from(models.PV1TaskCriterion).where(models.PV1TaskCriterion.tenant_id == project.tenant_id, models.PV1TaskCriterion.project_id == project.id, models.PV1TaskCriterion.mandatory.is_(True)))
+        if not criteria_count: add("MISSING_ACCEPTANCE", "acceptance_criteria", "Add at least one delivery acceptance criterion.", "Add success")
+        task_result = await session.execute(select(models.PV1Task).where(models.PV1Task.tenant_id == project.tenant_id, models.PV1Task.project_id == project.id, models.PV1Task.status != "Cancelled"))
+        tasks = list(task_result.scalars())
+        executable = [task for task in tasks if task.kind not in {"Summary", "Milestone"}]
+        if not executable: add("MISSING_EXECUTABLE_WORK", "tasks", "Add at least one non-cancelled executable task.", "Open work")
+        ownerless_milestones = [task for task in tasks if task.kind == "Milestone" and task.mandatory and not task.owner_id]
+        if ownerless_milestones: add("MILESTONE_OWNER_REQUIRED", "milestones", "Assign owners to mandatory milestones.", "Add delivery plan")
+        if not project.target_date and not (project.no_deadline_reason or "").strip(): add("MISSING_TARGET", "target_date", "Add a target date or an approved no-deadline reason.", "Add delivery plan")
+        metric_count = await session.scalar(select(func.count()).select_from(models.PV1Metric).where(models.PV1Metric.tenant_id == project.tenant_id, models.PV1Metric.project_id == project.id, models.PV1Metric.archived_at.is_(None), models.PV1Metric.steward_id.is_not(None)))
+        outcome_na = "outcome_not_applicable" in approved_exceptions
+        if not metric_count and not outcome_na: add("MISSING_METRIC", "metric", "Add a success metric and steward or an approved not-applicable rationale.", "Add success")
+        if project.architecture_assessment == "Not assessed": add("MISSING_ARCHITECTURE_ASSESSMENT", "architecture_assessment", "Assess architecture impact.", "Add delivery plan")
+        if project.architecture_assessment == "No" and not (project.architecture_rationale or "").strip(): add("MISSING_ARCHITECTURE_RATIONALE", "architecture_rationale", "Explain why architecture is not affected.", "Add delivery plan")
+    if target_index >= PHASES.index("Executing"):
+        milestone_count = await session.scalar(select(func.count()).select_from(models.PV1Task).where(models.PV1Task.tenant_id == project.tenant_id, models.PV1Task.project_id == project.id, models.PV1Task.kind == "Milestone", models.PV1Task.status != "Cancelled"))
+        if not milestone_count: add("MISSING_NEXT_MILESTONE", "milestones", "Add a next mandatory milestone.", "Add delivery plan")
+        scheduled_count = await session.scalar(select(func.count()).select_from(models.PV1Task).where(models.PV1Task.tenant_id == project.tenant_id, models.PV1Task.project_id == project.id, models.PV1Task.mandatory.is_(True), models.PV1Task.status != "Cancelled", models.PV1Task.start_date.is_not(None), models.PV1Task.end_date.is_not(None)))
+        schedule_exception = "critical_schedule" in approved_exceptions
+        if not scheduled_count and not schedule_exception: add("MISSING_CRITICAL_SCHEDULE", "tasks", "Schedule critical mandatory work or record an approved exception.", "Open timeline")
+    return gaps
 
 
 async def _next_display_key(session: AsyncSession, tenant_id: int) -> str:
@@ -399,6 +631,88 @@ async def create_project(session: AsyncSession, *, tenant_id: int, actor_id: str
     return response
 
 
+def _normalize_creation_draft(value: Any) -> dict[str, Any]:
+    if value is None:
+        return {}
+    if not isinstance(value, dict):
+        raise PV1DomainError("VALIDATION_FAILED", "creation_draft must be an object.")
+    allowed = {"draft_step", "acceptance_criteria", "metric", "milestones", "collaborators", "dependencies", "suggestions_accepted"}
+    unknown = set(value) - allowed
+    if unknown:
+        raise PV1DomainError("VALIDATION_FAILED", "Unlisted creation draft fields are rejected.", details={"fields": sorted(unknown)})
+
+    def text_list(field: str, limit: int) -> list[str]:
+        raw = value.get(field) or []
+        if not isinstance(raw, list) or len(raw) > limit:
+            raise PV1DomainError("VALIDATION_FAILED", f"{field} must be a list with at most {limit} items.")
+        normalized = []
+        for item in raw:
+            text = str(item or "").strip()
+            if text:
+                normalized.append(text[:500])
+        return normalized
+
+    milestones_raw = value.get("milestones") or []
+    if not isinstance(milestones_raw, list) or len(milestones_raw) > 20:
+        raise PV1DomainError("VALIDATION_FAILED", "milestones must be a list with at most 20 items.")
+    milestones: list[dict[str, Any]] = []
+    for item in milestones_raw:
+        if not isinstance(item, dict) or set(item) - {"title", "owner_id", "point_date"}:
+            raise PV1DomainError("VALIDATION_FAILED", "Each milestone may contain only title, owner_id, and point_date.")
+        title = str(item.get("title") or "").strip()
+        if title:
+            milestones.append({"title": title[:120], "owner_id": str(item.get("owner_id") or "").strip() or None, "point_date": _serialize(_date(item.get("point_date")))})
+
+    metric_raw = value.get("metric") or {}
+    if not isinstance(metric_raw, dict):
+        raise PV1DomainError("VALIDATION_FAILED", "metric must be an object.")
+    metric_allowed = {"name", "kind", "unit", "direction", "measurement_method", "steward_id", "target_spec"}
+    if set(metric_raw) - metric_allowed:
+        raise PV1DomainError("VALIDATION_FAILED", "Unlisted metric draft fields are rejected.")
+    metric = {
+        "name": str(metric_raw.get("name") or "").strip()[:120],
+        "kind": metric_raw.get("kind") or "Custom",
+        "unit": str(metric_raw.get("unit") or "").strip()[:64],
+        "direction": metric_raw.get("direction") or "Increase",
+        "measurement_method": str(metric_raw.get("measurement_method") or "").strip(),
+        "steward_id": str(metric_raw.get("steward_id") or "").strip(),
+        "target_spec": metric_raw.get("target_spec") if isinstance(metric_raw.get("target_spec"), dict) else None,
+    }
+    if metric["kind"] not in {"Adoption", "Value", "Quality", "Reliability", "Decision", "Custom"}:
+        raise PV1DomainError("VALIDATION_FAILED", "Metric kind is invalid.")
+    if metric["direction"] not in {"Increase", "Decrease", "Within range", "Binary"}:
+        raise PV1DomainError("VALIDATION_FAILED", "Metric direction is invalid.")
+    return {
+        "draft_step": max(0, min(3, int(value.get("draft_step") or 0))),
+        "acceptance_criteria": text_list("acceptance_criteria", 20),
+        "metric": metric,
+        "milestones": milestones,
+        "collaborators": text_list("collaborators", 50),
+        "dependencies": text_list("dependencies", 50),
+        "suggestions_accepted": bool(value.get("suggestions_accepted", False)),
+    }
+
+
+async def _materialize_creation_draft(session: AsyncSession, project: models.PV1Project, actor_id: str) -> tuple[list[dict[str, Any]], int]:
+    creation = _normalize_creation_draft((project.metadata_json or {}).get("creation_draft_v1"))
+    changed: list[dict[str, Any]] = []
+    for description in creation.get("acceptance_criteria", []):
+        criterion_id = _new_id()
+        session.add(models.PV1TaskCriterion(id=criterion_id, tenant_id=project.tenant_id, project_id=project.id, task_id=None, description=description, mandatory=True, created_by=actor_id, updated_by=actor_id))
+        changed.append({"kind": "criterion", "id": criterion_id})
+    for index, milestone in enumerate(creation.get("milestones", []), start=1):
+        task_id = _new_id()
+        session.add(models.PV1Task(id=task_id, tenant_id=project.tenant_id, project_id=project.id, kind="Milestone", title=milestone["title"], owner_id=milestone.get("owner_id"), status="To Do", priority=project.priority, progress=0, point_date=_date(milestone.get("point_date")), planning_weight=1, mandatory=True, order_key=index * 1024, tags=["creation-template"] if creation.get("suggestions_accepted") else [], created_by=actor_id, updated_by=actor_id))
+        changed.append({"kind": "task", "id": task_id})
+    metric = creation.get("metric") or {}
+    if metric.get("name") and metric.get("unit") and metric.get("measurement_method") and metric.get("steward_id"):
+        metric_id = _new_id()
+        session.add(models.PV1Metric(id=metric_id, tenant_id=project.tenant_id, project_id=project.id, name=metric["name"], kind=metric["kind"], unit=metric["unit"], direction=metric["direction"], target_spec=metric.get("target_spec"), steward_id=metric["steward_id"], measurement_method=metric["measurement_method"], required_for_success=True, created_by=actor_id, updated_by=actor_id))
+        changed.append({"kind": "metric", "id": metric_id})
+    graph_delta = 1 if any(item["kind"] == "task" for item in changed) else 0
+    return changed, graph_delta
+
+
 async def execute_command(session: AsyncSession, *, tenant_id: int, actor_id: str, request_role: str | None, project_id: str, command_id: str, command_type: str, expected: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
     if command_type == "project.create":
         raise PV1DomainError("VALIDATION_FAILED", "project.create must use POST /api/v2/projects.")
@@ -419,6 +733,9 @@ async def execute_command(session: AsyncSession, *, tenant_id: int, actor_id: st
                 raise PV1DomainError("FORBIDDEN", "Contributors may update only their own tasks.", http_status=status.HTTP_403_FORBIDDEN)
         else:
             raise PV1DomainError("FORBIDDEN", "You do not have permission to perform this command.", http_status=status.HTTP_403_FORBIDDEN)
+    owner_commands = {"project.pause", "project.resume", "project.reactivate", "project.cancel", "project.archive", "project.restore", "project.transfer_owner"}
+    if command_type in owner_commands and role not in {"Owner", "Tenant administrator"}:
+        raise PV1DomainError("FORBIDDEN", "Owner capability is required for this lifecycle command.", http_status=status.HTTP_403_FORBIDDEN)
     project_expected = expected.get("project_revision")
     if command_type not in {"comment.add"}:
         if not isinstance(project_expected, int) or project_expected != project.revision:
@@ -443,6 +760,43 @@ async def execute_command(session: AsyncSession, *, tenant_id: int, actor_id: st
         event_id, _ = await append_event(session, tenant_id=tenant_id, project_id=project_id, actor_id=actor_id, command_id=command_id, event_type=command_type, aggregate_type="project", aggregate_id=project_id, aggregate_revision=revision, delta=changes)
         changed.append({"kind": "project", "id": project_id})
         response = _success(command_id, revisions={"project_revision": revision, "graph_revision": project.graph_revision}, changed_entities=changed, event_id=event_id)
+    elif command_type == "project.save_creation_draft":
+        if project.phase != "Draft" or project.archived_at is not None:
+            raise PV1DomainError("VALIDATION_FAILED", "Only an active Draft can save creation progress.")
+        if set(payload) - {"details", "creation_draft"}:
+            raise PV1DomainError("VALIDATION_FAILED", "Unlisted creation save fields are rejected.")
+        details = payload.get("details") or {}
+        if not isinstance(details, dict):
+            raise PV1DomainError("VALIDATION_FAILED", "details must be an object.")
+        allowed_details = {"name", "objective", "problem", "in_scope", "out_of_scope", "priority", "start_date", "target_date", "no_deadline_reason", "timezone", "architecture_assessment", "architecture_rationale", "template_key", "template_version"}
+        unknown = set(details) - allowed_details
+        if unknown:
+            raise PV1DomainError("VALIDATION_FAILED", "Unlisted project fields are rejected.", details={"fields": sorted(unknown)})
+        changes = {key: (_date(value) if key in {"start_date", "target_date"} else value) for key, value in details.items()}
+        if "name" in changes and (not str(changes["name"]).strip() or len(str(changes["name"]).strip()) > 120):
+            raise PV1DomainError("VALIDATION_FAILED", "name is required and must be at most 120 characters.")
+        if "objective" in changes and changes["objective"] is not None and len(str(changes["objective"])) > 500:
+            raise PV1DomainError("VALIDATION_FAILED", "objective must be at most 500 characters.")
+        if changes.get("architecture_assessment") not in {None, "Yes", "No", "Not assessed"}:
+            raise PV1DomainError("VALIDATION_FAILED", "architecture_assessment is invalid.")
+        template_keys = {"automation", "product-feature", "infrastructure-platform", "reliability", "engineering-improvement", "experiment", "process-improvement"}
+        if changes.get("template_key") is None and changes.get("template_version") is not None:
+            raise PV1DomainError("VALIDATION_FAILED", "template_version requires template_key.")
+        if changes.get("template_key") is not None and (changes.get("template_key") not in template_keys or changes.get("template_version") != "1.0.0"):
+            raise PV1DomainError("VALIDATION_FAILED", "template_key and template_version must identify a supported versioned template.")
+        effective_start = changes.get("start_date", project.start_date)
+        effective_target = changes.get("target_date", project.target_date)
+        if effective_start and effective_target and effective_target < effective_start:
+            raise PV1DomainError("VALIDATION_FAILED", "target_date must be on or after start_date.")
+        metadata = dict(project.metadata_json or {})
+        metadata["creation_draft_v1"] = _normalize_creation_draft(payload.get("creation_draft"))
+        changes["metadata_json"] = metadata
+        result = await session.execute(update(models.PV1Project).execution_options(synchronize_session=False).where(models.PV1Project.id == project_id, models.PV1Project.tenant_id == tenant_id, models.PV1Project.revision == project.revision).values(**changes, revision=models.PV1Project.revision + 1, updated_by=actor_id, updated_at=func.now()))
+        if result.rowcount != 1:
+            raise PV1DomainError("REVISION_CONFLICT", "Project revision changed during the draft save.", http_status=status.HTTP_409_CONFLICT)
+        revision = project.revision + 1
+        event_id, _ = await append_event(session, tenant_id=tenant_id, project_id=project_id, actor_id=actor_id, command_id=command_id, event_type="project.creation_draft_saved", aggregate_type="project", aggregate_id=project_id, aggregate_revision=revision, delta={"draft_step": metadata["creation_draft_v1"].get("draft_step", 0)})
+        response = _success(command_id, revisions={"project_revision": revision, "graph_revision": project.graph_revision}, changed_entities=[{"kind": "project", "id": project_id}], event_id=event_id)
     elif command_type == "project.transition":
         to_phase = payload.get("to_phase")
         if to_phase not in PHASES:
@@ -451,19 +805,44 @@ async def execute_command(session: AsyncSession, *, tenant_id: int, actor_id: st
             raise PV1DomainError("VALIDATION_FAILED", "Resume a paused or cancelled project before changing its phase.")
         if to_phase == "Delivered" and project.phase not in {"Validating", "Delivered"}:
             raise PV1DomainError("VALIDATION_FAILED", "Delivery must be accepted from Validating.")
-        result = await session.execute(update(models.PV1Project).execution_options(synchronize_session=False).where(models.PV1Project.id == project_id, models.PV1Project.revision == project.revision).values(phase=to_phase, revision=models.PV1Project.revision + 1, updated_by=actor_id, updated_at=func.now()))
+        gaps = await project_readiness_gaps(session, project, to_phase)
+        if gaps:
+            raise PV1DomainError("READINESS_GAPS", "Project is not ready for this transition.", details={"to_phase": to_phase, "gaps": gaps})
+        if to_phase == "Proposed" and project.phase != "Draft":
+            raise PV1DomainError("VALIDATION_FAILED", "Only a Draft can be created as Proposed.")
+        materialized: list[dict[str, Any]] = []
+        graph_delta = 0
+        if to_phase == "Proposed":
+            materialized, graph_delta = await _materialize_creation_draft(session, project, actor_id)
+        outcome_phase = "Planned" if project.outcome_phase == "Not configured" and any(item["kind"] == "metric" for item in materialized) else project.outcome_phase
+        result = await session.execute(update(models.PV1Project).execution_options(synchronize_session=False).where(models.PV1Project.id == project_id, models.PV1Project.revision == project.revision).values(phase=to_phase, outcome_phase=outcome_phase, revision=models.PV1Project.revision + 1, graph_revision=models.PV1Project.graph_revision + graph_delta, updated_by=actor_id, updated_at=func.now()))
         if result.rowcount != 1: raise PV1DomainError("REVISION_CONFLICT", "Project revision changed during the transition.", http_status=status.HTTP_409_CONFLICT)
         revision = project.revision + 1
-        event_id, _ = await append_event(session, tenant_id=tenant_id, project_id=project_id, actor_id=actor_id, command_id=command_id, event_type="project.transitioned", aggregate_type="project", aggregate_id=project_id, aggregate_revision=revision, delta={"phase": to_phase})
-        changed.append({"kind": "project", "id": project_id})
-        response = _success(command_id, revisions={"project_revision": revision, "graph_revision": project.graph_revision}, changed_entities=changed, event_id=event_id)
+        event_id, _ = await append_event(session, tenant_id=tenant_id, project_id=project_id, actor_id=actor_id, command_id=command_id, event_type="project.transitioned", aggregate_type="project", aggregate_id=project_id, aggregate_revision=revision, delta={"phase": to_phase, "outcome_phase": outcome_phase})
+        changed.extend([{"kind": "project", "id": project_id}, *materialized])
+        response = _success(command_id, revisions={"project_revision": revision, "graph_revision": project.graph_revision + graph_delta}, changed_entities=changed, event_id=event_id)
+    elif command_type == "project.discard_draft":
+        if project.phase != "Draft" or project.archived_at is not None:
+            raise PV1DomainError("VALIDATION_FAILED", "Only an active Draft can be discarded.")
+        result = await session.execute(update(models.PV1Project).execution_options(synchronize_session=False).where(models.PV1Project.id == project_id, models.PV1Project.revision == project.revision).values(archived_at=func.now(), revision=models.PV1Project.revision + 1, updated_by=actor_id, updated_at=func.now()))
+        if result.rowcount != 1:
+            raise PV1DomainError("REVISION_CONFLICT", "Project revision changed during discard.", http_status=status.HTTP_409_CONFLICT)
+        revision = project.revision + 1
+        event_id, _ = await append_event(session, tenant_id=tenant_id, project_id=project_id, actor_id=actor_id, command_id=command_id, event_type="project.draft_discarded", aggregate_type="project", aggregate_id=project_id, aggregate_revision=revision, delta={"preserved": True})
+        response = _success(command_id, revisions={"project_revision": revision, "graph_revision": project.graph_revision}, changed_entities=[{"kind": "project", "id": project_id}], event_id=event_id)
     elif command_type in {"project.pause", "project.resume", "project.reactivate", "project.cancel", "project.archive", "project.restore"}:
         if command_type == "project.pause":
-            run_state, values = "Paused", {"pause_reason": payload.get("reason"), "resume_review_date": _date(payload.get("resume_review_date"))}
+            reason = str(payload.get("reason") or "").strip()
+            if not reason:
+                raise PV1DomainError("VALIDATION_FAILED", "A pause reason is required.", details={"field_errors": [{"field": "reason", "message": "Enter why the project is paused."}]})
+            run_state, values = "Paused", {"pause_reason": reason, "resume_review_date": _date(payload.get("resume_review_date"))}
         elif command_type in {"project.resume", "project.reactivate"}:
             run_state, values = "Active", {"pause_reason": None, "cancellation_reason": None if command_type == "project.reactivate" else project.cancellation_reason}
         elif command_type == "project.cancel":
-            run_state, values = "Cancelled", {"cancellation_reason": payload.get("reason")}
+            reason = str(payload.get("reason") or "").strip()
+            if not reason:
+                raise PV1DomainError("VALIDATION_FAILED", "A cancellation reason is required.", details={"field_errors": [{"field": "reason", "message": "Enter why the project is cancelled."}]})
+            run_state, values = "Cancelled", {"cancellation_reason": reason}
         elif command_type == "project.restore":
             run_state, values = project.run_state, {"archived_at": None}
         else:
@@ -542,7 +921,12 @@ async def execute_command(session: AsyncSession, *, tenant_id: int, actor_id: st
         if parent_id:
             parent = await session.get(models.PV1Task, parent_id)
             if not parent or parent.project_id != project_id: raise PV1DomainError("VALIDATION_FAILED", "Parent task must belong to the same project.")
-        session.add(models.PV1Task(id=task_id, tenant_id=tenant_id, project_id=project_id, parent_task_id=parent_id, kind=payload.get("kind", "Task"), title=title, description=payload.get("description"), owner_id=payload.get("owner_id"), status=payload.get("status", "To Do"), priority=payload.get("priority", "Medium"), progress=int(payload.get("progress", 0)), planning_weight=int(payload.get("planning_weight", 1)), mandatory=bool(payload.get("mandatory", True)), order_key=payload.get("order_key", 1024), tags=payload.get("tags") or [], created_by=actor_id, updated_by=actor_id))
+        start_date = _date(payload.get("start_date"))
+        end_date = _date(payload.get("end_date"))
+        point_date = _date(payload.get("point_date"))
+        if start_date and end_date and end_date < start_date:
+            raise PV1DomainError("VALIDATION_FAILED", "Task end_date must be on or after start_date.")
+        session.add(models.PV1Task(id=task_id, tenant_id=tenant_id, project_id=project_id, parent_task_id=parent_id, kind=payload.get("kind", "Task"), title=title, description=payload.get("description"), owner_id=payload.get("owner_id"), status=payload.get("status", "To Do"), priority=payload.get("priority", "Medium"), progress=int(payload.get("progress", 0)), start_date=start_date, end_date=end_date, point_date=point_date, planning_weight=int(payload.get("planning_weight", 1)), mandatory=bool(payload.get("mandatory", True)), order_key=payload.get("order_key", 1024), tags=payload.get("tags") or [], created_by=actor_id, updated_by=actor_id))
         await session.execute(update(models.PV1Project).execution_options(synchronize_session=False).where(models.PV1Project.id == project_id, models.PV1Project.graph_revision == project.graph_revision).values(graph_revision=models.PV1Project.graph_revision + 1, revision=models.PV1Project.revision + 1, updated_by=actor_id, updated_at=func.now()))
         project_revision = project.revision + 1
         graph_revision = project.graph_revision + 1

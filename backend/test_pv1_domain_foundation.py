@@ -268,10 +268,41 @@ async def test_metric_delivery_acceptance_and_verified_outcome_are_independent(c
     created = await client.post(
         "/api/v2/projects",
         headers=_headers(tenant_id, command_id=str(uuid4())),
-        json={"name": "Measured outcome project"},
+        json={"name": "Measured outcome project", "objective": "Verify delivery and outcome remain independent.", "in_scope": "Measured delivery", "out_of_scope": "Unmeasured value", "target_date": "2026-03-01"},
     )
     assert created.status_code == 200, created.text
     project_id = created.json()["project"]["id"]
+
+    creation_save_id = str(uuid4())
+    creation_save = await client.post(
+        f"/api/v2/projects/{project_id}/commands",
+        headers=_headers(tenant_id, command_id=creation_save_id),
+        json=_command(
+            creation_save_id,
+            "project.save_creation_draft",
+            expected={"project_revision": 1},
+            payload={
+                "details": {"architecture_assessment": "Yes"},
+                "creation_draft": {
+                    "draft_step": 3,
+                    "acceptance_criteria": ["Delivery evidence is reviewable"],
+                    "metric": {},
+                    "milestones": [{"title": "Measurement review", "owner_id": "admin_root", "point_date": "2026-02-20"}],
+                    "collaborators": [],
+                    "dependencies": [],
+                    "suggestions_accepted": False,
+                },
+            },
+        ),
+    )
+    assert creation_save.status_code == 200, creation_save.text
+    promote_id = str(uuid4())
+    promote = await client.post(
+        f"/api/v2/projects/{project_id}/commands",
+        headers=_headers(tenant_id, command_id=promote_id),
+        json=_command(promote_id, "project.transition", expected={"project_revision": 2}, payload={"to_phase": "Proposed"}),
+    )
+    assert promote.status_code == 200, promote.text
 
     access_id = str(uuid4())
     access = await client.post(
@@ -280,7 +311,7 @@ async def test_metric_delivery_acceptance_and_verified_outcome_are_independent(c
         json=_command(
             access_id,
             "project.set_access",
-            expected={"project_revision": 1},
+            expected={"project_revision": 3},
             payload={"members": [{"user_id": "admin_root", "role": "Owner", "capabilities": {"financial.view": True, "financial.edit": True}}]},
         ),
     )
@@ -293,7 +324,7 @@ async def test_metric_delivery_acceptance_and_verified_outcome_are_independent(c
         json=_command(
             metric_command_id,
             "metric.define",
-            expected={"project_revision": 2},
+            expected={"project_revision": 4},
             payload={
                 "name": "Eligible adoption",
                 "kind": "Adoption",
@@ -316,7 +347,7 @@ async def test_metric_delivery_acceptance_and_verified_outcome_are_independent(c
         json=_command(
             measurement_command_id,
             "measurement.record",
-            expected={"project_revision": 2},
+            expected={"project_revision": 4},
             payload={
                 "metric_id": metric_id,
                 "definition_revision": 1,
@@ -348,23 +379,31 @@ async def test_metric_delivery_acceptance_and_verified_outcome_are_independent(c
     value = await client.post(
         f"/api/v2/projects/{project_id}/commands",
         headers=_headers(tenant_id, command_id=value_id),
-        json=_command(value_id, "value.record", expected={"project_revision": 2}, payload=value_body),
+        json=_command(value_id, "value.record", expected={"project_revision": 4}, payload=value_body),
     )
     assert value.status_code == 200, value.text
     over_allocated_id = str(uuid4())
     over_allocated = await client.post(
         f"/api/v2/projects/{project_id}/commands",
         headers=_headers(tenant_id, command_id=over_allocated_id),
-        json=_command(over_allocated_id, "value.record", expected={"project_revision": 2}, payload={**value_body, "fraction": "0.30"}),
+        json=_command(over_allocated_id, "value.record", expected={"project_revision": 4}, payload={**value_body, "fraction": "0.30"}),
     )
     assert over_allocated.status_code == 422
     assert over_allocated.json()["code"] == "VALIDATION_FAILED"
+
+    task_id = str(uuid4())
+    task = await client.post(
+        f"/api/v2/projects/{project_id}/commands",
+        headers=_headers(tenant_id, command_id=task_id),
+        json=_command(task_id, "task.create", expected={"project_revision": 4, "graph_revision": 2}, payload={"title": "Execute measured delivery", "owner_id": "admin_root", "start_date": "2026-02-01", "end_date": "2026-02-15", "mandatory": True}),
+    )
+    assert task.status_code == 200, task.text
 
     transition_id = str(uuid4())
     transition = await client.post(
         f"/api/v2/projects/{project_id}/commands",
         headers=_headers(tenant_id, command_id=transition_id),
-        json=_command(transition_id, "project.transition", expected={"project_revision": 2}, payload={"to_phase": "Validating"}),
+        json=_command(transition_id, "project.transition", expected={"project_revision": 5}, payload={"to_phase": "Validating"}),
     )
     assert transition.status_code == 200, transition.text
 
@@ -375,7 +414,7 @@ async def test_metric_delivery_acceptance_and_verified_outcome_are_independent(c
         json=_command(
             delivery_id,
             "delivery.accept",
-            expected={"project_revision": 3},
+            expected={"project_revision": 6},
             payload={"task_revision_ids": [], "criterion_revision_ids": [], "evidence_revision_ids": ["evidence-1"], "residual_obligation_ids": [], "followups": [{"days": 14}]},
         ),
     )
@@ -388,7 +427,7 @@ async def test_metric_delivery_acceptance_and_verified_outcome_are_independent(c
         json=_command(
             outcome_id,
             "outcomes.close",
-            expected={"project_revision": 4},
+            expected={"project_revision": 7},
             payload={"result": "Realized", "metric_revision_ids": [metric_id], "measurement_ids": [measurement_id], "rationale": "Verified target evidence reviewed."},
         ),
     )

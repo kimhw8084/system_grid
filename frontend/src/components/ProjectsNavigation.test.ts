@@ -13,7 +13,7 @@ describe('PV1 Projects canonical navigation', () => {
     expect(route).toMatchObject({ source: 'canonical', kind: 'work', projectId: '42', layout: 'list', panel: 'task', entityId: '7' })
     expect(buildProjectsDestinationPath(42, 'work', { layout: 'board', panel: 'task', entityId: 7 })).toBe('/projects/42/work?layout=board&panel=task&entity=7')
     expect(canonicalQueryKeys(route)).toEqual(['layout', 'section', 'panel', 'entity', 'mode', 'changeset'])
-    expect(canonicalQueryKeys(parseProjectsLocation('/projects/new', '?template=qualification'))).toEqual(['template'])
+    expect(canonicalQueryKeys(parseProjectsLocation('/projects/new', '?template=qualification&draft=project-id'))).toEqual(['template', 'draft'])
   })
 
   it('maps the opening project path to Home and retains legacy links', () => {

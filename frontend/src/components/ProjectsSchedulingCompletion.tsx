@@ -1,10 +1,11 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { useSearchParams } from 'react-router-dom'
+import { useLocation, useSearchParams } from 'react-router-dom'
 import { AlertTriangle, BarChart3, CalendarDays, CheckCircle2, ChevronRight, GitBranch, Layers3, Save, SlidersHorizontal, X } from 'lucide-react'
 import toast from 'react-hot-toast'
 import ProjectsGolden from './ProjectsGolden'
+import ProjectsStory, { shouldUseProjectsStory } from './ProjectsStory'
 import { ProjectsTimelineAuthority } from './ProjectsWorkspaceLayout'
 import { apiFetch } from '../api/apiClient'
 import { PROJECT_TASK_STATUSES, buildProjectTaskHierarchy, projectFingerprint, type ProjectTaskStatus } from './ProjectsGolden.model'
@@ -118,6 +119,11 @@ const capacityTone = (status: string) => status === 'OVER' ? 'text-rose-300 bord
 const signed = (value: number | null) => value == null ? 'Unknown' : `${value > 0 ? '+' : ''}${value}d`
 
 export default function ProjectsSchedulingCompletion() {
+  const location = useLocation()
+  return shouldUseProjectsStory(location.pathname, location.search) ? <ProjectsStory /> : <ProjectsSchedulingWorkspace />
+}
+
+function ProjectsSchedulingWorkspace() {
   const [searchParams] = useSearchParams()
   const queryClient = useQueryClient()
   const view = String(searchParams.get('view') || 'overview').toLowerCase()

@@ -125,6 +125,6 @@ export const projectRouteForLegacyView = (projectId: string | number, view: Proj
 
 export const canonicalQueryKeys = (route: ProjectsRoute): string[] => {
   if (route.source !== 'canonical') return ['view', 'id', 'task', 'report', 'showcase', 'saved_view']
-  if (route.kind === 'new') return ['template']
+  if (route.kind === 'new') return ['template', 'draft']
   return ['layout', 'section', 'panel', 'entity', 'mode', 'changeset']
 }

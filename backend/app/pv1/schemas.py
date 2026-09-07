@@ -46,6 +46,11 @@ class ProjectCreate(PV1Model):
 
     @model_validator(mode="after")
     def validate_deadline(self):
+        template_keys = {"automation", "product-feature", "infrastructure-platform", "reliability", "engineering-improvement", "experiment", "process-improvement"}
+        if self.template_key is None and self.template_version is not None:
+            raise ValueError("template_version requires template_key")
+        if self.template_key is not None and (self.template_key not in template_keys or self.template_version != "1.0.0"):
+            raise ValueError("template_key and template_version must identify a supported versioned template")
         if self.target_date is None and not self.no_deadline_reason and self.phase in {"Planning"}:
             raise ValueError("no_deadline_reason is required when Planning has no target_date")
         if self.start_date and self.target_date and self.target_date < self.start_date:
@@ -152,4 +157,3 @@ class TaskView(PV1Model):
     owner_id: str | None
     parent_task_id: str | None
     revision: int
-
