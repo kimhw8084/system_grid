@@ -42,16 +42,21 @@ const valid = <T extends string>(value: string | null, values: readonly T[], fal
 const parseLegacy = (params: URLSearchParams, projectId: string | null): ProjectsRoute => {
   const raw = (params.get('view') || '').toLowerCase()
   if (!projectId && (!raw || raw === 'portfolio' || raw === 'roadmap' || raw === 'owners')) {
-    return baseRoute('legacy', raw === 'portfolio' || raw === 'roadmap' || raw === 'owners' ? 'portfolio' : 'portfolio', null, null, null, null, null, null, null)
+    const route = baseRoute('legacy', 'portfolio', null, null, null, null, null, null, 'portfolio')
+    route.redirectTo = buildProjectsLegacyRedirect(params, route)
+    return route
   }
-  if (raw === 'tasks') return baseRoute('legacy', 'work', projectId, null, 'list', null, null, null, 'tasks')
-  if (raw === 'board') return baseRoute('legacy', 'work', projectId, null, 'board', null, null, null, 'board')
-  if (raw === 'timeline') return baseRoute('legacy', 'timeline', projectId, null, null, null, null, null, 'timeline')
-  if (raw === 'files') return baseRoute('legacy', 'plan', projectId, 'resources', null, null, null, null, 'files')
-  if (raw === 'updates') return baseRoute('legacy', 'updates', projectId, 'updates', null, null, null, null, 'updates')
-  if (raw === 'reports') return baseRoute('legacy', 'updates', projectId, 'reports', null, null, null, null, 'reports')
-  if (raw === 'insights' || raw === 'review' || raw === 'governance') return baseRoute('legacy', 'plan', projectId, raw === 'governance' ? 'risks' : 'risks', null, null, null, null, 'insights')
-  return baseRoute('legacy', projectId ? 'home' : 'portfolio', projectId, null, null, null, null, null, projectId ? 'overview' : 'portfolio')
+  let route: ProjectsRoute
+  if (raw === 'tasks') route = baseRoute('legacy', 'work', projectId, null, 'list', null, null, null, 'tasks')
+  else if (raw === 'board') route = baseRoute('legacy', 'work', projectId, null, 'board', null, null, null, 'board')
+  else if (raw === 'timeline') route = baseRoute('legacy', 'timeline', projectId, null, null, null, null, null, 'timeline')
+  else if (raw === 'files') route = baseRoute('legacy', 'plan', projectId, 'resources', null, null, null, null, 'files')
+  else if (raw === 'updates') route = baseRoute('legacy', 'updates', projectId, 'updates', null, null, null, null, 'updates')
+  else if (raw === 'reports') route = baseRoute('legacy', 'updates', projectId, 'reports', null, null, null, null, 'reports')
+  else if (raw === 'insights' || raw === 'review' || raw === 'governance') route = baseRoute('legacy', 'plan', projectId, 'risks', null, null, null, null, 'insights')
+  else route = baseRoute('legacy', projectId ? 'home' : 'portfolio', projectId, null, null, null, null, null, projectId ? 'overview' : 'portfolio')
+  route.redirectTo = buildProjectsLegacyRedirect(params, route)
+  return route
 }
 
 const baseRoute = (
@@ -123,8 +128,32 @@ export const projectRouteForLegacyView = (projectId: string | number, view: Proj
   return buildProjectsDestinationPath(projectId, 'home')
 }
 
+export const buildProjectsLegacyRedirect = (params: URLSearchParams, route: ProjectsRoute): string => {
+  const legacyView = (params.get('view') || '').toLowerCase()
+  const projectId = params.get('id')
+  let path = !projectId
+    ? '/projects'
+    : projectRouteForLegacyView(projectId, route.legacyView, legacyView === 'governance' ? 'risks' : undefined)
+  const retained = new URLSearchParams()
+  const taskId = params.get('task')
+  const reportId = params.get('report')
+  const savedViewId = params.get('saved_view')
+  const showcase = params.get('showcase')
+  if (taskId && projectId && route.kind === 'work') {
+    path = buildProjectsDestinationPath(projectId, 'work', { layout: route.layout || 'list', panel: 'task', entityId: taskId })
+  } else if (taskId && projectId && route.kind === 'home') {
+    path = buildProjectsDestinationPath(projectId, 'home', { panel: 'task', entityId: taskId })
+  }
+  if (!projectId && (legacyView === 'roadmap' || legacyView === 'owners')) retained.set('section', legacyView)
+  if (reportId) retained.set('report', reportId)
+  if (savedViewId) retained.set('saved_view', savedViewId)
+  if (showcase) retained.set('showcase', showcase)
+  const query = retained.toString()
+  return path + (query ? (path.includes('?') ? '&' : '?') + query : '')
+}
+
 export const canonicalQueryKeys = (route: ProjectsRoute): string[] => {
   if (route.source !== 'canonical') return ['view', 'id', 'task', 'report', 'showcase', 'saved_view']
   if (route.kind === 'new') return ['template', 'draft']
-  return ['layout', 'section', 'panel', 'entity', 'mode', 'changeset']
+  return ['layout', 'section', 'panel', 'entity', 'mode', 'changeset', 'task', 'report', 'showcase', 'saved_view']
 }

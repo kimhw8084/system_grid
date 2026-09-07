@@ -1,19 +1,129 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, delete, update, func
 from sqlalchemy.orm import selectinload
 from typing import List, Optional
 from datetime import datetime
+from uuid import uuid4
 from ..database import get_db
 from ..models import models
 from ..schemas import schemas
+from ..pv1 import domain as pv1_domain
+from ..pv1 import migration as pv1_migration
+from ..pv1 import models as pv1_models
 from .utils import filter_valid_columns
 from .project_hierarchy import validate_project_parent_assignment
 
 router = APIRouter(prefix="/projects", tags=["Projects"])
 
+async def _cutover(request: Request, db: AsyncSession):
+    tenant_id = getattr(request.state, "tenant_id", None)
+    if not isinstance(tenant_id, int):
+        return None
+    return await pv1_migration.get_tenant_cutover(db, tenant_id)
+
+
+def _legacy_writes_closed(cutover: pv1_models.PV1TenantCutover | None) -> bool:
+    return cutover is not None and cutover.state in {"cutover", "read_only"}
+
+
+def _cutover_write_error() -> HTTPException:
+    return HTTPException(
+        status_code=status.HTTP_409_CONFLICT,
+        detail={
+            "code": "LEGACY_WRITE_REQUIRES_PV1_COMMAND",
+            "message": "This tenant has cut over to PV1. Use the v2 command endpoint; the v1 route is read-compatible only.",
+        },
+    )
+
+
+async def _canonical_v1_update(project_id: int, data: schemas.ProjectUpdate, request: Request, db: AsyncSession):
+    tenant_id = getattr(request.state, "tenant_id", None)
+    actor_id = request.headers.get("X-User-Id") or "legacy-adapter"
+    request_role = getattr(request.state, "sysgrid_access_role", None)
+    canonical = await pv1_domain.get_pv1_project(db, tenant_id, str(project_id))
+    if canonical is None:
+        raise HTTPException(status_code=404, detail="Project not found")
+    await pv1_domain.require_project_role(db, tenant_id=tenant_id, project_id=str(project_id), actor_id=actor_id, request_role=request_role, write=True)
+    values = data.model_dump(exclude_unset=True)
+    tasks_data = values.pop("tasks", None)
+    unsupported = set(values) - {"name", "objective", "problem_statement", "description", "priority", "start_date", "end_date", "timezone", "status"}
+    if unsupported:
+        raise _cutover_write_error()
+    if "status" in values and values["status"] != pv1_migration._compat_status(canonical):
+        raise _cutover_write_error()
+    patch = {}
+    for source, target in (("name", "name"), ("objective", "objective"), ("priority", "priority"), ("timezone", "timezone")):
+        if source in values:
+            patch[target] = values[source]
+    if "problem_statement" in values:
+        patch["problem"] = values["problem_statement"]
+    elif "description" in values:
+        patch["problem"] = values["description"]
+    if "start_date" in values:
+        patch["start_date"] = values["start_date"].date().isoformat() if isinstance(values["start_date"], datetime) else values["start_date"]
+    if "end_date" in values:
+        patch["target_date"] = values["end_date"].date().isoformat() if isinstance(values["end_date"], datetime) else values["end_date"]
+    if patch:
+        await pv1_domain.execute_command(
+            db,
+            tenant_id=tenant_id,
+            actor_id=actor_id,
+            request_role=request_role,
+            project_id=str(project_id),
+            command_id=str(uuid4()),
+            command_type="project.update_details",
+            expected={"project_revision": canonical.revision},
+            payload=patch,
+        )
+        await db.refresh(canonical)
+    if tasks_data is not None:
+        for task_data in tasks_data:
+            if not task_data.get("id"):
+                raise _cutover_write_error()
+            task_id = str(task_data["id"])
+            task = await db.scalar(select(pv1_models.PV1Task).where(
+                pv1_models.PV1Task.tenant_id == tenant_id,
+                pv1_models.PV1Task.project_id == str(project_id),
+                (pv1_models.PV1Task.legacy_task_id == int(task_id) if task_id.isdigit() else pv1_models.PV1Task.id == task_id),
+            ))
+            if task is None:
+                raise HTTPException(status_code=404, detail="Task not found")
+            task_patch = {}
+            for source, target in (("name", "title"), ("description", "description"), ("owner", "owner_id"), ("priority", "priority"), ("progress", "progress")):
+                if source in task_data:
+                    task_patch[target] = task_data[source]
+            if "status" in task_data and task_data["status"] not in {"Done", "Completed", task.status}:
+                raise _cutover_write_error()
+            current_project = await pv1_domain.get_pv1_project(db, tenant_id, str(project_id))
+            if task_patch:
+                await pv1_domain.execute_command(
+                    db,
+                    tenant_id=tenant_id,
+                    actor_id=actor_id,
+                    request_role=request_role,
+                    project_id=str(project_id),
+                    command_id=str(uuid4()),
+                    command_type="task.update_fields",
+                    expected={"project_revision": current_project.revision, "graph_revision": current_project.graph_revision, "task_revision": task.revision},
+                    payload={"task_id": task.id, **task_patch},
+                )
+                await db.refresh(task)
+    await db.commit()
+    canonical = await pv1_domain.get_pv1_project(db, tenant_id, str(project_id))
+    await db.refresh(canonical)
+    return await pv1_migration.canonical_project_legacy_response(db, canonical)
+
+
 @router.get("", response_model=List[schemas.ProjectResponse])
-async def get_projects(include_deleted: bool = False, db: AsyncSession = Depends(get_db)):
+async def get_projects(request: Request, include_deleted: bool = False, db: AsyncSession = Depends(get_db)):
+    cutover = await _cutover(request, db)
+    if cutover and cutover.state in {"cutover", "read_only"}:
+        statement = select(pv1_models.PV1Project).where(pv1_models.PV1Project.tenant_id == request.state.tenant_id)
+        if not include_deleted:
+            statement = statement.where(pv1_models.PV1Project.archived_at.is_(None))
+        result = await db.execute(statement.order_by(pv1_models.PV1Project.display_key))
+        return [await pv1_migration.canonical_project_legacy_response(db, project) for project in result.scalars()]
     query = select(models.Project).options(
         selectinload(models.Project.tasks).selectinload(models.ProjectTask.subtasks),
         selectinload(models.Project.tasks).selectinload(models.ProjectTask.comments),
@@ -28,7 +138,9 @@ async def get_projects(include_deleted: bool = False, db: AsyncSession = Depends
     return result.scalars().all()
 
 @router.post("/reorder")
-async def reorder_projects(order_data: List[dict], db: AsyncSession = Depends(get_db)):
+async def reorder_projects(order_data: List[dict], request: Request, db: AsyncSession = Depends(get_db)):
+    if _legacy_writes_closed(await _cutover(request, db)):
+        raise _cutover_write_error()
     # Expected format: [{"id": 1, "order_index": 0}, {"id": 2, "order_index": 1}]
     for item in order_data:
         if "id" in item and "order_index" in item:
@@ -41,7 +153,28 @@ async def reorder_projects(order_data: List[dict], db: AsyncSession = Depends(ge
     return {"message": "Order updated successfully"}
 
 @router.post("", response_model=schemas.ProjectResponse)
-async def create_project(data: schemas.ProjectCreate, db: AsyncSession = Depends(get_db)):
+async def create_project(data: schemas.ProjectCreate, request: Request, db: AsyncSession = Depends(get_db)):
+    cutover = await _cutover(request, db)
+    if cutover and cutover.state == "cutover":
+        actor_id = request.headers.get("X-User-Id") or "legacy-adapter"
+        status_value = (data.status or "Planning").strip()
+        phase = {"Not Started": "Proposed", "Planning": "Planning"}.get(status_value, "Draft")
+        payload = {
+            "name": data.name,
+            "objective": data.objective,
+            "problem": data.problem_statement or data.description,
+            "team_id": data.team_id,
+            "owner_id": data.owner or actor_id,
+            "template_key": data.type,
+            "phase": phase,
+            "priority": "Critical" if data.priority == "Highest" else data.priority,
+            "start_date": data.start_date.date().isoformat() if isinstance(data.start_date, datetime) else data.start_date,
+            "target_date": data.end_date.date().isoformat() if isinstance(data.end_date, datetime) else data.end_date,
+        }
+        result = await pv1_domain.create_project(db, tenant_id=request.state.tenant_id, actor_id=actor_id, request_role=getattr(request.state, "sysgrid_access_role", None), command_id=str(uuid4()), payload=payload)
+        await db.commit()
+        canonical = await pv1_domain.get_pv1_project(db, request.state.tenant_id, result["changed_entities"][0]["id"])
+        return await pv1_migration.canonical_project_legacy_response(db, canonical)
     project_data = data.model_dump()
     tasks_data = project_data.pop("tasks", [])
     await validate_project_parent_assignment(
@@ -63,10 +196,16 @@ async def create_project(data: schemas.ProjectCreate, db: AsyncSession = Depends
         
     await db.commit()
     # Re-fetch with all relations for response to avoid greenlet errors
-    return await get_project(db_project.id, db)
+    return await get_project(db_project.id, request, db)
 
 @router.get("/{project_id}", response_model=schemas.ProjectResponse)
-async def get_project(project_id: int, db: AsyncSession = Depends(get_db)):
+async def get_project(project_id: int, request: Request, db: AsyncSession = Depends(get_db)):
+    cutover = await _cutover(request, db)
+    if cutover and cutover.state in {"cutover", "read_only"}:
+        canonical = await pv1_domain.get_pv1_project(db, request.state.tenant_id, str(project_id))
+        if canonical is None:
+            raise HTTPException(status_code=404, detail="Project not found")
+        return await pv1_migration.canonical_project_legacy_response(db, canonical)
     query = select(models.Project).filter(models.Project.id == project_id).options(
         selectinload(models.Project.tasks).selectinload(models.ProjectTask.subtasks),
         selectinload(models.Project.tasks).selectinload(models.ProjectTask.comments),
@@ -81,7 +220,12 @@ async def get_project(project_id: int, db: AsyncSession = Depends(get_db)):
     return project
 
 @router.put("/{project_id}", response_model=schemas.ProjectResponse)
-async def update_project(project_id: int, data: schemas.ProjectUpdate, db: AsyncSession = Depends(get_db)):
+async def update_project(project_id: int, data: schemas.ProjectUpdate, request: Request, db: AsyncSession = Depends(get_db)):
+    cutover = await _cutover(request, db)
+    if cutover and cutover.state == "cutover":
+        return await _canonical_v1_update(project_id, data, request, db)
+    if cutover and cutover.state == "read_only":
+        raise _cutover_write_error()
     query = select(models.Project).filter(models.Project.id == project_id).options(
         selectinload(models.Project.tasks)
     )
@@ -174,10 +318,12 @@ async def update_project(project_id: int, data: schemas.ProjectUpdate, db: Async
 
     await db.commit()
     # Re-fetch with all relations for response
-    return await get_project(project_id, db)
+    return await get_project(project_id, request, db)
 
 @router.delete("/{project_id}")
-async def delete_project(project_id: int, db: AsyncSession = Depends(get_db)):
+async def delete_project(project_id: int, request: Request, db: AsyncSession = Depends(get_db)):
+    if _legacy_writes_closed(await _cutover(request, db)):
+        raise _cutover_write_error()
     db_project = await db.get(models.Project, project_id)
     if not db_project:
         raise HTTPException(status_code=404, detail="Project not found")
@@ -188,16 +334,20 @@ async def delete_project(project_id: int, db: AsyncSession = Depends(get_db)):
 
 # --- Tasks ---
 @router.post("/tasks", response_model=schemas.ProjectTaskResponse)
-async def create_task(data: dict, db: AsyncSession = Depends(get_db)):
+async def create_task(data: dict, request: Request, db: AsyncSession = Depends(get_db)):
+    if _legacy_writes_closed(await _cutover(request, db)):
+        raise _cutover_write_error()
     clean_data = filter_valid_columns(models.ProjectTask, data)
     task = models.ProjectTask(**clean_data)
     db.add(task)
     await db.commit()
     # Re-fetch task to avoid greenlet errors
-    return await update_task(task.id, {}, db)
+    return await update_task(task.id, {}, request, db)
 
 @router.put("/tasks/{task_id}", response_model=schemas.ProjectTaskResponse)
-async def update_task(task_id: int, data: dict, db: AsyncSession = Depends(get_db)):
+async def update_task(task_id: int, data: dict, request: Request, db: AsyncSession = Depends(get_db)):
+    if _legacy_writes_closed(await _cutover(request, db)):
+        raise _cutover_write_error()
     query = select(models.ProjectTask).filter(models.ProjectTask.id == task_id).options(
         selectinload(models.ProjectTask.subtasks),
         selectinload(models.ProjectTask.comments),
@@ -233,7 +383,9 @@ async def update_task(task_id: int, data: dict, db: AsyncSession = Depends(get_d
 
 # --- Comments ---
 @router.post("/comments", response_model=schemas.ProjectCommentResponse)
-async def create_comment(data: dict, db: AsyncSession = Depends(get_db)):
+async def create_comment(data: dict, request: Request, db: AsyncSession = Depends(get_db)):
+    if _legacy_writes_closed(await _cutover(request, db)):
+        raise _cutover_write_error()
     clean_data = filter_valid_columns(models.ProjectComment, data)
     comment = models.ProjectComment(**clean_data)
     db.add(comment)
@@ -243,7 +395,9 @@ async def create_comment(data: dict, db: AsyncSession = Depends(get_db)):
 
 # --- QA ---
 @router.post("/qa", response_model=schemas.ProjectQAResponse)
-async def create_qa(data: dict, db: AsyncSession = Depends(get_db)):
+async def create_qa(data: dict, request: Request, db: AsyncSession = Depends(get_db)):
+    if _legacy_writes_closed(await _cutover(request, db)):
+        raise _cutover_write_error()
     clean_data = filter_valid_columns(models.ProjectQA, data)
     qa = models.ProjectQA(**clean_data)
     db.add(qa)
@@ -252,7 +406,9 @@ async def create_qa(data: dict, db: AsyncSession = Depends(get_db)):
     return qa
 
 @router.put("/qa/{qa_id}", response_model=schemas.ProjectQAResponse)
-async def update_qa(qa_id: int, data: dict, db: AsyncSession = Depends(get_db)):
+async def update_qa(qa_id: int, data: dict, request: Request, db: AsyncSession = Depends(get_db)):
+    if _legacy_writes_closed(await _cutover(request, db)):
+        raise _cutover_write_error()
     qa = await db.get(models.ProjectQA, qa_id)
     if not qa: raise HTTPException(404, "QA item not found")
     clean_data = filter_valid_columns(models.ProjectQA, data)

@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { useLocation, useSearchParams } from 'react-router-dom'
+import { useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 import { AlertTriangle, BarChart3, CalendarDays, CheckCircle2, ChevronRight, GitBranch, Layers3, Save, SlidersHorizontal, X } from 'lucide-react'
 import toast from 'react-hot-toast'
 import ProjectsGolden from './ProjectsGolden'
@@ -9,6 +9,7 @@ import ProjectsStory, { shouldUseProjectsStory } from './ProjectsStory'
 import ProjectsWorkPlan, { shouldUseProjectsWorkPlan } from './ProjectsWorkPlan'
 import ProjectsCommunication, { shouldUseProjectsCommunication } from './ProjectsCommunication'
 import ProjectsOutcomes, { shouldUseProjectsOutcomes } from './ProjectsOutcomes'
+import { parseProjectsLocation } from './ProjectsNavigation'
 import { shouldUseProjectsTimeline } from './ProjectsTimeline.route'
 import { ProjectsTimelineAuthority } from './ProjectsWorkspaceLayout'
 import { apiFetch } from '../api/apiClient'
@@ -123,8 +124,16 @@ const readProjects = async () => {
 const capacityTone = (status: string) => status === 'OVER' ? 'text-rose-300 border-rose-500/20 bg-rose-500/[0.04]' : status === 'WITHIN' ? 'text-emerald-300 border-emerald-500/20 bg-emerald-500/[0.04]' : 'text-amber-300 border-amber-500/20 bg-amber-500/[0.04]'
 const signed = (value: number | null) => value == null ? 'Unknown' : `${value > 0 ? '+' : ''}${value}d`
 
+function ProjectsLegacyAliasRedirect({ target }: { target: string }) {
+  const navigate = useNavigate()
+  useEffect(() => { navigate(target, { replace: true }) }, [navigate, target])
+  return <main className="sg-pv1-state" aria-busy="true">Opening the canonical Project link…</main>
+}
+
 export default function ProjectsSchedulingCompletion() {
   const location = useLocation()
+  const projectsRoute = parseProjectsLocation(location.pathname, location.search)
+  if (projectsRoute.source === 'legacy' && projectsRoute.redirectTo) return <ProjectsLegacyAliasRedirect target={projectsRoute.redirectTo} />
   if (shouldUseProjectsStory(location.pathname, location.search)) return <ProjectsStory />
   if (shouldUseProjectsWorkPlan(location.pathname, location.search)) return <ProjectsWorkPlan />
   if (shouldUseProjectsOutcomes(location.pathname)) return <ProjectsOutcomes />

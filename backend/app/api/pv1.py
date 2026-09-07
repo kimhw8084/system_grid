@@ -12,7 +12,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..database import get_db
 from ..models import models as legacy_models
-from ..pv1 import domain, models, schemas
+from ..pv1 import domain, migration, models, schemas
 
 
 router = APIRouter(tags=["PV1 v2"])
@@ -238,6 +238,47 @@ async def get_capabilities(request: Request, db: AsyncSession = Depends(get_db))
             "reports": {"supported": True, "contract_version": "1.0", "formats": ["html", "print", "pdf", "json"]},
         },
     }
+
+
+@router.get("/migrations/legacy/status")
+async def get_legacy_migration_status(request: Request, db: AsyncSession = Depends(get_db)):
+    if (getattr(request.state, "sysgrid_access_role", "") or "").upper() != "ADMIN":
+        return _error(request, domain.PV1DomainError("FORBIDDEN", "Migration status requires tenant administrator access.", http_status=status.HTTP_403_FORBIDDEN))
+    run = await db.scalar(
+        select(models.PV1MigrationRun)
+        .where(models.PV1MigrationRun.tenant_id == _tenant_id(request))
+        .order_by(models.PV1MigrationRun.started_at.desc(), models.PV1MigrationRun.id.desc())
+    )
+    cutover = await migration.get_tenant_cutover(db, _tenant_id(request))
+    return {
+        "migration": migration.migration_run_summary(run) if run else None,
+        "cutover": {
+            "state": cutover.state,
+            "migration_run_id": cutover.migration_run_id,
+            "adapter_version": cutover.adapter_version,
+            "rollback_mode": cutover.rollback_mode,
+        } if cutover else {"state": "shadow", "migration_run_id": None, "adapter_version": migration.ADAPTER_VERSION, "rollback_mode": "read_only"},
+        "write_authority": "pv1_domain_commands" if cutover and cutover.state == "cutover" else "legacy_read_adapter",
+    }
+
+
+@router.get("/migrations/legacy/projects/{project_id}/shadow")
+async def compare_legacy_project_shadow(project_id: str, request: Request, db: AsyncSession = Depends(get_db)):
+    try:
+        canonical = await domain.get_pv1_project(db, _tenant_id(request), project_id)
+        if canonical:
+            await domain.require_project_role(
+                db,
+                tenant_id=_tenant_id(request),
+                project_id=project_id,
+                actor_id=_actor(request),
+                request_role=getattr(request.state, "sysgrid_access_role", None),
+            )
+        elif (getattr(request.state, "sysgrid_access_role", "") or "").upper() != "ADMIN":
+            return _error(request, domain.PV1DomainError("NOT_FOUND", "Project not found.", http_status=status.HTTP_404_NOT_FOUND))
+        return await migration.shadow_compare_project(db, tenant_id=_tenant_id(request), project_id=project_id)
+    except domain.PV1DomainError as error:
+        return _error(request, error)
 
 
 @router.get("/focus")

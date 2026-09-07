@@ -17,7 +17,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..models import models as legacy_models
 from ..core.config import settings
-from . import focus, models, outcomes, schedule
+from . import focus, migration, models, outcomes, schedule
 
 
 PHASES = ["Draft", "Proposed", "Planning", "Ready", "Executing", "Validating", "Delivered"]
@@ -93,7 +93,7 @@ def _parse_datetime(value: Any) -> datetime | None:
 
 
 def project_dict(project: models.PV1Project) -> dict[str, Any]:
-    return {
+    response = {
         "id": project.id,
         "display_key": project.display_key,
         "tenant_id": project.tenant_id,
@@ -140,6 +140,11 @@ def project_dict(project: models.PV1Project) -> dict[str, Any]:
         "updated_by": project.updated_by,
         "archived_at": _serialize(project.archived_at),
     }
+    if project.legacy_project_id is not None:
+        response["legacy_status"] = (project.metadata_json or {}).get("pv1_legacy_migration_v1", {}).get("original_status")
+        response["legacy_metadata"] = project.metadata_json or {}
+        response["legacy_source"] = "legacy.projects"
+    return response
 
 
 def task_dict(task: models.PV1Task) -> dict[str, Any]:
@@ -668,15 +673,8 @@ async def _apply_project_schedule(
 
 
 def legacy_phase(status_value: str | None) -> tuple[str, str]:
-    value = (status_value or "").strip()
-    if value == "Not Started": return "Proposed", "Active"
-    if value == "Planning": return "Planning", "Active"
-    if value == "In Progress": return "Executing", "Active"
-    if value == "Completed": return "Delivered", "Active"
-    if value == "Paused": return "Planning", "Paused"
-    if value == "Cancelled": return "Planning", "Cancelled"
-    if value == "Blocked": return "Executing", "Active"
-    return "Proposed", "Active"
+    phase, run_state, _ = migration.legacy_project_status(status_value)
+    return phase, run_state
 
 
 def legacy_project_dict(project: legacy_models.Project, tenant_id: int) -> dict[str, Any]:
@@ -1566,6 +1564,12 @@ async def execute_command(session: AsyncSession, *, tenant_id: int, actor_id: st
         event_id, _ = await append_event(session, tenant_id=tenant_id, project_id=project_id, actor_id=actor_id, command_id=command_id, event_type="project.creation_draft_saved", aggregate_type="project", aggregate_id=project_id, aggregate_revision=revision, delta={"draft_step": metadata["creation_draft_v1"].get("draft_step", 0)})
         response = _success(command_id, revisions={"project_revision": revision, "graph_revision": project.graph_revision}, changed_entities=[{"kind": "project", "id": project_id}], event_id=event_id)
     elif command_type == "project.transition":
+        if project.phase == "Unmapped legacy status":
+            raise PV1DomainError(
+                "MIGRATION_REVIEW_REQUIRED",
+                "This legacy Project has an unmapped status. Resolve the migration diagnostic before changing its phase.",
+                http_status=status.HTTP_409_CONFLICT,
+            )
         to_phase = payload.get("to_phase")
         if to_phase not in PHASES:
             raise PV1DomainError("VALIDATION_FAILED", "Unknown delivery phase.", details={"field": "to_phase"})

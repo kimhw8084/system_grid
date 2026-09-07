@@ -55,8 +55,8 @@ function StoryState({ title, description, action }: { title: string; description
 
 function ProjectPrimaryNavigation({ project }: { project: ProjectStoryItem }) {
   return <nav className="p04-project-nav" aria-label="Project primary navigation">{[
-    ['home', 'Home'], ['work', 'Work'], ['plan', 'Plan'], ['timeline', 'Timeline'], ['updates', 'Updates'], ['outcomes', 'Outcomes'],
-  ].map(([key, label]) => <a key={key} href={`/projects/${encodeURIComponent(project.id)}/${key}`} aria-current={key === 'home' ? 'page' : undefined}>{label}</a>)}</nav>
+    ['home', 'Home'], ['work?layout=list', 'Work'], ['plan?section=brief', 'Plan'], ['timeline', 'Timeline'], ['updates?section=updates', 'Updates'], ['outcomes?section=summary', 'Outcomes'],
+  ].map(([key, label]) => <a key={key} href={`/projects/${encodeURIComponent(project.id)}/${key}`} aria-current={key.startsWith('home') ? 'page' : undefined}>{label}</a>)}</nav>
 }
 
 const apiFailureDescription = (error: unknown, fallback: string) => {

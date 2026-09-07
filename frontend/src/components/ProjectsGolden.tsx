@@ -714,6 +714,10 @@ export default function ProjectsGolden() {
   }, [projects.length, view, selectedProjectId, projectsRoute.redirectTo]) // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => { if (selectedTaskId && selectedProject && !selectedTask) closeTask() }, [selectedProject?.id, selectedTaskId, selectedTask?.id]) // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => {
+    if (projectsRoute.source === 'legacy' && projectsRoute.redirectTo) {
+      navigate(projectsRoute.redirectTo, { replace: true })
+      return
+    }
     if (projectsRoute.source !== 'legacy') return
     if (!rawView) { const next = new URLSearchParams(searchParams); next.set('view', view); setSearchParams(next, { replace: true }); return }
     if (PROJECT_PRIMARY_VIEWS.includes(rawView as any) || rawView === 'portfolio') return

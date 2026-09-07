@@ -672,3 +672,70 @@ class PV1OutboxEvent(Base):
     published_at = Column(DateTime(timezone=True), nullable=True)
     attempt_count = Column(Integer, nullable=False, default=0)
     created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+
+
+class PV1MigrationRun(Base):
+    """Durable, tenant-scoped ledger for additive legacy backfills.
+
+    The ledger is deliberately separate from the domain aggregates. It makes
+    interruption, source drift, rejected rows, and an application rollback to
+    the read-only adapter observable without making migration metadata a second
+    Project or Task authority.
+    """
+
+    __tablename__ = "pv1_migration_runs"
+    __table_args__ = (
+        UniqueConstraint("tenant_id", "source_hash", name="uq_pv1_migration_run_source"),
+        Index("ix_pv1_migration_runs_tenant_status", "tenant_id", "status"),
+    )
+
+    id = Column(String(80), primary_key=True)
+    tenant_id = Column(Integer, nullable=False, index=True)
+    migration_key = Column(String(80), nullable=False, default="legacy-projects-v1")
+    source_hash = Column(String(64), nullable=False)
+    status = Column(String(24), nullable=False, default="Running")
+    source_counts = Column(JSON, nullable=False, default=dict)
+    migrated_counts = Column(JSON, nullable=False, default=dict)
+    rejected_counts = Column(JSON, nullable=False, default=dict)
+    checkpoint = Column(JSON, nullable=False, default=dict)
+    source_snapshot = Column(JSON, nullable=False, default=dict)
+    rollback_mapping = Column(JSON, nullable=False, default=dict)
+    error = Column(Text, nullable=True)
+    started_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+    completed_at = Column(DateTime(timezone=True), nullable=True)
+
+
+class PV1MigrationRow(Base):
+    """One source row's idempotent migration decision."""
+
+    __tablename__ = "pv1_migration_rows"
+    __table_args__ = (
+        UniqueConstraint("tenant_id", "source_kind", "source_id", name="uq_pv1_migration_row_source"),
+        Index("ix_pv1_migration_rows_run_state", "run_id", "state"),
+    )
+
+    id = Column(String(80), primary_key=True)
+    run_id = Column(String(80), ForeignKey("pv1_migration_runs.id", ondelete="CASCADE"), nullable=False, index=True)
+    tenant_id = Column(Integer, nullable=False, index=True)
+    source_kind = Column(String(32), nullable=False)
+    source_id = Column(String(80), nullable=False)
+    source_hash = Column(String(64), nullable=False)
+    destination_id = Column(String(80), nullable=True)
+    state = Column(String(24), nullable=False)
+    reason = Column(Text, nullable=True)
+    source_snapshot = Column(JSON, nullable=False, default=dict)
+    processed_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+
+
+class PV1TenantCutover(Base):
+    """Source-authority boundary for the v1 compatibility adapter."""
+
+    __tablename__ = "pv1_tenant_cutovers"
+
+    tenant_id = Column(Integer, primary_key=True)
+    state = Column(String(24), nullable=False, default="shadow")
+    migration_run_id = Column(String(80), nullable=True)
+    adapter_version = Column(String(32), nullable=False, default="pv1-v1-adapter-1")
+    changed_by = Column(String(200), nullable=False)
+    changed_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+    rollback_mode = Column(String(24), nullable=False, default="read_only")
