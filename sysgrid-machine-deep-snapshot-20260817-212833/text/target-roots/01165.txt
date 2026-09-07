@@ -1,0 +1,30 @@
+ORIGINAL_PATH: /Users/haewonkim/.local/state/sysgrid-supervisor/notifications/20260803T210459Z-89376-290000.json
+ORIGINAL_SHA256: 84bac56ca21a5e1e7258699ca64387a623f7f6767837f2f0ab27dc83532dbd9d
+================================================================================
+{
+  "events": {
+    "run_failed": {
+      "attempts": 1,
+      "chat_id_suffix": "1055",
+      "event_id": "run_failed",
+      "first_attempt_utc": "2026-08-03T21:05:56Z",
+      "message_id": 582,
+      "payload_sha256": "6edcd4b8a605c280bb7a1ab6be4bbab1cb0451252e772e03846e11c68b52b48f",
+      "required": false,
+      "status": "delivered",
+      "updated_utc": "2026-08-03T21:05:57Z"
+    },
+    "run_started": {
+      "attempts": 1,
+      "chat_id_suffix": "1055",
+      "event_id": "run_started",
+      "first_attempt_utc": "2026-08-03T21:04:59Z",
+      "message_id": 581,
+      "payload_sha256": "fa515ac6f691d6a7c5d97e9e37cf03b810cdc652aeda660dbad4471af622c275",
+      "required": false,
+      "status": "delivered",
+      "updated_utc": "2026-08-03T21:05:00Z"
+    }
+  },
+  "run_id": "20260803T210459Z-89376-290000"
+}

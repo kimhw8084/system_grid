@@ -1,0 +1,175 @@
+ORIGINAL_PATH: /Users/haewonkim/.local/share/sysgrid-supervisor/v2.0.1/RELEASE_DESCRIPTOR.json
+ORIGINAL_SHA256: 2eef8285d85746da321604d7dd3e9365fa8d388153f17ff0e753a75804c65222
+================================================================================
+{
+  "derived": {
+    "generated_by": "BUILD_PACKAGE.py",
+    "source_sha256": {
+      "BUILD_PACKAGE.py": "5c671bbcae2d2cd90d3d8de56df2adc0afc1a7932accb6bdcd88d757e71f2ada",
+      "INSTALL_AND_QUALIFY.py": "fe402e7a32edcf380e973abbaf3f7d0f2ac72f04659c26fa48974bf62eea773b",
+      "payload/sysgrid_supervisor.py": "d8bb6af1bc7573bb8fad7ed28e61a3b1d32ff0535900adab510d4abc57e1d85d",
+      "payload/test_sysgrid_supervisor.py": "a364c6cd78f60aa6acb5a76f052d8ee9c1984fba228a574576df60548aac1826",
+      "test_install_and_qualify.py": "484a14c3f153e647ebf45a3c9674bc5f603b3be9d86ef2ad8a36ed07aab5d78d"
+    },
+    "test_count": 87
+  },
+  "engine": {
+    "sha256": "ab63bb20c0de32771e20b0159475205f685f28910a0956c217fb3693c02f96e1",
+    "version": "1.0.4"
+  },
+  "notification": {
+    "heartbeat_seconds": 120,
+    "postlaunch_retries": 3,
+    "prelaunch_retries": 4,
+    "retry_base_seconds": 0.5
+  },
+  "package": {
+    "canonical_artifact": "UPLOAD_THIS_TO_CHATGPT.zip",
+    "deterministic_timestamp": "2026-07-31T00:00:00Z",
+    "name": "SYSGRID_EXECUTION_SUPERVISOR"
+  },
+  "progress_events": [
+    {
+      "id": "capsule_selected",
+      "phase": "platform",
+      "required_before_launch": true
+    },
+    {
+      "id": "capsule_verified",
+      "phase": "platform",
+      "required_before_launch": true
+    },
+    {
+      "id": "preflight_started",
+      "phase": "platform",
+      "required_before_launch": true
+    },
+    {
+      "id": "preflight_completed",
+      "phase": "platform",
+      "required_before_launch": true
+    },
+    {
+      "id": "engine_launch",
+      "phase": "platform",
+      "required_before_launch": true
+    },
+    {
+      "id": "static_started",
+      "phase": "product",
+      "required_before_launch": false
+    },
+    {
+      "id": "backend_started",
+      "phase": "product",
+      "required_before_launch": false
+    },
+    {
+      "id": "frontend_started",
+      "phase": "product",
+      "required_before_launch": false
+    },
+    {
+      "id": "static_completed",
+      "phase": "product",
+      "required_before_launch": false
+    },
+    {
+      "id": "backend_completed",
+      "phase": "product",
+      "required_before_launch": false
+    },
+    {
+      "id": "frontend_completed",
+      "phase": "product",
+      "required_before_launch": false
+    },
+    {
+      "id": "build_completed",
+      "phase": "product",
+      "required_before_launch": false
+    },
+    {
+      "id": "runtime_ready",
+      "phase": "product",
+      "required_before_launch": false
+    },
+    {
+      "id": "playwright_started",
+      "phase": "product",
+      "required_before_launch": false
+    },
+    {
+      "id": "playwright_completed",
+      "phase": "product",
+      "required_before_launch": false
+    },
+    {
+      "id": "delivery_completed",
+      "phase": "product",
+      "required_before_launch": false
+    },
+    {
+      "id": "recovery_reattached",
+      "phase": "platform",
+      "required_before_launch": false
+    },
+    {
+      "id": "recovery_evidence_recovered",
+      "phase": "platform",
+      "required_before_launch": false
+    },
+    {
+      "id": "recovery_retry_authorized",
+      "phase": "platform",
+      "required_before_launch": false
+    },
+    {
+      "id": "engine_completed",
+      "phase": "platform",
+      "required_before_launch": false
+    },
+    {
+      "id": "evidence_verified",
+      "phase": "platform",
+      "required_before_launch": false
+    },
+    {
+      "id": "publication_started",
+      "phase": "platform",
+      "required_before_launch": false
+    },
+    {
+      "id": "publication_completed",
+      "phase": "platform",
+      "required_before_launch": false
+    },
+    {
+      "id": "run_failed",
+      "phase": "platform",
+      "required_before_launch": false
+    }
+  ],
+  "qualification_contract": [
+    "complete deterministic package identity",
+    "exact Stable Engine identity and self-test",
+    "capsule cross-ledger consistency before mutation",
+    "exact repository state and patch-state proof",
+    "one authorized engine invocation with replay refusal",
+    "durable Telegram event outbox and two-minute heartbeat",
+    "machine-readable resource and runtime telemetry",
+    "verified evidence publication and deterministic rebuild"
+  ],
+  "resource_policy": {
+    "backend_worker_cap": 4,
+    "e2e_worker_cap": 2,
+    "frontend_worker_cap": 4,
+    "memory_per_backend_worker_bytes": 1073741824,
+    "memory_per_e2e_worker_bytes": 1610612736,
+    "memory_per_frontend_worker_bytes": 805306368,
+    "preflight_worker_cap": 32,
+    "reserve_memory_bytes": 2147483648
+  },
+  "schema_version": "2.0",
+  "supervisor_version": "2.0.1"
+}

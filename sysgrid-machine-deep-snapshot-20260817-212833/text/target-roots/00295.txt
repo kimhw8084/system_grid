@@ -1,0 +1,13 @@
+ORIGINAL_PATH: /Users/haewonkim/.local/share/sysgrid-supervisor/backups/20260801T005953Z-pre-v1.3.2/sg
+ORIGINAL_SHA256: 0fd50fd58e3389a3f4259c75c3400afc60bc067e79449564181c36cd0e327692
+================================================================================
+#!/usr/bin/env bash
+set -Eeuo pipefail
+case "${1:-}" in
+  run) shift; exec /opt/anaconda3/bin/python3 /Users/haewonkim/.local/share/sysgrid-supervisor/v1.3.1/payload/sysgrid_supervisor.py run "$@" ;;
+  status) shift; exec /opt/anaconda3/bin/python3 /Users/haewonkim/.local/share/sysgrid-supervisor/v1.3.1/payload/sysgrid_supervisor.py status "$@" ;;
+  watch) shift; exec /opt/anaconda3/bin/python3 /Users/haewonkim/.local/share/sysgrid-supervisor/v1.3.1/payload/sysgrid_supervisor.py watch "$@" ;;
+  self-test) shift; exec /opt/anaconda3/bin/python3 /Users/haewonkim/.local/share/sysgrid-supervisor/v1.3.1/payload/sysgrid_supervisor.py self-test "$@" ;;
+  "") exec /opt/anaconda3/bin/python3 /Users/haewonkim/.local/share/sysgrid-supervisor/v1.3.1/payload/sysgrid_supervisor.py run ;;
+  *) exec /opt/anaconda3/bin/python3 /Users/haewonkim/.local/share/sysgrid-supervisor/v1.3.1/payload/sysgrid_supervisor.py run "$@" ;;
+esac

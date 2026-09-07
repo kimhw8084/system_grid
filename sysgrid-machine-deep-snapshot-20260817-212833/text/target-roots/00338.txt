@@ -1,0 +1,14 @@
+ORIGINAL_PATH: /Users/haewonkim/.local/share/sysgrid-campaign-platform/v1.0.0/templates/APPROVAL_LOCK.template.json
+ORIGINAL_SHA256: 3fc64a92c8b2550781714f41fe87921d51da8529057072086d5decdaf5b1f335
+================================================================================
+{
+  "schema_version": "1.0",
+  "campaign_id": "SYSGRID-CAMPAIGN-XXXX",
+  "questionnaire_sha256": "",
+  "change_spec_sha256": "",
+  "risk_matrix_sha256": "",
+  "test_plan_sha256": "",
+  "visual_matrix_sha256": "",
+  "approved_by": "user",
+  "approved_utc": ""
+}

@@ -1,0 +1,10 @@
+ORIGINAL_PATH: /Users/haewonkim/.local/share/sysgrid-campaign-platform/v1.0.0/templates/DIRECTION_BRIEF.template.json
+ORIGINAL_SHA256: 3dda6efee7cd4c6632d17799cf86a5f842cabdf4c3ca0cff7c8b430fae102423
+================================================================================
+{
+  "schema_version": "1.0",
+  "campaign_id": "SYSGRID-CAMPAIGN-XXXX",
+  "direction": "",
+  "success_outcome": "",
+  "constraints": []
+}

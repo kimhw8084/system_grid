@@ -1,0 +1,31 @@
+{
+  "files": {
+    "README.md": {
+      "bytes": 1471,
+      "sha256": "f7c120028de37ad46290f8ee955954573a6f3bb307cba8c07a6b4dc573bf4132"
+    },
+    "evidence/failure-signature.json": {
+      "bytes": 1002,
+      "sha256": "f460c4eb8a8b7cba2923196244b40251f43e7e7e906374e6f429cba83e4478cb"
+    },
+    "repair_and_prove.py": {
+      "bytes": 23427,
+      "sha256": "1e65b8110e1137b847b440016b110373952a6d63efb132c560e817f7d86ac480"
+    },
+    "run_from_repo.sh": {
+      "bytes": 123,
+      "sha256": "fb0ab5ebece8443e95c123732e11cb41e5f3c2197274800177aba007e19356b3"
+    }
+  },
+  "objective": "Approved Project View Perfection",
+  "parent_result_sha256": "4e620bccd8f5bb68153302febf7eeb05bf910b0d196398440ee4f7540a18b584",
+  "product_change": "Projects-only explicit 40px rendered Gantt toolbar action/select target",
+  "proof_before_apply": true,
+  "repair_iteration": 3,
+  "repair_paths": [
+    "frontend/tests/projects-out40-slice-h-gantt-modernization.spec.ts",
+    "frontend/src/components/ProjectsVisualRepair.css"
+  ],
+  "same_semantics": true,
+  "schema": "SYSGRID_PROJECT_VIEW_REPAIR_EXECUTOR_V1"
+}

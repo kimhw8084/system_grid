@@ -1,0 +1,1068 @@
+ORIGINAL_PATH: /Users/haewonkim/.local/share/sysgrid-delivery-v1.3.0/sg_runner.py.fastpath.rollback
+ORIGINAL_SHA256: 800bd87a59d46572cd1d218d4c01857e97080838d5ee54d349c25f257191d00b
+================================================================================
+#!/usr/bin/env python3
+"""SysGrid Product-First Delivery Runner v1.3.0 RC4.
+
+Deterministic execution core:
+- exact GitHub-visible SHA input
+- disposable git worktree owned by the runner
+- immutable four-member .sgpatch bundles
+- typed verification adapters only; no arbitrary shell
+- patch-derived targeted proof
+- exact attempt-branch publication after TARGETED_PASS
+- risk-based promotion with accepted-branch preconditions
+- ordinary operator checkout never reset/cleaned/staged/committed
+"""
+from __future__ import annotations
+
+import argparse
+import contextlib
+import dataclasses
+import hashlib
+import json
+import os
+import pathlib
+import re
+import shutil
+import stat
+import subprocess
+import sys
+import tempfile
+import time
+import uuid
+import zipfile
+import urllib.parse
+import urllib.request
+from typing import Any
+
+RUNNER_VERSION = "1.3.0-rc4-fastpath1"
+SHA_RE = re.compile(r"^[0-9a-f]{40}$")
+HEX64_RE = re.compile(r"^[0-9a-f]{64}$")
+SAFE_BRANCH_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._/-]{0,127}$")
+SAFE_ID_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$")
+SAFE_TEST_FILTER_RE = re.compile(r"^[A-Za-z0-9 _./:()\[\]{}+*?,=@'\"-]{1,240}$")
+SENSITIVE_RE = re.compile(r"(?i)(authorization|api[_-]?key|token|password|secret|access[_-]?key|private[_-]?key)")
+CONTRACT_SCRIPTS = {
+    "operational-registry-drift": "check:operational-registry-drift",
+    "form-contracts": "check:form-contracts",
+    "row-action-contracts": "check:row-action-contracts",
+    "shell-contracts": "check:shell-contracts",
+    "operational-contracts": "check:operational-contracts",
+    "test-linter": "test:lint",
+}
+ALLOWED_ADAPTERS = {
+    "backend.pytest",
+    "frontend.vitest",
+    "frontend.contract",
+    "frontend.typecheck",
+    "frontend.build",
+    "frontend.playwright",
+    "full_app_gate",
+    "operator.tdre",
+    "candidate.tdre",
+}
+
+
+class RunnerError(RuntimeError):
+    def __init__(self, classification: str, message: str):
+        super().__init__(message)
+        self.classification = classification
+
+
+def sha256_file(path: pathlib.Path) -> str:
+    h = hashlib.sha256()
+    with path.open("rb") as f:
+        for chunk in iter(lambda: f.read(1024 * 1024), b""):
+            h.update(chunk)
+    return h.hexdigest()
+
+
+def run(argv: list[str], cwd: pathlib.Path | None = None, timeout: int = 30, check: bool = True, env: dict[str, str] | None = None) -> subprocess.CompletedProcess[str]:
+    try:
+        cp = subprocess.run(
+            argv,
+            cwd=str(cwd) if cwd else None,
+            text=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            timeout=timeout,
+            env=env,
+            check=False,
+            start_new_session=True,
+        )
+    except subprocess.TimeoutExpired as exc:
+        raise RunnerError("ENVIRONMENT_FAIL", f"timeout after {timeout}s: {argv[0]}") from exc
+    if check and cp.returncode != 0:
+        tail = (cp.stdout or "")[-4000:]
+        raise RunnerError("ENVIRONMENT_FAIL", f"command failed ({cp.returncode}): {' '.join(argv[:4])}\n{tail}")
+    return cp
+
+
+def hardened_git_env(extra: dict[str, str] | None = None) -> dict[str, str]:
+    env = dict(os.environ)
+    # Git must never prompt in the product execution path. Authentication is a
+    # separately qualified machine precondition backed by the SysGrid Keychain helper.
+    env["GIT_TERMINAL_PROMPT"] = "0"
+    env["GIT_ASKPASS"] = "/usr/bin/false"
+    env["SSH_ASKPASS"] = "/usr/bin/false"
+    env["GCM_INTERACTIVE"] = "never"
+    # Ambient GitHub tokens are deliberately ignored; they can silently override a
+    # durable credential and create session-dependent source publication.
+    env.pop("GH_TOKEN", None)
+    env.pop("GITHUB_TOKEN", None)
+    if extra:
+        env.update(extra)
+    return env
+
+
+def git(repo: pathlib.Path, *args: str, timeout: int = 60, check: bool = True) -> subprocess.CompletedProcess[str]:
+    return run(["git", "-C", str(repo), *args], timeout=timeout, check=check, env=hardened_git_env())
+
+
+def safe_relpath(value: str) -> pathlib.PurePosixPath:
+    if not isinstance(value, str) or not value or "\x00" in value or "\\" in value:
+        raise RunnerError("BUNDLE_REJECTED", f"invalid repo-relative path: {value!r}")
+    p = pathlib.PurePosixPath(value)
+    if p.is_absolute() or any(part in {"", ".", ".."} for part in p.parts):
+        raise RunnerError("BUNDLE_REJECTED", f"unsafe repo-relative path: {value!r}")
+    return p
+
+
+def validate_branch(value: str) -> str:
+    if not isinstance(value, str) or not SAFE_BRANCH_RE.fullmatch(value) or ".." in value or value.endswith("/") or "//" in value:
+        raise RunnerError("BUNDLE_REJECTED", "invalid attempt branch")
+    if value in {"main", "master"} or value.startswith("refs/"):
+        raise RunnerError("BUNDLE_REJECTED", "attempt branch may not use accepted/ref namespaces")
+    return value
+
+
+def redact(text: str) -> str:
+    values = []
+    for key, value in os.environ.items():
+        if value and len(value) >= 6 and SENSITIVE_RE.search(key):
+            values.append(value)
+    out = text
+    for value in sorted(set(values), key=len, reverse=True):
+        out = out.replace(value, "[REDACTED]")
+    out = re.sub(r"(?i)(authorization\s*[:=]\s*)(?:bearer\s+)?[^\s,;]+", r"\1[REDACTED]", out)
+    out = re.sub(r"(?i)((?:api[_-]?key|token|password|secret|access[_-]?key|private[_-]?key)\s*[:=]\s*)[^\s,;]+", r"\1[REDACTED]", out)
+    return out
+
+
+@dataclasses.dataclass
+class Bundle:
+    root: pathlib.Path
+    manifest: dict[str, Any]
+    verify: dict[str, Any]
+    patch: pathlib.Path
+
+
+def extract_bundle(bundle_path: pathlib.Path, dest: pathlib.Path) -> Bundle:
+    if not zipfile.is_zipfile(bundle_path):
+        raise RunnerError("BUNDLE_REJECTED", "bundle is not a ZIP")
+    with zipfile.ZipFile(bundle_path) as zf:
+        infos = zf.infolist()
+        names = [i.filename for i in infos]
+        if len(names) != len(set(names)):
+            raise RunnerError("BUNDLE_REJECTED", "duplicate ZIP member")
+        expected = {"MANIFEST.json", "CHANGE.patch", "VERIFY.json", "MANIFEST.sha256"}
+        if set(names) != expected:
+            raise RunnerError("BUNDLE_REJECTED", f"unexpected members: {sorted(set(names))}")
+        for info in infos:
+            p = pathlib.PurePosixPath(info.filename)
+            file_type = (info.external_attr >> 16) & 0o170000
+            if p.is_absolute() or ".." in p.parts or file_type == stat.S_IFLNK:
+                raise RunnerError("BUNDLE_REJECTED", f"unsafe member: {info.filename}")
+            if info.file_size > 8 * 1024 * 1024:
+                raise RunnerError("BUNDLE_REJECTED", f"member too large: {info.filename}")
+        if zf.testzip() is not None:
+            raise RunnerError("BUNDLE_REJECTED", "ZIP CRC failure")
+        zf.extractall(dest)
+
+    manifest_lines = (dest / "MANIFEST.sha256").read_text("utf-8").splitlines()
+    seen: set[str] = set()
+    for line in manifest_lines:
+        try:
+            digest, name = line.split("  ", 1)
+        except ValueError as exc:
+            raise RunnerError("BUNDLE_REJECTED", "invalid MANIFEST.sha256 line") from exc
+        if not HEX64_RE.fullmatch(digest) or name not in {"MANIFEST.json", "CHANGE.patch", "VERIFY.json"} or name in seen:
+            raise RunnerError("BUNDLE_REJECTED", "invalid member manifest")
+        seen.add(name)
+        if sha256_file(dest / name) != digest:
+            raise RunnerError("BUNDLE_REJECTED", f"member hash mismatch: {name}")
+    if seen != {"MANIFEST.json", "CHANGE.patch", "VERIFY.json"}:
+        raise RunnerError("BUNDLE_REJECTED", "incomplete member manifest")
+
+    try:
+        manifest = json.loads((dest / "MANIFEST.json").read_text("utf-8"))
+        verify = json.loads((dest / "VERIFY.json").read_text("utf-8"))
+    except (json.JSONDecodeError, UnicodeDecodeError) as exc:
+        raise RunnerError("BUNDLE_REJECTED", "invalid JSON") from exc
+    validate_manifest(manifest, dest / "CHANGE.patch")
+    validate_verify(verify, manifest.get("mode"))
+    return Bundle(dest, manifest, verify, dest / "CHANGE.patch")
+
+
+def validate_manifest(m: dict[str, Any], patch: pathlib.Path) -> None:
+    required = {
+        "schema_version", "classification", "issue", "repository", "mode", "product_attempt",
+        "patch_id", "base_sha", "attempt_branch", "patch_file", "patch_sha256", "changed_paths",
+        "verify_file", "approval_lock", "replay_id"
+    }
+    optional = {"expected_attempt_sha", "expected_accepted_sha", "accepted_branch", "expires_at"}
+    if set(m) - (required | optional):
+        raise RunnerError("BUNDLE_REJECTED", "unknown MANIFEST fields")
+    if not required.issubset(m):
+        raise RunnerError("BUNDLE_REJECTED", f"missing MANIFEST fields: {sorted(required - set(m))}")
+    if m["schema_version"] != "1.3.0" or m["classification"] not in {"SYSGRID_PRODUCT_PATCH", "SYSGRID_PROMOTION"}:
+        raise RunnerError("BUNDLE_REJECTED", "unsupported bundle schema/classification")
+    if m["mode"] not in {"targeted", "promotion"}:
+        raise RunnerError("BUNDLE_REJECTED", "invalid mode")
+    if not SHA_RE.fullmatch(str(m["base_sha"])):
+        raise RunnerError("BUNDLE_REJECTED", "invalid base_sha")
+    if m["patch_file"] != "CHANGE.patch" or m["verify_file"] != "VERIFY.json":
+        raise RunnerError("BUNDLE_REJECTED", "noncanonical bundle members")
+    for key in ("issue", "product_attempt", "patch_id", "approval_lock"):
+        if not SAFE_ID_RE.fullmatch(str(m[key])):
+            raise RunnerError("BUNDLE_REJECTED", f"invalid identity field: {key}")
+    if not isinstance(m["repository"], str) or not re.fullmatch(r"[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+", m["repository"]):
+        raise RunnerError("BUNDLE_REJECTED", "invalid repository")
+    validate_branch(str(m["attempt_branch"]))
+    paths = m["changed_paths"]
+    if not isinstance(paths, list) or len(paths) != len(set(paths)) or len(paths) > 100:
+        raise RunnerError("BUNDLE_REJECTED", "invalid changed_paths")
+    for p in paths:
+        safe_relpath(p)
+    if not HEX64_RE.fullmatch(str(m["patch_sha256"])) or sha256_file(patch) != m["patch_sha256"]:
+        raise RunnerError("BUNDLE_REJECTED", "patch hash mismatch")
+    try:
+        uuid.UUID(str(m["replay_id"]))
+    except ValueError as exc:
+        raise RunnerError("BUNDLE_REJECTED", "invalid replay_id") from exc
+    for key in ("expected_attempt_sha", "expected_accepted_sha"):
+        if m.get(key) is not None and not SHA_RE.fullmatch(str(m[key])):
+            raise RunnerError("BUNDLE_REJECTED", f"invalid {key}")
+    if m["mode"] == "promotion":
+        if m["classification"] != "SYSGRID_PROMOTION" or m["changed_paths"]:
+            raise RunnerError("BUNDLE_REJECTED", "promotion bundle may not carry source changes")
+        if patch.read_bytes() not in {b"", b"\n"}:
+            raise RunnerError("BUNDLE_REJECTED", "promotion CHANGE.patch must be empty")
+        if m.get("accepted_branch", "main") != "main":
+            raise RunnerError("BUNDLE_REJECTED", "only main is accepted branch in v1.3.0")
+        if not m.get("expected_accepted_sha"):
+            raise RunnerError("BUNDLE_REJECTED", "promotion requires expected_accepted_sha")
+
+
+def validate_verify(v: dict[str, Any], mode: str) -> None:
+    if set(v) != {"schema_version", "actions"} or v["schema_version"] != "1.3.0" or not isinstance(v["actions"], list):
+        raise RunnerError("BUNDLE_REJECTED", "invalid VERIFY schema")
+    if not (1 <= len(v["actions"]) <= 24):
+        raise RunnerError("BUNDLE_REJECTED", "VERIFY action count out of bounds")
+    ids: set[str] = set()
+    for action in v["actions"]:
+        if not isinstance(action, dict):
+            raise RunnerError("BUNDLE_REJECTED", "VERIFY action must be object")
+        allowed_fields = {"id", "adapter", "paths", "timeout_seconds", "grep", "contract", "workspace", "route", "api_path", "allow_empty", "viewport_width", "viewport_height", "operator_origin", "expected_operator_sha"}
+        if set(action) - allowed_fields or not {"id", "adapter", "timeout_seconds"}.issubset(action):
+            raise RunnerError("BUNDLE_REJECTED", "invalid VERIFY action fields")
+        if not SAFE_ID_RE.fullmatch(str(action["id"])) or action["id"] in ids:
+            raise RunnerError("BUNDLE_REJECTED", "invalid/duplicate action id")
+        ids.add(action["id"])
+        if action["adapter"] not in ALLOWED_ADAPTERS:
+            raise RunnerError("BUNDLE_REJECTED", f"unknown adapter: {action['adapter']}")
+        if action["adapter"] == "full_app_gate" and mode != "promotion":
+            raise RunnerError("BUNDLE_REJECTED", "full_app_gate is promotion-only")
+        if action["adapter"] in {"operator.tdre", "candidate.tdre"}:
+            if mode != "promotion":
+                raise RunnerError("BUNDLE_REJECTED", f"{action['adapter']} is promotion-only")
+            if not SAFE_ID_RE.fullmatch(str(action.get("workspace") or "")):
+                raise RunnerError("BUNDLE_REJECTED", "operator.tdre requires safe workspace")
+            route = action.get("route")
+            api_path = action.get("api_path")
+            if not isinstance(route, str) or not re.fullmatch(r"/[A-Za-z0-9_./-]{0,200}", route):
+                raise RunnerError("BUNDLE_REJECTED", "invalid operator.tdre route")
+            if not isinstance(api_path, str) or not re.fullmatch(r"/api/v1/[A-Za-z0-9_./-]{1,220}", api_path):
+                raise RunnerError("BUNDLE_REJECTED", "invalid operator.tdre api_path")
+            if action.get("allow_empty", False) not in {True, False}:
+                raise RunnerError("BUNDLE_REJECTED", "invalid operator.tdre allow_empty")
+            for key, low, high, default in (("viewport_width", 800, 2560, 1440), ("viewport_height", 600, 1800, 1000)):
+                value = action.get(key, default)
+                if not isinstance(value, int) or not (low <= value <= high):
+                    raise RunnerError("BUNDLE_REJECTED", f"invalid operator.tdre {key}")
+            if action["adapter"] == "operator.tdre":
+                origin = action.get("operator_origin", "auto")
+                if origin != "auto" and (not isinstance(origin, str) or not re.fullmatch(r"http://(?:127\.0\.0\.1|localhost)(?::[0-9]{2,5})?", origin)):
+                    raise RunnerError("BUNDLE_REJECTED", "operator.tdre origin must be auto or loopback http origin")
+                expected_operator_sha = action.get("expected_operator_sha")
+                if expected_operator_sha is not None and not SHA_RE.fullmatch(str(expected_operator_sha)):
+                    raise RunnerError("BUNDLE_REJECTED", "invalid operator.tdre expected_operator_sha")
+            else:
+                if not action.get("paths"):
+                    raise RunnerError("BUNDLE_REJECTED", "candidate.tdre requires Playwright spec paths")
+        if not isinstance(action["timeout_seconds"], int) or not (5 <= action["timeout_seconds"] <= 3600):
+            raise RunnerError("BUNDLE_REJECTED", "invalid timeout")
+        paths = action.get("paths", [])
+        if not isinstance(paths, list) or len(paths) > 40:
+            raise RunnerError("BUNDLE_REJECTED", "invalid action paths")
+        for p in paths:
+            safe_relpath(p)
+        if action.get("grep") is not None and (not isinstance(action["grep"], str) or not SAFE_TEST_FILTER_RE.fullmatch(action["grep"])):
+            raise RunnerError("BUNDLE_REJECTED", "unsafe grep")
+        if action["adapter"] == "frontend.contract" and action.get("contract") not in CONTRACT_SCRIPTS:
+            raise RunnerError("BUNDLE_REJECTED", "unknown frontend contract")
+
+
+def action_argv(action: dict[str, Any], worktree: pathlib.Path) -> tuple[list[str], pathlib.Path]:
+    adapter = action["adapter"]
+    paths = action.get("paths", [])
+    if adapter == "backend.pytest":
+        if not paths:
+            raise RunnerError("BUNDLE_REJECTED", "backend.pytest requires paths")
+        return [str(worktree / "backend/venv/bin/python"), "-m", "pytest", "-q", *paths], worktree / "backend"
+    if adapter == "frontend.vitest":
+        if not paths:
+            raise RunnerError("BUNDLE_REJECTED", "frontend.vitest requires paths")
+        argv = ["npx", "vitest", "run", *paths]
+        if action.get("grep"):
+            argv += ["-t", action["grep"]]
+        return argv, worktree / "frontend"
+    if adapter == "frontend.contract":
+        return ["npm", "run", CONTRACT_SCRIPTS[action["contract"]]], worktree / "frontend"
+    if adapter == "frontend.typecheck":
+        return ["npm", "run", "typecheck"], worktree / "frontend"
+    if adapter == "frontend.build":
+        return ["npm", "run", "build"], worktree / "frontend"
+    if adapter == "frontend.playwright":
+        if not paths:
+            raise RunnerError("BUNDLE_REJECTED", "frontend.playwright requires specs")
+        argv = ["npx", "playwright", "test", *paths]
+        if action.get("grep"):
+            argv += ["--grep", action["grep"]]
+        return argv, worktree / "frontend"
+    if adapter == "full_app_gate":
+        return ["bash", "scripts/verify-app.sh"], worktree
+    raise RunnerError("BUNDLE_REJECTED", f"unsupported adapter: {adapter}")
+
+
+def ensure_repo(repo: pathlib.Path, repository_name: str, base_sha: str) -> None:
+    if git(repo, "rev-parse", "--git-dir", check=False).returncode != 0:
+        raise RunnerError("SOURCE_AUTHORITY_FAIL", "configured control repository is not a git checkout")
+    remote = git(repo, "remote", "get-url", "origin").stdout.strip()
+    normalized = remote.lower().replace(".git", "").replace(":", "/")
+    if repository_name.lower() not in normalized:
+        raise RunnerError("SOURCE_AUTHORITY_FAIL", f"origin does not match {repository_name}")
+    git(repo, "fetch", "--prune", "origin", timeout=120)
+    if git(repo, "cat-file", "-e", f"{base_sha}^{{commit}}", check=False).returncode != 0:
+        raise RunnerError("SOURCE_AUTHORITY_FAIL", "base SHA is not present after fetch")
+
+
+def read_remote_sha(repo: pathlib.Path, branch: str) -> str | None:
+    cp = git(repo, "ls-remote", "--heads", "origin", f"refs/heads/{branch}", timeout=60)
+    line = cp.stdout.strip()
+    return line.split()[0] if line else None
+
+
+def create_worktree(repo: pathlib.Path, base_sha: str, worktree: pathlib.Path) -> None:
+    git(repo, "worktree", "add", "--detach", str(worktree), base_sha, timeout=90)
+
+
+def remove_worktree(repo: pathlib.Path, worktree: pathlib.Path) -> None:
+    if worktree.exists():
+        git(repo, "worktree", "remove", "--force", str(worktree), timeout=90, check=False)
+    git(repo, "worktree", "prune", timeout=30, check=False)
+
+
+def same_bytes(a: pathlib.Path, b: pathlib.Path) -> bool:
+    return a.is_file() and b.is_file() and sha256_file(a) == sha256_file(b)
+
+
+BACKEND_DEPENDENCY_ADAPTERS = {"backend.pytest", "full_app_gate"}
+FRONTEND_DEPENDENCY_ADAPTERS = {
+    "frontend.vitest",
+    "frontend.contract",
+    "frontend.typecheck",
+    "frontend.build",
+    "frontend.playwright",
+    "full_app_gate",
+    "operator.tdre",
+    "candidate.tdre",
+}
+
+
+def required_dependency_families(verify: dict[str, Any] | None) -> set[str]:
+    """Return only dependency stacks required by declared verification actions.
+
+    A missing/unknown verification contract fails safe to both stacks. The bundle
+    validator rejects unknown adapters before execution; the fallback protects any
+    external caller that invokes dependency preparation directly.
+    """
+    if not verify or not isinstance(verify.get("actions"), list):
+        return {"backend", "frontend"}
+    adapters = {str(action.get("adapter") or "") for action in verify["actions"] if isinstance(action, dict)}
+    known = BACKEND_DEPENDENCY_ADAPTERS | FRONTEND_DEPENDENCY_ADAPTERS
+    if not adapters or adapters - known:
+        return {"backend", "frontend"}
+    families: set[str] = set()
+    if adapters & BACKEND_DEPENDENCY_ADAPTERS:
+        families.add("backend")
+    if adapters & FRONTEND_DEPENDENCY_ADAPTERS:
+        families.add("frontend")
+    return families or {"backend", "frontend"}
+
+
+@contextlib.contextmanager
+def measure_phase(result: dict[str, Any], name: str):
+    started = time.monotonic()
+    try:
+        yield
+    finally:
+        result.setdefault("phase_seconds", {})[name] = round(time.monotonic() - started, 3)
+
+
+def prepare_dependencies(worktree: pathlib.Path, dependency_source: pathlib.Path | None, logs_dir: pathlib.Path, verify: dict[str, Any] | None = None) -> None:
+    """Reuse existing dependencies only when tracked dependency contracts match exactly.
+
+    If they do not match, reconcile dependencies inside the disposable worktree.
+    This avoids stale dependency reuse while keeping normal patch loops fast.
+    """
+    logs_dir.mkdir(parents=True, exist_ok=True)
+    dependency_source = dependency_source.resolve() if dependency_source else None
+    required = required_dependency_families(verify)
+
+    if "backend" in required:
+        # Backend virtual environment.
+        wt_req = worktree / "backend/requirements.txt"
+        src_req = dependency_source / "backend/requirements.txt" if dependency_source else pathlib.Path("/__missing__")
+        src_venv = dependency_source / "backend/venv" if dependency_source else pathlib.Path("/__missing__")
+        wt_venv = worktree / "backend/venv"
+        if dependency_source and same_bytes(wt_req, src_req) and (src_venv / "bin/python").is_file():
+            wt_venv.symlink_to(src_venv, target_is_directory=True)
+        else:
+            cp = run([sys.executable, "-m", "venv", str(wt_venv)], cwd=worktree, timeout=120, check=False)
+            (logs_dir / "dependency-backend-venv.log").write_text(redact(cp.stdout or ""), "utf-8")
+            if cp.returncode != 0:
+                raise RunnerError("ENVIRONMENT_FAIL", "failed to create isolated backend venv")
+            cp = run([str(wt_venv / "bin/python"), "-m", "pip", "install", "-r", str(wt_req)], cwd=worktree, timeout=900, check=False)
+            (logs_dir / "dependency-backend-install.log").write_text(redact(cp.stdout or ""), "utf-8")
+            if cp.returncode != 0:
+                raise RunnerError("ENVIRONMENT_FAIL", "isolated backend dependency install failed")
+
+    if "frontend" in required:
+        # Frontend node_modules.
+        wt_lock = worktree / "frontend/package-lock.json"
+        wt_pkg = worktree / "frontend/package.json"
+        src_lock = dependency_source / "frontend/package-lock.json" if dependency_source else pathlib.Path("/__missing__")
+        src_pkg = dependency_source / "frontend/package.json" if dependency_source else pathlib.Path("/__missing__")
+        src_modules = dependency_source / "frontend/node_modules" if dependency_source else pathlib.Path("/__missing__")
+        wt_modules = worktree / "frontend/node_modules"
+        contract_match = same_bytes(wt_lock, src_lock) if wt_lock.is_file() else same_bytes(wt_pkg, src_pkg)
+        if dependency_source and contract_match and src_modules.is_dir():
+            wt_modules.symlink_to(src_modules, target_is_directory=True)
+        else:
+            argv = ["npm", "ci"] if wt_lock.is_file() else ["npm", "install"]
+            cp = run(argv, cwd=worktree / "frontend", timeout=900, check=False)
+            (logs_dir / "dependency-frontend-install.log").write_text(redact(cp.stdout or ""), "utf-8")
+            if cp.returncode != 0:
+                raise RunnerError("ENVIRONMENT_FAIL", "isolated frontend dependency install failed")
+
+
+def stage_and_validate_patch(worktree: pathlib.Path, bundle: Bundle) -> None:
+    if bundle.manifest["mode"] == "promotion":
+        return
+    run(["git", "apply", "--check", str(bundle.patch)], cwd=worktree, timeout=30)
+    run(["git", "apply", "--whitespace=nowarn", str(bundle.patch)], cwd=worktree, timeout=30)
+    expected = sorted(bundle.manifest["changed_paths"])
+    if not expected:
+        raise RunnerError("BUNDLE_REJECTED", "targeted patch must declare changed paths")
+    git(worktree, "add", "--", *expected)
+    actual = sorted(x for x in git(worktree, "diff", "--cached", "--name-only", bundle.manifest["base_sha"], "--").stdout.splitlines() if x.strip())
+    if actual != expected:
+        raise RunnerError("BUNDLE_REJECTED", f"changed path mismatch: expected={expected} actual={actual}")
+    unstaged = [x for x in git(worktree, "diff", "--name-only").stdout.splitlines() if x.strip()]
+    untracked = [x for x in git(worktree, "ls-files", "--others", "--exclude-standard").stdout.splitlines() if x.strip()]
+    if unstaged or untracked:
+        raise RunnerError("BUNDLE_REJECTED", f"unexpected post-apply tree state: unstaged={unstaged} untracked={untracked}")
+
+
+def validate_test_did_not_mutate_source(worktree: pathlib.Path, bundle: Bundle) -> None:
+    unstaged = [x for x in git(worktree, "diff", "--name-only").stdout.splitlines() if x.strip()]
+    raw_untracked = [x for x in git(worktree, "ls-files", "--others", "--exclude-standard").stdout.splitlines() if x.strip()]
+    # Dependency surfaces are runner-created execution infrastructure, never source.
+    untracked = [x for x in raw_untracked if not (x == "backend/venv" or x.startswith("backend/venv/") or x == "frontend/node_modules" or x.startswith("frontend/node_modules/"))]
+    if unstaged or untracked:
+        raise RunnerError("PROOF_MUTATED_SOURCE", f"verification mutated source tree: unstaged={unstaged} untracked={untracked}")
+    if bundle.manifest["mode"] == "targeted":
+        expected = sorted(bundle.manifest["changed_paths"])
+        actual = sorted(x for x in git(worktree, "diff", "--cached", "--name-only", bundle.manifest["base_sha"], "--").stdout.splitlines() if x.strip())
+        if actual != expected:
+            raise RunnerError("PROOF_MUTATED_SOURCE", f"verified patch set drifted: expected={expected} actual={actual}")
+
+
+
+def _probe_http_origin(origin: str, timeout: float = 1.5) -> bool:
+    try:
+        req = urllib.request.Request(origin + "/", headers={"User-Agent": f"SysGridTDRE/{RUNNER_VERSION}"})
+        with urllib.request.urlopen(req, timeout=timeout) as response:
+            content_type = str(response.headers.get("content-type") or "").lower()
+            body = response.read(256 * 1024).decode("utf-8", "replace").lower()
+            return 200 <= int(response.status) < 500 and ("text/html" in content_type or "<html" in body) and ("sysgrid" in body or 'id="root"' in body or "id='root'" in body)
+    except Exception:
+        return False
+
+
+def discover_operator_origin(action: dict[str, Any]) -> str | None:
+    configured = str(action.get("operator_origin") or "auto")
+    if configured != "auto":
+        return configured if _probe_http_origin(configured) else None
+    for origin in (
+        "http://127.0.0.1:5173",
+        "http://localhost:5173",
+        "http://127.0.0.1:4173",
+        "http://localhost:4173",
+        "http://127.0.0.1:3000",
+        "http://localhost:3000",
+    ):
+        if _probe_http_origin(origin):
+            return origin
+    return None
+
+
+def _listener_pid(port: int) -> int | None:
+    lsof = pathlib.Path("/usr/sbin/lsof")
+    if not lsof.is_file():
+        return None
+    cp = run([str(lsof), "-nP", f"-iTCP:{port}", "-sTCP:LISTEN", "-Fp"], timeout=5, check=False)
+    for line in (cp.stdout or "").splitlines():
+        if line.startswith("p") and line[1:].isdigit():
+            return int(line[1:])
+    return None
+
+
+def _process_cwd(pid: int) -> pathlib.Path | None:
+    lsof = pathlib.Path("/usr/sbin/lsof")
+    if not lsof.is_file():
+        return None
+    cp = run([str(lsof), "-a", "-p", str(pid), "-d", "cwd", "-Fn"], timeout=5, check=False)
+    for line in (cp.stdout or "").splitlines():
+        if line.startswith("n/"):
+            path = pathlib.Path(line[1:])
+            return path if path.exists() else None
+    return None
+
+
+def observed_runtime_source_sha(origin: str) -> tuple[str | None, str | None]:
+    try:
+        port = urllib.parse.urlsplit(origin).port or 80
+    except Exception:
+        return None, None
+    pid = _listener_pid(port)
+    if pid is None:
+        return None, None
+    cwd = _process_cwd(pid)
+    if cwd is None:
+        return None, None
+    probe = cwd
+    for _ in range(6):
+        cp = run(["git", "-C", str(probe), "rev-parse", "--show-toplevel"], timeout=5, check=False, env=hardened_git_env())
+        if cp.returncode == 0 and (cp.stdout or "").strip():
+            top = pathlib.Path(cp.stdout.strip())
+            sha_cp = run(["git", "-C", str(top), "rev-parse", "HEAD"], timeout=5, check=False, env=hardened_git_env())
+            sha = (sha_cp.stdout or "").strip()
+            return (sha if SHA_RE.fullmatch(sha) else None), str(top)
+        if probe.parent == probe:
+            break
+        probe = probe.parent
+    return None, str(cwd)
+
+
+def classify_tdre(summary: dict[str, Any], action: dict[str, Any], expected_operator_sha: str | None) -> tuple[str, str]:
+    if not summary.get("operator_origin"):
+        return "FAIL", "OPERATOR_RUNTIME_UNAVAILABLE"
+    observed_sha = summary.get("runtime_source_sha")
+    if expected_operator_sha and observed_sha and observed_sha != expected_operator_sha:
+        return "FAIL", "DEPLOYMENT_STALE_OR_WRONG_BUILD"
+    if not summary.get("workspace_present"):
+        return "FAIL", "WORKSPACE_NOT_RENDERED"
+    if not summary.get("api_observed"):
+        return "FAIL", "API_REQUEST_NOT_OBSERVED"
+    status = int(summary.get("api_status") or 0)
+    if status < 200 or status >= 400:
+        return "FAIL", "API_RUNTIME_FAIL"
+    if summary.get("api_shape") != "array":
+        return "FAIL", "API_SHAPE_FAIL"
+    count = summary.get("api_count")
+    if not isinstance(count, int):
+        return "FAIL", "API_COUNT_UNAVAILABLE"
+    if count == 0 and not bool(action.get("allow_empty", False)):
+        return "FAIL", "EMPTY_DATA_UNEXPLAINED"
+    if count > 0 and int(summary.get("grid_row_count") or 0) == 0:
+        return "FAIL", "FRONTEND_RENDER_DEFECT"
+    if int(summary.get("page_error_count") or 0) > 0 or int(summary.get("console_error_count") or 0) > 0:
+        return "FAIL", "RUNTIME_CONSOLE_ERROR"
+    if int(summary.get("relevant_failed_request_count") or 0) > 0:
+        return "FAIL", "RUNTIME_NETWORK_FAILURE"
+    return "PASS", "TDRE_PASS"
+
+
+_TDRE_CAPTURE_SCRIPT = r'''const fs = require('fs');
+const { chromium } = require('playwright');
+const cfg = JSON.parse(fs.readFileSync(process.argv[2], 'utf8'));
+(async () => {
+  const browser = await chromium.launch({ headless: true });
+  const page = await browser.newPage({ viewport: { width: cfg.width, height: cfg.height } });
+  const consoleErrors = [];
+  const pageErrors = [];
+  const failedRequests = [];
+  const badResponses = [];
+  let api = null;
+  let apiResolve;
+  const apiSeen = new Promise((resolve) => { apiResolve = resolve; });
+  page.on('console', (msg) => { if (msg.type() === 'error') consoleErrors.push(msg.text().slice(0, 500)); });
+  page.on('pageerror', (err) => pageErrors.push(String(err.message || err).slice(0, 500)));
+  page.on('requestfailed', (req) => {
+    const u = req.url();
+    if (u.startsWith(cfg.origin) || u.includes('/api/')) failedRequests.push({ url: u.slice(0, 500), error: String(req.failure()?.errorText || '').slice(0, 300) });
+  });
+  page.on('response', async (resp) => {
+    const u = resp.url();
+    if (resp.status() >= 400 && (u.startsWith(cfg.origin) || u.includes('/api/'))) badResponses.push({ url: u.slice(0, 500), status: resp.status() });
+    try {
+      const parsed = new URL(u);
+      if (!api && parsed.pathname === cfg.apiPath) {
+        const text = await resp.text();
+        let payload = null;
+        try { payload = JSON.parse(text); } catch (_) {}
+        api = {
+          url: u,
+          status: resp.status(),
+          shape: Array.isArray(payload) ? 'array' : (payload === null ? 'non-json' : typeof payload),
+          count: Array.isArray(payload) ? payload.length : null,
+        };
+        apiResolve();
+      }
+    } catch (_) {}
+  });
+  let gotoError = null;
+  try {
+    await page.goto(cfg.origin + cfg.route, { waitUntil: 'domcontentloaded', timeout: 15000 });
+  } catch (err) { gotoError = String(err.message || err).slice(0, 700); }
+  await Promise.race([apiSeen, new Promise((resolve) => setTimeout(resolve, 8000))]);
+  await page.waitForTimeout(700);
+  const dom = await page.evaluate((workspace) => ({
+    href: location.href,
+    title: document.title,
+    workspacePresent: Boolean(document.querySelector(`[data-workspace="${workspace}"]`)),
+    gridRows: document.querySelectorAll('.ag-row').length,
+    bodyText: (document.body?.innerText || '').slice(0, 5000),
+  }), cfg.workspace);
+  await page.screenshot({ path: cfg.screenshot, type: 'jpeg', quality: 68, fullPage: false });
+  await browser.close();
+  const match = dom.bodyText.match(/.{0,80}(?:no .* in scope|no .* found|unavailable|empty).{0,120}/i);
+  process.stdout.write(JSON.stringify({
+    page_url: dom.href,
+    page_title: dom.title,
+    workspace_present: dom.workspacePresent,
+    grid_row_count: dom.gridRows,
+    api_observed: Boolean(api),
+    api_url: api?.url || null,
+    api_status: api?.status || null,
+    api_shape: api?.shape || null,
+    api_count: api?.count ?? null,
+    console_error_count: consoleErrors.length,
+    console_errors: consoleErrors.slice(0, 8),
+    page_error_count: pageErrors.length,
+    page_errors: pageErrors.slice(0, 8),
+    relevant_failed_request_count: failedRequests.length,
+    failed_requests: failedRequests.slice(0, 8),
+    bad_response_count: badResponses.length,
+    bad_responses: badResponses.slice(0, 8),
+    goto_error: gotoError,
+    empty_state_hint: match ? match[0] : null,
+  }));
+})().catch((err) => { process.stderr.write(String(err.stack || err)); process.exit(2); });
+'''
+
+
+def run_tdre_action(bundle: Bundle, action: dict[str, Any], worktree: pathlib.Path, artifact_root: pathlib.Path) -> dict[str, Any]:
+    started = time.monotonic()
+    origin = discover_operator_origin(action)
+    action_dir = artifact_root / str(action["id"])
+    action_dir.mkdir(parents=True, exist_ok=True)
+    screenshot = action_dir / f"{action['workspace']}.jpg"
+    summary: dict[str, Any] = {
+        "workspace": action["workspace"],
+        "route": action["route"],
+        "api_path": action["api_path"],
+        "operator_origin": origin,
+        "viewport": {"width": int(action.get("viewport_width", 1440)), "height": int(action.get("viewport_height", 1000))},
+    }
+    if not origin:
+        summary["classification"] = "OPERATOR_RUNTIME_UNAVAILABLE"
+        return {"id": action["id"], "adapter": action["adapter"], "status": "FAIL", "exit_code": 2,
+                "elapsed_seconds": round(time.monotonic() - started, 3), "tail": json.dumps(summary, sort_keys=True),
+                "tdre": summary, "artifacts": []}
+
+    runtime_sha, runtime_root = observed_runtime_source_sha(origin)
+    summary["runtime_source_sha"] = runtime_sha
+    summary["runtime_source_root"] = runtime_root
+    cfg = {"origin": origin, "route": action["route"], "apiPath": action["api_path"], "workspace": action["workspace"],
+           "width": int(action.get("viewport_width", 1440)), "height": int(action.get("viewport_height", 1000)), "screenshot": str(screenshot)}
+    cfg_path = action_dir / "capture.json"
+    script_path = action_dir / "capture.cjs"
+    cfg_path.write_text(json.dumps(cfg), "utf-8")
+    script_path.write_text(_TDRE_CAPTURE_SCRIPT, "utf-8")
+    env = dict(os.environ)
+    env["NODE_PATH"] = str(worktree / "frontend/node_modules")
+    cp = run(["node", str(script_path), str(cfg_path)], cwd=worktree / "frontend", timeout=action["timeout_seconds"], check=False, env=env)
+    raw = redact(cp.stdout or "")
+    artifacts = ([{"path": str(screenshot), "mime": "image/jpeg", "title": f"TDRE {action['workspace']}"}] if screenshot.is_file() else [])
+    if cp.returncode != 0:
+        summary.update({"capture_error": raw[-1200:], "classification": "TDRE_CAPTURE_FAIL"})
+        return {"id": action["id"], "adapter": action["adapter"], "status": "FAIL", "exit_code": cp.returncode,
+                "elapsed_seconds": round(time.monotonic() - started, 3), "tail": json.dumps(summary, sort_keys=True),
+                "tdre": summary, "artifacts": artifacts}
+    try:
+        captured = json.loads(raw.strip() or "{}")
+    except json.JSONDecodeError:
+        captured = {"capture_error": raw[-1200:]}
+    summary.update(captured)
+    expected_operator_sha = str(action.get("expected_operator_sha") or bundle.manifest.get("expected_accepted_sha") or "") or None
+    status_text, classification = classify_tdre(summary, action, expected_operator_sha)
+    summary["expected_operator_sha"] = expected_operator_sha
+    summary["classification"] = classification
+    for artifact in artifacts:
+        artifact["title"] = f"TDRE {action['workspace']} {classification}"
+    return {"id": action["id"], "adapter": action["adapter"], "status": status_text, "exit_code": 0 if status_text == "PASS" else 2,
+            "elapsed_seconds": round(time.monotonic() - started, 3), "tail": json.dumps(summary, sort_keys=True)[-3000:],
+            "tdre": summary, "artifacts": artifacts}
+
+
+def run_candidate_tdre_action(bundle: Bundle, action: dict[str, Any], worktree: pathlib.Path, artifact_root: pathlib.Path) -> dict[str, Any]:
+    started = time.monotonic()
+    port = 15173
+    origin = f"http://127.0.0.1:{port}"
+    if _probe_http_origin(origin, timeout=0.5):
+        summary = {"workspace": action["workspace"], "operator_origin": origin, "classification": "CANDIDATE_PORT_OCCUPIED"}
+        return {"id": action["id"], "adapter": action["adapter"], "status": "FAIL", "exit_code": 2,
+                "elapsed_seconds": round(time.monotonic() - started, 3), "tail": json.dumps(summary), "tdre": summary, "artifacts": []}
+    action_dir = artifact_root / str(action["id"])
+    action_dir.mkdir(parents=True, exist_ok=True)
+    server_log = (action_dir / "candidate-vite.log").open("w", encoding="utf-8")
+    env = dict(os.environ)
+    env["VITE_PORT"] = str(port)
+    env["VITE_BACKEND_HOST"] = "127.0.0.1"
+    env["VITE_BACKEND_PORT"] = "8000"
+    env["PLAYWRIGHT_BASE_URL"] = origin
+    proc = subprocess.Popen(
+        ["npm", "run", "dev", "--", "--host", "127.0.0.1", "--port", str(port)],
+        cwd=str(worktree / "frontend"), stdout=server_log, stderr=subprocess.STDOUT,
+        text=True, env=env, start_new_session=True,
+    )
+    try:
+        deadline = time.monotonic() + 20
+        while time.monotonic() < deadline and proc.poll() is None:
+            if _probe_http_origin(origin, timeout=0.5):
+                break
+            time.sleep(0.25)
+        if not _probe_http_origin(origin, timeout=1):
+            summary = {"workspace": action["workspace"], "operator_origin": origin, "classification": "CANDIDATE_RUNTIME_START_FAIL"}
+            return {"id": action["id"], "adapter": action["adapter"], "status": "FAIL", "exit_code": proc.poll() or 2,
+                    "elapsed_seconds": round(time.monotonic() - started, 3), "tail": json.dumps(summary), "tdre": summary, "artifacts": []}
+        pw_argv = ["npx", "playwright", "test", *action.get("paths", [])]
+        if action.get("grep"):
+            pw_argv += ["--grep", action["grep"]]
+        pw = run(pw_argv, cwd=worktree / "frontend", timeout=max(30, action["timeout_seconds"] - 25), check=False, env=env)
+        pw_output = redact(pw.stdout or "")
+        if pw.returncode != 0:
+            summary = {"workspace": action["workspace"], "operator_origin": origin, "classification": "CANDIDATE_PLAYWRIGHT_FAIL", "playwright_tail": pw_output[-1800:]}
+            return {"id": action["id"], "adapter": action["adapter"], "status": "FAIL", "exit_code": pw.returncode,
+                    "elapsed_seconds": round(time.monotonic() - started, 3), "tail": json.dumps(summary, sort_keys=True)[-3000:], "tdre": summary, "artifacts": []}
+        capture_action = dict(action)
+        capture_action["adapter"] = "candidate.tdre"
+        capture_action["operator_origin"] = origin
+        capture_action["expected_operator_sha"] = bundle.manifest["base_sha"]
+        row = run_tdre_action(bundle, capture_action, worktree, artifact_root)
+        row["adapter"] = "candidate.tdre"
+        row["elapsed_seconds"] = round(time.monotonic() - started, 3)
+        if row.get("tdre"):
+            row["tdre"]["runtime_kind"] = "candidate"
+            row["tdre"]["playwright_status"] = "PASS"
+        row["tail"] = (pw_output[-900:] + "\n" + row.get("tail", ""))[-3000:]
+        return row
+    finally:
+        server_log.close()
+        if proc.poll() is None:
+            with contextlib.suppress(Exception):
+                os.killpg(proc.pid, 15)
+            try:
+                proc.wait(timeout=5)
+            except Exception:
+                with contextlib.suppress(Exception):
+                    os.killpg(proc.pid, 9)
+
+
+def run_actions(bundle: Bundle, worktree: pathlib.Path, logs_dir: pathlib.Path, artifact_root: pathlib.Path) -> tuple[list[dict[str, Any]], str | None]:
+    results: list[dict[str, Any]] = []
+    logs_dir.mkdir(parents=True, exist_ok=True)
+    for action in bundle.verify["actions"]:
+        if action["adapter"] == "candidate.tdre":
+            row = run_candidate_tdre_action(bundle, action, worktree, artifact_root)
+            (logs_dir / f"{action['id']}.log").write_text(row.get("tail", ""), "utf-8")
+            results.append(row)
+            if row["status"] != "PASS":
+                return results, action["id"]
+            continue
+        if action["adapter"] == "operator.tdre":
+            row = run_tdre_action(bundle, action, worktree, artifact_root)
+            (logs_dir / f"{action['id']}.log").write_text(row.get("tail", ""), "utf-8")
+            results.append(row)
+            if row["status"] != "PASS":
+                return results, action["id"]
+            continue
+        argv, cwd = action_argv(action, worktree)
+        started = time.monotonic()
+        cp = run(argv, cwd=cwd, timeout=action["timeout_seconds"], check=False)
+        output = redact(cp.stdout or "")
+        status_text = "PASS" if cp.returncode == 0 else "FAIL"
+        (logs_dir / f"{action['id']}.log").write_text(output, "utf-8")
+        row = {
+            "id": action["id"], "adapter": action["adapter"], "status": status_text,
+            "exit_code": cp.returncode, "elapsed_seconds": round(time.monotonic() - started, 3),
+            "tail": output[-3000:],
+        }
+        results.append(row)
+        if cp.returncode != 0:
+            return results, action["id"]
+    return results, None
+
+
+def configure_commit_identity(worktree: pathlib.Path) -> None:
+    git(worktree, "config", "user.name", "SysGrid Delivery Runner")
+    git(worktree, "config", "user.email", "sysgrid-runner@local.invalid")
+    git(worktree, "config", "commit.gpgsign", "false")
+
+
+def push_targeted(repo: pathlib.Path, worktree: pathlib.Path, bundle: Bundle) -> str:
+    m = bundle.manifest
+    branch = validate_branch(m["attempt_branch"])
+    expected = m.get("expected_attempt_sha")
+    current = read_remote_sha(repo, branch)
+    if expected is None:
+        if current is not None:
+            raise RunnerError("SOURCE_AUTHORITY_FAIL", f"attempt branch unexpectedly exists at {current}")
+    elif current != expected:
+        raise RunnerError("SOURCE_AUTHORITY_FAIL", f"attempt branch prestate mismatch: expected {expected}, got {current}")
+    configure_commit_identity(worktree)
+    # Patch paths were explicitly staged before proof; never stage generated files.
+    cp = run(["git", "-c", "core.hooksPath=/dev/null", "-C", str(worktree), "commit", "--no-verify", "-m", f"{m['issue']} {m['product_attempt']} {m['patch_id']}: targeted pass"], timeout=60, check=False, env=hardened_git_env())
+    if cp.returncode != 0:
+        raise RunnerError("REMOTE_PUBLICATION_FAIL", f"commit failed: {(cp.stdout or '')[-2000:]}")
+    sha = git(worktree, "rev-parse", "HEAD").stdout.strip()
+    lease = f"--force-with-lease=refs/heads/{branch}:{expected or ''}"
+    cp = git(worktree, "push", lease, "origin", f"HEAD:refs/heads/{branch}", timeout=120, check=False)
+    if cp.returncode != 0:
+        raise RunnerError("REMOTE_PUBLICATION_FAIL", f"attempt push failed: {(cp.stdout or '')[-2000:]}")
+    remote = read_remote_sha(repo, branch)
+    if remote != sha:
+        raise RunnerError("REMOTE_EQUALITY_FAIL", f"attempt remote mismatch: local {sha}, remote {remote}")
+    return sha
+
+
+def promote(repo: pathlib.Path, bundle: Bundle) -> str:
+    m = bundle.manifest
+    attempt_sha = m["base_sha"]
+    accepted_branch = m.get("accepted_branch", "main")
+    expected = m["expected_accepted_sha"]
+    current = read_remote_sha(repo, accepted_branch)
+    if current != expected:
+        raise RunnerError("SOURCE_AUTHORITY_FAIL", f"accepted branch prestate mismatch: expected {expected}, got {current}")
+    if git(repo, "merge-base", "--is-ancestor", expected, attempt_sha, check=False).returncode != 0:
+        raise RunnerError("PROMOTION_FAIL", "attempt SHA is not a descendant of accepted prestate")
+    lease = f"--force-with-lease=refs/heads/{accepted_branch}:{expected}"
+    cp = git(repo, "push", lease, "origin", f"{attempt_sha}:refs/heads/{accepted_branch}", timeout=120, check=False)
+    if cp.returncode != 0:
+        raise RunnerError("REMOTE_PUBLICATION_FAIL", f"promotion push failed: {(cp.stdout or '')[-2000:]}")
+    remote = read_remote_sha(repo, accepted_branch)
+    if remote != attempt_sha:
+        raise RunnerError("REMOTE_EQUALITY_FAIL", f"accepted remote mismatch: expected {attempt_sha}, got {remote}")
+    return attempt_sha
+
+
+def replay_path(state_root: pathlib.Path) -> pathlib.Path:
+    return state_root / "replay.json"
+
+
+def replay_consumed(state_root: pathlib.Path, replay_id: str) -> bool:
+    p = replay_path(state_root)
+    if not p.exists():
+        return False
+    try:
+        return replay_id in json.loads(p.read_text("utf-8")).get("consumed", [])
+    except Exception:
+        raise RunnerError("STATE_FAIL", "invalid replay ledger")
+
+
+def admit_replay(state_root: pathlib.Path, replay_id: str) -> None:
+    state_root.mkdir(parents=True, exist_ok=True, mode=0o700)
+    p = replay_path(state_root)
+    data = {"consumed": []}
+    if p.exists():
+        data = json.loads(p.read_text("utf-8"))
+    consumed = data.get("consumed", [])
+    if replay_id in consumed:
+        raise RunnerError("BUNDLE_REJECTED", "replay_id already consumed")
+    consumed.append(replay_id)
+    data["consumed"] = consumed[-500:]
+    tmp = p.with_suffix(".tmp")
+    tmp.write_text(json.dumps(data, indent=2) + "\n", "utf-8")
+    os.chmod(tmp, 0o600)
+    os.replace(tmp, p)
+
+
+def print_result(result: dict[str, Any]) -> None:
+    def short(value: Any) -> str:
+        text = str(value or "")
+        return text[:12] if len(text) >= 12 else text
+    print("=== SYSGRID RESULT ===")
+    print(f"Run: {result['run_id']}")
+    print(f"Issue: {result.get('issue','?')}")
+    print(f"Mode: {str(result.get('mode','?')).upper()}")
+    print(f"Base: {short(result.get('base_sha'))}")
+    print(f"Patch: {result.get('patch_id','none')}")
+    print(f"Apply: {result.get('apply','N/A')}")
+    print(f"Proof: {result.get('proof_passed',0)}/{result.get('proof_total',0)}")
+    print(f"Elapsed: {result.get('elapsed_seconds',0):.1f}s")
+    phases = result.get("phase_seconds") or {}
+    if phases:
+        order = ("bundle", "source", "patch", "dependencies", "proof", "publication", "cleanup")
+        print("Phases: " + " | ".join(f"{name}={float(phases[name]):.1f}s" for name in order if name in phases))
+    families = result.get("dependency_families") or []
+    if families:
+        print("Dependencies: " + ",".join(families))
+    print(f"Remote: {short(result.get('remote_sha')) or 'UNCHANGED'}")
+    print(f"Result: {result['result']}")
+    print(f"Return: {result.get('return','PASTE_THIS_BLOCK')}")
+    if result.get("tdre"):
+        tdre = result["tdre"][-1]
+        print(f"TDRE: {tdre.get('classification','UNKNOWN')} @ {tdre.get('operator_origin') or 'UNAVAILABLE'}")
+    if result.get("failed_action"):
+        print(f"Failed action: {result['failed_action']}")
+    if result.get("message"):
+        print("Cause: " + redact(str(result["message"]))[:1200].replace("\n", " | "))
+    print("=======================")
+
+
+def execute(
+    bundle_path: pathlib.Path,
+    repo: pathlib.Path,
+    state_root: pathlib.Path,
+    result_path: pathlib.Path | None = None,
+    no_push: bool = False,
+    dependency_source: pathlib.Path | None = None,
+    emit: bool = True,
+) -> int:
+    started = time.monotonic()
+    run_id = time.strftime("%Y%m%dT%H%M%SZ", time.gmtime()) + "-" + uuid.uuid4().hex[:8]
+    result: dict[str, Any] = {
+        "runner_version": RUNNER_VERSION,
+        "run_id": run_id,
+        "result": "RUNNER_FAIL",
+        "return": "PASTE_THIS_BLOCK",
+        "apply": "N/A",
+        "proof_passed": 0,
+        "proof_total": 0,
+        "remote_sha": None,
+    }
+    repo = repo.resolve()
+    dependency_source = dependency_source.resolve() if dependency_source else None
+    tmp_root = pathlib.Path(tempfile.mkdtemp(prefix="sysgrid-vnext-"))
+    bundle_dir = tmp_root / "bundle"
+    worktree = tmp_root / "worktree"
+    logs = tmp_root / "logs"
+    bundle_dir.mkdir()
+    replay_admitted = False
+    try:
+        with measure_phase(result, "bundle"):
+            bundle = extract_bundle(bundle_path.resolve(), bundle_dir)
+            m = bundle.manifest
+            result.update({"issue": m["issue"], "mode": m["mode"], "base_sha": m["base_sha"], "patch_id": m["patch_id"], "replay_id": m["replay_id"]})
+            if replay_consumed(state_root, m["replay_id"]):
+                raise RunnerError("BUNDLE_REJECTED", "replay_id already consumed")
+        with measure_phase(result, "source"):
+            ensure_repo(repo, m["repository"], m["base_sha"])
+            create_worktree(repo, m["base_sha"], worktree)
+        # Preflight is complete. From this point a failed proof requires a new cumulative patch.
+        admit_replay(state_root, m["replay_id"])
+        replay_admitted = True
+        if m["mode"] == "targeted":
+            with measure_phase(result, "patch"):
+                stage_and_validate_patch(worktree, bundle)
+        families = required_dependency_families(bundle.verify)
+        result["dependency_families"] = sorted(families)
+        with measure_phase(result, "dependencies"):
+            prepare_dependencies(worktree, dependency_source, logs, bundle.verify)
+        result["apply"] = "PASS"
+        artifact_root = state_root / "evidence" / run_id
+        with measure_phase(result, "proof"):
+            actions, failed = run_actions(bundle, worktree, logs, artifact_root)
+        result["actions"] = actions
+        result["tdre"] = [x["tdre"] for x in actions if x.get("tdre")]
+        result["artifacts"] = [artifact for x in actions for artifact in x.get("artifacts", [])]
+        result["proof_total"] = len(bundle.verify["actions"])
+        result["proof_passed"] = sum(1 for x in actions if x["status"] == "PASS")
+        if failed:
+            result["failed_action"] = failed
+            result["result"] = "TARGETED_FAIL" if m["mode"] == "targeted" else "PROMOTION_FAIL"
+            result["message"] = next(x["tail"] for x in actions if x["id"] == failed)[-1200:]
+            return 2
+        with measure_phase(result, "publication"):
+            validate_test_did_not_mutate_source(worktree, bundle)
+            if no_push:
+                result["result"] = "TARGETED_PASS" if m["mode"] == "targeted" else "PROMOTION_PASS"
+                result["message"] = "qualification/no-push mode"
+                return 0
+            if m["mode"] == "targeted":
+                result["remote_sha"] = push_targeted(repo, worktree, bundle)
+                result["result"] = "TARGETED_PASS"
+            else:
+                result["remote_sha"] = promote(repo, bundle)
+                result["result"] = "PROMOTION_PASS"
+            return 0
+    except RunnerError as exc:
+        result["result"] = exc.classification
+        result["message"] = str(exc)
+        return 3
+    except Exception as exc:
+        result["result"] = "RUNNER_FAIL"
+        result["message"] = f"{type(exc).__name__}: {exc}"
+        return 4
+    finally:
+        with measure_phase(result, "cleanup"):
+            with contextlib.suppress(Exception):
+                remove_worktree(repo, worktree)
+        result["replay_admitted"] = replay_admitted
+        result["elapsed_seconds"] = round(time.monotonic() - started, 3)
+        if result_path:
+            result_path.parent.mkdir(parents=True, exist_ok=True)
+            result_path.write_text(json.dumps(result, indent=2, sort_keys=True) + "\n", "utf-8")
+        if emit:
+            print_result(result)
+        shutil.rmtree(tmp_root, ignore_errors=True)
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser()
+    parser.add_argument("bundle", type=pathlib.Path)
+    parser.add_argument("--repo", type=pathlib.Path, required=True)
+    parser.add_argument("--dependency-source", type=pathlib.Path)
+    parser.add_argument("--state-root", type=pathlib.Path, default=pathlib.Path.home() / "Library/Application Support/SysGridDelivery")
+    parser.add_argument("--result", type=pathlib.Path)
+    parser.add_argument("--no-push", action="store_true", help="qualification only")
+    args = parser.parse_args()
+    return execute(args.bundle, args.repo, args.state_root, args.result, args.no_push, args.dependency_source)
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

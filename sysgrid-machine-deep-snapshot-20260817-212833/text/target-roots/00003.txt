@@ -1,0 +1,105 @@
+ORIGINAL_PATH: /Users/haewonkim/.local/share/sysgrid-delivery-v1.3.0/command_enumeration_core.py
+ORIGINAL_SHA256: 5bb810e53455a1152e9241899e4e6ad97de9dc538c5affb3693df1f802b30f95
+================================================================================
+from __future__ import annotations
+
+from collections.abc import Callable, Iterable, Mapping
+from typing import Any
+
+
+def _marker_line_count(body: str, marker: str) -> int:
+    return sum(1 for line in body.splitlines() if line.strip() == marker)
+
+
+def _unique_comment_objects(
+    comments: Iterable[Mapping[str, object]],
+    *,
+    command_start: str,
+    command_end: str,
+    authority_error: type[Exception],
+    schema_error: type[Exception],
+) -> list[Mapping[str, object]]:
+    """Deduplicate only repeated retrieval of the same authoritative Linear object ID."""
+    unique: list[Mapping[str, object]] = []
+    by_id: dict[str, Mapping[str, object]] = {}
+    for comment in comments:
+        cid = comment.get("id")
+        body = comment.get("body")
+        has_marker_line = (
+            isinstance(body, str)
+            and (_marker_line_count(body, command_start) or _marker_line_count(body, command_end))
+        )
+        if not isinstance(cid, str) or not cid:
+            if has_marker_line:
+                raise schema_error("command envelope lacks stable Linear object identity")
+            continue
+        if not isinstance(body, str):
+            if has_marker_line:
+                raise schema_error("command envelope body invalid")
+            continue
+        previous = by_id.get(cid)
+        if previous is not None:
+            if previous.get("body") != body or previous.get("parentId") != comment.get("parentId"):
+                raise authority_error(f"duplicate Linear object id has divergent content: {cid}")
+            continue
+        by_id[cid] = comment
+        unique.append(comment)
+    return unique
+
+
+def resolve_unique_active_commands(
+    comments: Iterable[Mapping[str, object]],
+    *,
+    command_start: str,
+    command_end: str,
+    wire_version: str,
+    extract_json: Callable[[str, str, str], dict],
+    parse_active_command: Callable[[Mapping[str, object]], Any],
+    authority_error: type[Exception],
+    schema_error: type[Exception],
+) -> tuple[list[Any], list[dict[str, object]]]:
+    """Return validated ACTIVE commands over unique Linear object IDs.
+
+    Marker strings embedded in source/prose are not command envelopes: the marker must be
+    a standalone line. Once a standalone command envelope is present, malformed/ambiguous
+    command control data fails closed rather than being silently skipped.
+    """
+    active: list[Any] = []
+    identities: list[dict[str, object]] = []
+    for comment in _unique_comment_objects(
+        comments,
+        command_start=command_start,
+        command_end=command_end,
+        authority_error=authority_error,
+        schema_error=schema_error,
+    ):
+        body = comment["body"]
+        assert isinstance(body, str)
+        starts = _marker_line_count(body, command_start)
+        ends = _marker_line_count(body, command_end)
+        if starts == 0 and ends == 0:
+            continue
+        if starts != 1 or ends != 1:
+            raise schema_error("command control marker cardinality mismatch")
+        obj = extract_json(body, command_start, command_end)
+        if obj.get("classification") != "SYSGRID_VNEXT_COMMAND":
+            raise authority_error("command envelope classification mismatch")
+        if obj.get("schema_version") != wire_version:
+            raise authority_error("command envelope schema_version mismatch")
+        status = obj.get("status")
+        if status in {"HELD", "CONSUMED"}:
+            continue
+        if status != "ACTIVE":
+            raise authority_error("command envelope status invalid")
+        parsed = parse_active_command(comment)
+        active.append(parsed)
+        identities.append(
+            {
+                "linear_object_id": comment.get("id"),
+                "classification": obj.get("classification"),
+                "status": status,
+                "createdAt": comment.get("createdAt"),
+                "updatedAt": comment.get("updatedAt"),
+            }
+        )
+    return active, identities

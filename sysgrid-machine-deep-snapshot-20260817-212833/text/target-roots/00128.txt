@@ -1,0 +1,195 @@
+ORIGINAL_PATH: /Users/haewonkim/.local/share/sysgrid-runner/backups/20260731T194319Z-pre-launcher-v104-repair/lib/1.0.4/QUALIFICATION/FAULT_INJECTION_MATRIX.json
+ORIGINAL_SHA256: 7d9a4a8ab2d8c0eff55fdf3284ac3b0121d4157cab64a537655e275ec9617542
+================================================================================
+{
+  "schema_version": "1.0",
+  "engine_version": "1.0.3",
+  "required": [
+    {
+      "id": "unsafe-path",
+      "expected": "CAPSULE_SAFETY_FAILURE",
+      "automated_test": "test_safe_path_rejects_traversal"
+    },
+    {
+      "id": "symlink",
+      "expected": "CAPSULE_SAFETY_FAILURE",
+      "automated_test": "test_symlink_capsule_member_is_rejected"
+    },
+    {
+      "id": "executable-member",
+      "expected": "CAPSULE_SAFETY_FAILURE",
+      "automated_test": "test_executable_capsule_member_is_rejected"
+    },
+    {
+      "id": "manifest-corruption",
+      "expected": "CAPSULE_MANIFEST_FAILURE",
+      "automated_test": "test_manifest_detects_corruption"
+    },
+    {
+      "id": "unknown-schema-field",
+      "expected": "CAPSULE_SCHEMA_FAILURE",
+      "automated_test": "test_unknown_run_field_is_rejected"
+    },
+    {
+      "id": "wrong-engine-version",
+      "expected": "ENGINE_VERSION_FAILURE",
+      "automated_test": "test_wrong_engine_and_project_are_rejected"
+    },
+    {
+      "id": "wrong-project",
+      "expected": "PROJECT_SCOPE_FAILURE",
+      "automated_test": "test_wrong_engine_and_project_are_rejected"
+    },
+    {
+      "id": "wrong-branch-head-upstream",
+      "expected": "BASELINE_MISMATCH",
+      "automated_test": "test_branch_head_and_upstream_mismatches_are_rejected"
+    },
+    {
+      "id": "unexpected-dirty-path",
+      "expected": "BASELINE_MISMATCH",
+      "automated_test": "test_unexpected_dirty_path_is_rejected"
+    },
+    {
+      "id": "protected-hash-drift",
+      "expected": "PROTECTED_HASH_MISMATCH",
+      "automated_test": "test_protected_hash_drift_is_rejected"
+    },
+    {
+      "id": "already-applied-patch",
+      "expected": "PATCH_STATE_FAILURE",
+      "automated_test": "test_already_applied_patch_is_rejected"
+    },
+    {
+      "id": "partial-patch",
+      "expected": "PATCH_STATE_FAILURE",
+      "automated_test": "test_partial_patch_is_rejected"
+    },
+    {
+      "id": "untrusted-recipe",
+      "expected": "RECIPE_NOT_TRUSTED",
+      "automated_test": "test_untrusted_recipe_is_rejected"
+    },
+    {
+      "id": "missing-dependency",
+      "expected": "ENVIRONMENT_MISSING_DEPENDENCY",
+      "automated_test": "test_missing_frontend_dependency_is_classified"
+    },
+    {
+      "id": "timeout-process-group-cleanup",
+      "expected": "COMMAND_TIMEOUT",
+      "automated_test": "test_process_timeout_returns_124_and_kills_group"
+    },
+    {
+      "id": "secret-redaction",
+      "expected": "REDACTED_EVIDENCE",
+      "automated_test": "test_command_logs_are_redacted_before_evidence"
+    },
+    {
+      "id": "missing-canonical-zip",
+      "expected": "EVIDENCE_PACKAGING_FAILURE",
+      "automated_test": "test_primary_packaging_failure_gets_fallback_review_zip"
+    },
+    {
+      "id": "commit-failure",
+      "expected": "GIT_FAILURE",
+      "automated_test": "test_commit_failure_is_classified"
+    },
+    {
+      "id": "push-failure",
+      "expected": "PUSH_FAILURE",
+      "automated_test": "test_push_failure_is_classified"
+    },
+    {
+      "id": "remote-sha-mismatch",
+      "expected": "REMOTE_VERIFICATION_FAILURE",
+      "automated_test": "test_remote_sha_mismatch_is_classified"
+    },
+    {
+      "id": "successful-capsule-auto-archive",
+      "expected": "CAPSULE_ARCHIVED_AFTER_VERIFIED_ZIP",
+      "automated_test": "test_control_run_archives_successful_capsule_to_cloud_archive"
+    },
+    {
+      "id": "failed-capsule-auto-archive",
+      "expected": "CAPSULE_ARCHIVED_AFTER_VERIFIED_FAILURE_ZIP",
+      "automated_test": "test_control_run_archives_failed_capsule_after_review_zip_is_verified"
+    },
+    {
+      "id": "capsule-archive-failure",
+      "expected": "INPUT_ARCHIVE_FAILURE_INPUT_RETAINED",
+      "automated_test": "test_archive_failure_preserves_inbox_capsule_and_reports_review_ready_failure"
+    },
+    {
+      "id": "distinct-pre-post-dirty-path-transition",
+      "failure_class": "baseline/state transition cannot represent newly changed paths",
+      "expected": "exact pre set passes, patch applies once, exact expanded post set passes",
+      "automated_test": "test_mutation_supports_distinct_pre_and_post_dirty_path_sets"
+    },
+    {
+      "id": "background-default",
+      "expected": "CONTROL_RUN_RETURNS_WHILE_MANAGED_WORKER_COMPLETES",
+      "automated_test": "test_control_run_detaches_by_default_and_completes"
+    },
+    {
+      "id": "concurrent-run-lock",
+      "expected": "RUN_ALREADY_ACTIVE",
+      "automated_test": "test_active_run_lock_blocks_a_second_sg"
+    },
+    {
+      "id": "stale-run-lock",
+      "expected": "STALE_LOCK_RECOVERED_BEFORE_LAUNCH",
+      "automated_test": "test_stale_run_lock_is_recovered_before_launch"
+    },
+    {
+      "id": "terminal-detachment",
+      "expected": "NEW_SESSION_AND_REDIRECTED_STDIO",
+      "automated_test": "test_detached_worker_uses_new_session_and_redirected_stdio"
+    },
+    {
+      "id": "telegram-message-redaction-and-dedupe",
+      "expected": "SANITIZED_SINGLE_DELIVERED_EVENT_WITH_PREVIEW_AND_DIGEST",
+      "automated_test": "test_notification_bridge_queues_sanitized_deduplicated_messages"
+    },
+    {
+      "id": "telegram-unavailable",
+      "expected": "NON_FATAL_UNAVAILABLE_STATE",
+      "automated_test": "test_notification_unavailable_is_nonfatal_and_recorded"
+    },
+    {
+      "id": "watch-terminal-exit",
+      "expected": "WATCH_EXITS_AFTER_FINAL_STATE",
+      "automated_test": "test_control_watch_exits_after_terminal_state_and_no_active_lock"
+    },
+    {
+      "id": "telegram-success-lifecycle",
+      "expected": "START_BASELINE_MILESTONE_DELIVERY_SUCCESS_EVENTS",
+      "automated_test": "test_execute_emits_start_milestone_delivery_and_success_events"
+    },
+    {
+      "id": "telegram-failure-lifecycle",
+      "expected": "FAILURE_EVENT_WITH_ORIGINAL_CLASSIFICATION",
+      "automated_test": "test_execute_emits_failure_event_without_changing_failure_classification"
+    },
+    {
+      "id": "telegram-delivery-failure",
+      "expected": "NON_FATAL_DELIVERY_FAILURE_WITH_EXIT_CODE",
+      "automated_test": "test_notification_delivery_failure_is_nonfatal_and_recorded"
+    },
+    {
+      "id": "operator-ledger-packaging",
+      "expected": "WORKER_AND_NOTIFICATION_LOGS_IN_CANONICAL_ZIP",
+      "automated_test": "test_operator_evidence_captures_worker_and_notification_ledgers"
+    },
+    {
+      "id": "playwright-failure-evidence",
+      "expected": "FAILED_SOURCE_TRACE_SCREENSHOT_CONTEXT_AND_REPORT_CAPTURED_WITH_BOUNDS",
+      "automated_test": "test_failure_capture_includes_referenced_source_and_playwright_artifacts"
+    },
+    {
+      "id": "final-failure-notification-evidence",
+      "expected": "FINAL_NOTIFICATION_AND_WORKER_LOG_PRESENT_WITH_ORIGINAL_CLASSIFICATION",
+      "automated_test": "test_failure_zip_contains_final_notification_worker_and_failure_source"
+    }
+  ]
+}

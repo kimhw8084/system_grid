@@ -1,0 +1,70 @@
+ORIGINAL_PATH: /Users/haewonkim/.local/state/sysgrid-supervisor/runs/20260801T071440Z-85703-360000/patch.diff
+ORIGINAL_SHA256: 3cb0cfe4f1ca73feea881bbde549a19f745040e0babde3214e148e14eb59e158
+================================================================================
+diff --git a/frontend/scripts/check-canonical-verification-contract.cjs b/frontend/scripts/check-canonical-verification-contract.cjs
+index 41adab2a2f4ed42ff7f3351e1c74b13a7c3b9be0..ca6a348be1518984c6d1538b6505dd329854f23d 100644
+--- a/frontend/scripts/check-canonical-verification-contract.cjs
++++ b/frontend/scripts/check-canonical-verification-contract.cjs
+@@ -36,7 +36,11 @@ requireText(verify, 'PLAYWRIGHT_ENV_COMMAND=(', 'verify-app.sh must construct th
+ requireText(verify, '"SYSGRID_CANONICAL_GATE=1"', 'verify-app.sh must enable canonical-gate mode')
+ requireText(verify, '"SYSGRID_EXPECTED_FRONTEND_ORIGIN=$FRONTEND_ORIGIN"', 'verify-app.sh must declare the expected frontend origin')
+ requireText(verify, '"SYSGRID_EXPECTED_API_BASE=$BACKEND_ORIGIN/api/v1"', 'verify-app.sh must declare the expected API base')
+-requireText(verify, '"${PLAYWRIGHT_ENV_COMMAND[@]}" npx playwright test "${PLAYWRIGHT_SPECS[@]}"', 'verify-app.sh must execute Playwright through the environment array')
++requireText(verify, 'assert_local_playwright_runtime', 'verify-app.sh must verify the exact local Playwright package identity before expensive application verification')
++requireText(verify, "require('./node_modules/@playwright/test/package.json').version", 'verify-app.sh must inspect the local @playwright/test version')
++requireText(verify, "require('./node_modules/playwright/package.json').version", 'verify-app.sh must inspect the local Playwright runner version')
++requireText(verify, '"${PLAYWRIGHT_ENV_COMMAND[@]}" "$FRONTEND_DIR/node_modules/.bin/playwright" test "${PLAYWRIGHT_SPECS[@]}"', 'verify-app.sh must execute the exact local Playwright runner through the environment array')
++if (verify.includes('npx playwright')) failures.push('Canonical Playwright must not use npx or permit network package substitution')
+ requireText(verify, 'run_validation_lanes', 'verify-app.sh must run independent static, backend, and frontend lanes concurrently')
+ requireText(verify, 'emit_progress static_started', 'verify-app.sh must publish static-lane progress')
+ requireText(verify, 'emit_progress backend_started', 'verify-app.sh must publish backend-lane progress')
+diff --git a/scripts/verify-app.sh b/scripts/verify-app.sh
+index 91626a55d6d5de622407d9e82e808e5dc138b6ef..bc195b1dbe1f4a0fa84a142c09a2ab405a4a8841 100755
+--- a/scripts/verify-app.sh
++++ b/scripts/verify-app.sh
+@@ -261,6 +261,25 @@ if missing:
+   echo "Disposable Playwright fixture contract passed: one tenant, code-managed reference data, zero domain rows."
+ }
+ 
++assert_local_playwright_runtime() {
++  local runner="$FRONTEND_DIR/node_modules/.bin/playwright"
++  [[ -x "$runner" ]] || {
++    echo "Canonical Playwright runner is missing or not executable: $runner" >&2
++    exit 1
++  }
++  (
++    cd "$FRONTEND_DIR"
++    node - <<'NODE_PLAYWRIGHT_IDENTITY'
++const testVersion = require('./node_modules/@playwright/test/package.json').version
++const runnerVersion = require('./node_modules/playwright/package.json').version
++if (testVersion !== runnerVersion) {
++  throw new Error(`Playwright package identity mismatch: @playwright/test=${testVersion}, playwright=${runnerVersion}`)
++}
++console.log(`Canonical local Playwright identity verified: ${runnerVersion}`)
++NODE_PLAYWRIGHT_IDENTITY
++  )
++}
++
+ assert_canonical_playwright_suite() {
+   local spec
+   local duplicate_count
+@@ -504,6 +523,7 @@ run_validation_lanes() {
+ }
+ 
+ assert_canonical_playwright_suite
++assert_local_playwright_runtime
+ run_validation_lanes
+ 
+ prepare_disposable_runtime
+@@ -545,7 +565,10 @@ PLAYWRIGHT_ENV_COMMAND=(
+ 
+ emit_progress playwright_started started "Canonical Playwright and Golden Eight evidence matrix started."
+ set +e
+-"${PLAYWRIGHT_ENV_COMMAND[@]}" npx playwright test "${PLAYWRIGHT_SPECS[@]}"
++(
++  cd "$FRONTEND_DIR"
++  "${PLAYWRIGHT_ENV_COMMAND[@]}" "$FRONTEND_DIR/node_modules/.bin/playwright" test "${PLAYWRIGHT_SPECS[@]}"
++)
+ PLAYWRIGHT_STATUS=$?
+ set -e
+ if [[ "$PLAYWRIGHT_STATUS" != "0" ]]; then

@@ -1,0 +1,32 @@
+ORIGINAL_PATH: /Users/haewonkim/.local/state/sysgrid-supervisor/runs/20260801T165116Z-41268-284000/preflight.json
+ORIGINAL_SHA256: acd1bea67c490489461b55f2d7c9085bf42a151ac7122b756ad1afd32ab785b1
+================================================================================
+{
+  "declared_state": {
+    "dirty_path_count": 56,
+    "pre_hash_count": 56,
+    "protected_hash_count": 19
+  },
+  "engine_self_test": {
+    "engine_version": "1.0.4",
+    "result": "PASS",
+    "tests": [
+      "safe-path",
+      "manifest",
+      "corruption"
+    ]
+  },
+  "patch": {
+    "applicable": true,
+    "forward_diagnostic": "Checking patch frontend/src/components/shared/CanonicalVerificationContract.test.ts...",
+    "forward_exit_code": 0,
+    "reverse_applicable": false,
+    "reverse_diagnostic": "Checking patch frontend/src/components/shared/CanonicalVerificationContract.test.ts...\nerror: while searching for:\n    expect(script).toContain('\"SYSGRID_CANONICAL_GATE=1\"')\n    expect(script).toContain('\"SYSGRID_EXPECTED_FRONTEND_ORIGIN=$FRONTEND_ORIGIN\"')\n    expect(script).toContain('\"SYSGRID_EXPECTED_API_BASE=$BACKEND_ORIGIN/api/v1\"')\n    expect(script).toContain('\"${PLAYWRIGHT_ENV_COMMAND[@]}\" \"$FRONTEND_DIR/node_modules/.bin/playwright\" test \"${PLAYWRIGHT_SPECS[@]}\"')\n    expect(script).not.toContain('npx playwright')\n    expect(script).toContain('run_validation_lanes')\n    expect(script).toContain('npm run preview -- --host \"$FRONTEND_HOST\"')\n    expect(script).toContain('VITE_API_BASE_URL=\"$BACKEND_ORIGIN\" VITE_FRONTEND_ORIGIN=\"$FRONTEND_ORIGIN\" npm run build')\n\nerror: patch failed: frontend/src/components/shared/CanonicalVerificationContract.test.ts:12\nerror: frontend/src/components/shared/CanonicalVerificationContract.test.ts: patch does not apply",
+    "reverse_exit_code": 1
+  },
+  "storage": {
+    "control_free": 57349054464,
+    "local_free": 57349054464,
+    "required": 536870912
+  }
+}

@@ -1,0 +1,518 @@
+ORIGINAL_PATH: /Users/haewonkim/.local/state/sysgrid-supervisor/runs/20260801T070156Z-70948-427000/patch.diff
+ORIGINAL_SHA256: 7bbe49d922700450a4e516c18d11240059174bfcf46d098bb845d640e29f0e47
+================================================================================
+diff --git a/frontend/playwright.config.ts b/frontend/playwright.config.ts
+index 2db86c7e6193464ae671e1b10544c70059fa45af..0d4326e655c77125b69c8841432e13c40b56877f 100644
+--- a/frontend/playwright.config.ts
++++ b/frontend/playwright.config.ts
+@@ -29,7 +29,7 @@ export default defineConfig({
+     headless: true,
+     trace: 'retain-on-failure',
+     screenshot: 'only-on-failure',
+-    video: 'retain-on-failure',
++    video: 'off',
+     extraHTTPHeaders: { 'X-User-Id': process.env.USER_ID || 'haewon.kim' }
+   }
+ })
+diff --git a/frontend/scripts/check-canonical-verification-contract.cjs b/frontend/scripts/check-canonical-verification-contract.cjs
+index 02e8f272215618f0b5966cadfa4cac7f4284b4d8..41adab2a2f4ed42ff7f3351e1c74b13a7c3b9be0 100644
+--- a/frontend/scripts/check-canonical-verification-contract.cjs
++++ b/frontend/scripts/check-canonical-verification-contract.cjs
+@@ -26,6 +26,7 @@ const shellSearch = readRepo('frontend/tests/shell-and-search.spec.ts')
+ const sentinel = readRepo('frontend/tests/sentinel_comprehensive.spec.ts')
+ const blankSlate = readRepo('frontend/tests/blank-slate-audit.spec.ts')
+ const seeded = readRepo('frontend/tests/golden-eight-seeded-visual-matrix.spec.ts')
++const sentinelHelper = readRepo('frontend/tests/helpers/sentinel.ts')
+ const deviceApi = readRepo('backend/app/api/devices.py')
+ const deviceBulkTests = readRepo('backend/test_asset_vendor_bulk_workflows.py')
+ const importWorkflowTests = readRepo('backend/test_import_workflows.py')
+@@ -36,6 +37,16 @@ requireText(verify, '"SYSGRID_CANONICAL_GATE=1"', 'verify-app.sh must enable can
+ requireText(verify, '"SYSGRID_EXPECTED_FRONTEND_ORIGIN=$FRONTEND_ORIGIN"', 'verify-app.sh must declare the expected frontend origin')
+ requireText(verify, '"SYSGRID_EXPECTED_API_BASE=$BACKEND_ORIGIN/api/v1"', 'verify-app.sh must declare the expected API base')
+ requireText(verify, '"${PLAYWRIGHT_ENV_COMMAND[@]}" npx playwright test "${PLAYWRIGHT_SPECS[@]}"', 'verify-app.sh must execute Playwright through the environment array')
++requireText(verify, 'run_validation_lanes', 'verify-app.sh must run independent static, backend, and frontend lanes concurrently')
++requireText(verify, 'emit_progress static_started', 'verify-app.sh must publish static-lane progress')
++requireText(verify, 'emit_progress backend_started', 'verify-app.sh must publish backend-lane progress')
++requireText(verify, 'emit_progress frontend_started', 'verify-app.sh must publish frontend-lane progress')
++requireText(verify, 'emit_progress playwright_started', 'verify-app.sh must publish Playwright progress')
++requireText(verify, 'npm run test:coverage -- --maxWorkers "$FRONTEND_WORKERS"', 'verify-app.sh must consume the bounded frontend worker budget')
++requireText(verify, 'VITE_API_BASE_URL="$BACKEND_ORIGIN" VITE_FRONTEND_ORIGIN="$FRONTEND_ORIGIN" npm run build', 'verify-app.sh must bind the production build to the canonical runtime')
++requireText(verify, 'npm run preview -- --host "$FRONTEND_HOST" --port "$FRONTEND_PORT" --strictPort', 'verify-app.sh must serve the exact production build')
++if (/^\s*npm run check:shell-contracts\s*$/m.test(verify)) failures.push('verify-app.sh must not run the shell contract twice')
++if (verify.includes('npm run dev --')) failures.push('verify-app.sh must not validate a development server after production build')
+ requireText(verify, 'assert_canonical_runtime_evidence', 'verify-app.sh must validate runtime-binding evidence')
+ requireText(verify, 'assert_populated_golden_eight_evidence', 'verify-app.sh must validate all populated Golden Eight screenshots')
+ requireText(verify, 'TENANTS_JSON="$tenants"', 'verify-app.sh must pass final tenant JSON independently of the Python heredoc stdin')
+@@ -58,6 +69,8 @@ for (const spec of canonicalSpecs) {
+ 
+ requireText(playwrightConfig, "const canonicalGate = process.env.SYSGRID_CANONICAL_GATE === '1'", 'Playwright config must recognize canonical-gate mode')
+ requireText(playwrightConfig, "throw new Error('Canonical SysGrid gate requires explicit frontend and API runtime bindings')", 'Playwright config must fail closed on missing canonical bindings')
++requireText(playwrightConfig, "video: 'off'", 'Canonical Playwright must avoid unconditional video recording overhead')
++if (playwrightConfig.includes("video: 'retain-on-failure'")) failures.push('Canonical Playwright must not record every test before deleting passing videos')
+ requireText(helper, 'Canonical API request escaped the isolated runtime', 'test API resolver must reject escaped canonical requests')
+ requireText(helper, 'options: { tenantId?: string; userId?: string } = {}', 'browser reset must support explicit tenant and user isolation')
+ requireText(helper, "request.post(`${apiBase}/tenants/select`", 'browser reset must synchronize the server-selected tenant before navigation')
+@@ -82,6 +95,12 @@ requireText(fixture, 'await selectAndVerifyTestTenant(request, testTenantId, tes
+ requireText(fixture, 'finally {\n      try {\n        await selectAndVerifyTestTenant(request, testTenantId, testUserId);', 'canonical tenant guard must restore the tenant after every test, including failures')
+ requireText(seeded, "`${route.key}-populated-desktop.png`", 'populated matrix must use route-labeled evidence filenames')
+ requireText(seeded, "getByTestId('active-tenant-name')", 'populated matrix must prove the displayed tenant matches the seeded tenant')
++requireText(seeded, 'const tenantResponsePromise = page.waitForResponse', 'populated matrix must register the tenant response boundary before navigation')
++requireText(seeded, "response.headers()['x-sysgrid-tenant-id'] === testTenantId", 'populated matrix must await an exact tenant-stamped response')
++requireText(seeded, 'const tenantResponse = await tenantResponsePromise', 'populated matrix must await the tenant response before evaluating evidence')
++requireText(sentinelHelper, "'ResizeObserver loop completed with undelivered notifications.'", 'strict monitoring must classify only the exact known ResizeObserver diagnostic')
++requireText(sentinelHelper, '[known-browser-diagnostic]', 'known browser diagnostics must remain visible in test evidence')
++if (sentinelHelper.includes("includes('ResizeObserver')") || sentinelHelper.includes('includes("ResizeObserver")')) failures.push('strict monitoring must not broadly suppress ResizeObserver errors')
+ 
+ 
+ requireText(backendMain, 'X-SysGrid-Tenant-Id', 'backend must identify the effective tenant on every tenant-routed response')
+diff --git a/frontend/src/components/shared/CanonicalVerificationContract.test.ts b/frontend/src/components/shared/CanonicalVerificationContract.test.ts
+index b4a6c98474a41ad3e23ecb6fcb359696015805fd..425abcf2cf554616b9681d9ffc61a5542ab245de 100644
+--- a/frontend/src/components/shared/CanonicalVerificationContract.test.ts
++++ b/frontend/src/components/shared/CanonicalVerificationContract.test.ts
+@@ -13,6 +13,11 @@ describe('canonical verification contract', () => {
+     expect(script).toContain('"SYSGRID_EXPECTED_FRONTEND_ORIGIN=$FRONTEND_ORIGIN"')
+     expect(script).toContain('"SYSGRID_EXPECTED_API_BASE=$BACKEND_ORIGIN/api/v1"')
+     expect(script).toContain('"${PLAYWRIGHT_ENV_COMMAND[@]}" npx playwright test "${PLAYWRIGHT_SPECS[@]}"')
++    expect(script).toContain('run_validation_lanes')
++    expect(script).toContain('npm run preview -- --host "$FRONTEND_HOST"')
++    expect(script).toContain('VITE_API_BASE_URL="$BACKEND_ORIGIN" VITE_FRONTEND_ORIGIN="$FRONTEND_ORIGIN" npm run build')
++    expect(script).not.toMatch(/^\s*npm run check:shell-contracts\s*$/m)
++    expect(script).not.toContain('npm run dev --')
+   })
+ 
+   it('fails closed when canonical frontend or API bindings are absent or mismatched', () => {
+@@ -21,6 +26,8 @@ describe('canonical verification contract', () => {
+     const fixture = read('frontend/tests/helpers/sysgrid-test.ts')
+     expect(config).toContain("process.env.SYSGRID_CANONICAL_GATE === '1'")
+     expect(config).toContain('Canonical SysGrid gate requires explicit frontend and API runtime bindings')
++    expect(config).toContain("video: 'off'")
++    expect(config).not.toContain("video: 'retain-on-failure'")
+     expect(helper).toContain('Canonical runtime mismatch')
+     expect(helper).toContain('Canonical API request escaped the isolated runtime')
+     expect(fixture).toContain('playwright.request.newContext')
+@@ -34,4 +41,31 @@ describe('canonical verification contract', () => {
+     expect(script).toContain('assert_populated_golden_eight_evidence')
+     for (const key of ['monitoring', 'assets', 'services', 'external', 'network', 'far', 'research', 'vendors']) expect(script).toContain(key)
+   })
++
++  it('awaits exact tenant evidence and narrowly classifies the known browser diagnostic', () => {
++    const seeded = read('frontend/tests/golden-eight-seeded-visual-matrix.spec.ts')
++    const sentinel = read('frontend/tests/helpers/sentinel.ts')
++    expect(seeded).toContain('const tenantResponsePromise = page.waitForResponse')
++    expect(seeded).toContain("response.headers()['x-sysgrid-tenant-id'] === testTenantId")
++    expect(seeded).toContain('const tenantResponse = await tenantResponsePromise')
++    expect(sentinel).toContain("'ResizeObserver loop completed with undelivered notifications.'")
++    expect(sentinel).toContain('[known-browser-diagnostic]')
++    expect(sentinel).not.toContain("includes('ResizeObserver')")
++  })
++
++  it('publishes product subgate progress through the registered v2 event channel', () => {
++    const script = read('scripts/verify-app.sh')
++    for (const event of [
++      'static_started',
++      'backend_started',
++      'frontend_started',
++      'static_completed',
++      'backend_completed',
++      'frontend_completed',
++      'build_completed',
++      'runtime_ready',
++      'playwright_started',
++      'playwright_completed',
++    ]) expect(script).toContain(`emit_progress ${event}`)
++  })
+ })
+diff --git a/frontend/tests/golden-eight-seeded-visual-matrix.spec.ts b/frontend/tests/golden-eight-seeded-visual-matrix.spec.ts
+index 66734f4d21a8fcce1098e9491a535db8bc29ae51..103f8e9a4730d17252dd8cc8d7c076bffcb88d75 100644
+--- a/frontend/tests/golden-eight-seeded-visual-matrix.spec.ts
++++ b/frontend/tests/golden-eight-seeded-visual-matrix.spec.ts
+@@ -114,11 +114,22 @@ test.describe.parallel('Golden Eight non-short-circuit populated validation matr
+         if (tenantId) routeTenantIds.add(tenantId)
+       }
+       page.on('response', captureTenant)
++      const tenantResponsePromise = page.waitForResponse((response) => {
++        const url = new URL(response.url())
++        return (
++          url.pathname.startsWith('/api/') &&
++          response.status() < 500 &&
++          response.headers()['x-sysgrid-tenant-id'] === testTenantId
++        )
++      })
+ 
+       const failures: string[] = []
+       try {
+         await page.goto(route.path)
+         await waitForAppIdle(page)
++        const tenantResponse = await tenantResponsePromise
++        const observedTenantId = tenantResponse.headers()['x-sysgrid-tenant-id']
++        if (observedTenantId) routeTenantIds.add(observedTenantId)
+         const workspace = page.locator(`[data-workspace="${route.key}"]`)
+         const grid = workspace.getByTestId('golden-grid-surface').first()
+         const commandBar = workspace.locator('[data-workspace-command-bar="true"]').first()
+diff --git a/frontend/tests/helpers/sentinel.ts b/frontend/tests/helpers/sentinel.ts
+index a178da2a9022adf4d9ed94b061e02a96505d54ee..e25b40326651b7458ceb060585a2a941dc0f88a5 100644
+--- a/frontend/tests/helpers/sentinel.ts
++++ b/frontend/tests/helpers/sentinel.ts
+@@ -1,10 +1,31 @@
+ import { expect, type Page } from '@playwright/test'
+ 
++const KNOWN_BENIGN_BROWSER_DIAGNOSTICS = new Set([
++  'ResizeObserver loop completed with undelivered notifications.',
++])
++
++export type StrictAppMonitoringFailures = string[] & { diagnostics: string[] }
++
++function isKnownBenignBrowserDiagnostic(message: string) {
++  return KNOWN_BENIGN_BROWSER_DIAGNOSTICS.has(message.trim())
++}
++
+ export function installStrictAppMonitoring(page: Page) {
+-  const failures: string[] = []
++  const failures = [] as StrictAppMonitoringFailures
++  failures.diagnostics = []
++
++  const recordKnownDiagnostic = (source: 'console.error' | 'pageerror', message: string) => {
++    const diagnostic = `${source}: ${message.trim()}`
++    failures.diagnostics.push(diagnostic)
++    console.info(`[known-browser-diagnostic] ${diagnostic}`)
++  }
+ 
+   page.on('console', (msg) => {
+     if (msg.type() === 'error') {
++      if (isKnownBenignBrowserDiagnostic(msg.text())) {
++        recordKnownDiagnostic('console.error', msg.text())
++        return
++      }
+       void Promise.all(
+         msg.args().map(async (arg) => {
+           try {
+@@ -21,6 +42,10 @@ export function installStrictAppMonitoring(page: Page) {
+   })
+ 
+   page.on('pageerror', (err) => {
++    if (isKnownBenignBrowserDiagnostic(err.message)) {
++      recordKnownDiagnostic('pageerror', err.message)
++      return
++    }
+     failures.push(`pageerror: ${err.message}`)
+   })
+ 
+@@ -38,7 +63,7 @@ export function installStrictAppMonitoring(page: Page) {
+   return failures
+ }
+ 
+-export async function expectNoAppFailures(failures: string[], context: string) {
++export async function expectNoAppFailures(failures: StrictAppMonitoringFailures, context: string) {
+   expect(
+     failures,
+     `${context} emitted app failures:\n${failures.join('\n')}`,
+diff --git a/scripts/verify-app.sh b/scripts/verify-app.sh
+index 69cba6d3bea90c26b38cbdb981cdabeab1546188..91626a55d6d5de622407d9e82e808e5dc138b6ef 100755
+--- a/scripts/verify-app.sh
++++ b/scripts/verify-app.sh
+@@ -22,6 +22,9 @@ VERIFY_TENANT_DB="$BACKEND_DIR/$VERIFY_TENANT_DB_REL"
+ RUNTIME_USER_ENV_VAR="SYSGRID_VERIFY_RUNTIME_USER_ID"
+ BACKEND_PID=""
+ FRONTEND_PID=""
++LANE_DIR="$(mktemp -d "${TMPDIR:-/tmp}/sysgrid-verify-lanes.XXXXXX")"
++PROGRESS_SEQUENCE=0
++FRONTEND_WORKERS="${SYSGRID_FRONTEND_WORKERS:-4}"
+ 
+ GOLDEN_WORKSPACE_KEYS=(monitoring assets services external network far research vendors)
+ PLAYWRIGHT_SPECS=(
+@@ -85,11 +88,46 @@ cleanup() {
+   fi
+   remove_sqlite_database_files "$VERIFY_CONFIG_DB"
+   remove_sqlite_database_files "$VERIFY_TENANT_DB"
+-  rm -rf "$VERIFY_TENANT_ROOT"
++  rm -rf "$VERIFY_TENANT_ROOT" "$LANE_DIR"
+ }
+ 
+ trap cleanup EXIT INT TERM
+ 
++emit_progress() {
++  local event_id="$1"
++  local status="$2"
++  local message="$3"
++
++  if [[ -z "${SYSGRID_PROGRESS_FILE:-}" || -z "${SYSGRID_RUN_ID:-}" ]]; then
++    return 0
++  fi
++
++  PROGRESS_SEQUENCE=$((PROGRESS_SEQUENCE + 1))
++  SYSGRID_PROGRESS_EVENT_ID="$event_id" \
++  SYSGRID_PROGRESS_STATUS="$status" \
++  SYSGRID_PROGRESS_MESSAGE="$message" \
++  SYSGRID_PROGRESS_SEQUENCE="$PROGRESS_SEQUENCE" \
++  "$BACKEND_DIR/venv/bin/python" - <<'PY_PROGRESS'
++import json
++import os
++from pathlib import Path
++
++path = Path(os.environ["SYSGRID_PROGRESS_FILE"])
++row = {
++    "run_id": os.environ["SYSGRID_RUN_ID"],
++    "sequence": int(os.environ["SYSGRID_PROGRESS_SEQUENCE"]),
++    "event_id": os.environ["SYSGRID_PROGRESS_EVENT_ID"],
++    "status": os.environ["SYSGRID_PROGRESS_STATUS"],
++    "message": os.environ["SYSGRID_PROGRESS_MESSAGE"],
++}
++path.parent.mkdir(parents=True, exist_ok=True)
++with path.open("a", encoding="utf-8") as stream:
++    stream.write(json.dumps(row, sort_keys=True) + "\n")
++    stream.flush()
++    os.fsync(stream.fileno())
++PY_PROGRESS
++}
++
+ reset_generated_evidence() {
+   rm -rf \
+     "$BACKEND_DIR/test-results" \
+@@ -105,11 +143,16 @@ reset_generated_evidence
+ wait_for_url() {
+   local url="$1"
+   local label="$2"
+-  for _ in {1..90}; do
++  local pid="$3"
++  for _ in {1..240}; do
+     if curl -fsS "$url" >/dev/null 2>&1; then
+       return 0
+     fi
+-    sleep 1
++    if ! kill -0 "$pid" 2>/dev/null; then
++      echo "$label process exited before readiness at $url" >&2
++      return 1
++    fi
++    sleep 0.25
+   done
+   echo "Timed out waiting for $label at $url" >&2
+   return 1
+@@ -150,26 +193,22 @@ prepare_disposable_runtime() {
+   )
+ }
+ 
+-start_backend() {
++launch_backend() {
+   assert_port_free "$BACKEND_PORT" "backend"
+   (
+     cd "$BACKEND_DIR"
+     exec "${RUNTIME_ENV_COMMAND[@]}" ./venv/bin/python -m uvicorn app.main:app --host "$BACKEND_HOST" --port "$BACKEND_PORT"
+   ) > "$BACKEND_DIR/test-results/verify-backend.log" 2>&1 &
+   BACKEND_PID=$!
+-  wait_for_url "$BACKEND_URL" "isolated backend"
+ }
+ 
+-start_frontend() {
++launch_frontend() {
+   assert_port_free "$FRONTEND_PORT" "frontend"
+   (
+     cd "$FRONTEND_DIR"
+-    VITE_API_BASE_URL="$BACKEND_ORIGIN" \
+-    VITE_FRONTEND_ORIGIN="$FRONTEND_ORIGIN" \
+-    exec npm run dev -- --host "$FRONTEND_HOST" --port "$FRONTEND_PORT" --strictPort
++    exec npm run preview -- --host "$FRONTEND_HOST" --port "$FRONTEND_PORT" --strictPort
+   ) > "$FRONTEND_DIR/test-results/verify-frontend.log" 2>&1 &
+   FRONTEND_PID=$!
+-  wait_for_url "$FRONTEND_URL" "isolated frontend"
+ }
+ 
+ assert_clean_fixture_contract() {
+@@ -335,46 +374,145 @@ if len(records) != len(keys):
+ PY_MATRIX
+ }
+ 
+-assert_canonical_playwright_suite
++run_static_lane() {
++  cd "$FRONTEND_DIR"
++  npm run check:canonical-verification
++}
++
++run_backend_lane() {
++  cd "$BACKEND_DIR"
++  env \
++    -u CONFIG_DATABASE_URL \
++    -u DATABASE_URL \
++    -u TENANT_STORAGE_ROOT \
++    -u DEFAULT_TENANT_NAME \
++    -u PUBLIC_READONLY_ENABLED \
++    -u DEFAULT_USER_ID \
++    -u AUTO_ADMIN_USER_IDS \
++    -u USER_ID_ENV_VAR \
++    -u SYSGRID_VERIFY_RUNTIME_USER_ID \
++    -u SYSGRID_VERIFY_USER_ID \
++    -u USER_ID \
++    -u user_name \
++    -u DEFAULT_EMAIL_DOMAIN \
++    -u ENVIRONMENT \
++    -u TESTING \
++    -u ALLOWED_HOSTS \
++    -u BACKEND_CORS_ORIGINS \
++    -u IDENTITY_MODE \
++    -u TRUSTED_PROXY_USER_HEADER \
++    ./venv/bin/pytest --cov=app --cov-report=term --cov-report=xml:test-results/backend-coverage.xml
++}
++
++run_frontend_lane() {
++  local status=0
++  cd "$FRONTEND_DIR"
++
++  if npm run test:lint; then
++    echo "[frontend-lint] PASS"
++  else
++    echo "[frontend-lint] FAIL" >&2
++    status=1
++  fi
+ 
+-cd "$FRONTEND_DIR"
+-npm run check:canonical-verification
+-npm run check:shell-contracts
+-
+-cd "$BACKEND_DIR"
+-env \
+-  -u CONFIG_DATABASE_URL \
+-  -u DATABASE_URL \
+-  -u TENANT_STORAGE_ROOT \
+-  -u DEFAULT_TENANT_NAME \
+-  -u PUBLIC_READONLY_ENABLED \
+-  -u DEFAULT_USER_ID \
+-  -u AUTO_ADMIN_USER_IDS \
+-  -u USER_ID_ENV_VAR \
+-  -u SYSGRID_VERIFY_RUNTIME_USER_ID \
+-  -u SYSGRID_VERIFY_USER_ID \
+-  -u USER_ID \
+-  -u user_name \
+-  -u DEFAULT_EMAIL_DOMAIN \
+-  -u ENVIRONMENT \
+-  -u TESTING \
+-  -u ALLOWED_HOSTS \
+-  -u BACKEND_CORS_ORIGINS \
+-  -u IDENTITY_MODE \
+-  -u TRUSTED_PROXY_USER_HEADER \
+-  ./venv/bin/pytest --cov=app --cov-report=term --cov-report=xml:test-results/backend-coverage.xml
+-
+-cd "$FRONTEND_DIR"
+-npm run test:lint
+-npm run check:operational-contracts
+-npm run typecheck
+-npm run test:coverage
+-npm run build
++  if npm run check:operational-contracts; then
++    echo "[frontend-contracts] PASS"
++  else
++    echo "[frontend-contracts] FAIL" >&2
++    status=1
++  fi
++
++  if npm run typecheck; then
++    echo "[frontend-typecheck] PASS"
++  else
++    echo "[frontend-typecheck] FAIL" >&2
++    status=1
++  fi
++
++  if npm run test:coverage -- --maxWorkers "$FRONTEND_WORKERS"; then
++    echo "[frontend-coverage] PASS"
++  else
++    echo "[frontend-coverage] FAIL" >&2
++    status=1
++  fi
++
++  if VITE_API_BASE_URL="$BACKEND_ORIGIN" VITE_FRONTEND_ORIGIN="$FRONTEND_ORIGIN" npm run build; then
++    echo "[frontend-build] PASS"
++  else
++    echo "[frontend-build] FAIL" >&2
++    status=1
++  fi
++
++  return "$status"
++}
++
++run_validation_lanes() {
++  local static_pid backend_pid frontend_pid
++  local static_status backend_status frontend_status
++  local overall=0
++
++  emit_progress static_started started "Canonical static verification started."
++  emit_progress backend_started started "Backend coverage lane started."
++  emit_progress frontend_started started "Frontend lint, contracts, typecheck, coverage, and production build lane started."
++
++  run_static_lane > "$LANE_DIR/static.log" 2>&1 &
++  static_pid=$!
++  run_backend_lane > "$LANE_DIR/backend.log" 2>&1 &
++  backend_pid=$!
++  run_frontend_lane > "$LANE_DIR/frontend.log" 2>&1 &
++  frontend_pid=$!
++
++  set +e
++  wait "$static_pid"
++  static_status=$?
++  wait "$backend_pid"
++  backend_status=$?
++  wait "$frontend_pid"
++  frontend_status=$?
++  set -e
++
++  printf '\n===== Canonical static lane =====\n'
++  cat "$LANE_DIR/static.log"
++  printf '\n===== Backend coverage lane =====\n'
++  cat "$LANE_DIR/backend.log"
++  printf '\n===== Frontend verification lane =====\n'
++  cat "$LANE_DIR/frontend.log"
++
++  if [[ "$static_status" == "0" ]]; then
++    emit_progress static_completed passed "Canonical static verification passed."
++  else
++    emit_progress static_completed failed "Canonical static verification failed."
++    overall=1
++  fi
++
++  if [[ "$backend_status" == "0" ]]; then
++    emit_progress backend_completed passed "Backend coverage lane passed."
++  else
++    emit_progress backend_completed failed "Backend coverage lane failed."
++    overall=1
++  fi
++
++  if [[ "$frontend_status" == "0" ]]; then
++    emit_progress frontend_completed passed "Frontend verification lane passed."
++    emit_progress build_completed passed "Canonical production frontend build completed."
++  else
++    emit_progress frontend_completed failed "Frontend verification lane failed."
++    overall=1
++  fi
++
++  return "$overall"
++}
++
++assert_canonical_playwright_suite
++run_validation_lanes
+ 
+ prepare_disposable_runtime
+-start_backend
++launch_backend
++launch_frontend
++wait_for_url "$BACKEND_URL" "isolated backend" "$BACKEND_PID"
++wait_for_url "$FRONTEND_URL" "isolated production frontend" "$FRONTEND_PID"
+ assert_clean_fixture_contract
+-start_frontend
++emit_progress runtime_ready passed "Disposable tenant, backend, and exact production frontend are ready."
+ 
+ PLAYWRIGHT_ENV_COMMAND=(
+   env
+@@ -405,7 +543,16 @@ PLAYWRIGHT_ENV_COMMAND=(
+   "PLAYWRIGHT_BASE_URL=$FRONTEND_ORIGIN"
+ )
+ 
++emit_progress playwright_started started "Canonical Playwright and Golden Eight evidence matrix started."
++set +e
+ "${PLAYWRIGHT_ENV_COMMAND[@]}" npx playwright test "${PLAYWRIGHT_SPECS[@]}"
++PLAYWRIGHT_STATUS=$?
++set -e
++if [[ "$PLAYWRIGHT_STATUS" != "0" ]]; then
++  emit_progress playwright_completed failed "Canonical Playwright matrix failed; complete evidence remains available."
++  exit "$PLAYWRIGHT_STATUS"
++fi
++emit_progress playwright_completed passed "Canonical Playwright matrix passed."
+ assert_final_tenant_contract
+ assert_canonical_runtime_evidence
+ assert_populated_golden_eight_evidence

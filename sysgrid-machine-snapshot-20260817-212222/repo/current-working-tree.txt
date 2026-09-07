@@ -1,0 +1,19 @@
+PWD=/Users/haewonkim/home/development/sysgrid
+
+=== git top-level ===
+/Users/haewonkim/home/development/sysgrid
+
+=== HEAD ===
+bd358717439c950b9c952cced1be25908d73fbc8
+
+=== branch ===
+main
+
+=== status ===
+## main...origin/main
+ M backend/.env.local.runtime
+?? sysgrid-machine-snapshot-20260817-212222/
+
+=== remotes ===
+origin	git@github.com:kimhw8084/system_grid.git (fetch)
+origin	git@github.com:kimhw8084/system_grid.git (push)

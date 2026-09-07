@@ -1,0 +1,32 @@
+ORIGINAL_PATH: /Users/haewonkim/.local/state/sysgrid-supervisor/runs/20260801T190436Z-91642-876000/preflight.json
+ORIGINAL_SHA256: cfa52dda6e6d41836effac6ad9cbc2a488d895c1ce01487bd320cbb2d8ae4889
+================================================================================
+{
+  "declared_state": {
+    "dirty_path_count": 56,
+    "pre_hash_count": 56,
+    "protected_hash_count": 19
+  },
+  "engine_self_test": {
+    "engine_version": "1.0.4",
+    "result": "PASS",
+    "tests": [
+      "safe-path",
+      "manifest",
+      "corruption"
+    ]
+  },
+  "patch": {
+    "applicable": true,
+    "forward_diagnostic": "Checking patch backend/app/api/workspaces.py...\nChecking patch frontend/src/components/shared/GoldenWorkspaceGeometryContract.test.ts...\nChecking patch frontend/src/components/shared/OperationalSavedViewsPanel.test.tsx...\nChecking patch frontend/src/components/shared/OperationalWorkspaceShells.tsx...\nChecking patch frontend/src/components/shared/WorkspaceCommandBar.tsx...\nChecking patch frontend/tests/golden-eight-seeded-visual-matrix.spec.ts...\nChecking patch frontend/tests/helpers/sentinel.ts...\nChecking patch frontend/tests/sentinel_comprehensive.spec.ts...\nChecking patch frontend/tests/shell-and-search.spec.ts...\nChecking patch frontend/tests/view-deeplink-matrix.spec.ts...\nChecking patch frontend/tests/view-empty-states.spec.ts...",
+    "forward_exit_code": 0,
+    "reverse_applicable": false,
+    "reverse_diagnostic": "Checking patch frontend/tests/view-empty-states.spec.ts...\nerror: while searching for:\ntest.describe('View empty states', () => {\n  test('renders explicit empty-state guidance for deterministic no-result filters', async ({ page }) => {\n    await resetBrowserState(page)\n    const appMonitoring = installStrictAppMonitoring(page)\n    const impossibleTerm = `PW-NO-MATCH-${Date.now()}`\n\n    const expectations = [\n\nerror: patch failed: frontend/tests/view-empty-states.spec.ts:6\nerror: frontend/tests/view-empty-states.spec.ts: patch does not apply\nChecking patch frontend/tests/view-deeplink-matrix.spec.ts...\nerror: while searching for:\ntest.describe('View deep-link matrix', () => {\n  test('opens critical deep links without crashing and resolves the targeted record', async ({ page, sysApi: request }) => {\n    await resetBrowserState(page)\n    const appMonitoring = installStrictAppMonitoring(page)\n    const { primary, secondary, service, knowledge, monitoring, far } = await seedOperationalScenario(request)\n    const project = await createProject(request, {\n      name: `PW-PROJ-DEEPLINK-${Date.now()}`,\n\nerror: patch failed: frontend/tests/view-deeplink-matrix.spec.ts:11\nerror: frontend/tests/view-deeplink-matrix.spec.ts: patch does not apply\nChecking patch frontend/tests/shell-and-search.spec.ts...\nerror: while searching for:\n      await waitForAppIdle(page)\n      const { shell, boxes } = await readGoldenGeometry(page)\n\n      await expect(shell).toHaveAttribute('data-golden-geometry-version', '2')\n      await expect(shell).toHaveAttribute('data-golden-archetype', route.archetype)\n      expect(boxes.header.y).toBeLessThan(boxes.commandBar.y)\n      expect(boxes.commandBar.bottom).toBeLessThanOrEqual(boxes.grid.y + 1)\n\nerror: patch failed: frontend/tests/shell-and-search.spec.ts:232\nerror: frontend/tests/shell-and-search.spec.ts: patch does not apply\nChecking patch frontend/tests/sentinel_comprehensive.spec.ts...\nerror: while searching for:\n\ntest.describe('System Sentinel (Zero-",
+    "reverse_exit_code": 1
+  },
+  "storage": {
+    "control_free": 54516645888,
+    "local_free": 54516645888,
+    "required": 536870912
+  }
+}

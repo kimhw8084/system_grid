@@ -1,0 +1,13 @@
+ORIGINAL_PATH: /Users/haewonkim/.local/state/sysgrid-supervisor/runs/20260804T000803Z-39212-674000/launch.json
+ORIGINAL_SHA256: 1de20656f951f6e40ff41e77203983f2b8636c3c8489956a5d7b681ae84c781c
+================================================================================
+{
+  "capsule_path": "/Users/haewonkim/.local/state/sysgrid-supervisor/runs/20260804T000803Z-39212-674000/input/SYSGRID_OUT31_PA13_PS1_FAR_EXPLICIT_COLUMN_OWNERSHIP_CORRECTION_v1.0.0.sgcap",
+  "capsule_sha256": "5dce95aef7edbbee32932fc427a27091d9389f30fa9ea36e8c0ca478ddc80db2",
+  "command_sha256": "e1636ee1c6ae27012b077bb07726dc6f636bb75570d1b9fa32ba052655e30862",
+  "engine_path": "/Users/haewonkim/.local/share/sysgrid-runner/engine-v1.1.1/sysgrid_runner.py",
+  "engine_sha256": "66b082fec1e9f6c49152e5ecb4cbb3f998e60ce27d53a2325e5f658634a8d032",
+  "launched_utc": "2026-08-04T00:08:04Z",
+  "repo": "/Users/haewonkim/home/development/sysgrid",
+  "run_id": "20260804T000803Z-39212-674000"
+}

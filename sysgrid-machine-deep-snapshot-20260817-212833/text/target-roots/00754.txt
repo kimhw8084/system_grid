@@ -1,0 +1,476 @@
+ORIGINAL_PATH: /Users/haewonkim/.local/state/sysgrid-supervisor/runs/20260805T011602Z-53481-037000/SUPERVISOR_STATE.json
+ORIGINAL_SHA256: 762c0f43fed8456457e75905778fa550982a139905fd905c673897686e43dc01
+================================================================================
+{
+  "artifact": "/Users/haewonkim/Library/Mobile Documents/com~apple~CloudDocs/SysGrid-Control/Outbox/UPLOAD_THIS_TO_CHATGPT.zip",
+  "artifact_sha256": "212fd56116ca439241c82c9b79b26dd234eaf8534037b016d466e6a827aec2ac",
+  "artifact_size": 13512197,
+  "attempt": 14,
+  "capsule_archive": "/Users/haewonkim/Library/Mobile Documents/com~apple~CloudDocs/SysGrid-Control/Archive/Processed-Capsules/20260805T012305Z__1cd09ef69d7a__SYSGRID_OUT31_PA14_PS5_PV1_DETERMINISTIC_ISOLATED_FRONTEND_READINESS_PLATFORM_CORRECTION_v1.0.0.sgcap",
+  "capsule_cross_ledger": {
+    "changed_path_count": 1,
+    "execution_profile": "promotion_qualification",
+    "execution_scope": {
+      "changed_paths": [
+        "scripts/verify-app.sh"
+      ],
+      "execution_profile": "promotion_qualification",
+      "targeted_tests": [
+        "frontend/tests/far-golden-workspace.spec.ts",
+        "frontend/tests/far-workflows.spec.ts"
+      ],
+      "targeted_views": [
+        "FAR",
+        "Monitoring"
+      ]
+    },
+    "patch_paths": [
+      "scripts/verify-app.sh"
+    ],
+    "post_path_count": 96,
+    "pre_path_count": 96,
+    "protected_path_count": 722,
+    "recipe_ids": [
+      "frontend-test-linter",
+      "full-app-gate"
+    ]
+  },
+  "capsule_file": "SYSGRID_OUT31_PA14_PS5_PV1_DETERMINISTIC_ISOLATED_FRONTEND_READINESS_PLATFORM_CORRECTION_v1.0.0.sgcap",
+  "capsule_sha256": "1cd09ef69d7a46f26569d31c16d820182eecb6ddc2e08eed9b2e1372d29cf671",
+  "capsule_size": 65258,
+  "capsule_stage": "PA14-PS5 Platform Verification Correction PV1 \u2014 isolated frontend readiness",
+  "capsule_title": "PA14-PS5 Platform Verification Correction PV1 \u2014 deterministic isolated frontend readiness",
+  "classification": "AGGREGATE_VERIFICATION_FAILURE",
+  "dirty_path_count": 96,
+  "engine_command": [
+    "/opt/homebrew/opt/python@3.14/bin/python3.14",
+    "<exact-engine>",
+    "execute",
+    "<exact-capsule>",
+    "--repo",
+    "/Users/haewonkim/home/development/sysgrid",
+    "--outbox",
+    "/Users/haewonkim/.local/state/sysgrid-supervisor/runs/20260805T011602Z-53481-037000/engine-outbox"
+  ],
+  "engine_completed": true,
+  "engine_completed_utc": "2026-08-05T01:23:05Z",
+  "engine_elapsed_seconds": 300.5,
+  "engine_exit_code": 1,
+  "engine_last_activity_age_seconds": 297.3204998970032,
+  "engine_last_heartbeat_utc": "2026-08-05T01:21:05Z",
+  "engine_path": "/Users/haewonkim/.local/share/sysgrid-runner/engine-v1.1.1/sysgrid_runner.py",
+  "engine_pid": 53608,
+  "engine_process_metrics": {
+    "available": true,
+    "cpu_percent": 72.5,
+    "process_count": 5,
+    "rss_bytes": 375898112,
+    "states": [
+      "R   ",
+      "S   ",
+      "S+  ",
+      "Ss  "
+    ]
+  },
+  "engine_sha256": "66b082fec1e9f6c49152e5ecb4cbb3f998e60ce27d53a2325e5f658634a8d032",
+  "engine_stall_suspected": false,
+  "engine_started": true,
+  "engine_started_utc": "2026-08-05T01:16:05Z",
+  "event_timeline": [
+    {
+      "details": {},
+      "elapsed_seconds": 0.04,
+      "event_id": "capsule_selected",
+      "message": "Selecting the one immutable capsule and converging only byte-identical Inbox duplicates.",
+      "notification": {
+        "event_id": "capsule_selected",
+        "presentation_mode": "summary",
+        "required": false,
+        "status": "local_only",
+        "updated_utc": "2026-08-05T01:16:02Z"
+      },
+      "status": "started",
+      "utc": "2026-08-05T01:16:02Z"
+    },
+    {
+      "details": {
+        "changed_path_count": 1,
+        "execution_profile": "promotion_qualification",
+        "execution_scope": {
+          "changed_paths": [
+            "scripts/verify-app.sh"
+          ],
+          "execution_profile": "promotion_qualification",
+          "targeted_tests": [
+            "frontend/tests/far-golden-workspace.spec.ts",
+            "frontend/tests/far-workflows.spec.ts"
+          ],
+          "targeted_views": [
+            "FAR",
+            "Monitoring"
+          ]
+        },
+        "patch_paths": [
+          "scripts/verify-app.sh"
+        ],
+        "post_path_count": 96,
+        "pre_path_count": 96,
+        "protected_path_count": 722,
+        "recipe_ids": [
+          "frontend-test-linter",
+          "full-app-gate"
+        ]
+      },
+      "elapsed_seconds": 0.093,
+      "event_id": "capsule_verified",
+      "message": "Capsule archive, manifest, schema, patch identity, and cross-ledger contract are exact.",
+      "notification": {
+        "attempts": 1,
+        "chat_id_suffix": "1055",
+        "event_id": "run_started",
+        "first_attempt_utc": "2026-08-05T01:16:02Z",
+        "message_id": 621,
+        "payload_sha256": "11c788986ad2a40a271b8a88491a9a9a5f38649e3c5b965ad5759d5b951520f4",
+        "required": false,
+        "status": "delivered",
+        "updated_utc": "2026-08-05T01:16:03Z"
+      },
+      "status": "passed",
+      "utc": "2026-08-05T01:16:03Z"
+    },
+    {
+      "details": {},
+      "elapsed_seconds": 0.807,
+      "event_id": "preflight_started",
+      "message": "Running independent platform checks and exact repository-state proof.",
+      "notification": {
+        "event_id": "preflight_started",
+        "presentation_mode": "summary",
+        "required": false,
+        "status": "local_only",
+        "updated_utc": "2026-08-05T01:16:03Z"
+      },
+      "status": "started",
+      "utc": "2026-08-05T01:16:03Z"
+    },
+    {
+      "details": {
+        "dirty_paths": 96,
+        "head": "78da610377e5cfbb5a2b7986c1cb7d56397d0ca2",
+        "patch": {
+          "applicable": true,
+          "forward_diagnostic": "Checking patch scripts/verify-app.sh...\nwarning: scripts/verify-app.sh has type 100755, expected 100644",
+          "forward_exit_code": 0,
+          "reverse_applicable": false,
+          "reverse_diagnostic": "Checking patch scripts/verify-app.sh...\nwarning: scripts/verify-app.sh has type 100755, expected 100644\nerror: while searching for:\nFRONTEND_ORIGIN=\"http://$FRONTEND_HOST:$FRONTEND_PORT\"\nBACKEND_URL=\"$BACKEND_ORIGIN/api/v1/health\"\nFRONTEND_URL=\"$FRONTEND_ORIGIN\"\nBACKEND_LOG=\"$BACKEND_DIR/test-results/verify-backend.log\"\nFRONTEND_LOG=\"$FRONTEND_DIR/test-results/verify-frontend.log\"\nLOOPBACK_NO_PROXY=\"127.0.0.1,localhost,::1\"\nTEST_USER_ID=\"${SYSGRID_VERIFY_USER_ID:-haewon.kim}\"\nTEST_TENANT_ID=\"1\"\nRUNTIME_TAG=\"verify-${$}-${RANDOM}\"\n\nerror: patch failed: scripts/verify-app.sh:12\nerror: scripts/verify-app.sh: patch does not apply",
+          "reverse_exit_code": 1
+        }
+      },
+      "elapsed_seconds": 2.466,
+      "event_id": "preflight_completed",
+      "message": "Exact engine, repository, storage, state, protected hashes, and patch state passed.",
+      "notification": {
+        "event_id": "preflight_completed",
+        "presentation_mode": "summary",
+        "required": false,
+        "status": "local_only",
+        "updated_utc": "2026-08-05T01:16:04Z"
+      },
+      "status": "passed",
+      "utc": "2026-08-05T01:16:04Z"
+    },
+    {
+      "details": {},
+      "elapsed_seconds": 2.471,
+      "event_id": "engine_launch",
+      "message": "Launching the exact Stable Engine once; ambiguous mutation replay remains prohibited.",
+      "notification": {
+        "event_id": "engine_launch",
+        "presentation_mode": "summary",
+        "required": false,
+        "status": "local_only",
+        "updated_utc": "2026-08-05T01:16:04Z"
+      },
+      "status": "started",
+      "utc": "2026-08-05T01:16:04Z"
+    },
+    {
+      "details": {
+        "engine_exit_code": 1
+      },
+      "elapsed_seconds": 423.094,
+      "event_id": "engine_completed",
+      "message": "Stable Engine exited with code 1; verifying its complete evidence.",
+      "notification": {
+        "event_id": "engine_completed",
+        "presentation_mode": "summary",
+        "required": false,
+        "status": "local_only",
+        "updated_utc": "2026-08-05T01:23:05Z"
+      },
+      "status": "failed",
+      "utc": "2026-08-05T01:23:05Z"
+    },
+    {
+      "details": {
+        "artifact_size": 13512197,
+        "manifest_entries": 857
+      },
+      "elapsed_seconds": 423.184,
+      "event_id": "evidence_verified",
+      "message": "Engine evidence is complete and exactly correlated to capsule, engine, and process exit.",
+      "notification": {
+        "event_id": "evidence_verified",
+        "presentation_mode": "summary",
+        "required": false,
+        "status": "local_only",
+        "updated_utc": "2026-08-05T01:23:05Z"
+      },
+      "status": "passed",
+      "utc": "2026-08-05T01:23:05Z"
+    },
+    {
+      "details": {},
+      "elapsed_seconds": 423.188,
+      "event_id": "publication_started",
+      "message": "Publishing one content-addressed, fsynced, atomic canonical review ZIP.",
+      "notification": {
+        "event_id": "publication_started",
+        "presentation_mode": "summary",
+        "required": false,
+        "status": "local_only",
+        "updated_utc": "2026-08-05T01:23:05Z"
+      },
+      "status": "started",
+      "utc": "2026-08-05T01:23:05Z"
+    },
+    {
+      "details": {
+        "artifact_sha256": "212fd56116ca439241c82c9b79b26dd234eaf8534037b016d466e6a827aec2ac",
+        "exit_code": 1
+      },
+      "elapsed_seconds": 423.424,
+      "event_id": "publication_completed",
+      "message": "Run complete. Engine runtime: 418.0s. Canonical review ZIP is ready for upload.",
+      "notification": {
+        "attempts": 1,
+        "chat_id_suffix": "1055",
+        "event_id": "run_completed",
+        "first_attempt_utc": "2026-08-05T01:23:05Z",
+        "message_id": 622,
+        "payload_sha256": "640511111b8b1887d3694d2316e14015ce573bc7ba4be578ce2565ef3e65bacd",
+        "required": false,
+        "status": "delivered",
+        "updated_utc": "2026-08-05T01:23:06Z"
+      },
+      "status": "failed",
+      "utc": "2026-08-05T01:23:06Z"
+    }
+  ],
+  "execution_profile": "promotion_qualification",
+  "execution_scope": {
+    "changed_paths": [
+      "scripts/verify-app.sh"
+    ],
+    "execution_profile": "promotion_qualification",
+    "targeted_tests": [
+      "frontend/tests/far-golden-workspace.spec.ts",
+      "frontend/tests/far-workflows.spec.ts"
+    ],
+    "targeted_views": [
+      "FAR",
+      "Monitoring"
+    ]
+  },
+  "issue": "OUT-31",
+  "iteration": 22,
+  "last_progress_event": "publication_completed",
+  "last_progress_message": "Run complete. Engine runtime: 418.0s. Canonical review ZIP is ready for upload.",
+  "last_progress_status": "failed",
+  "last_progress_utc": "2026-08-05T01:23:06Z",
+  "message": "required recipes failed or blocked: ['full-app-gate']",
+  "monotonic_started": 4162598.249864916,
+  "notification_events": {
+    "capsule_selected": {
+      "event_id": "capsule_selected",
+      "presentation_mode": "summary",
+      "required": false,
+      "status": "local_only",
+      "updated_utc": "2026-08-05T01:16:02Z"
+    },
+    "capsule_verified": {
+      "attempts": 1,
+      "chat_id_suffix": "1055",
+      "event_id": "run_started",
+      "first_attempt_utc": "2026-08-05T01:16:02Z",
+      "message_id": 621,
+      "payload_sha256": "11c788986ad2a40a271b8a88491a9a9a5f38649e3c5b965ad5759d5b951520f4",
+      "required": false,
+      "status": "delivered",
+      "updated_utc": "2026-08-05T01:16:03Z"
+    },
+    "engine-heartbeat-1": {
+      "event_id": "engine-heartbeat-1",
+      "presentation_mode": "summary",
+      "required": false,
+      "status": "local_only",
+      "updated_utc": "2026-08-05T01:21:05Z"
+    },
+    "engine_completed": {
+      "event_id": "engine_completed",
+      "presentation_mode": "summary",
+      "required": false,
+      "status": "local_only",
+      "updated_utc": "2026-08-05T01:23:05Z"
+    },
+    "engine_launch": {
+      "event_id": "engine_launch",
+      "presentation_mode": "summary",
+      "required": false,
+      "status": "local_only",
+      "updated_utc": "2026-08-05T01:16:04Z"
+    },
+    "evidence_verified": {
+      "event_id": "evidence_verified",
+      "presentation_mode": "summary",
+      "required": false,
+      "status": "local_only",
+      "updated_utc": "2026-08-05T01:23:05Z"
+    },
+    "preflight_completed": {
+      "event_id": "preflight_completed",
+      "presentation_mode": "summary",
+      "required": false,
+      "status": "local_only",
+      "updated_utc": "2026-08-05T01:16:04Z"
+    },
+    "preflight_started": {
+      "event_id": "preflight_started",
+      "presentation_mode": "summary",
+      "required": false,
+      "status": "local_only",
+      "updated_utc": "2026-08-05T01:16:03Z"
+    },
+    "publication_completed": {
+      "attempts": 1,
+      "chat_id_suffix": "1055",
+      "event_id": "run_completed",
+      "first_attempt_utc": "2026-08-05T01:23:05Z",
+      "message_id": 622,
+      "payload_sha256": "640511111b8b1887d3694d2316e14015ce573bc7ba4be578ce2565ef3e65bacd",
+      "required": false,
+      "status": "delivered",
+      "updated_utc": "2026-08-05T01:23:06Z"
+    },
+    "publication_started": {
+      "event_id": "publication_started",
+      "presentation_mode": "summary",
+      "required": false,
+      "status": "local_only",
+      "updated_utc": "2026-08-05T01:23:05Z"
+    }
+  },
+  "notification_policy": {
+    "delivery_semantics": "durably-deduplicated-at-least-once",
+    "engine_heartbeat_seconds": 300,
+    "max_messages_per_run": 3,
+    "presentation_mode": "summary",
+    "registered_events": 21,
+    "required_before_engine": false,
+    "telegram_heartbeats": false
+  },
+  "original_capsule": "/Users/haewonkim/Library/Mobile Documents/com~apple~CloudDocs/SysGrid-Control/Inbox/SYSGRID_OUT31_PA14_PS5_PV1_DETERMINISTIC_ISOLATED_FRONTEND_READINESS_PLATFORM_CORRECTION_v1.0.0.sgcap",
+  "pid": 53481,
+  "preflight": {
+    "declared_state": {
+      "dirty_path_count": 96,
+      "pre_hash_count": 96,
+      "protected_hash_count": 722
+    },
+    "engine_self_test": {
+      "engine_version": "1.1.1",
+      "result": "PASS",
+      "tests": [
+        "safe-path",
+        "manifest",
+        "corruption",
+        "canonical-dirty-paths",
+        "aggregate-recipes"
+      ]
+    },
+    "patch": {
+      "applicable": true,
+      "forward_diagnostic": "Checking patch scripts/verify-app.sh...\nwarning: scripts/verify-app.sh has type 100755, expected 100644",
+      "forward_exit_code": 0,
+      "reverse_applicable": false,
+      "reverse_diagnostic": "Checking patch scripts/verify-app.sh...\nwarning: scripts/verify-app.sh has type 100755, expected 100644\nerror: while searching for:\nFRONTEND_ORIGIN=\"http://$FRONTEND_HOST:$FRONTEND_PORT\"\nBACKEND_URL=\"$BACKEND_ORIGIN/api/v1/health\"\nFRONTEND_URL=\"$FRONTEND_ORIGIN\"\nBACKEND_LOG=\"$BACKEND_DIR/test-results/verify-backend.log\"\nFRONTEND_LOG=\"$FRONTEND_DIR/test-results/verify-frontend.log\"\nLOOPBACK_NO_PROXY=\"127.0.0.1,localhost,::1\"\nTEST_USER_ID=\"${SYSGRID_VERIFY_USER_ID:-haewon.kim}\"\nTEST_TENANT_ID=\"1\"\nRUNTIME_TAG=\"verify-${$}-${RANDOM}\"\n\nerror: patch failed: scripts/verify-app.sh:12\nerror: scripts/verify-app.sh: patch does not apply",
+      "reverse_exit_code": 1
+    },
+    "storage": {
+      "control_free": 55903670272,
+      "local_free": 55903670272,
+      "required": 3221225472
+    }
+  },
+  "product_progress_error": {
+    "classification": "PRODUCT_PROGRESS_FAILURE",
+    "message": "unregistered product progress event: static_started",
+    "utc": "2026-08-05T01:16:08Z"
+  },
+  "recovered_without_product_replay": false,
+  "repo": "/Users/haewonkim/home/development/sysgrid",
+  "repo_branch": "main",
+  "repo_head": "78da610377e5cfbb5a2b7986c1cb7d56397d0ca2",
+  "resource_plan": {
+    "backend_workers": 5,
+    "cpu_count": 12,
+    "e2e_workers": 2,
+    "frontend_workers": 5,
+    "memory_bytes": 19327352832,
+    "preflight_workers": 24,
+    "reserve_memory_bytes": 2147483648,
+    "test_cpu_budget": 11,
+    "usable_memory_bytes": 17179869184
+  },
+  "run_id": "20260805T011602Z-53481-037000",
+  "runtime_summary": {
+    "artifact": "/Users/haewonkim/.local/state/sysgrid-supervisor/runs/20260805T011602Z-53481-037000/engine-outbox/UPLOAD_THIS_TO_CHATGPT.zip",
+    "classification": "AGGREGATE_VERIFICATION_FAILURE",
+    "commands": [
+      {
+        "duration_seconds": 0.795,
+        "exit_code": 0,
+        "recipe_id": "frontend-test-linter",
+        "timed_out": false
+      },
+      {
+        "duration_seconds": 412.583,
+        "exit_code": 1,
+        "recipe_id": "full-app-gate",
+        "timed_out": false
+      }
+    ],
+    "engine_total_seconds": 418.0,
+    "failed_stage": "verification-plan",
+    "finished_utc": "2026-08-05T01:23:03Z",
+    "result": "failure",
+    "started_utc": "2026-08-05T01:16:05Z"
+  },
+  "safe_cleanup": {
+    "inspected": 0,
+    "removed": 0
+  },
+  "safe_retry_count": 0,
+  "stage": "complete",
+  "staged_capsule": "/Users/haewonkim/.local/state/sysgrid-supervisor/runs/20260805T011602Z-53481-037000/input/SYSGRID_OUT31_PA14_PS5_PV1_DETERMINISTIC_ISOLATED_FRONTEND_READINESS_PLATFORM_CORRECTION_v1.0.0.sgcap",
+  "started_utc": "2026-08-05T01:16:02Z",
+  "state": "FAILED_REVIEW_READY",
+  "supervisor_version": "2.2.1",
+  "telegram": {
+    "chat_id_suffix": "1055",
+    "configured": true,
+    "source": "/Users/haewonkim/.config/sysgrid-supervisor/telegram.json"
+  },
+  "updated_utc": "2026-08-05T01:23:06Z",
+  "work_dir": "/Users/haewonkim/.local/state/sysgrid-supervisor/runs/20260805T011602Z-53481-037000"
+}

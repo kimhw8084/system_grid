@@ -1,0 +1,3278 @@
+ORIGINAL_PATH: /Users/haewonkim/.local/share/sysgrid-supervisor/v2.1.2/payload/sysgrid_supervisor.py
+ORIGINAL_SHA256: 0d2cd4694617de35cc020a158eaed5c39d2dce1db782780baeff80fdf30f6ea0
+================================================================================
+#!/usr/bin/env python3
+"""SysGrid Execution Supervisor.
+
+A standard-library-only, fail-closed supervisor for the independently qualified
+SysGrid Stable Engine. Immutable release identity is loaded from the package's
+manifest-covered RELEASE_DESCRIPTOR.json. Capsules remain declarative; this
+program verifies inputs, invokes the exact engine once, verifies evidence, and
+publishes it atomically.
+"""
+from __future__ import annotations
+
+import argparse
+import concurrent.futures
+import contextlib
+import dataclasses
+import datetime as dt
+import errno
+import fcntl
+import hashlib
+import json
+import os
+import re
+import shutil
+import signal
+import shlex
+import stat
+import subprocess
+import sys
+import tempfile
+import time
+import traceback
+import zipfile
+import urllib.error
+import urllib.parse
+import urllib.request
+from dataclasses import dataclass
+from pathlib import Path, PurePosixPath
+from typing import Any, Callable, Iterable, Iterator, Sequence
+
+PACKAGE_ROOT = Path(__file__).resolve().parent.parent
+
+
+def _load_release_descriptor() -> dict[str, Any]:
+    path = PACKAGE_ROOT / "RELEASE_DESCRIPTOR.json"
+    try:
+        value = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, UnicodeError, json.JSONDecodeError) as exc:
+        raise RuntimeError(f"invalid immutable release descriptor: {exc}") from exc
+    if not isinstance(value, dict) or value.get("schema_version") != "2.1":
+        raise RuntimeError("unsupported immutable release descriptor")
+    return value
+
+
+RELEASE_DESCRIPTOR = _load_release_descriptor()
+SUPERVISOR_VERSION = str(RELEASE_DESCRIPTOR["supervisor_version"])
+ENGINE_VERSION = str(RELEASE_DESCRIPTOR["engine"]["version"])
+ENGINE_SHA256 = str(RELEASE_DESCRIPTOR["engine"]["sha256"])
+CANONICAL_ZIP = str(RELEASE_DESCRIPTOR["package"]["canonical_artifact"])
+DIAGNOSTIC_ZIP = str(RELEASE_DESCRIPTOR["package"].get("diagnostic_artifact", "UPLOAD_DIAGNOSTIC_TO_CHATGPT.zip"))
+NOTIFICATION_POLICY = dict(RELEASE_DESCRIPTOR.get("notification", {}))
+TELEGRAM_SUMMARY_PROGRESS_EVENT = str(NOTIFICATION_POLICY.get("summary_progress_event", "playwright_started"))
+TELEGRAM_HEARTBEATS_ENABLED = bool(NOTIFICATION_POLICY.get("telegram_heartbeats", False))
+PROGRESS_EVENT_REGISTRY = {
+    str(item["id"]): dict(item)
+    for item in RELEASE_DESCRIPTOR.get("progress_events", [])
+    if isinstance(item, dict) and isinstance(item.get("id"), str)
+}
+MAX_CAPSULE_BYTES = 50 * 1024 * 1024
+MAX_ZIP_MEMBERS = 4096
+MAX_TOTAL_UNCOMPRESSED = 256 * 1024 * 1024
+MAX_SINGLE_UNCOMPRESSED = 64 * 1024 * 1024
+MAX_COMPRESSION_RATIO = 250
+MAX_JSON_BYTES = 4 * 1024 * 1024
+MAX_ENGINE_BYTES = 20 * 1024 * 1024
+MAX_DIAGNOSTIC_FILE_BYTES = 16 * 1024 * 1024
+DEFAULT_RECOVERY_WAIT_SECONDS = 8 * 60 * 60
+RECOVERY_POLL_SECONDS = 2.0
+DEFAULT_ENGINE_HEARTBEAT_SECONDS = int(RELEASE_DESCRIPTOR["notification"]["heartbeat_seconds"])
+TELEGRAM_API_ROOT = "https://api.telegram.org"
+TELEGRAM_MAX_TEXT = 4096
+SHA256_RE = re.compile(r"^[0-9a-f]{64}$")
+SAFE_ID = re.compile(r"^[A-Za-z0-9_.:/+-]{1,240}$")
+PROHIBITED_CAPSULE_SUFFIXES = {
+    ".sh", ".bash", ".zsh", ".py", ".pyc", ".pyo", ".js", ".mjs", ".cjs",
+    ".ts", ".tsx", ".exe", ".command", ".app", ".dylib", ".so",
+}
+TERMINAL_STATES = {"SUCCEEDED", "FAILED_REVIEW_READY", "FAILED_NO_ARTIFACT", "BLOCKED", "ABORTED"}
+
+
+class SupervisorError(RuntimeError):
+    def __init__(self, classification: str, message: str, exit_code: int = 70):
+        super().__init__(message)
+        self.classification = classification
+        self.exit_code = exit_code
+
+
+class PreflightAggregateError(SupervisorError):
+    def __init__(self, message: str, exit_code: int, results: dict[str, Any], failures: dict[str, dict[str, Any]]):
+        super().__init__("PREFLIGHT_AGGREGATE_FAILURE", message, exit_code)
+        self.results = results
+        self.failures = failures
+
+
+@dataclass(frozen=True)
+class CapsuleInfo:
+    path: Path
+    sha256: str
+    size: int
+    run: dict[str, Any]
+    manifest: dict[str, str]
+
+
+@dataclass(frozen=True)
+class RepoInfo:
+    path: Path
+    branch: str
+    head: str
+    upstream: str
+    dirty_paths: tuple[str, ...]
+
+
+@dataclass(frozen=True)
+class RecoveryDecision:
+    action: str
+    exit_code: int | None = None
+    capsule: Path | None = None
+    repo: Path | None = None
+    context: dict[str, Any] | None = None
+
+
+def now_utc() -> str:
+    return dt.datetime.now(dt.timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z")
+
+
+def sha256_file(path: Path) -> str:
+    h = hashlib.sha256()
+    with path.open("rb") as f:
+        for chunk in iter(lambda: f.read(1024 * 1024), b""):
+            h.update(chunk)
+    return h.hexdigest()
+
+
+def sha256_bytes(data: bytes) -> str:
+    return hashlib.sha256(data).hexdigest()
+
+
+def fsync_dir(path: Path) -> None:
+    try:
+        fd = os.open(path, os.O_RDONLY)
+    except OSError:
+        return
+    try:
+        os.fsync(fd)
+    finally:
+        os.close(fd)
+
+
+def atomic_write_bytes(path: Path, data: bytes, mode: int = 0o600) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    tmp = path.with_name(f".{path.name}.tmp-{os.getpid()}-{time.time_ns()}")
+    fd = os.open(tmp, os.O_WRONLY | os.O_CREAT | os.O_EXCL, mode)
+    try:
+        with os.fdopen(fd, "wb", closefd=True) as f:
+            f.write(data)
+            f.flush()
+            os.fsync(f.fileno())
+        os.replace(tmp, path)
+        fsync_dir(path.parent)
+    except Exception:
+        with contextlib.suppress(OSError):
+            tmp.unlink()
+        raise
+
+
+def atomic_write_json(path: Path, value: Any) -> None:
+    atomic_write_bytes(path, (json.dumps(value, indent=2, sort_keys=True) + "\n").encode("utf-8"))
+
+
+def json_safe(value: Any) -> Any:
+    if dataclasses.is_dataclass(value) and not isinstance(value, type):
+        return json_safe(dataclasses.asdict(value))
+    if isinstance(value, Path):
+        return str(value)
+    if isinstance(value, dict):
+        return {str(key): json_safe(item) for key, item in value.items()}
+    if isinstance(value, (list, tuple, set, frozenset)):
+        return [json_safe(item) for item in value]
+    if isinstance(value, (str, int, float, bool)) or value is None:
+        return value
+    return repr(value)
+
+
+def copy_verified_atomic(source: Path, destination: Path, expected_sha: str | None = None) -> str:
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    tmp = destination.with_name(f".{destination.name}.partial-{os.getpid()}-{time.time_ns()}")
+    try:
+        with source.open("rb") as src, tmp.open("xb") as dst:
+            shutil.copyfileobj(src, dst, length=1024 * 1024)
+            dst.flush()
+            os.fsync(dst.fileno())
+        got = sha256_file(tmp)
+        if expected_sha and got != expected_sha:
+            raise SupervisorError("ATOMIC_COPY_FAILURE", f"copy digest mismatch: expected {expected_sha}, got {got}")
+        os.replace(tmp, destination)
+        fsync_dir(destination.parent)
+        if sha256_file(destination) != got:
+            raise SupervisorError("ATOMIC_COPY_FAILURE", "destination digest changed after atomic replace")
+        return got
+    except Exception:
+        with contextlib.suppress(OSError):
+            tmp.unlink()
+        raise
+
+
+def safe_member(name: str) -> PurePosixPath:
+    if (
+        not isinstance(name, str) or not name or "\\" in name or name.startswith("/")
+        or name.startswith("./") or "//" in name or "/./" in name or "\x00" in name
+    ):
+        raise SupervisorError("CAPSULE_SAFETY_FAILURE", f"unsafe ZIP member path: {name!r}", 65)
+    p = PurePosixPath(name)
+    if any(part in {"", ".", ".."} for part in p.parts):
+        raise SupervisorError("CAPSULE_SAFETY_FAILURE", f"unsafe ZIP member path: {name!r}", 65)
+    if len(name.encode("utf-8", "surrogatepass")) > 1024:
+        raise SupervisorError("CAPSULE_SAFETY_FAILURE", "ZIP member path exceeds limit", 65)
+    return p
+
+
+def inspect_zip(path: Path, *, allow_source: bool, max_bytes: int = MAX_CAPSULE_BYTES) -> dict[str, zipfile.ZipInfo]:
+    if not path.is_file() or path.is_symlink():
+        raise SupervisorError("CAPSULE_SELECTION_FAILURE", f"not a regular file: {path}", 66)
+    size = path.stat().st_size
+    if size <= 0 or size > max_bytes:
+        raise SupervisorError("CAPSULE_SAFETY_FAILURE", f"archive size {size} outside accepted range", 65)
+    try:
+        zf = zipfile.ZipFile(path)
+    except (OSError, zipfile.BadZipFile) as exc:
+        raise SupervisorError("CAPSULE_SAFETY_FAILURE", f"invalid ZIP: {type(exc).__name__}: {exc}", 65) from exc
+    with zf:
+        infos = zf.infolist()
+        if not infos or len(infos) > MAX_ZIP_MEMBERS:
+            raise SupervisorError("CAPSULE_SAFETY_FAILURE", f"ZIP member count {len(infos)} outside accepted range", 65)
+        seen: set[str] = set()
+        total = 0
+        result: dict[str, zipfile.ZipInfo] = {}
+        for info in infos:
+            raw_name = info.filename.rstrip("/")
+            if not raw_name:
+                continue
+            member = safe_member(raw_name)
+            rel = member.as_posix()
+            if rel in seen:
+                raise SupervisorError("CAPSULE_SAFETY_FAILURE", f"duplicate ZIP path: {rel}", 65)
+            seen.add(rel)
+            mode = (info.external_attr >> 16) & 0o170000
+            if mode == stat.S_IFLNK:
+                raise SupervisorError("CAPSULE_SAFETY_FAILURE", f"symlink prohibited: {rel}", 65)
+            if mode not in (0, stat.S_IFREG, stat.S_IFDIR):
+                raise SupervisorError("CAPSULE_SAFETY_FAILURE", f"special member prohibited: {rel}", 65)
+            if info.flag_bits & 0x1:
+                raise SupervisorError("CAPSULE_SAFETY_FAILURE", f"encrypted member prohibited: {rel}", 65)
+            executable = bool((info.external_attr >> 16) & 0o111)
+            if executable and not info.is_dir():
+                raise SupervisorError("CAPSULE_SAFETY_FAILURE", f"executable member prohibited: {rel}", 65)
+            if not allow_source and not info.is_dir() and member.suffix.lower() in PROHIBITED_CAPSULE_SUFFIXES:
+                raise SupervisorError("CAPSULE_SAFETY_FAILURE", f"run-specific executable/source prohibited: {rel}", 65)
+            if info.file_size > MAX_SINGLE_UNCOMPRESSED:
+                raise SupervisorError("CAPSULE_SAFETY_FAILURE", f"member exceeds uncompressed limit: {rel}", 65)
+            total += info.file_size
+            if total > MAX_TOTAL_UNCOMPRESSED:
+                raise SupervisorError("CAPSULE_SAFETY_FAILURE", "archive exceeds total uncompressed limit", 65)
+            if info.file_size and info.compress_size == 0:
+                raise SupervisorError("CAPSULE_SAFETY_FAILURE", f"invalid zero compressed size: {rel}", 65)
+            if info.compress_size and info.file_size / info.compress_size > MAX_COMPRESSION_RATIO:
+                raise SupervisorError("CAPSULE_SAFETY_FAILURE", f"compression ratio exceeds limit: {rel}", 65)
+            result[rel] = info
+        corrupt = zf.testzip()
+        if corrupt:
+            raise SupervisorError("CAPSULE_SAFETY_FAILURE", f"CRC failure: {corrupt}", 65)
+        return result
+
+
+def parse_manifest_text(text: str) -> dict[str, str]:
+    result: dict[str, str] = {}
+    for line in text.splitlines():
+        if not line.strip():
+            continue
+        try:
+            digest, rel = line.split("  ", 1)
+        except ValueError as exc:
+            raise SupervisorError("CAPSULE_MANIFEST_FAILURE", f"invalid manifest line: {line!r}", 65) from exc
+        if not SHA256_RE.fullmatch(digest) or safe_member(rel).as_posix() != rel:
+            raise SupervisorError("CAPSULE_MANIFEST_FAILURE", f"invalid manifest entry: {line!r}", 65)
+        if rel == "MANIFEST.sha256" or rel in result:
+            raise SupervisorError("CAPSULE_MANIFEST_FAILURE", f"invalid duplicate/self manifest entry: {rel}", 65)
+        result[rel] = digest
+    return result
+
+
+def read_zip_member(zf: zipfile.ZipFile, name: str, *, max_bytes: int = MAX_JSON_BYTES) -> bytes:
+    try:
+        info = zf.getinfo(name)
+    except KeyError as exc:
+        raise SupervisorError("CAPSULE_SCHEMA_FAILURE", f"required member missing: {name}", 65) from exc
+    if info.file_size > max_bytes:
+        raise SupervisorError("CAPSULE_SAFETY_FAILURE", f"member exceeds read limit: {name}", 65)
+    data = zf.read(info)
+    if len(data) != info.file_size:
+        raise SupervisorError("CAPSULE_SAFETY_FAILURE", f"short ZIP read: {name}", 65)
+    return data
+
+
+def require_string(value: Any, name: str, pattern: re.Pattern[str] | None = None) -> str:
+    if not isinstance(value, str) or not value:
+        raise SupervisorError("CAPSULE_SCHEMA_FAILURE", f"{name} must be a non-empty string", 65)
+    if pattern and not pattern.fullmatch(value):
+        raise SupervisorError("CAPSULE_SCHEMA_FAILURE", f"{name} contains unsupported characters", 65)
+    return value
+
+
+EXECUTION_PROFILES = {"development_campaign", "promotion_qualification"}
+DEFAULT_EXECUTION_PROFILE = "promotion_qualification"
+MAX_CAMPAIGN_TARGETS = 256
+
+def execution_profile_from_run(run: dict[str, Any]) -> str:
+    recipes = run.get("recipes")
+    if not isinstance(recipes, list) or not recipes:
+        return DEFAULT_EXECUTION_PROFILE
+    profiles: set[str] = set()
+    for recipe in recipes:
+        if not isinstance(recipe, dict):
+            continue
+        params = recipe.get("params")
+        if not isinstance(params, dict):
+            continue
+        profile = params.get("execution_profile")
+        if profile is not None:
+            if not isinstance(profile, str) or profile not in EXECUTION_PROFILES:
+                raise SupervisorError("CAPSULE_SCHEMA_FAILURE", f"unsupported execution_profile: {profile!r}", 65)
+            profiles.add(profile)
+    if len(profiles) > 1:
+        raise SupervisorError("CAPSULE_SCHEMA_FAILURE", "recipes declare conflicting execution profiles", 65)
+    return next(iter(profiles), DEFAULT_EXECUTION_PROFILE)
+
+def _validated_target_list(params: dict[str, Any], field: str, pattern: re.Pattern[str], *, required: bool) -> list[str]:
+    value = params.get(field)
+    if value is None:
+        if required:
+            raise SupervisorError("CAPSULE_SCHEMA_FAILURE", f"{field} is required for development_campaign", 65)
+        return []
+    if not isinstance(value, list) or not value or len(value) > MAX_CAMPAIGN_TARGETS:
+        raise SupervisorError("CAPSULE_SCHEMA_FAILURE", f"{field} must be a non-empty bounded array", 65)
+    result: list[str] = []
+    for index, item in enumerate(value):
+        if not isinstance(item, str) or not pattern.fullmatch(item):
+            raise SupervisorError("CAPSULE_SCHEMA_FAILURE", f"{field}[{index}] is invalid", 65)
+        if item in result:
+            raise SupervisorError("CAPSULE_SCHEMA_FAILURE", f"{field} contains duplicate {item!r}", 65)
+        result.append(item)
+    return result
+
+def execution_scope_from_run(run: dict[str, Any]) -> dict[str, Any]:
+    profile = execution_profile_from_run(run)
+    recipe = next((r for r in run.get("recipes", []) if isinstance(r, dict) and r.get("id") == "full-app-gate"), None)
+    params = recipe.get("params") if isinstance(recipe, dict) and isinstance(recipe.get("params"), dict) else {}
+    required = profile == "development_campaign"
+    path_pattern = re.compile(r"(?!/)(?!.*(?:^|/)\.\.(?:/|$))[A-Za-z0-9_.+@/-]{1,512}")
+    target_pattern = re.compile(r"[A-Za-z0-9_.+@:/-]{1,160}")
+    return {
+        "execution_profile": profile,
+        "changed_paths": _validated_target_list(params, "changed_paths", path_pattern, required=required),
+        "targeted_tests": _validated_target_list(params, "targeted_tests", target_pattern, required=required),
+        "targeted_views": _validated_target_list(params, "targeted_views", target_pattern, required=False),
+    }
+
+def execution_env_overlay(run: dict[str, Any]) -> dict[str, str]:
+    scope = execution_scope_from_run(run)
+    return {
+        "SYSGRID_EXECUTION_PROFILE": str(scope["execution_profile"]),
+        "SYSGRID_CHANGED_PATHS_JSON": json.dumps(scope["changed_paths"], separators=(",", ":")),
+        "SYSGRID_TARGETED_TESTS_JSON": json.dumps(scope["targeted_tests"], separators=(",", ":")),
+        "SYSGRID_TARGETED_VIEWS_JSON": json.dumps(scope["targeted_views"], separators=(",", ":")),
+    }
+
+def validate_run_minimal(run: Any) -> dict[str, Any]:
+    if not isinstance(run, dict):
+        raise SupervisorError("CAPSULE_SCHEMA_FAILURE", "RUN.json must contain an object", 65)
+    required = {"schema_version", "project", "issue", "lane", "mode", "engine", "baseline", "state", "recipes", "delivery"}
+    missing = sorted(required - set(run))
+    if missing:
+        raise SupervisorError("CAPSULE_SCHEMA_FAILURE", f"RUN.json missing fields: {missing}", 65)
+    if run.get("schema_version") != "1.0":
+        raise SupervisorError("CAPSULE_SCHEMA_FAILURE", f"unsupported schema_version: {run.get('schema_version')!r}", 65)
+    if run.get("project") != "SysGrid":
+        raise SupervisorError("PROJECT_SCOPE_FAILURE", "capsule project must be SysGrid", 65)
+    require_string(run.get("issue"), "issue", SAFE_ID)
+    if run.get("lane") not in {"product", "execution_platform", "read_only"}:
+        raise SupervisorError("CAPSULE_SCHEMA_FAILURE", "invalid lane", 65)
+    if run.get("mode") not in {"read_only", "mutation", "resume_verify", "qualification"}:
+        raise SupervisorError("CAPSULE_SCHEMA_FAILURE", "invalid mode", 65)
+    engine = run.get("engine")
+    if not isinstance(engine, dict) or engine.get("required_version") != ENGINE_VERSION:
+        raise SupervisorError("ENGINE_VERSION_FAILURE", f"capsule must require engine {ENGINE_VERSION}", 65)
+    baseline = run.get("baseline")
+    if not isinstance(baseline, dict):
+        raise SupervisorError("CAPSULE_SCHEMA_FAILURE", "baseline must be an object", 65)
+    head = require_string(baseline.get("head"), "baseline.head")
+    if not re.fullmatch(r"[0-9a-f]{40}", head):
+        raise SupervisorError("CAPSULE_SCHEMA_FAILURE", "baseline.head must be a 40-character lowercase Git SHA", 65)
+    for field in ("branch", "upstream"):
+        require_string(baseline.get(field), f"baseline.{field}")
+    if not isinstance(run.get("state"), dict):
+        raise SupervisorError("CAPSULE_SCHEMA_FAILURE", "state must be an object", 65)
+    if not isinstance(run.get("recipes"), list):
+        raise SupervisorError("CAPSULE_SCHEMA_FAILURE", "recipes must be an array", 65)
+    execution_scope_from_run(run)
+    if not isinstance(run.get("delivery"), dict):
+        raise SupervisorError("CAPSULE_SCHEMA_FAILURE", "delivery must be an object", 65)
+    patch = run.get("patch")
+    if run.get("mode") == "mutation":
+        if not isinstance(patch, dict):
+            raise SupervisorError("CAPSULE_SCHEMA_FAILURE", "patch must be an object for mutation", 65)
+        require_string(patch.get("path"), "patch.path")
+        if not SHA256_RE.fullmatch(str(patch.get("sha256", ""))):
+            raise SupervisorError("CAPSULE_SCHEMA_FAILURE", "patch.sha256 must be lowercase SHA-256", 65)
+    elif patch not in (None, {}):
+        raise SupervisorError("CAPSULE_SCHEMA_FAILURE", "non-mutation capsule must not carry a patch", 65)
+    return run
+
+
+def verify_archive_manifest(path: Path, *, allow_source: bool) -> tuple[dict[str, str], dict[str, Any] | None]:
+    infos = inspect_zip(path, allow_source=allow_source, max_bytes=max(MAX_CAPSULE_BYTES, path.stat().st_size + 1))
+    if "MANIFEST.sha256" not in infos:
+        raise SupervisorError("CAPSULE_MANIFEST_FAILURE", "MANIFEST.sha256 missing", 65)
+    with zipfile.ZipFile(path) as zf:
+        raw_manifest = read_zip_member(zf, "MANIFEST.sha256", max_bytes=2 * 1024 * 1024)
+        try:
+            manifest = parse_manifest_text(raw_manifest.decode("utf-8", "strict"))
+        except UnicodeDecodeError as exc:
+            raise SupervisorError("CAPSULE_MANIFEST_FAILURE", "manifest is not UTF-8", 65) from exc
+        actual = sorted(name for name, info in infos.items() if not info.is_dir() and name != "MANIFEST.sha256")
+        if sorted(manifest) != actual:
+            missing = sorted(set(manifest) - set(actual))
+            extra = sorted(set(actual) - set(manifest))
+            raise SupervisorError("CAPSULE_MANIFEST_FAILURE", f"manifest coverage mismatch missing={missing} extra={extra}", 65)
+        for rel, expected in manifest.items():
+            h = hashlib.sha256()
+            with zf.open(rel) as src:
+                for chunk in iter(lambda: src.read(1024 * 1024), b""):
+                    h.update(chunk)
+            got = h.hexdigest()
+            if got != expected:
+                raise SupervisorError("CAPSULE_MANIFEST_FAILURE", f"digest mismatch for {rel}: expected {expected}, got {got}", 65)
+        result = None
+        if "RESULT.json" in infos:
+            try:
+                result = json.loads(read_zip_member(zf, "RESULT.json").decode("utf-8", "strict"))
+            except (UnicodeDecodeError, json.JSONDecodeError) as exc:
+                raise SupervisorError("OUTPUT_CORRELATION_FAILURE", "RESULT.json is invalid", 74) from exc
+        return manifest, result
+
+
+def inspect_capsule(path: Path) -> CapsuleInfo:
+    infos = inspect_zip(path, allow_source=False)
+    if "RUN.json" not in infos or "MANIFEST.sha256" not in infos:
+        raise SupervisorError("CAPSULE_SCHEMA_FAILURE", "capsule requires RUN.json and MANIFEST.sha256", 65)
+    manifest, _ = verify_archive_manifest(path, allow_source=False)
+    with zipfile.ZipFile(path) as zf:
+        try:
+            run = validate_run_minimal(json.loads(read_zip_member(zf, "RUN.json").decode("utf-8", "strict")))
+        except (UnicodeDecodeError, json.JSONDecodeError) as exc:
+            raise SupervisorError("CAPSULE_SCHEMA_FAILURE", "RUN.json is invalid UTF-8 JSON", 65) from exc
+        if run.get("mode") == "mutation":
+            patch_path = safe_member(run["patch"]["path"]).as_posix()
+            if patch_path not in manifest:
+                raise SupervisorError("PATCH_IDENTITY_FAILURE", f"patch is not manifest-covered: {patch_path}", 65)
+            data = read_zip_member(zf, patch_path, max_bytes=MAX_SINGLE_UNCOMPRESSED)
+            got = sha256_bytes(data)
+            if got != run["patch"]["sha256"]:
+                raise SupervisorError("PATCH_IDENTITY_FAILURE", f"patch digest mismatch: expected {run['patch']['sha256']}, got {got}", 65)
+    return CapsuleInfo(path=path.resolve(), sha256=sha256_file(path), size=path.stat().st_size, run=run, manifest=manifest)
+
+
+def default_control_root() -> Path:
+    override = os.environ.get("SYSGRID_CONTROL_ROOT")
+    if override:
+        return Path(override).expanduser()
+    return Path.home() / "Library/Mobile Documents/com~apple~CloudDocs/SysGrid-Control"
+
+
+def config_root() -> Path:
+    return Path(os.environ.get("SYSGRID_SUPERVISOR_CONFIG", Path.home() / ".config/sysgrid-supervisor")).expanduser()
+
+
+def state_root() -> Path:
+    return Path(os.environ.get("SYSGRID_SUPERVISOR_STATE", Path.home() / ".local/state/sysgrid-supervisor")).expanduser()
+
+
+def telegram_config_path() -> Path:
+    return config_root() / "telegram.json"
+
+
+def _validate_telegram_token(bot_token: str) -> str:
+    token = [REDACTED]
+    if not re.fullmatch(r"[0-9]{5,20}:[A-Za-z0-9_-]{20,}", token):
+        raise SupervisorError("TELEGRAM_CONFIGURATION_FAILURE", "Telegram bot token format is invalid", 76)
+    return token
+
+
+def _validate_telegram_chat_id(chat_id: str) -> str:
+    chat = chat_id.strip()
+    if not re.fullmatch(r"(?:-?[0-9]{1,24}|@[A-Za-z0-9_]{5,})", chat):
+        raise SupervisorError("TELEGRAM_CONFIGURATION_FAILURE", "Telegram chat ID format is invalid", 76)
+    return chat
+
+
+def _validate_telegram_values(bot_token: str, chat_id: str) -> tuple[str, str]:
+    return _validate_telegram_token(bot_token), _validate_telegram_chat_id(chat_id)
+
+
+def save_telegram_config(bot_token: str, chat_id: str) -> Path:
+    token, chat = _validate_telegram_values(bot_token, chat_id)
+    path = telegram_config_path()
+    atomic_write_json(path, {"bot_token": token, "chat_id": chat, "required": True})
+    os.chmod(path, 0o600)
+    return path
+
+
+def _read_simple_env_file(path: Path) -> dict[str, str]:
+    values: dict[str, str] = {}
+    if not path.is_file() or path.is_symlink():
+        return values
+    for raw in path.read_text(encoding="utf-8").splitlines():
+        line = raw.strip()
+        if not line or line.startswith("#") or "=" not in line:
+            continue
+        key, value = line.split("=", 1)
+        key = key.strip()
+        value = value.strip().strip('"').strip("'")
+        if key in {"SYSGRID_TELEGRAM_BOT_TOKEN", "TELEGRAM_BOT_TOKEN", "SYSGRID_TELEGRAM_CHAT_ID", "TELEGRAM_CHAT_ID"}:
+            values[key] = value
+    return values
+
+
+def load_telegram_config(*, required: bool = False) -> dict[str, str] | None:
+    env = os.environ
+    token = [REDACTED]
+    chat = env.get("SYSGRID_TELEGRAM_CHAT_ID") or env.get("TELEGRAM_CHAT_ID")
+    source = "environment"
+    if not (token and chat):
+        for candidate in (config_root() / "telegram.env", Path.home() / ".config/sysgrid/telegram.env"):
+            values = _read_simple_env_file(candidate)
+            token = [REDACTED]
+            chat = chat or values.get("SYSGRID_TELEGRAM_CHAT_ID") or values.get("TELEGRAM_CHAT_ID")
+            if token and chat:
+                source = str(candidate)
+                break
+    path = telegram_config_path()
+    if not (token and chat) and path.exists():
+        if path.is_symlink() or not path.is_file():
+            raise SupervisorError("TELEGRAM_CONFIGURATION_FAILURE", f"Telegram config is not a regular file: {path}", 76)
+        mode = stat.S_IMODE(path.stat().st_mode)
+        if mode & 0o077:
+            raise SupervisorError("TELEGRAM_CONFIGURATION_FAILURE", f"Telegram config permissions must be 0600: {path}", 76)
+        try:
+            data = json.loads(path.read_text(encoding="utf-8"))
+        except Exception as exc:
+            raise SupervisorError("TELEGRAM_CONFIGURATION_FAILURE", f"Telegram config is invalid JSON: {path}", 76) from exc
+        if not isinstance(data, dict):
+            raise SupervisorError("TELEGRAM_CONFIGURATION_FAILURE", "Telegram config must be an object", 76)
+        token = [REDACTED]
+        chat = data.get("chat_id")
+        source = str(path)
+    if not (isinstance(token, str) and isinstance(chat, str) and token and chat):
+        if required:
+            raise SupervisorError("TELEGRAM_CONFIGURATION_REQUIRED", "Telegram delivery is mandatory but no bot token/chat ID is configured", 76)
+        return None
+    token, chat = _validate_telegram_values(token, chat)
+    return {"bot_token": token, "chat_id": chat, "source": source}
+
+
+def telegram_public_summary(config: dict[str, str] | None) -> dict[str, Any]:
+    if not config:
+        return {"configured": False}
+    chat = config["chat_id"]
+    suffix = chat[-4:] if len(chat) > 4 else chat
+    return {"configured": True, "source": config.get("source"), "chat_id_suffix": suffix}
+
+
+def _telegram_api_call(
+    bot_token: [REDACTED]
+    method: str,
+    params: dict[str, Any] | None = None,
+    *,
+    timeout: float = 10.0,
+    classification: str = "TELEGRAM_CONFIGURATION_FAILURE",
+) -> dict[str, Any]:
+    token = [REDACTED]
+    endpoint = f"{TELEGRAM_API_ROOT}/bot{token}/{method}"
+    encoded = urllib.parse.urlencode(params or {}).encode("utf-8")
+    request = urllib.request.Request(
+        endpoint,
+        data=encoded,
+        headers={"Content-Type": "application/x-www-form-urlencoded"},
+        method="POST",
+    )
+    raw = b""
+    try:
+        with urllib.request.urlopen(request, timeout=timeout) as response:
+            raw = response.read(1024 * 1024)
+    except urllib.error.HTTPError as exc:
+        with contextlib.suppress(Exception):
+            raw = exc.read(1024 * 1024)
+        description = None
+        with contextlib.suppress(Exception):
+            parsed = json.loads(raw.decode("utf-8"))
+            if isinstance(parsed, dict):
+                description = parsed.get("description")
+        raise SupervisorError(classification, f"Telegram {method} rejected request: {description or f'HTTP {exc.code}'}", 76) from exc
+    except (urllib.error.URLError, TimeoutError, OSError) as exc:
+        reason = getattr(exc, "reason", None)
+        detail = type(reason).__name__ if reason is not None else type(exc).__name__
+        raise SupervisorError(classification, f"Telegram {method} request failed: {detail}", 76) from exc
+    try:
+        data = json.loads(raw.decode("utf-8"))
+    except Exception as exc:
+        raise SupervisorError(classification, f"Telegram {method} returned non-JSON data", 76) from exc
+    if not isinstance(data, dict) or data.get("ok") is not True:
+        description = data.get("description") if isinstance(data, dict) else None
+        raise SupervisorError(classification, f"Telegram {method} rejected request: {description or 'unknown response'}", 76)
+    return data
+
+
+def telegram_prepare_private_chat_discovery(bot_token: str) -> dict[str, Any]:
+    token = [REDACTED]
+    identity = _telegram_api_call(token, "getMe")
+    user = identity.get("result")
+    if not isinstance(user, dict) or user.get("is_bot") is not True or not isinstance(user.get("username"), str):
+        raise SupervisorError("TELEGRAM_CONFIGURATION_FAILURE", "Telegram getMe did not return a usable bot username", 76)
+    webhook = _telegram_api_call(token, "getWebhookInfo")
+    webhook_result = webhook.get("result")
+    if isinstance(webhook_result, dict) and str(webhook_result.get("url") or "").strip():
+        raise SupervisorError(
+            "TELEGRAM_CONFIGURATION_FAILURE",
+            "Automatic chat discovery cannot use a bot with an active webhook. Supply a numeric chat ID through "
+            "SYSGRID_TELEGRAM_CHAT_ID or use a dedicated notification bot.",
+            76,
+        )
+    updates = _telegram_api_call(
+        token,
+        "getUpdates",
+        {"limit": 100, "timeout": 0, "allowed_updates": json.dumps(["message"])},
+        timeout=12.0,
+    )
+    result = updates.get("result")
+    baseline = max(
+        (item.get("update_id") for item in result if isinstance(item, dict) and isinstance(item.get("update_id"), int)),
+        default=-1,
+    ) if isinstance(result, list) else -1
+    return {"bot_token": token, "username": user["username"], "baseline_update_id": baseline}
+
+
+def _private_chat_candidates(updates: Any) -> list[dict[str, Any]]:
+    latest: dict[str, dict[str, Any]] = {}
+    if not isinstance(updates, list):
+        return []
+    for update in updates:
+        if not isinstance(update, dict) or not isinstance(update.get("update_id"), int):
+            continue
+        message = update.get("message")
+        if not isinstance(message, dict):
+            continue
+        chat = message.get("chat")
+        if not isinstance(chat, dict) or chat.get("type") != "private" or not isinstance(chat.get("id"), int):
+            continue
+        chat_id = str(chat["id"])
+        parts = [str(chat.get("first_name") or "").strip(), str(chat.get("last_name") or "").strip()]
+        display = " ".join(part for part in parts if part)
+        username = str(chat.get("username") or "").strip()
+        if username:
+            display = f"{display} (@{username})".strip()
+        candidate = {
+            "chat_id": chat_id,
+            "display": display or f"private chat …{chat_id[-4:]}",
+            "update_id": update["update_id"],
+        }
+        previous = latest.get(chat_id)
+        if previous is None or candidate["update_id"] > previous["update_id"]:
+            latest[chat_id] = candidate
+    return sorted(latest.values(), key=lambda item: item["update_id"], reverse=True)
+
+
+def telegram_wait_for_fresh_private_chats(
+    bot_token: [REDACTED]
+    *,
+    after_update_id: int,
+    wait_seconds: float = 90.0,
+    poll_seconds: float = 1.0,
+) -> list[dict[str, Any]]:
+    token = [REDACTED]
+    deadline = time.monotonic() + max(1.0, wait_seconds)
+    cursor = max(-1, int(after_update_id)) + 1
+    while True:
+        remaining = deadline - time.monotonic()
+        if remaining <= 0:
+            raise SupervisorError(
+                "TELEGRAM_CONFIGURATION_FAILURE",
+                "No fresh private Telegram message reached the bot during automatic chat discovery",
+                76,
+            )
+        long_poll = max(1, min(10, int(remaining)))
+        response = _telegram_api_call(
+            token,
+            "getUpdates",
+            {
+                "offset": cursor,
+                "limit": 100,
+                "timeout": long_poll,
+                "allowed_updates": json.dumps(["message"]),
+            },
+            timeout=float(long_poll + 5),
+        )
+        updates = response.get("result")
+        if isinstance(updates, list) and updates:
+            ids = [item.get("update_id") for item in updates if isinstance(item, dict) and isinstance(item.get("update_id"), int)]
+            if ids:
+                cursor = max(ids) + 1
+            candidates = _private_chat_candidates(updates)
+            if candidates:
+                return candidates
+        if poll_seconds > 0:
+            time.sleep(min(poll_seconds, max(0.0, deadline - time.monotonic())))
+
+
+def _telegram_request(config: dict[str, str], message: str, *, timeout: float = 10.0) -> dict[str, Any]:
+    text = message[:TELEGRAM_MAX_TEXT]
+    data = _telegram_api_call(
+        config["bot_token"],
+        "sendMessage",
+        {"chat_id": config["chat_id"], "text": text, "disable_web_page_preview": "true"},
+        timeout=timeout,
+        classification="TELEGRAM_DELIVERY_FAILURE",
+    )
+    result = data.get("result") if isinstance(data.get("result"), dict) else {}
+    return {"ok": True, "message_id": result.get("message_id"), "date": result.get("date")}
+
+
+def telegram_probe(message: str = "SysGrid Telegram notification test: PASS") -> dict[str, Any]:
+    config = load_telegram_config(required=True)
+    assert config is not None
+    delivered = _telegram_request(config, message)
+    return {**telegram_public_summary(config), "delivered": True, "message_id": delivered.get("message_id")}
+
+
+def _notification_ledger_path(run_id: str) -> Path:
+    safe = re.sub(r"[^A-Za-z0-9_.-]", "_", run_id)[:180]
+    return state_root() / "notifications" / f"{safe}.json"
+
+
+def _load_notification_ledger(run_id: str) -> dict[str, Any]:
+    path = _notification_ledger_path(run_id)
+    if not path.is_file():
+        return {"run_id": run_id, "events": {}}
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except Exception:
+        return {"run_id": run_id, "events": {}}
+    return data if isinstance(data, dict) and isinstance(data.get("events"), dict) else {"run_id": run_id, "events": {}}
+
+
+def deliver_notification_event(
+    *,
+    run_id: str,
+    event_id: str,
+    message: str,
+    required: bool,
+    retries: int | None = None,
+) -> dict[str, Any]:
+    """Durably deliver one at-least-once Telegram event.
+
+    Telegram has no client idempotency key, so the local outbox records payload
+    identity and acknowledgement before any later retry. A delivered event is
+    never intentionally submitted again by the supervisor.
+    """
+    ledger = _load_notification_ledger(run_id)
+    events = ledger.setdefault("events", {})
+    existing = events.get(event_id)
+    payload_sha = sha256_bytes(message.encode("utf-8"))
+    if isinstance(existing, dict) and existing.get("status") == "delivered":
+        if existing.get("payload_sha256") != payload_sha:
+            raise SupervisorError(
+                "TELEGRAM_EVENT_IDENTITY_FAILURE",
+                f"event {event_id} was reused with different payload bytes",
+                76,
+            )
+        return existing
+    config = load_telegram_config(required=required)
+    if not config:
+        record = {
+            "status": "skipped", "event_id": event_id, "updated_utc": now_utc(),
+            "reason": "not configured", "payload_sha256": payload_sha,
+        }
+        events[event_id] = record
+        atomic_write_json(_notification_ledger_path(run_id), ledger)
+        return record
+
+    notification = RELEASE_DESCRIPTOR.get("notification", {})
+    if not isinstance(notification, dict):
+        notification = {}
+    if retries is None:
+        retries = int(notification.get("prelaunch_retries" if required else "postlaunch_retries", 3))
+    retries = max(1, min(10, int(retries)))
+    base_delay = max(0.05, min(5.0, float(notification.get("retry_base_seconds", 0.5))))
+    first_attempt_utc = existing.get("first_attempt_utc") if isinstance(existing, dict) else None
+    pending = {
+        "status": "pending",
+        "event_id": event_id,
+        "payload_sha256": payload_sha,
+        "required": bool(required),
+        "first_attempt_utc": first_attempt_utc or now_utc(),
+        "updated_utc": now_utc(),
+        "attempts": int(existing.get("attempts", 0)) if isinstance(existing, dict) else 0,
+    }
+    events[event_id] = pending
+    atomic_write_json(_notification_ledger_path(run_id), ledger)
+
+    last_error = ""
+    for attempt in range(1, retries + 1):
+        pending["attempts"] = attempt
+        pending["updated_utc"] = now_utc()
+        events[event_id] = dict(pending)
+        atomic_write_json(_notification_ledger_path(run_id), ledger)
+        try:
+            delivered = _telegram_request(config, message)
+            record = {
+                **pending,
+                "status": "delivered",
+                "updated_utc": now_utc(),
+                "message_id": delivered.get("message_id"),
+                "chat_id_suffix": telegram_public_summary(config).get("chat_id_suffix"),
+            }
+            events[event_id] = record
+            atomic_write_json(_notification_ledger_path(run_id), ledger)
+            return record
+        except SupervisorError as exc:
+            last_error = str(exc)
+            pending["last_error"] = last_error
+            if attempt < retries:
+                time.sleep(min(8.0, base_delay * (2 ** (attempt - 1))))
+    record = {
+        **pending,
+        "status": "failed",
+        "updated_utc": now_utc(),
+        "error": last_error,
+    }
+    events[event_id] = record
+    atomic_write_json(_notification_ledger_path(run_id), ledger)
+    if required:
+        raise SupervisorError(
+            "TELEGRAM_DELIVERY_FAILURE",
+            f"mandatory Telegram event {event_id} was not delivered after retries: {last_error}",
+            76,
+        )
+    return record
+
+
+def bounded_heartbeat_seconds() -> int:
+    raw = os.environ.get("SYSGRID_ENGINE_HEARTBEAT_SECONDS", str(DEFAULT_ENGINE_HEARTBEAT_SECONDS))
+    try:
+        value = int(raw)
+    except ValueError:
+        value = DEFAULT_ENGINE_HEARTBEAT_SECONDS
+    return min(60 * 60, max(30, value))
+
+
+def resource_plan() -> dict[str, int]:
+    cpu = max(1, os.cpu_count() or 1)
+    memory = 0
+    with contextlib.suppress(Exception):
+        memory = int(os.sysconf("SC_PAGE_SIZE")) * int(os.sysconf("SC_PHYS_PAGES"))
+    policy = RELEASE_DESCRIPTOR.get("resource_policy", {})
+    if not isinstance(policy, dict):
+        policy = {}
+    reserve = int(policy.get("reserve_memory_bytes", 2 * 1024**3))
+    usable_memory = max(0, memory - reserve) if memory else 0
+    test_cpu_budget = max(1, cpu - 1)
+
+    def bounded_workers(cap_key: str, memory_key: str, cpu_divisor: int) -> int:
+        cap = max(1, int(policy.get(cap_key, 1)))
+        by_cpu = max(1, test_cpu_budget // max(1, cpu_divisor))
+        per_worker = max(1, int(policy.get(memory_key, 1024**3)))
+        by_memory = max(1, usable_memory // per_worker) if usable_memory else cap
+        return max(1, min(cap, by_cpu, by_memory))
+
+    return {
+        "cpu_count": cpu,
+        "memory_bytes": memory,
+        "reserve_memory_bytes": reserve,
+        "usable_memory_bytes": usable_memory,
+        "test_cpu_budget": test_cpu_budget,
+        "preflight_workers": min(int(policy.get("preflight_worker_cap", 32)), max(4, cpu * 2)),
+        "backend_workers": bounded_workers("backend_worker_cap", "memory_per_backend_worker_bytes", 2),
+        "frontend_workers": bounded_workers("frontend_worker_cap", "memory_per_frontend_worker_bytes", 2),
+        "e2e_workers": bounded_workers("e2e_worker_cap", "memory_per_e2e_worker_bytes", 4),
+    }
+
+
+def read_latest_state() -> dict[str, Any] | None:
+    path = state_root() / "latest.json"
+    if not path.is_file():
+        return None
+    try:
+        value = json.loads(path.read_text(encoding="utf-8"))
+    except Exception:
+        return None
+    return value if isinstance(value, dict) else None
+
+
+def write_repo_hint(repo: Path) -> None:
+    hint = config_root() / "repo-path"
+    atomic_write_bytes(hint, (str(repo.resolve()) + "\n").encode("utf-8"), 0o600)
+
+
+def cleanup_supervisor_temps(max_age_seconds: int = 24 * 60 * 60) -> dict[str, int]:
+    """Remove only old temporary files owned by the supervisor, never repository files."""
+    removed = 0
+    inspected = 0
+    cutoff = time.time() - max_age_seconds
+    roots = [state_root(), default_control_root().expanduser() / "Outbox"]
+    for root in roots:
+        if not root.is_dir():
+            continue
+        for path in root.rglob(".*.tmp-*"):
+            inspected += 1
+            with contextlib.suppress(OSError):
+                if path.is_file() and not path.is_symlink() and path.stat().st_mtime < cutoff:
+                    path.unlink()
+                    removed += 1
+    return {"inspected": inspected, "removed": removed}
+
+
+def run_git(repo: Path, *args: str, check: bool = True, timeout: float = 30) -> subprocess.CompletedProcess[str]:
+    try:
+        completed = subprocess.run(
+            ["git", "-C", str(repo), "-c", "core.quotepath=false", *args],
+            stdin=subprocess.DEVNULL,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+            timeout=timeout,
+            check=False,
+            env=sanitized_env(),
+        )
+    except subprocess.TimeoutExpired as exc:
+        raise SupervisorError("GIT_PREFLIGHT_FAILURE", f"git {' '.join(args)} timed out", 69) from exc
+    if check and completed.returncode:
+        message = (completed.stderr or completed.stdout).strip()[:1000]
+        raise SupervisorError("GIT_PREFLIGHT_FAILURE", f"git {' '.join(args)} failed: {message}", 69)
+    return completed
+
+
+def git_top(path: Path) -> Path | None:
+    if not path.exists() or not path.is_dir():
+        return None
+    completed = run_git(path, "rev-parse", "--show-toplevel", check=False, timeout=10)
+    if completed.returncode:
+        return None
+    return Path(completed.stdout.strip()).resolve()
+
+
+def discover_repo(explicit: Path | None = None) -> Path:
+    candidates: list[Path] = []
+    if explicit:
+        candidates.append(explicit.expanduser())
+    if os.environ.get("SYSGRID_REPO"):
+        candidates.append(Path(os.environ["SYSGRID_REPO"]).expanduser())
+    for hint in (config_root() / "repo-path", Path.home() / ".config/sysgrid-runner/repo-path"):
+        if hint.is_file():
+            with contextlib.suppress(OSError):
+                value = hint.read_text(encoding="utf-8").strip()
+                if value:
+                    candidates.append(Path(value).expanduser())
+    candidates.extend([
+        Path.cwd(), Path.cwd() / "SysGrid", Path.cwd() / "sysgrid",
+        Path.home() / "home/development/sysgrid", Path.home() / "SysGrid", Path.home() / "sysgrid",
+        Path.home() / "Developer/SysGrid", Path.home() / "Projects/SysGrid", Path.home() / "Documents/SysGrid",
+    ])
+    seen: set[Path] = set()
+    for candidate in candidates:
+        with contextlib.suppress(OSError):
+            candidate = candidate.resolve()
+        if candidate in seen:
+            continue
+        seen.add(candidate)
+        top = git_top(candidate)
+        if top:
+            with contextlib.suppress(Exception):
+                write_repo_hint(top)
+            return top
+    raise SupervisorError("REPOSITORY_DISCOVERY_FAILURE", "could not locate the SysGrid Git repository; set SYSGRID_REPO once", 66)
+
+
+def split_nul(data: bytes) -> list[str]:
+    return [part.decode("utf-8", "surrogateescape") for part in data.split(b"\0") if part]
+
+
+def dirty_paths(repo: Path) -> tuple[str, ...]:
+    commands = [
+        ("diff", "--name-only", "-z", "HEAD"),
+        ("diff", "--cached", "--name-only", "-z", "HEAD"),
+        ("ls-files", "--others", "--exclude-standard", "-z"),
+    ]
+    paths: set[str] = set()
+    for args in commands:
+        completed = subprocess.run(
+            ["git", "-C", str(repo), "-c", "core.quotepath=false", *args],
+            stdin=subprocess.DEVNULL, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+            timeout=30, check=False, env=sanitized_env(),
+        )
+        if completed.returncode:
+            raise SupervisorError("GIT_PREFLIGHT_FAILURE", completed.stderr.decode("utf-8", "replace")[:1000], 69)
+        paths.update(split_nul(completed.stdout))
+    return tuple(sorted(paths))
+
+
+def probe_repo(repo: Path, run: dict[str, Any]) -> RepoInfo:
+    top = git_top(repo)
+    if not top or top != repo.resolve():
+        raise SupervisorError("REPOSITORY_IDENTITY_FAILURE", f"repository root mismatch: {repo}", 69)
+    head = run_git(repo, "rev-parse", "HEAD").stdout.strip()
+    branch = run_git(repo, "symbolic-ref", "--quiet", "--short", "HEAD", check=False).stdout.strip() or "(detached)"
+    upstream = run_git(repo, "rev-parse", "--abbrev-ref", "--symbolic-full-name", "@{upstream}", check=False).stdout.strip()
+    expected = run["baseline"]
+    if head != expected["head"]:
+        raise SupervisorError("BASELINE_HEAD_FAILURE", f"HEAD mismatch: expected {expected['head']}, got {head}", 69)
+    if branch != expected["branch"]:
+        raise SupervisorError("BASELINE_BRANCH_FAILURE", f"branch mismatch: expected {expected['branch']}, got {branch}", 69)
+    if upstream != expected["upstream"]:
+        raise SupervisorError("BASELINE_UPSTREAM_FAILURE", f"upstream mismatch: expected {expected['upstream']}, got {upstream or '(none)'}", 69)
+    return RepoInfo(path=repo, branch=branch, head=head, upstream=upstream, dirty_paths=dirty_paths(repo))
+
+
+def read_capsule_state_bytes(capsule: CapsuleInfo, member: str) -> tuple[str, bytes]:
+    rel = safe_member(member).as_posix()
+    if rel not in capsule.manifest:
+        raise SupervisorError("CAPSULE_STATE_FAILURE", f"state member is not manifest-covered: {rel}", 65)
+    with zipfile.ZipFile(capsule.path) as zf:
+        return rel, read_zip_member(zf, rel, max_bytes=MAX_SINGLE_UNCOMPRESSED)
+
+
+def decode_capsule_state_text(capsule: CapsuleInfo, member: str) -> tuple[str, str]:
+    rel, data = read_capsule_state_bytes(capsule, member)
+    try:
+        text = data.decode("utf-8", "strict")
+    except UnicodeDecodeError as exc:
+        raise SupervisorError("CAPSULE_STATE_FAILURE", f"state member is not valid UTF-8: {rel}", 65) from exc
+    if "\x00" in text:
+        raise SupervisorError("CAPSULE_STATE_FAILURE", f"NUL byte prohibited in state member: {rel}", 65)
+    return rel, text
+
+
+def strict_json_loads(text: str, rel: str) -> Any:
+    def no_duplicate_keys(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
+        result: dict[str, Any] = {}
+        for key, value in pairs:
+            if key in result:
+                raise ValueError(f"duplicate JSON key: {key}")
+            result[key] = value
+        return result
+
+    try:
+        return json.loads(text, object_pairs_hook=no_duplicate_keys)
+    except (json.JSONDecodeError, ValueError) as exc:
+        raise SupervisorError("CAPSULE_STATE_FAILURE", f"invalid state JSON: {rel}: {exc}", 65) from exc
+
+
+def normalize_expected_paths(value: Any, name: str) -> tuple[str, ...]:
+    if isinstance(value, dict):
+        selected = next((value.get(key) for key in ("paths", "expected_dirty_paths", "dirty_paths", "value") if isinstance(value.get(key), list)), None)
+        if selected is not None:
+            value = selected
+        elif all(isinstance(key, str) for key in value):
+            value = list(value)
+    if not isinstance(value, list) or not all(isinstance(item, str) for item in value):
+        raise SupervisorError("CAPSULE_STATE_FAILURE", f"{name} must be a path array or canonical newline path ledger", 65)
+    normalized = []
+    for item in value:
+        if not item or item != item.strip("\r\n"):
+            raise SupervisorError("CAPSULE_STATE_FAILURE", f"empty or line-broken path in {name}", 65)
+        rel = safe_member(item).as_posix()
+        if rel.startswith(".git/") or rel == ".git":
+            raise SupervisorError("CAPSULE_STATE_FAILURE", f"Git metadata path prohibited in {name}: {rel}", 65)
+        normalized.append(rel)
+    if len(normalized) != len(set(normalized)):
+        raise SupervisorError("CAPSULE_STATE_FAILURE", f"duplicate paths in {name}", 65)
+    return tuple(sorted(normalized))
+
+
+def read_expected_paths(capsule: CapsuleInfo, member: str, name: str) -> tuple[str, ...]:
+    rel, text = decode_capsule_state_text(capsule, member)
+    stripped = text.lstrip()
+    if stripped.startswith("[") or stripped.startswith("{"):
+        return normalize_expected_paths(strict_json_loads(text, rel), name)
+    lines = text.splitlines()
+    if not lines:
+        return ()
+    if any(not line for line in lines):
+        raise SupervisorError("CAPSULE_STATE_FAILURE", f"{name} contains an empty canonical path-ledger line: {rel}", 65)
+    return normalize_expected_paths(lines, name)
+
+
+def normalize_expected_hashes(value: Any, name: str) -> dict[str, str | None]:
+    if isinstance(value, dict):
+        selected = next((value.get(key) for key in ("hashes", "files", "sha256") if isinstance(value.get(key), dict)), None)
+        if selected is not None:
+            value = selected
+    if not isinstance(value, dict):
+        raise SupervisorError("CAPSULE_STATE_FAILURE", f"{name} must be a hash object or canonical sha256 ledger", 65)
+    result: dict[str, str | None] = {}
+    for raw_path, raw_expected in value.items():
+        if not isinstance(raw_path, str):
+            raise SupervisorError("CAPSULE_STATE_FAILURE", f"non-string path in {name}", 65)
+        rel = safe_member(raw_path).as_posix()
+        if rel.startswith(".git/") or rel == ".git":
+            raise SupervisorError("CAPSULE_STATE_FAILURE", f"Git metadata path prohibited in {name}: {rel}", 65)
+        if rel in result:
+            raise SupervisorError("CAPSULE_STATE_FAILURE", f"duplicate path in {name}: {rel}", 65)
+        expected = raw_expected
+        if isinstance(expected, dict):
+            expected = expected.get("sha256")
+        if expected is None or expected in {"MISSING", "ABSENT", "missing", "absent"}:
+            result[rel] = None
+        elif isinstance(expected, str) and SHA256_RE.fullmatch(expected):
+            result[rel] = expected
+        else:
+            raise SupervisorError("CAPSULE_STATE_FAILURE", f"invalid SHA-256 expectation for {rel} in {name}", 65)
+    return result
+
+
+def read_expected_hashes(capsule: CapsuleInfo, member: str, name: str) -> dict[str, str | None]:
+    rel, text = decode_capsule_state_text(capsule, member)
+    stripped = text.lstrip()
+    if stripped.startswith("{"):
+        return normalize_expected_hashes(strict_json_loads(text, rel), name)
+    if stripped.startswith("["):
+        raise SupervisorError("CAPSULE_STATE_FAILURE", f"{name} cannot be a JSON array: {rel}", 65)
+
+    result: dict[str, str | None] = {}
+    lines = text.splitlines()
+    if not lines:
+        return result
+    if any(not line for line in lines):
+        raise SupervisorError("CAPSULE_STATE_FAILURE", f"{name} contains an empty canonical hash-ledger line: {rel}", 65)
+    for line_no, line in enumerate(lines, 1):
+        match = re.fullmatch(r"([0-9a-f]{64}|MISSING|ABSENT) ([ *])(.+)", line)
+        if not match:
+            raise SupervisorError(
+                "CAPSULE_STATE_FAILURE",
+                f"invalid canonical hash-ledger line {line_no} in {rel}",
+                65,
+            )
+        raw_digest, _mode, raw_path = match.groups()
+        path = safe_member(raw_path).as_posix()
+        if path.startswith(".git/") or path == ".git":
+            raise SupervisorError("CAPSULE_STATE_FAILURE", f"Git metadata path prohibited in {name}: {path}", 65)
+        if path in result:
+            raise SupervisorError("CAPSULE_STATE_FAILURE", f"duplicate path in {name}: {path}", 65)
+        result[path] = None if raw_digest in {"MISSING", "ABSENT"} else raw_digest
+    return result
+
+
+
+
+def patch_paths_from_bytes(data: bytes) -> tuple[str, ...]:
+    """Return every repository path named by a Git unified patch.
+
+    This is a structural parser only. Git remains authoritative for actual patch
+    applicability. The parser rejects malformed/ambiguous diff headers before a
+    repository mutation can start.
+    """
+    try:
+        text = data.decode("utf-8", "strict")
+    except UnicodeDecodeError as exc:
+        raise SupervisorError("CAPSULE_CROSS_LEDGER_FAILURE", "mutation patch is not UTF-8", 65) from exc
+    paths: set[str] = set()
+    for line_number, line in enumerate(text.splitlines(), 1):
+        if not line.startswith("diff --git "):
+            continue
+        try:
+            parts = shlex.split(line)
+        except ValueError as exc:
+            raise SupervisorError(
+                "CAPSULE_CROSS_LEDGER_FAILURE",
+                f"invalid diff header quoting at line {line_number}",
+                65,
+            ) from exc
+        if len(parts) != 4 or parts[:2] != ["diff", "--git"]:
+            raise SupervisorError("CAPSULE_CROSS_LEDGER_FAILURE", f"invalid diff header at line {line_number}", 65)
+        for raw, prefix in ((parts[2], "a/"), (parts[3], "b/")):
+            if raw == "/dev/null":
+                continue
+            if not raw.startswith(prefix):
+                raise SupervisorError(
+                    "CAPSULE_CROSS_LEDGER_FAILURE",
+                    f"diff path lacks canonical {prefix} prefix at line {line_number}",
+                    65,
+                )
+            rel = safe_member(raw[len(prefix):]).as_posix()
+            if rel.startswith(".git/") or rel == ".git":
+                raise SupervisorError("CAPSULE_CROSS_LEDGER_FAILURE", f"patch touches Git metadata: {rel}", 65)
+            paths.add(rel)
+    if not paths:
+        raise SupervisorError("CAPSULE_CROSS_LEDGER_FAILURE", "mutation patch contains no canonical diff paths", 65)
+    return tuple(sorted(paths))
+
+
+def validate_capsule_cross_ledger(capsule: CapsuleInfo) -> dict[str, Any]:
+    """Prove that mode, state ledgers, protected paths, patch and delivery agree."""
+    lane = capsule.run.get("lane")
+    mode = capsule.run.get("mode")
+    state = capsule.run.get("state")
+    if not isinstance(state, dict):
+        raise SupervisorError("CAPSULE_CROSS_LEDGER_FAILURE", "state must be an object", 65)
+    required = (
+        "pre_expected_dirty_paths", "pre_hashes", "post_expected_dirty_paths",
+        "post_hashes", "protected_hashes",
+    )
+    declared = [name for name in required if isinstance(state.get(name), str) and state.get(name)]
+    if lane != "product" and not declared:
+        if mode == "mutation" or capsule.run.get("patch") is not None:
+            raise SupervisorError("CAPSULE_CROSS_LEDGER_FAILURE", "non-product capsule cannot carry mutation content", 65)
+        return {
+            "pre_path_count": 0, "post_path_count": 0, "changed_path_count": 0,
+            "protected_path_count": 0, "patch_paths": [], "recipe_ids": [],
+        }
+    missing = [name for name in required if name not in declared]
+    if missing:
+        raise SupervisorError("CAPSULE_CROSS_LEDGER_FAILURE", f"state declaration missing members: {missing}", 65)
+
+    pre_paths = read_expected_paths(capsule, state["pre_expected_dirty_paths"], "pre_expected_dirty_paths")
+    post_paths = read_expected_paths(capsule, state["post_expected_dirty_paths"], "post_expected_dirty_paths")
+    pre_hashes = read_expected_hashes(capsule, state["pre_hashes"], "pre_hashes")
+    post_hashes = read_expected_hashes(capsule, state["post_hashes"], "post_hashes")
+    protected = read_expected_hashes(capsule, state["protected_hashes"], "protected_hashes")
+
+    if set(pre_paths) != set(pre_hashes):
+        raise SupervisorError(
+            "CAPSULE_CROSS_LEDGER_FAILURE",
+            f"pre dirty paths/hash keys differ: paths_only={sorted(set(pre_paths)-set(pre_hashes))[:20]} "
+            f"hashes_only={sorted(set(pre_hashes)-set(pre_paths))[:20]}",
+            65,
+        )
+    if set(post_paths) != set(post_hashes):
+        raise SupervisorError(
+            "CAPSULE_CROSS_LEDGER_FAILURE",
+            f"post dirty paths/hash keys differ: paths_only={sorted(set(post_paths)-set(post_hashes))[:20]} "
+            f"hashes_only={sorted(set(post_hashes)-set(post_paths))[:20]}",
+            65,
+        )
+    all_paths = set(pre_hashes) | set(post_hashes)
+    missing_marker = object()
+    changed = {
+        rel for rel in all_paths
+        if pre_hashes.get(rel, missing_marker) != post_hashes.get(rel, missing_marker)
+    }
+    protected_overlap = changed & set(protected)
+    if protected_overlap:
+        raise SupervisorError(
+            "CAPSULE_CROSS_LEDGER_FAILURE",
+            f"intentionally changed paths are also protected: {sorted(protected_overlap)}",
+            65,
+        )
+
+    patch_paths: tuple[str, ...] = ()
+    if mode == "mutation":
+        patch_rel = safe_member(capsule.run["patch"]["path"]).as_posix()
+        with zipfile.ZipFile(capsule.path) as zf:
+            patch_paths = patch_paths_from_bytes(read_zip_member(zf, patch_rel, max_bytes=MAX_SINGLE_UNCOMPRESSED))
+        if set(patch_paths) != changed:
+            raise SupervisorError(
+                "CAPSULE_CROSS_LEDGER_FAILURE",
+                f"patch paths do not exactly explain pre/post hash changes: "
+                f"patch_only={sorted(set(patch_paths)-changed)} ledger_only={sorted(changed-set(patch_paths))}",
+                65,
+            )
+    elif changed:
+        raise SupervisorError(
+            "CAPSULE_CROSS_LEDGER_FAILURE",
+            f"non-mutation mode declares changed pre/post bytes: {sorted(changed)[:20]}",
+            65,
+        )
+
+    recipes = capsule.run.get("recipes")
+    if not isinstance(recipes, list):
+        raise SupervisorError("CAPSULE_CROSS_LEDGER_FAILURE", "recipes must be an array", 65)
+    if lane == "product" and not recipes:
+        raise SupervisorError("CAPSULE_CROSS_LEDGER_FAILURE", "at least one declared recipe is required", 65)
+    recipe_ids: set[str] = set()
+    for index, recipe in enumerate(recipes):
+        if not isinstance(recipe, dict):
+            raise SupervisorError("CAPSULE_CROSS_LEDGER_FAILURE", f"recipe {index} is not an object", 65)
+        recipe_id = require_string(recipe.get("id"), f"recipes[{index}].id", SAFE_ID)
+        if recipe_id in recipe_ids:
+            raise SupervisorError("CAPSULE_CROSS_LEDGER_FAILURE", f"duplicate recipe id: {recipe_id}", 65)
+        recipe_ids.add(recipe_id)
+        if recipe.get("required") is not True:
+            raise SupervisorError("CAPSULE_CROSS_LEDGER_FAILURE", f"recipe must be required: {recipe_id}", 65)
+        params = recipe.get("params")
+        timeout = params.get("timeout") if isinstance(params, dict) else None
+        if not isinstance(timeout, int) or isinstance(timeout, bool) or not 1 <= timeout <= 24 * 60 * 60:
+            raise SupervisorError("CAPSULE_CROSS_LEDGER_FAILURE", f"recipe timeout is invalid: {recipe_id}", 65)
+
+    baseline = capsule.run["baseline"]
+    delivery = capsule.run["delivery"]
+    scope = execution_scope_from_run(capsule.run)
+    profile = scope["execution_profile"]
+    if lane == "product":
+        if delivery.get("branch") != baseline.get("branch"):
+            raise SupervisorError("CAPSULE_CROSS_LEDGER_FAILURE", "delivery branch differs from baseline branch", 65)
+        expected_commit_push = profile == "promotion_qualification"
+        if delivery.get("commit_push") is not expected_commit_push:
+            raise SupervisorError("CAPSULE_CROSS_LEDGER_FAILURE", f"{profile} requires delivery.commit_push={str(expected_commit_push).lower()}", 65)
+        remote = require_string(delivery.get("remote"), "delivery.remote", SAFE_ID)
+        upstream = str(baseline.get("upstream"))
+        if upstream != f"{remote}/{baseline.get('branch')}":
+            raise SupervisorError("CAPSULE_CROSS_LEDGER_FAILURE", f"delivery remote/branch does not equal baseline upstream: {remote}/{baseline.get('branch')} != {upstream}", 65)
+    return {
+        "pre_path_count": len(pre_paths),
+        "post_path_count": len(post_paths),
+        "changed_path_count": len(changed),
+        "protected_path_count": len(protected),
+        "patch_paths": list(patch_paths),
+        "recipe_ids": sorted(recipe_ids),
+        "execution_profile": profile,
+        "execution_scope": scope,
+    }
+
+
+def resolve_repo_member(repo: Path, rel: str) -> Path:
+    candidate = (repo / rel).resolve(strict=False)
+    try:
+        candidate.relative_to(repo.resolve())
+    except ValueError as exc:
+        raise SupervisorError("CAPSULE_STATE_FAILURE", f"state path escapes repository: {rel}", 65) from exc
+    return candidate
+
+
+def verify_hash_ledger(repo: Path, expected: dict[str, str | None], name: str) -> None:
+    mismatches: dict[str, dict[str, str | None]] = {}
+    for rel, digest in expected.items():
+        path = resolve_repo_member(repo, rel)
+        if path.is_symlink():
+            actual = "SYMLINK"
+        elif not path.exists():
+            actual = None
+        elif not path.is_file():
+            actual = "NOT_REGULAR"
+        else:
+            actual = sha256_file(path)
+        if actual != digest:
+            mismatches[rel] = {"expected": digest, "actual": actual}
+    if mismatches:
+        preview = dict(list(sorted(mismatches.items()))[:20])
+        raise SupervisorError("REPOSITORY_HASH_FAILURE", f"{name} mismatch ({len(mismatches)} paths): {preview}", 69)
+
+
+def verify_declared_pre_state(repo: Path, capsule: CapsuleInfo, repo_info: RepoInfo) -> dict[str, Any]:
+    state = capsule.run["state"]
+    required = ("pre_expected_dirty_paths", "pre_hashes", "protected_hashes")
+    missing = [key for key in required if not isinstance(state.get(key), str) or not state.get(key)]
+    if missing:
+        raise SupervisorError("CAPSULE_STATE_FAILURE", f"state declaration missing members: {missing}", 65)
+    expected_dirty = read_expected_paths(
+        capsule, state["pre_expected_dirty_paths"], "pre_expected_dirty_paths"
+    )
+    if repo_info.dirty_paths != expected_dirty:
+        missing_paths = sorted(set(expected_dirty) - set(repo_info.dirty_paths))
+        extra_paths = sorted(set(repo_info.dirty_paths) - set(expected_dirty))
+        raise SupervisorError(
+            "REPOSITORY_DIRTY_STATE_FAILURE",
+            f"dirty paths mismatch missing={missing_paths[:30]} extra={extra_paths[:30]}",
+            69,
+        )
+    pre_hashes = read_expected_hashes(capsule, state["pre_hashes"], "pre_hashes")
+    protected_hashes = read_expected_hashes(capsule, state["protected_hashes"], "protected_hashes")
+    verify_hash_ledger(repo, pre_hashes, "pre_hashes")
+    verify_hash_ledger(repo, protected_hashes, "protected_hashes")
+    return {
+        "dirty_path_count": len(expected_dirty),
+        "pre_hash_count": len(pre_hashes),
+        "protected_hash_count": len(protected_hashes),
+    }
+
+
+
+def verify_declared_post_state(repo: Path, capsule: CapsuleInfo, repo_info: RepoInfo) -> dict[str, Any]:
+    state = capsule.run["state"]
+    required = ("post_expected_dirty_paths", "post_hashes", "protected_hashes")
+    missing = [key for key in required if not isinstance(state.get(key), str) or not state.get(key)]
+    if missing:
+        raise SupervisorError("CAPSULE_STATE_FAILURE", f"post-state declaration missing members: {missing}", 65)
+    expected_dirty = read_expected_paths(
+        capsule, state["post_expected_dirty_paths"], "post_expected_dirty_paths"
+    )
+    if repo_info.dirty_paths != expected_dirty:
+        missing_paths = sorted(set(expected_dirty) - set(repo_info.dirty_paths))
+        extra_paths = sorted(set(repo_info.dirty_paths) - set(expected_dirty))
+        raise SupervisorError(
+            "REPOSITORY_DIRTY_STATE_FAILURE",
+            f"post dirty paths mismatch missing={missing_paths[:30]} extra={extra_paths[:30]}",
+            69,
+        )
+    post_hashes = read_expected_hashes(capsule, state["post_hashes"], "post_hashes")
+    protected_hashes = read_expected_hashes(capsule, state["protected_hashes"], "protected_hashes")
+    verify_hash_ledger(repo, post_hashes, "post_hashes")
+    verify_hash_ledger(repo, protected_hashes, "protected_hashes")
+    return {
+        "dirty_path_count": len(expected_dirty),
+        "post_hash_count": len(post_hashes),
+        "protected_hash_count": len(protected_hashes),
+    }
+
+
+def probe_repo_and_state(repo: Path, capsule: CapsuleInfo) -> tuple[RepoInfo, dict[str, Any]]:
+    info = probe_repo(repo, capsule.run)
+    try:
+        state_summary = verify_declared_pre_state(repo, capsule, info)
+    except SupervisorError as pre_error:
+        if capsule.run.get("mode") == "mutation":
+            try:
+                post_summary = verify_declared_post_state(repo, capsule, info)
+            except SupervisorError:
+                raise pre_error
+            raise SupervisorError(
+                "DUPLICATE_MUTATION_CAPSULE_POST_STATE",
+                (
+                    "repository exactly matches this mutation capsule's declared post-state; "
+                    "the mutation was already applied by an earlier run and replay is prohibited. "
+                    "The prior canonical review ZIP is preserved. Use 'sg recover-artifact <run-id>' "
+                    "to republish an earlier run artifact without executing the product again."
+                ),
+                73,
+            )
+        raise
+    return info, state_summary
+
+
+def sanitized_env() -> dict[str, str]:
+    keep = {
+        "HOME", "PATH", "TMPDIR", "LANG", "LC_ALL", "LC_CTYPE", "USER", "LOGNAME", "SHELL",
+        "SSH_AUTH_SOCK", "TERM", "COLORTERM", "XDG_CONFIG_HOME", "XDG_CACHE_HOME", "XDG_STATE_HOME",
+        "SYSGRID_CONTROL_ROOT", "SYSGRID_REPO", "SYSGRID_NOTIFY_CMD", "SYSGRID_NOTIFY_DISABLE",
+    }
+    env = {key: value for key, value in os.environ.items() if key in keep}
+    env.update({
+        "PYTHONDONTWRITEBYTECODE": "1",
+        "PYTHONNOUSERSITE": "1",
+        "PYTHONUNBUFFERED": "1",
+        "GIT_TERMINAL_PROMPT": "0",
+        "GCM_INTERACTIVE": "Never",
+        "LC_ALL": env.get("LC_ALL") or "C",
+    })
+    plan = resource_plan()
+    env.update({
+        "SYSGRID_CPU_COUNT": str(plan["cpu_count"]),
+        "SYSGRID_MEMORY_BYTES": str(plan["memory_bytes"]),
+        "SYSGRID_TEST_CPU_BUDGET": str(plan["test_cpu_budget"]),
+        "SYSGRID_BACKEND_WORKERS": str(plan["backend_workers"]),
+        "SYSGRID_FRONTEND_WORKERS": str(plan["frontend_workers"]),
+        "SYSGRID_E2E_WORKERS": str(plan["e2e_workers"]),
+        "SYSGRID_MAX_PARALLEL": str(plan["test_cpu_budget"]),
+    })
+    return env
+
+
+def candidate_engine_paths() -> Iterator[Path]:
+    explicit = os.environ.get("SYSGRID_ENGINE")
+    if explicit:
+        yield Path(explicit).expanduser()
+    record = config_root() / "config.json"
+    if record.is_file():
+        with contextlib.suppress(Exception):
+            value = json.loads(record.read_text(encoding="utf-8")).get("engine_path")
+            if value:
+                yield Path(value).expanduser()
+    common = [
+        Path.home() / ".local/share/sysgrid-runner",
+        Path.home() / ".local/lib/sysgrid-runner",
+        Path.home() / ".local/lib",
+        Path.home() / ".local/share",
+        Path.home() / ".local/bin",
+    ]
+    for direct in [
+        Path.home() / ".local/share/sysgrid-runner/current/sysgrid_runner.py",
+        Path.home() / ".local/share/sysgrid-runner/engine-v1.0.4/sysgrid_runner.py",
+        Path.home() / ".local/lib/sysgrid-runner/current/sysgrid_runner.py",
+    ]:
+        yield direct
+    visited = 0
+    for root in common:
+        if not root.is_dir():
+            continue
+        root_depth = len(root.parts)
+        for current, dirs, files in os.walk(root):
+            depth = len(Path(current).parts) - root_depth
+            if depth >= 8:
+                dirs[:] = []
+            dirs[:] = sorted(d for d in dirs if not d.startswith("."))
+            for name in sorted(files):
+                visited += 1
+                if visited > 30000:
+                    return
+                if name.endswith(".py") or "engine" in name.lower() or "runner" in name.lower():
+                    yield Path(current) / name
+
+
+def discover_engine(*, expected_sha: str = ENGINE_SHA256, deep: bool = True) -> Path:
+    seen: set[Path] = set()
+    for candidate in candidate_engine_paths():
+        with contextlib.suppress(OSError):
+            candidate = candidate.resolve()
+        if candidate in seen:
+            continue
+        seen.add(candidate)
+        try:
+            st = candidate.stat()
+        except OSError:
+            continue
+        if not stat.S_ISREG(st.st_mode) or st.st_size <= 0 or st.st_size > MAX_ENGINE_BYTES:
+            continue
+        try:
+            if sha256_file(candidate) == expected_sha:
+                return candidate
+        except OSError:
+            continue
+        if not deep and len(seen) >= 5:
+            break
+    raise SupervisorError("ENGINE_IDENTITY_FAILURE", f"exact qualified engine SHA-256 {expected_sha} was not found", 67)
+
+
+def verify_engine(engine: Path, expected_sha: str = ENGINE_SHA256) -> dict[str, Any]:
+    got = sha256_file(engine)
+    if got != expected_sha:
+        raise SupervisorError("ENGINE_IDENTITY_FAILURE", f"engine digest mismatch: expected {expected_sha}, got {got}", 67)
+    completed = subprocess.run(
+        [sys.executable, str(engine), "self-test"], stdin=subprocess.DEVNULL,
+        stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, timeout=60,
+        check=False, env=sanitized_env(),
+    )
+    if completed.returncode:
+        raise SupervisorError("ENGINE_SELF_TEST_FAILURE", f"engine self-test exit {completed.returncode}: {(completed.stderr or completed.stdout)[:1000]}", 67)
+    try:
+        data = json.loads(completed.stdout)
+    except json.JSONDecodeError as exc:
+        raise SupervisorError("ENGINE_SELF_TEST_FAILURE", "engine self-test did not return JSON", 67) from exc
+    if data.get("engine_version") != ENGINE_VERSION or data.get("result") != "PASS":
+        raise SupervisorError("ENGINE_SELF_TEST_FAILURE", f"unexpected engine self-test result: {data}", 67)
+    return data
+
+
+def verify_storage(control: Path, capsule_size: int) -> dict[str, Any]:
+    outbox = control / "Outbox"
+    outbox.mkdir(parents=True, exist_ok=True)
+    local = state_root()
+    local.mkdir(parents=True, exist_ok=True)
+    required = max(512 * 1024 * 1024, capsule_size * 8)
+    free_local = shutil.disk_usage(local).free
+    free_control = shutil.disk_usage(outbox).free
+    if free_local < required:
+        raise SupervisorError("RESOURCE_PREFLIGHT_FAILURE", f"local free space {free_local} below required {required}", 68)
+    if free_control < required:
+        raise SupervisorError("RESOURCE_PREFLIGHT_FAILURE", f"control-root free space {free_control} below required {required}", 68)
+    probes = [local / f".write-probe-{os.getpid()}", outbox / f".write-probe-{os.getpid()}"]
+    try:
+        for probe in probes:
+            atomic_write_bytes(probe, b"probe\n")
+            probe.unlink()
+            fsync_dir(probe.parent)
+    finally:
+        for probe in probes:
+            with contextlib.suppress(OSError):
+                probe.unlink()
+    return {"local_free": free_local, "control_free": free_control, "required": required}
+
+
+def extract_patch_for_check(capsule: CapsuleInfo, destination: Path) -> Path | None:
+    if capsule.run.get("mode") != "mutation":
+        return None
+    patch_rel = capsule.run["patch"]["path"]
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    with zipfile.ZipFile(capsule.path) as zf:
+        data = read_zip_member(zf, patch_rel, max_bytes=MAX_SINGLE_UNCOMPRESSED)
+    atomic_write_bytes(destination, data)
+    if sha256_file(destination) != capsule.run["patch"]["sha256"]:
+        raise SupervisorError("PATCH_IDENTITY_FAILURE", "staged patch digest mismatch", 65)
+    return destination
+
+
+def bounded_git_diagnostic(completed: subprocess.CompletedProcess[str]) -> str:
+    detail = (completed.stderr or completed.stdout or "(no Git diagnostic)").replace("\x00", "").strip()
+    return detail[:2000]
+
+
+def patch_state_precheck(repo: Path, capsule: CapsuleInfo, work: Path) -> dict[str, Any]:
+    patch = extract_patch_for_check(capsule, work / "patch.diff")
+    if not patch:
+        return {"applicable": None, "reverse_applicable": None}
+    forward = run_git(repo, "apply", "--check", "--verbose", str(patch), check=False, timeout=60)
+    reverse = run_git(repo, "apply", "--check", "--reverse", "--verbose", str(patch), check=False, timeout=60)
+    forward_ok = forward.returncode == 0
+    reverse_ok = reverse.returncode == 0
+    result = {
+        "applicable": forward_ok,
+        "reverse_applicable": reverse_ok,
+        "forward_exit_code": forward.returncode,
+        "reverse_exit_code": reverse.returncode,
+        "forward_diagnostic": bounded_git_diagnostic(forward),
+        "reverse_diagnostic": bounded_git_diagnostic(reverse),
+    }
+    mode = capsule.run["mode"]
+    if mode == "mutation" and not (forward_ok and not reverse_ok):
+        if reverse_ok and not forward_ok:
+            reason = "patch already appears applied; mutation replay refused"
+        elif forward_ok and reverse_ok:
+            reason = "patch is ambiguous because both forward and reverse checks pass"
+        else:
+            reason = "patch is not forward-applicable to the exact declared repository pre-state"
+        raise SupervisorError(
+            "PATCH_STATE_FAILURE",
+            f"{reason}; forward={result['forward_diagnostic']}; reverse={result['reverse_diagnostic']}",
+            69,
+        )
+    return result
+
+
+def archive_duplicate_capsule(path: Path, control: Path, digest: str) -> Path:
+    archive = control / "Archive" / "Duplicate-Capsules"
+    archive.mkdir(parents=True, exist_ok=True)
+    stamp = dt.datetime.now(dt.timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+    safe_name = re.sub(r"[^A-Za-z0-9_.+-]", "_", path.name)
+    target = archive / f"{stamp}__{digest[:12]}__{safe_name}"
+    counter = 1
+    while target.exists():
+        target = archive / f"{stamp}__{digest[:12]}__{counter}__{safe_name}"
+        counter += 1
+    copy_verified_atomic(path, target, digest)
+    path.unlink()
+    fsync_dir(path.parent)
+    return target
+
+
+def select_capsule(explicit: Path | None, control: Path) -> Path:
+    if explicit:
+        path = explicit.expanduser()
+        if not path.is_absolute():
+            path = (Path.cwd() / path).resolve()
+        if not path.is_file() or path.is_symlink():
+            raise SupervisorError("CAPSULE_SELECTION_FAILURE", f"capsule not found: {path}", 66)
+        return path
+    inbox = control / "Inbox"
+    inbox.mkdir(parents=True, exist_ok=True)
+    candidates = sorted(
+        p for p in inbox.iterdir()
+        if p.is_file() and not p.is_symlink() and p.suffix.lower() == ".sgcap" and not p.name.startswith(".")
+    )
+    if not candidates:
+        raise SupervisorError("CAPSULE_SELECTION_FAILURE", "Inbox must contain one capsule; found 0", 66)
+    if len(candidates) == 1:
+        return candidates[0]
+    grouped: dict[str, list[Path]] = {}
+    for candidate in candidates:
+        grouped.setdefault(sha256_file(candidate), []).append(candidate)
+    if len(grouped) != 1:
+        identities = ", ".join(f"{digest[:12]}:{len(paths)}" for digest, paths in sorted(grouped.items()))
+        raise SupervisorError(
+            "CAPSULE_SELECTION_FAILURE",
+            f"Inbox contains {len(candidates)} capsules with {len(grouped)} distinct identities ({identities}); exact choice is ambiguous",
+            66,
+        )
+    digest, identical = next(iter(grouped.items()))
+    selected = sorted(identical, key=lambda p: (p.name, str(p)))[0]
+    for duplicate in identical:
+        if duplicate != selected:
+            archive_duplicate_capsule(duplicate, control, digest)
+    return selected
+
+
+@contextlib.contextmanager
+def exclusive_run_lock() -> Iterator[Path]:
+    root = state_root()
+    root.mkdir(parents=True, exist_ok=True)
+    lock_path = root / "run.lock"
+    lock_file = lock_path.open("a+")
+    try:
+        try:
+            fcntl.flock(lock_file.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+        except OSError as exc:
+            if exc.errno in {errno.EACCES, errno.EAGAIN}:
+                raise SupervisorError("RUN_ALREADY_ACTIVE", "another SysGrid supervisor owns the run lock", 73) from exc
+            raise
+        lock_file.seek(0)
+        lock_file.truncate()
+        lock_file.write(json.dumps({"pid": os.getpid(), "started_utc": now_utc()}) + "\n")
+        lock_file.flush()
+        os.fsync(lock_file.fileno())
+        yield lock_path
+    finally:
+        with contextlib.suppress(OSError):
+            fcntl.flock(lock_file.fileno(), fcntl.LOCK_UN)
+        lock_file.close()
+
+
+def write_state(value: dict[str, Any]) -> None:
+    value = {**value, "supervisor_version": SUPERVISOR_VERSION, "updated_utc": now_utc()}
+    safe_value = json_safe(value)
+    atomic_write_json(state_root() / "latest.json", safe_value)
+    work_raw = value.get("work_dir")
+    if isinstance(work_raw, str):
+        work = Path(work_raw).resolve(strict=False)
+        runs_root = (state_root() / "runs").resolve(strict=False)
+        with contextlib.suppress(ValueError):
+            work.relative_to(runs_root)
+            if not work.is_symlink():
+                work.mkdir(parents=True, exist_ok=True)
+                atomic_write_json(work / "SUPERVISOR_STATE.json", safe_value)
+
+
+def parse_utc(value: str | None) -> dt.datetime | None:
+    if not value:
+        return None
+    try:
+        return dt.datetime.fromisoformat(value.replace("Z", "+00:00"))
+    except ValueError:
+        return None
+
+
+def elapsed_seconds_since(value: str | None) -> float | None:
+    started = parse_utc(value)
+    if not started:
+        return None
+    return max(0.0, (dt.datetime.now(dt.timezone.utc) - started).total_seconds())
+
+
+def runtime_summary_from_artifact(artifact: Path) -> dict[str, Any]:
+    summary: dict[str, Any] = {"artifact": str(artifact)}
+    with zipfile.ZipFile(artifact) as zf:
+        names = set(zf.namelist())
+        if "RESULT.json" in names:
+            result = json.loads(read_zip_member(zf, "RESULT.json").decode("utf-8"))
+            summary.update({
+                "result": result.get("result"),
+                "classification": result.get("classification"),
+                "failed_stage": result.get("failed_stage"),
+                "started_utc": result.get("started_utc"),
+                "finished_utc": result.get("finished_utc"),
+            })
+            started = parse_utc(result.get("started_utc"))
+            finished = parse_utc(result.get("finished_utc"))
+            if started and finished:
+                summary["engine_total_seconds"] = round(max(0.0, (finished - started).total_seconds()), 3)
+        if "COMMANDS.json" in names:
+            commands = json.loads(read_zip_member(zf, "COMMANDS.json").decode("utf-8"))
+            if isinstance(commands, list):
+                summary["commands"] = [
+                    {
+                        "recipe_id": row.get("recipe_id"),
+                        "duration_seconds": row.get("duration_seconds"),
+                        "exit_code": row.get("exit_code"),
+                        "timed_out": row.get("timed_out"),
+                    }
+                    for row in commands if isinstance(row, dict)
+                ]
+    return summary
+
+
+def append_runtime_history(record: dict[str, Any]) -> None:
+    path = state_root() / "runtime-history.jsonl"
+    path.parent.mkdir(parents=True, exist_ok=True)
+    payload = (json.dumps(json_safe(record), sort_keys=True) + "\n").encode("utf-8")
+    fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_APPEND, 0o600)
+    try:
+        with os.fdopen(fd, "ab", closefd=True) as stream:
+            stream.write(payload)
+            stream.flush()
+            os.fsync(stream.fileno())
+    finally:
+        fsync_dir(path.parent)
+
+
+def _state_elapsed_seconds(state: dict[str, Any]) -> float:
+    started = state.get("monotonic_started")
+    if isinstance(started, (int, float)):
+        return max(0.0, time.monotonic() - float(started))
+    return float(elapsed_seconds_since(state.get("started_utc")) or 0.0)
+
+
+
+def _capsule_display(state: dict[str, Any]) -> str:
+    name = str(state.get("capsule_file") or "pending capsule")
+    attempt = state.get("attempt")
+    title = str(state.get("capsule_title") or state.get("capsule_stage") or "").strip()
+    prefix = f"Attempt {int(attempt):02d}" if isinstance(attempt, int) else "Attempt pending"
+    return f"{prefix} — {title or name}"
+
+
+def _local_notification_record(event_id: str) -> dict[str, Any]:
+    return {
+        "event_id": event_id,
+        "status": "local_only",
+        "required": False,
+        "presentation_mode": "summary",
+        "updated_utc": now_utc(),
+    }
+
+
+def _telegram_presentation_for_event(
+    event_id: str,
+    status: str,
+    state: dict[str, Any],
+    details: dict[str, Any] | None,
+) -> tuple[str, str, bool] | None:
+    issue = state.get("issue") or "SysGrid"
+    run_id = str(state.get("run_id") or "unknown-run")
+    elapsed = round(_state_elapsed_seconds(state), 3)
+    elapsed_text = f"{int(elapsed // 60)}m {int(elapsed % 60)}s"
+    if event_id == "capsule_verified" and status == "passed":
+        return (
+            "run_started",
+            (
+                f"SysGrid {issue} — run started\n"
+                f"{_capsule_display(state)}\n"
+                f"Capsule: {state.get('capsule_file')}\n"
+                f"Status: exact preflight and full application verification starting.\n"
+                f"Run: {run_id}"
+            ),
+            True,
+        )
+    if event_id == TELEGRAM_SUMMARY_PROGRESS_EVENT and status in {"started", "passed"}:
+        observed = state.get("product_event_status")
+        observed = observed if isinstance(observed, dict) else {}
+        summary = " | ".join(
+            f"{label}: {str(observed.get(key, 'pending')).upper()}"
+            for key, label in (
+                ("static_completed", "Static"),
+                ("backend_completed", "Backend"),
+                ("frontend_completed", "Frontend"),
+                ("build_completed", "Build"),
+            )
+        )
+        return (
+            "run_progress",
+            (
+                f"SysGrid {issue} — verification progress\n"
+                f"{_capsule_display(state)}\n"
+                f"{summary}\n"
+                f"Next: runtime and Playwright verification.\n"
+                f"Elapsed: {elapsed_text}\n"
+                f"Run: {run_id}"
+            ),
+            False,
+        )
+    if event_id == "publication_completed":
+        result_word = "completed" if status == "passed" else "failed"
+        classification = state.get("classification") or (details or {}).get("classification") or "pending"
+        return (
+            "run_completed",
+            (
+                f"SysGrid {issue} — run {result_word}\n"
+                f"{_capsule_display(state)}\n"
+                f"Classification: {classification}\n"
+                f"Elapsed: {elapsed_text}\n"
+                f"Review ZIP: {state.get('artifact') or 'not published'}\n"
+                f"Run: {run_id}"
+            ),
+            False,
+        )
+    return None
+
+
+def emit_progress_event(
+    event_id: str,
+    message: str,
+    state: dict[str, Any],
+    *,
+    status: str = "started",
+    details: dict[str, Any] | None = None,
+    required_notification: bool | None = None,
+) -> dict[str, Any]:
+    definition = PROGRESS_EVENT_REGISTRY.get(event_id)
+    if not isinstance(definition, dict):
+        raise SupervisorError("PROGRESS_EVENT_FAILURE", f"unregistered progress event: {event_id}", 76)
+    if status not in {"started", "passed", "failed", "skipped", "heartbeat"}:
+        raise SupervisorError("PROGRESS_EVENT_FAILURE", f"invalid event status for {event_id}: {status}", 76)
+    elapsed = round(_state_elapsed_seconds(state), 3)
+    run_id = str(state.get("run_id") or "unknown-run")
+    print(f"[{event_id}] {message}", flush=True)
+    presentation = _telegram_presentation_for_event(event_id, status, state, details)
+    if presentation is None:
+        record = _local_notification_record(event_id)
+    else:
+        telegram_event_id, telegram_text, policy_required = presentation
+        required = policy_required if required_notification is None else bool(required_notification and policy_required)
+        record = deliver_notification_event(
+            run_id=run_id,
+            event_id=telegram_event_id,
+            message=telegram_text,
+            required=required,
+            retries=None,
+        )
+    timeline = state.setdefault("event_timeline", [])
+    entry = {
+        "event_id": event_id,
+        "status": status,
+        "message": message,
+        "elapsed_seconds": elapsed,
+        "utc": now_utc(),
+        "details": json_safe(details or {}),
+        "notification": record,
+    }
+    if isinstance(timeline, list):
+        timeline.append(entry)
+    state["last_progress_event"] = event_id
+    state["last_progress_status"] = status
+    state["last_progress_message"] = message
+    state["last_progress_utc"] = entry["utc"]
+    state.setdefault("notification_events", {})[event_id] = record
+    write_state(state)
+    return entry
+
+
+def progress(step: int, total: int, message: str, state: dict[str, Any] | None = None, *, required_notification: bool | None = None) -> None:
+    """Compatibility console progress for recovery paths from older state records."""
+    print(f"[{step}/{total}] {message}", flush=True)
+    if state is None:
+        return
+    run_id = str(state.get("run_id") or "unknown-run")
+    required = (not bool(state.get("engine_started"))) if required_notification is None else required_notification
+    issue = state.get("issue") or "SysGrid"
+    text = f"SysGrid {issue} — recovery step {step}/{total}\n{message}\nRun: {run_id}"
+    event_id = f"recovery-step-{step}-{sha256_bytes(text.encode('utf-8'))[:12]}"
+    record = deliver_notification_event(
+        run_id=run_id, event_id=event_id, message=text, required=required, retries=None,
+    )
+    state.setdefault("notification_events", {})[event_id] = record
+    state["last_progress_message"] = message
+    state["last_progress_utc"] = now_utc()
+    write_state(state)
+
+
+def consume_product_progress(path: Path, offset: int, state: dict[str, Any]) -> int:
+    """Consume append-only trusted recipe progress without granting mutation authority."""
+    if not path.is_file() or path.is_symlink():
+        return offset
+    size = path.stat().st_size
+    if size > 4 * 1024 * 1024:
+        raise SupervisorError("PRODUCT_PROGRESS_FAILURE", "product progress file exceeds 4 MiB", 74)
+    if size < offset:
+        raise SupervisorError("PRODUCT_PROGRESS_FAILURE", "product progress file was truncated", 74)
+    with path.open("rb") as stream:
+        stream.seek(offset)
+        data = stream.read(256 * 1024)
+    consumed = 0
+    for raw_line in data.splitlines(keepends=True):
+        if not raw_line.endswith(b"\n"):
+            break
+        consumed += len(raw_line)
+        if len(raw_line) > 16 * 1024:
+            raise SupervisorError("PRODUCT_PROGRESS_FAILURE", "product progress line exceeds 16 KiB", 74)
+        try:
+            row = json.loads(raw_line.decode("utf-8", "strict"))
+        except (UnicodeDecodeError, json.JSONDecodeError) as exc:
+            raise SupervisorError("PRODUCT_PROGRESS_FAILURE", "invalid product progress JSONL", 74) from exc
+        if not isinstance(row, dict):
+            raise SupervisorError("PRODUCT_PROGRESS_FAILURE", "product progress row must be an object", 74)
+        if row.get("run_id") != state.get("run_id"):
+            raise SupervisorError("PRODUCT_PROGRESS_FAILURE", "product progress run ID mismatch", 74)
+        sequence = row.get("sequence")
+        last_sequence = int(state.get("product_progress_sequence", 0) or 0)
+        if not isinstance(sequence, int) or isinstance(sequence, bool) or sequence <= last_sequence:
+            raise SupervisorError("PRODUCT_PROGRESS_FAILURE", "product progress sequence is not strictly increasing", 74)
+        event_id = row.get("event_id")
+        definition = PROGRESS_EVENT_REGISTRY.get(str(event_id))
+        if not isinstance(definition, dict) or definition.get("phase") != "product":
+            raise SupervisorError("PRODUCT_PROGRESS_FAILURE", f"unregistered product progress event: {event_id}", 74)
+        message = row.get("message")
+        if not isinstance(message, str) or not message.strip() or len(message) > 2000:
+            raise SupervisorError("PRODUCT_PROGRESS_FAILURE", f"invalid product progress message: {event_id}", 74)
+        status = row.get("status", "started")
+        details = row.get("details") if isinstance(row.get("details"), dict) else {}
+        state["product_progress_sequence"] = sequence
+        state["product_progress_last_event"] = event_id
+        state["product_progress_last_utc"] = now_utc()
+        state.setdefault("product_event_status", {})[str(event_id)] = str(status)
+        emit_progress_event(str(event_id), message.strip(), state, status=str(status), details=details, required_notification=False)
+    return offset + consumed
+
+
+def process_tree_metrics(root_pid: int) -> dict[str, Any]:
+    """Read bounded aggregate process-tree utilization for status/heartbeat only."""
+    try:
+        completed = subprocess.run(
+            ["ps", "-axo", "pid=,ppid=,%cpu=,rss=,state="],
+            stdin=subprocess.DEVNULL,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.DEVNULL,
+            text=True,
+            timeout=5,
+            check=False,
+            env=sanitized_env(),
+        )
+    except (OSError, subprocess.TimeoutExpired):
+        return {"available": False}
+    rows: dict[int, tuple[int, float, int, str]] = {}
+    for line in completed.stdout.splitlines():
+        parts = line.split(None, 4)
+        if len(parts) != 5:
+            continue
+        try:
+            pid, ppid = int(parts[0]), int(parts[1])
+            cpu, rss_kib = float(parts[2]), int(parts[3])
+        except ValueError:
+            continue
+        rows[pid] = (ppid, cpu, rss_kib, parts[4])
+    selected = {root_pid}
+    changed = True
+    while changed:
+        changed = False
+        for pid, (ppid, _cpu, _rss, _state) in rows.items():
+            if ppid in selected and pid not in selected:
+                selected.add(pid)
+                changed = True
+    present = [rows[pid] for pid in selected if pid in rows]
+    if not present:
+        return {"available": False}
+    return {
+        "available": True,
+        "process_count": len(present),
+        "cpu_percent": round(sum(item[1] for item in present), 2),
+        "rss_bytes": sum(item[2] for item in present) * 1024,
+        "states": sorted({item[3] for item in present}),
+    }
+
+
+def latest_activity_age_seconds(paths: Sequence[Path]) -> float | None:
+    mtimes = []
+    for path in paths:
+        with contextlib.suppress(OSError):
+            if path.is_file() and not path.is_symlink():
+                mtimes.append(path.stat().st_mtime)
+    if not mtimes:
+        return None
+    return max(0.0, time.time() - max(mtimes))
+
+
+def pid_command(pid: int) -> str | None:
+    if pid <= 1:
+        return None
+    try:
+        os.kill(pid, 0)
+    except ProcessLookupError:
+        return None
+    except PermissionError as exc:
+        raise SupervisorError("PROCESS_IDENTITY_FAILURE", f"cannot inspect active process {pid}", 73) from exc
+    completed = subprocess.run(
+        ["ps", "-p", str(pid), "-o", "command="],
+        stdin=subprocess.DEVNULL, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL,
+        text=True, check=False, timeout=5, env=sanitized_env(),
+    )
+    command = completed.stdout.strip()
+    if completed.returncode == 0 and command:
+        return command
+    try:
+        os.kill(pid, 0)
+    except ProcessLookupError:
+        return None
+    raise SupervisorError("PROCESS_IDENTITY_FAILURE", f"process {pid} exists but its command identity could not be read", 73)
+
+
+def process_matches(pid: int, required_tokens: Sequence[str]) -> bool:
+    command = pid_command(pid)
+    return bool(command and all(token and token in command for token in required_tokens))
+
+
+def bounded_recovery_wait() -> int:
+    raw = os.environ.get("SYSGRID_RECOVERY_WAIT_SECONDS", str(DEFAULT_RECOVERY_WAIT_SECONDS))
+    try:
+        value = int(raw)
+    except ValueError:
+        value = DEFAULT_RECOVERY_WAIT_SECONDS
+    return min(24 * 60 * 60, max(60, value))
+
+
+def staged_capsule_from_state(state: dict[str, Any]) -> CapsuleInfo | None:
+    work_raw = state.get("work_dir")
+    if not isinstance(work_raw, str):
+        return None
+    work = Path(work_raw).expanduser().resolve(strict=False)
+    runs_root = (state_root() / "runs").resolve(strict=False)
+    try:
+        work.relative_to(runs_root)
+    except ValueError:
+        return None
+    explicit = state.get("staged_capsule")
+    candidates: list[Path] = []
+    if isinstance(explicit, str):
+        candidates.append(Path(explicit))
+    input_dir = work / "input"
+    if input_dir.is_dir():
+        candidates.extend(sorted(input_dir.glob("*.sgcap")))
+    seen: set[Path] = set()
+    for candidate in candidates:
+        with contextlib.suppress(OSError):
+            candidate = candidate.resolve()
+        if candidate in seen or not candidate.is_file() or candidate.is_symlink():
+            continue
+        seen.add(candidate)
+        try:
+            capsule = inspect_capsule(candidate)
+        except Exception:
+            continue
+        declared = state.get("capsule_sha256")
+        if declared and capsule.sha256 != declared:
+            continue
+        return capsule
+    return None
+
+
+def matching_inbox_capsule(control: Path, capsule: CapsuleInfo) -> Path | None:
+    inbox = control / "Inbox"
+    if not inbox.is_dir():
+        return None
+    for candidate in sorted(inbox.glob("*.sgcap")):
+        if candidate.is_file() and not candidate.is_symlink():
+            with contextlib.suppress(OSError):
+                if candidate.stat().st_size == capsule.size and sha256_file(candidate) == capsule.sha256:
+                    return candidate
+    return None
+
+
+def finalize_verified_engine_output(
+    *,
+    artifact: Path,
+    capsule: CapsuleInfo,
+    control: Path,
+    state: dict[str, Any],
+    engine_rc: int | None = None,
+    recovered: bool = False,
+) -> int:
+    output = verify_engine_output(artifact, capsule)
+    result_rc = int(output["result"]["exit_code"])
+    if engine_rc is not None and result_rc != engine_rc:
+        raise SupervisorError("OUTPUT_CORRELATION_FAILURE", f"process exit {engine_rc} != RESULT exit {result_rc}", 74)
+    runtime_summary = runtime_summary_from_artifact(artifact)
+    published = publish_artifact(
+        artifact,
+        control,
+        output["artifact_sha256"],
+        alias_name=CANONICAL_ZIP,
+        run_id=str(state.get("run_id") or ""),
+        kind="product-review",
+        capsule_sha256=capsule.sha256,
+    )
+    inbox_capsule = matching_inbox_capsule(control, capsule)
+    archived_capsule = archive_consumed_inbox_capsule(inbox_capsule, control, capsule.sha256) if inbox_capsule else None
+    terminal = "SUCCEEDED" if result_rc == 0 and output["result"].get("result") == "success" else "FAILED_REVIEW_READY"
+    state.update({
+        "state": terminal,
+        "stage": "complete",
+        "engine_exit_code": result_rc,
+        "classification": output["result"].get("classification"),
+        "message": output["result"].get("message"),
+        "artifact": str(published),
+        "artifact_sha256": output["artifact_sha256"],
+        "artifact_size": output["artifact_size"],
+        "capsule_archive": str(archived_capsule) if archived_capsule else state.get("capsule_archive"),
+        "recovered_without_product_replay": bool(recovered),
+        "runtime_summary": runtime_summary,
+    })
+    append_runtime_history({
+        "recorded_utc": now_utc(),
+        "run_id": state.get("run_id"),
+        "issue": state.get("issue"),
+        "capsule_sha256": capsule.sha256,
+        "supervisor_version": SUPERVISOR_VERSION,
+        "runtime_summary": runtime_summary,
+        "artifact_sha256": output["artifact_sha256"],
+        "published_artifact": str(published),
+        "resource_plan": state.get("resource_plan"),
+        "event_timeline": state.get("event_timeline", []),
+        "product_progress_error": state.get("product_progress_error"),
+        "engine_process_metrics": state.get("engine_process_metrics"),
+    })
+    write_state(state)
+    print(f"SysGrid: {terminal}")
+    print(f"Classification: {state['classification']}")
+    print(f"Artifact: {published}")
+    print(f"SHA-256: {output['artifact_sha256']}")
+    print("Next action: upload Outbox/UPLOAD_THIS_TO_CHATGPT.zip.")
+    return result_rc
+
+
+def recover_interrupted_run(control: Path, previous: dict[str, Any] | None) -> RecoveryDecision:
+    if not previous or previous.get("state") in {"SUCCEEDED", "FAILED_REVIEW_READY", "BLOCKED", "ABORTED"}:
+        return RecoveryDecision("none")
+    capsule = staged_capsule_from_state(previous)
+    work_raw = previous.get("work_dir")
+    if not capsule or not isinstance(work_raw, str):
+        return RecoveryDecision("none")
+    work = Path(work_raw)
+    artifact = work / "engine-outbox" / CANONICAL_ZIP
+    pid = previous.get("engine_pid")
+    engine_path = previous.get("engine_path")
+    staged_path = str(capsule.path)
+    live_exact_process = (
+        isinstance(pid, int)
+        and isinstance(engine_path, str)
+        and process_matches(pid, [engine_path, "execute", staged_path])
+    )
+    if live_exact_process:
+        emit_progress_event(
+            "recovery_reattached",
+            f"Reattached to exact Stable Engine process {pid}; waiting for its one authorized execution to finish.",
+            previous,
+            status="started",
+            details={"engine_pid": pid},
+            required_notification=False,
+        )
+        deadline = time.monotonic() + bounded_recovery_wait()
+        still_active = True
+        while time.monotonic() < deadline:
+            still_active = process_matches(pid, [engine_path, "execute", staged_path])
+            if not still_active:
+                break
+            time.sleep(RECOVERY_POLL_SECONDS)
+        if still_active:
+            raise SupervisorError(
+                "RUN_RECOVERY_ACTIVE",
+                f"exact engine process {pid} remains active after the bounded recovery window; no second execution was started",
+                73,
+            )
+
+    if artifact.is_file():
+        emit_progress_event(
+            "recovery_evidence_recovered",
+            "Recovering verified evidence from the interrupted supervisor run; product execution will not repeat.",
+            previous,
+            status="started",
+            details={"artifact": str(artifact)},
+            required_notification=False,
+        )
+        rc = finalize_verified_engine_output(
+            artifact=artifact, capsule=capsule, control=control, state=dict(previous),
+            engine_rc=previous.get("engine_exit_code") if isinstance(previous.get("engine_exit_code"), int) else None,
+            recovered=True,
+        )
+        return RecoveryDecision("completed", exit_code=rc)
+
+    retry_count = int(previous.get("safe_retry_count", 0) or 0)
+    repo_raw = previous.get("repo")
+    if retry_count < 1 and isinstance(repo_raw, str):
+        repo = Path(repo_raw).expanduser().resolve(strict=False)
+        try:
+            probe_repo_and_state(repo, capsule)
+            retry_work = work / "recovery-precheck"
+            retry_work.mkdir(parents=True, exist_ok=True)
+            patch = patch_state_precheck(repo, capsule, retry_work)
+            if capsule.run.get("mode") != "mutation" or (patch.get("applicable") is True and patch.get("reverse_applicable") is False):
+                source = matching_inbox_capsule(control, capsule) or capsule.path
+                emit_progress_event(
+                    "recovery_retry_authorized",
+                    "Exact declared pre-state proves no product mutation occurred; one bounded retry is authorized.",
+                    previous,
+                    status="passed",
+                    details={"safe_retry_count": retry_count + 1},
+                    required_notification=False,
+                )
+                return RecoveryDecision(
+                    "retry",
+                    capsule=source,
+                    repo=repo,
+                    context={
+                        "recovered_previous_run_id": previous.get("run_id"),
+                        "safe_retry_count": retry_count + 1,
+                        "safe_retry_reason": "exact declared pre-state proves no product mutation occurred",
+                    },
+                )
+        except Exception:
+            pass
+    return RecoveryDecision(
+        "blocked",
+        capsule=matching_inbox_capsule(control, capsule) or capsule.path,
+        repo=Path(repo_raw).expanduser() if isinstance(repo_raw, str) else None,
+        context={
+            "recovered_previous_run_id": previous.get("run_id"),
+            "safe_retry_count": retry_count,
+            "recovery_blocked": True,
+            "recovery_reason": "engine ended without a verified artifact and exact pre-mutation state could not be proven",
+        },
+    )
+
+
+def parallel_checks(checks: dict[str, Callable[[], Any]], max_workers: int | None = None) -> dict[str, Any]:
+    results: dict[str, Any] = {}
+    failures: dict[str, dict[str, Any]] = {}
+    worker_limit = max_workers if max_workers is not None else resource_plan()["preflight_workers"]
+    with concurrent.futures.ThreadPoolExecutor(max_workers=min(worker_limit, max(1, len(checks))), thread_name_prefix="sg-preflight") as pool:
+        futures = {pool.submit(fn): name for name, fn in checks.items()}
+        for future in concurrent.futures.as_completed(futures):
+            name = futures[future]
+            try:
+                results[name] = future.result()
+            except BaseException as exc:  # collect every independent failure before reporting
+                failures[name] = {
+                    "classification": exc.classification if isinstance(exc, SupervisorError) else type(exc).__name__,
+                    "message": str(exc),
+                    "exit_code": exc.exit_code if isinstance(exc, SupervisorError) else 70,
+                }
+    if failures:
+        rendered = []
+        exit_code = 70
+        for name, detail in sorted(failures.items()):
+            exit_code = max(exit_code, int(detail["exit_code"]))
+            rendered.append(f"{name}: {detail['classification']}: {detail['message']}")
+        raise PreflightAggregateError("; ".join(rendered), exit_code, results, failures)
+    return results
+
+
+def verify_engine_output(path: Path, capsule: CapsuleInfo, engine_sha: str = ENGINE_SHA256) -> dict[str, Any]:
+    if not path.is_file():
+        raise SupervisorError("ENGINE_OUTPUT_MISSING", f"engine did not create {CANONICAL_ZIP}", 74)
+    manifest, result = verify_archive_manifest(path, allow_source=True)
+    if not isinstance(result, dict):
+        raise SupervisorError("OUTPUT_CORRELATION_FAILURE", "engine artifact lacks RESULT.json", 74)
+    checks = {
+        "capsule_sha256": capsule.sha256,
+        "capsule_file": capsule.path.name,
+        "engine_version": ENGINE_VERSION,
+    }
+    mismatches = {key: {"expected": expected, "actual": result.get(key)} for key, expected in checks.items() if result.get(key) != expected}
+    if mismatches:
+        raise SupervisorError("OUTPUT_CORRELATION_FAILURE", f"engine artifact identity mismatch: {mismatches}", 74)
+    if result.get("exit_code") is None or not isinstance(result.get("exit_code"), int):
+        raise SupervisorError("OUTPUT_CORRELATION_FAILURE", "RESULT.json lacks integer exit_code", 74)
+    return {"result": result, "manifest_entries": len(manifest), "artifact_sha256": sha256_file(path), "artifact_size": path.stat().st_size, "engine_sha256": engine_sha}
+
+
+
+def archive_existing_alias(control: Path, alias_name: str) -> None:
+    alias = control / "Outbox" / alias_name
+    if not alias.exists():
+        return
+    archive = control / "Archive" / "Review-ZIPs"
+    archive.mkdir(parents=True, exist_ok=True)
+    digest = sha256_file(alias)
+    stamp = dt.datetime.now(dt.timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+    safe_alias = re.sub(r"[^A-Za-z0-9_.+-]", "_", alias_name)
+    target = archive / f"{stamp}__{digest[:12]}__{safe_alias}"
+    counter = 1
+    while target.exists():
+        target = archive / f"{stamp}__{digest[:12]}__{counter}__{safe_alias}"
+        counter += 1
+    copy_verified_atomic(alias, target, digest)
+    alias.unlink()
+    checksum = alias.parent / f"{alias_name}.sha256"
+    if checksum.exists():
+        checksum.unlink()
+    fsync_dir(alias.parent)
+
+
+def _history_artifact_path(
+    control: Path,
+    *,
+    run_id: str | None,
+    kind: str,
+    capsule_sha256: str | None,
+    expected_sha: str,
+) -> Path:
+    history = control / "Outbox" / "History"
+    history.mkdir(parents=True, exist_ok=True)
+    safe_run = re.sub(r"[^A-Za-z0-9_.+-]", "_", run_id or now_utc().replace(":", ""))
+    safe_kind = re.sub(r"[^A-Za-z0-9_.+-]", "_", kind)
+    capsule_short = (capsule_sha256 or "no-capsule")[:12]
+    return history / f"{safe_run}__{safe_kind}__{capsule_short}__{expected_sha[:12]}.zip"
+
+
+def publish_artifact(
+    source: Path,
+    control: Path,
+    expected_sha: str,
+    *,
+    alias_name: str = CANONICAL_ZIP,
+    run_id: str | None = None,
+    kind: str = "review",
+    capsule_sha256: str | None = None,
+) -> Path:
+    outbox = control / "Outbox"
+    store = control / "Artifacts" / expected_sha[:2]
+    outbox.mkdir(parents=True, exist_ok=True)
+    store.mkdir(parents=True, exist_ok=True)
+    canonical_store = store / f"{expected_sha}.zip"
+    if canonical_store.exists():
+        if sha256_file(canonical_store) != expected_sha:
+            raise SupervisorError("ARTIFACT_STORE_FAILURE", f"content-addressed store collision: {canonical_store}", 74)
+    else:
+        copy_verified_atomic(source, canonical_store, expected_sha)
+
+    history_path = _history_artifact_path(
+        control,
+        run_id=run_id,
+        kind=kind,
+        capsule_sha256=capsule_sha256,
+        expected_sha=expected_sha,
+    )
+    if history_path.exists():
+        if sha256_file(history_path) != expected_sha:
+            raise SupervisorError("ARTIFACT_HISTORY_FAILURE", f"history identity collision: {history_path}", 74)
+    else:
+        copy_verified_atomic(canonical_store, history_path, expected_sha)
+        atomic_write_bytes(
+            history_path.with_suffix(history_path.suffix + ".sha256"),
+            f"{expected_sha}  {history_path.name}\n".encode("utf-8"),
+            0o644,
+        )
+
+    archive_existing_alias(control, alias_name)
+    alias = outbox / alias_name
+    copy_verified_atomic(canonical_store, alias, expected_sha)
+    atomic_write_bytes(outbox / f"{alias_name}.sha256", f"{expected_sha}  {alias_name}\n".encode("utf-8"), 0o644)
+    return alias
+
+
+def archive_consumed_inbox_capsule(original: Path, control: Path, expected_sha: str) -> Path | None:
+    inbox = (control / "Inbox").resolve()
+    try:
+        original_resolved = original.resolve()
+    except OSError:
+        return None
+    if original_resolved.parent != inbox or not original.exists():
+        return None
+    archive = control / "Archive" / "Processed-Capsules"
+    archive.mkdir(parents=True, exist_ok=True)
+    stamp = dt.datetime.now(dt.timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+    safe_name = re.sub(r"[^A-Za-z0-9_.+-]", "_", original.name)
+    target = archive / f"{stamp}__{expected_sha[:12]}__{safe_name}"
+    copy_verified_atomic(original, target, expected_sha)
+    if sha256_file(target) != expected_sha:
+        raise SupervisorError("INPUT_ARCHIVE_FAILURE", "archived capsule digest mismatch", 75)
+    original.unlink()
+    fsync_dir(original.parent)
+    return target
+
+
+def make_manifest(root: Path) -> None:
+    lines = []
+    out = root / "MANIFEST.sha256"
+    for path in sorted(root.rglob("*")):
+        if path.is_file() and path != out:
+            lines.append(f"{sha256_file(path)}  {path.relative_to(root).as_posix()}")
+    atomic_write_bytes(out, ("\n".join(lines) + "\n").encode("utf-8"), 0o644)
+
+
+ALREADY_COMPRESSED_SUFFIXES = {
+    ".png", ".jpg", ".jpeg", ".webp", ".gif", ".zip", ".gz", ".bz2", ".xz",
+    ".mp4", ".webm", ".mov", ".pdf", ".woff", ".woff2",
+}
+
+
+def zip_directory(root: Path, destination: Path) -> None:
+    """Create deterministic, file-type-aware evidence archives.
+
+    Already compressed media is stored without recompression; text/source/log
+    evidence uses DEFLATE. Required evidence is never removed or recompressed
+    destructively.
+    """
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    temp = destination.with_name(f".{destination.name}.tmp-{os.getpid()}-{time.time_ns()}")
+    try:
+        with zipfile.ZipFile(temp, "w", allowZip64=True) as zf:
+            for path in sorted(root.rglob("*")):
+                if not path.is_file():
+                    continue
+                info = zipfile.ZipInfo(path.relative_to(root).as_posix())
+                info.date_time = tuple(
+                    int(part) for part in RELEASE_DESCRIPTOR["package"]["deterministic_timestamp"][:10].split("-")
+                ) + (0, 0, 0)
+                info.compress_type = (
+                    zipfile.ZIP_STORED if path.suffix.lower() in ALREADY_COMPRESSED_SUFFIXES
+                    else zipfile.ZIP_DEFLATED
+                )
+                info.external_attr = (stat.S_IFREG | 0o600) << 16
+                info.create_system = 3
+                with path.open("rb") as src, zf.open(info, "w") as dst:
+                    shutil.copyfileobj(src, dst, length=1024 * 1024)
+        os.replace(temp, destination)
+        fsync_dir(destination.parent)
+    except Exception:
+        with contextlib.suppress(OSError):
+            temp.unlink()
+        raise
+
+
+def copy_bounded_diagnostic_file(source: Path, destination: Path) -> None:
+    if not source.is_file() or source.is_symlink():
+        return
+    size = source.stat().st_size
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    if size <= MAX_DIAGNOSTIC_FILE_BYTES:
+        copy_verified_atomic(source, destination, sha256_file(source))
+        return
+    half = MAX_DIAGNOSTIC_FILE_BYTES // 2
+    with source.open("rb") as f:
+        head = f.read(half)
+        f.seek(max(0, size - half))
+        tail = f.read(half)
+    marker = f"\n\n--- TRUNCATED: original bytes={size} ---\n\n".encode("utf-8")
+    atomic_write_bytes(destination, head + marker + tail, 0o600)
+
+
+def build_diagnostic_zip(work: Path, state: dict[str, Any], exc: BaseException, capsule: CapsuleInfo | None) -> Path:
+    evidence = work / "diagnostic"
+    if evidence.exists():
+        shutil.rmtree(evidence)
+    evidence.mkdir(parents=True, exist_ok=True)
+    classification = exc.classification if isinstance(exc, SupervisorError) else "SUPERVISOR_INTERNAL_FAILURE"
+    exit_code = exc.exit_code if isinstance(exc, SupervisorError) else 70
+    result = {
+        "result": "failure", "classification": classification, "message": str(exc), "exit_code": exit_code,
+        "supervisor_version": SUPERVISOR_VERSION, "engine_version": ENGINE_VERSION,
+        "capsule_file": capsule.path.name if capsule else None,
+        "capsule_sha256": capsule.sha256 if capsule else None,
+        "finished_utc": now_utc(), "lane": "execution_platform", "mode": "qualification",
+        "mutation_state": (
+            "engine_completed" if state.get("engine_completed") else
+            "engine_started_result_unknown" if state.get("engine_started") else
+            "not_started"
+        ),
+        "safe_automatic_retry_performed": int(state.get("safe_retry_count", 0) or 0),
+    }
+    atomic_write_json(evidence / "RESULT.json", result)
+    atomic_write_json(evidence / "SUPERVISOR_STATE.json", json_safe(state))
+    atomic_write_bytes(evidence / "TRACEBACK.txt", traceback.format_exc().encode("utf-8", "replace"))
+    logs = evidence / "LOGS"
+    for name in ("engine.stdout.txt", "engine.stderr.txt", "preflight.json", "launch.json"):
+        copy_bounded_diagnostic_file(work / name, logs / name)
+    review = (
+        "# SysGrid Supervisor Diagnostic\n\n"
+        f"- Result: failure\n- Classification: {classification}\n- Message: {str(exc)}\n"
+        "- Product mutation authority: none added by this diagnostic\n\n"
+        "Review RESULT.json, SUPERVISOR_STATE.json, TRACEBACK.txt, and MANIFEST.sha256.\n"
+    )
+    atomic_write_bytes(evidence / "REVIEW_ME_FIRST.md", review.encode("utf-8"), 0o644)
+    make_manifest(evidence)
+    out = work / CANONICAL_ZIP
+    zip_directory(evidence, out)
+    verify_archive_manifest(out, allow_source=True)
+    return out
+
+
+def publish_failure_diagnostic(
+    *,
+    control: Path,
+    work: Path,
+    state: dict[str, Any],
+    exc: BaseException,
+    capsule: CapsuleInfo | None,
+) -> int:
+    effective_classification = exc.classification if isinstance(exc, SupervisorError) else "SUPERVISOR_INTERNAL_FAILURE"
+    effective_message = str(exc)
+    effective_exit = exc.exit_code if isinstance(exc, SupervisorError) else 70
+    if isinstance(exc, PreflightAggregateError):
+        state["preflight"] = {"results": exc.results, "failures": exc.failures}
+        if len(exc.failures) == 1:
+            only = next(iter(exc.failures.values()))
+            nested_classification = only.get("classification") if isinstance(only, dict) else None
+            nested_message = only.get("message") if isinstance(only, dict) else None
+            nested_exit = only.get("exit_code") if isinstance(only, dict) else None
+            if nested_classification == "DUPLICATE_MUTATION_CAPSULE_POST_STATE":
+                effective_classification = nested_classification
+                if isinstance(nested_message, str):
+                    effective_message = nested_message
+                if isinstance(nested_exit, int):
+                    effective_exit = nested_exit
+    state.update({
+        "state": "FAILED_NO_ARTIFACT",
+        "stage": state.get("stage", "unknown"),
+        "classification": effective_classification,
+        "message": effective_message,
+        "exit_code": effective_exit,
+    })
+    try:
+        diagnostic = build_diagnostic_zip(work, state, exc, capsule)
+        digest = sha256_file(diagnostic)
+        published = publish_artifact(
+            diagnostic,
+            control,
+            digest,
+            alias_name=DIAGNOSTIC_ZIP,
+            run_id=str(state.get("run_id") or ""),
+            kind="diagnostic",
+            capsule_sha256=capsule.sha256 if capsule else None,
+        )
+        state.update({
+            "state": "FAILED_REVIEW_READY",
+            "artifact": str(published),
+            "artifact_sha256": digest,
+            "artifact_size": diagnostic.stat().st_size,
+        })
+    except Exception as packaging_exc:
+        state["diagnostic_packaging_error"] = f"{type(packaging_exc).__name__}: {packaging_exc}"
+    run_id = str(state.get("run_id") or "unknown-run")
+    with contextlib.suppress(Exception):
+        record = deliver_notification_event(
+            run_id=run_id,
+            event_id="run_failed",
+            message=(
+                f"SysGrid {state.get('issue') or 'SysGrid'} — run failed\n"
+                f"{_capsule_display(state)}\n"
+                f"Classification: {state['classification']}\n"
+                f"Stage: {state.get('stage', 'unknown')}\n"
+                f"Summary: {str(state['message'])[:500]}\n"
+                f"Diagnostic: {state.get('artifact') or 'not published'}\n"
+                f"Run: {run_id}"
+            ),
+            required=False,
+            retries=3,
+        )
+        state.setdefault("notification_events", {})["run_failed"] = record
+    write_state(state)
+    print(f"SysGrid: {state['state']}", file=sys.stderr)
+    print(f"Classification: {state['classification']}", file=sys.stderr)
+    print(f"Message: {state['message']}", file=sys.stderr)
+    print(
+        f"Mutation state: {'engine completed' if state.get('engine_completed') else 'engine started; result unknown' if state.get('engine_started') else 'not started'}",
+        file=sys.stderr,
+    )
+    if state.get("artifact"):
+        print(f"Artifact: {state['artifact']}", file=sys.stderr)
+        print(f"Next action: upload Outbox/{DIAGNOSTIC_ZIP}.", file=sys.stderr)
+    return int(state["exit_code"])
+
+
+def run_supervised(capsule_arg: Path | None, repo_arg: Path | None) -> int:
+    control = default_control_root().expanduser()
+    original: Path | None = None
+    capsule: CapsuleInfo | None = None
+    with exclusive_run_lock():
+        previous = read_latest_state()
+        try:
+            recovery = recover_interrupted_run(control, previous)
+        except BaseException as exc:
+            prior_capsule = staged_capsule_from_state(previous or {})
+            recovery_work: Path | None = None
+            if previous and isinstance(previous.get("work_dir"), str):
+                candidate = Path(previous["work_dir"]).expanduser().resolve(strict=False)
+                runs_root = (state_root() / "runs").resolve(strict=False)
+                with contextlib.suppress(ValueError):
+                    candidate.relative_to(runs_root)
+                    if candidate.is_dir():
+                        recovery_work = candidate
+            if recovery_work is None:
+                recovery_run_id = f"recovery-{dt.datetime.now(dt.timezone.utc).strftime('%Y%m%dT%H%M%SZ')}-{os.getpid()}"
+                recovery_work = state_root() / "runs" / recovery_run_id
+                recovery_work.mkdir(parents=True, exist_ok=False)
+            recovery_state = {
+                **(previous or {}),
+                "state": "RUNNING",
+                "stage": "recovery",
+                "pid": os.getpid(),
+                "recovery_attempted_utc": now_utc(),
+                "work_dir": str(recovery_work),
+            }
+            return publish_failure_diagnostic(
+                control=control,
+                work=recovery_work,
+                state=recovery_state,
+                exc=exc,
+                capsule=prior_capsule,
+            )
+        if recovery.action == "completed":
+            return int(recovery.exit_code or 0)
+        recovery_context = dict(recovery.context or {})
+        if recovery.action in {"retry", "blocked"}:
+            if capsule_arg is not None and recovery.capsule is not None:
+                requested = inspect_capsule(capsule_arg.expanduser().resolve())
+                recovered = inspect_capsule(recovery.capsule)
+                if requested.sha256 != recovered.sha256:
+                    raise SupervisorError(
+                        "UNRESOLVED_RUN_RECOVERY",
+                        "a previous product execution remains unresolved; a different capsule cannot start",
+                        73,
+                    )
+            capsule_arg = recovery.capsule or capsule_arg
+            repo_arg = recovery.repo or repo_arg
+
+        run_id = f"{dt.datetime.now(dt.timezone.utc).strftime('%Y%m%dT%H%M%SZ')}-{os.getpid()}-{time.time_ns() % 1_000_000:06d}"
+        work = state_root() / "runs" / run_id
+        work.mkdir(parents=True, exist_ok=False)
+        telegram_config = load_telegram_config(required=True)
+        state: dict[str, Any] = {
+            "state": "STARTING",
+            "stage": "initialization",
+            "pid": os.getpid(),
+            "started_utc": now_utc(),
+            "monotonic_started": time.monotonic(),
+            "run_id": run_id,
+            "work_dir": str(work),
+            "resource_plan": resource_plan(),
+            "telegram": telegram_public_summary(telegram_config),
+            "notification_policy": {
+                "required_before_engine": True,
+                "registered_events": len(PROGRESS_EVENT_REGISTRY),
+                "engine_heartbeat_seconds": bounded_heartbeat_seconds(),
+                "telegram_heartbeats": TELEGRAM_HEARTBEATS_ENABLED,
+                "presentation_mode": str(NOTIFICATION_POLICY.get("presentation_mode", "summary")),
+                "max_messages_per_run": int(NOTIFICATION_POLICY.get("max_messages_per_run", 3)),
+                "delivery_semantics": "durably-deduplicated-at-least-once",
+            },
+            "safe_retry_count": int(recovery_context.get("safe_retry_count", 0) or 0),
+            **recovery_context,
+        }
+        with contextlib.suppress(Exception):
+            state["safe_cleanup"] = cleanup_supervisor_temps()
+        write_state(state)
+        try:
+            emit_progress_event(
+                "capsule_selected",
+                "Selecting the one immutable capsule and converging only byte-identical Inbox duplicates.",
+                state,
+                required_notification=True,
+            )
+            state.update({"state": "RUNNING", "stage": "capsule-selection"})
+            write_state(state)
+            original = select_capsule(capsule_arg, control)
+            capsule = inspect_capsule(original)
+            staged = work / "input" / original.name
+            copy_verified_atomic(original, staged, capsule.sha256)
+            capsule = inspect_capsule(staged)
+            cross_ledger = validate_capsule_cross_ledger(capsule)
+            state.update({
+                "original_capsule": str(original),
+                "staged_capsule": str(staged),
+                "capsule_file": original.name,
+                "capsule_sha256": capsule.sha256,
+                "capsule_size": capsule.size,
+                "issue": capsule.run.get("issue"),
+                "iteration": capsule.run.get("iteration"),
+                "attempt": capsule.run.get("attempt"),
+                "capsule_title": capsule.run.get("title"),
+                "capsule_stage": capsule.run.get("stage"),
+                "capsule_cross_ledger": cross_ledger,
+                "stage": "preflight",
+            })
+            write_state(state)
+            emit_progress_event(
+                "capsule_verified",
+                "Capsule archive, manifest, schema, patch identity, and cross-ledger contract are exact.",
+                state,
+                status="passed",
+                details=cross_ledger,
+                required_notification=True,
+            )
+
+            emit_progress_event(
+                "preflight_started",
+                "Running independent platform checks and exact repository-state proof.",
+                state,
+                required_notification=True,
+            )
+            repo = discover_repo(repo_arg)
+            try:
+                checks = parallel_checks({
+                    "engine": lambda: (lambda p: {"path": str(p), "self_test": verify_engine(p)})(discover_engine()),
+                    "repository": lambda: probe_repo_and_state(repo, capsule),
+                    "storage": lambda: verify_storage(control, capsule.size),
+                })
+            except PreflightAggregateError as exc:
+                state["preflight"] = {"results": exc.results, "failures": exc.failures}
+                atomic_write_json(work / "preflight.json", json_safe(state["preflight"]))
+                write_state(state)
+                raise
+            engine_path = Path(checks["engine"]["path"])
+            repo_info, declared_state = checks["repository"]
+            state.update({
+                "engine_path": str(engine_path),
+                "engine_sha256": ENGINE_SHA256,
+                "repo": str(repo_info.path),
+                "repo_head": repo_info.head,
+                "repo_branch": repo_info.branch,
+                "dirty_path_count": len(repo_info.dirty_paths),
+                "preflight": {
+                    "storage": checks["storage"],
+                    "declared_state": declared_state,
+                    "engine_self_test": checks["engine"]["self_test"],
+                },
+            })
+            write_state(state)
+
+            # Patch applicability depends on exact repository-state proof. It is not an
+            # independent check and must never run against an unproven worktree.
+            try:
+                patch_result = patch_state_precheck(repo, capsule, work)
+            except SupervisorError as exc:
+                state["preflight"]["patch_failure"] = {
+                    "classification": exc.classification,
+                    "message": str(exc),
+                    "exit_code": exc.exit_code,
+                }
+                atomic_write_json(work / "preflight.json", json_safe(state["preflight"]))
+                write_state(state)
+                raise
+            state["preflight"]["patch"] = patch_result
+            state["stage"] = "engine-launch"
+            atomic_write_json(work / "preflight.json", json_safe(state["preflight"]))
+            write_state(state)
+            emit_progress_event(
+                "preflight_completed",
+                "Exact engine, repository, storage, state, protected hashes, and patch state passed.",
+                state,
+                status="passed",
+                details={"head": repo_info.head, "dirty_paths": len(repo_info.dirty_paths), "patch": patch_result},
+                required_notification=True,
+            )
+
+            emit_progress_event(
+                "engine_launch",
+                "Launching the exact Stable Engine once; ambiguous mutation replay remains prohibited.",
+                state,
+                required_notification=True,
+            )
+            local_outbox = work / "engine-outbox"
+            local_outbox.mkdir()
+            stdout_path = work / "engine.stdout.txt"
+            stderr_path = work / "engine.stderr.txt"
+            product_progress_path = work / "product-progress.jsonl"
+            engine_env = sanitized_env()
+            execution_scope = execution_scope_from_run(capsule.run)
+            engine_env.update({
+                "SYSGRID_RUN_ID": run_id,
+                "SYSGRID_CAPSULE_SHA256": capsule.sha256,
+                "SYSGRID_PROGRESS_FILE": str(product_progress_path),
+                "SYSGRID_PROGRESS_SCHEMA": "1",
+            })
+            engine_env.update(execution_env_overlay(capsule.run))
+            state["execution_profile"] = execution_scope["execution_profile"]
+            state["execution_scope"] = execution_scope
+            write_state(state)
+            cmd = [sys.executable, str(engine_path), "execute", str(capsule.path), "--repo", str(repo), "--outbox", str(local_outbox)]
+            launch_record = {
+                "run_id": run_id,
+                "engine_path": str(engine_path),
+                "engine_sha256": ENGINE_SHA256,
+                "capsule_path": str(capsule.path),
+                "capsule_sha256": capsule.sha256,
+                "repo": str(repo),
+                "command_sha256": sha256_bytes(b"\0".join(part.encode("utf-8") for part in cmd)),
+                "launched_utc": now_utc(),
+            }
+            atomic_write_json(work / "launch.json", launch_record)
+            state["engine_command"] = [sys.executable, "<exact-engine>", "execute", "<exact-capsule>", "--repo", str(repo), "--outbox", str(local_outbox)]
+            state["engine_started"] = False
+            write_state(state)
+            child: subprocess.Popen[str] | None = None
+            old_handlers: dict[int, Any] = {}
+            with stdout_path.open("w", encoding="utf-8") as stdout, stderr_path.open("w", encoding="utf-8") as stderr:
+                child = subprocess.Popen(
+                    cmd,
+                    stdin=subprocess.DEVNULL,
+                    stdout=stdout,
+                    stderr=stderr,
+                    text=True,
+                    cwd=str(repo),
+                    env=engine_env,
+                    start_new_session=False,
+                    close_fds=True,
+                )
+                state.update({
+                    "engine_pid": child.pid,
+                    "engine_started": True,
+                    "engine_started_utc": now_utc(),
+                    "stage": "engine",
+                })
+                write_state(state)
+
+                def forward(signum: int, _frame: Any) -> None:
+                    if child and child.poll() is None:
+                        with contextlib.suppress(ProcessLookupError):
+                            child.send_signal(signum)
+
+                for sig in (signal.SIGINT, signal.SIGTERM, signal.SIGHUP):
+                    old_handlers[sig] = signal.signal(sig, forward)
+                engine_started_monotonic = time.monotonic()
+                heartbeat_seconds = bounded_heartbeat_seconds()
+                next_heartbeat = engine_started_monotonic + heartbeat_seconds
+                heartbeat_index = 0
+                product_progress_offset = 0
+                product_progress_disabled = False
+                try:
+                    while True:
+                        polled = child.poll()
+                        if polled is not None:
+                            engine_rc = polled
+                            break
+                        now_mono = time.monotonic()
+                        elapsed = now_mono - engine_started_monotonic
+                        if not product_progress_disabled:
+                            try:
+                                product_progress_offset = consume_product_progress(
+                                    product_progress_path, product_progress_offset, state
+                                )
+                            except SupervisorError as progress_exc:
+                                product_progress_disabled = True
+                                state["product_progress_error"] = {
+                                    "classification": progress_exc.classification,
+                                    "message": str(progress_exc),
+                                    "utc": now_utc(),
+                                }
+                                write_state(state)
+                        if now_mono >= next_heartbeat:
+                            heartbeat_index += 1
+                            metrics = process_tree_metrics(child.pid)
+                            activity_age = latest_activity_age_seconds(
+                                [stdout_path, stderr_path, product_progress_path]
+                            )
+                            stalled = bool(
+                                isinstance(activity_age, (int, float))
+                                and activity_age >= heartbeat_seconds * 2
+                                and metrics.get("available")
+                                and float(metrics.get("cpu_percent", 0.0)) < 0.5
+                            )
+                            state["engine_elapsed_seconds"] = round(elapsed, 1)
+                            state["engine_last_heartbeat_utc"] = now_utc()
+                            state["engine_process_metrics"] = metrics
+                            state["engine_last_activity_age_seconds"] = activity_age
+                            state["engine_stall_suspected"] = stalled
+                            write_state(state)
+                            last_product = state.get("product_progress_last_event") or "no trusted subgate event yet"
+                            if TELEGRAM_HEARTBEATS_ENABLED:
+                                record = deliver_notification_event(
+                                    run_id=run_id,
+                                    event_id=f"engine-heartbeat-{heartbeat_index}",
+                                    message=(
+                                        f"SysGrid {state.get('issue') or 'SysGrid'} — engine heartbeat\n"
+                                        f"Elapsed: {int(elapsed // 60)}m {int(elapsed % 60)}s\n"
+                                        f"Last subgate: {last_product}\n"
+                                        f"Process tree: {metrics.get('process_count', 'n/a')} processes, "
+                                        f"CPU {metrics.get('cpu_percent', 'n/a')}%, RSS {int(metrics.get('rss_bytes', 0) or 0) // (1024*1024)} MiB\n"
+                                        f"Stall suspected: {'yes' if stalled else 'no'}\n"
+                                        f"Run: {run_id}"
+                                    ),
+                                    required=False,
+                                    retries=None,
+                                )
+                            else:
+                                record = _local_notification_record(f"engine-heartbeat-{heartbeat_index}")
+                            state.setdefault("notification_events", {})[f"engine-heartbeat-{heartbeat_index}"] = record
+                            write_state(state)
+                            next_heartbeat += heartbeat_seconds
+                        time.sleep(0.5)
+                finally:
+                    for sig, handler in old_handlers.items():
+                        signal.signal(sig, handler)
+            if not product_progress_disabled:
+                with contextlib.suppress(SupervisorError):
+                    product_progress_offset = consume_product_progress(
+                        product_progress_path, product_progress_offset, state
+                    )
+            state.update({
+                "engine_completed": True,
+                "engine_completed_utc": now_utc(),
+                "engine_exit_code": engine_rc,
+                "stage": "output-verification",
+            })
+            write_state(state)
+
+            emit_progress_event(
+                "engine_completed",
+                f"Stable Engine exited with code {engine_rc}; verifying its complete evidence.",
+                state,
+                status="passed" if engine_rc == 0 else "failed",
+                details={"engine_exit_code": engine_rc},
+                required_notification=False,
+            )
+            artifact = local_outbox / CANONICAL_ZIP
+            output = verify_engine_output(artifact, capsule)
+            if output["result"]["exit_code"] != engine_rc:
+                raise SupervisorError(
+                    "OUTPUT_CORRELATION_FAILURE",
+                    f"process exit {engine_rc} != RESULT exit {output['result']['exit_code']}",
+                    74,
+                )
+            emit_progress_event(
+                "evidence_verified",
+                "Engine evidence is complete and exactly correlated to capsule, engine, and process exit.",
+                state,
+                status="passed",
+                details={"manifest_entries": output.get("manifest_entries"), "artifact_size": output.get("artifact_size")},
+                required_notification=False,
+            )
+            state["stage"] = "publication"
+            write_state(state)
+            emit_progress_event(
+                "publication_started",
+                "Publishing one content-addressed, fsynced, atomic canonical review ZIP.",
+                state,
+                required_notification=False,
+            )
+            rc = finalize_verified_engine_output(
+                artifact=artifact,
+                capsule=capsule,
+                control=control,
+                state=state,
+                engine_rc=engine_rc,
+            )
+            runtime = state.get("runtime_summary") if isinstance(state.get("runtime_summary"), dict) else {}
+            total = runtime.get("engine_total_seconds")
+            runtime_text = f" Engine runtime: {total:.1f}s." if isinstance(total, (int, float)) else ""
+            emit_progress_event(
+                "publication_completed",
+                f"Run complete.{runtime_text} Canonical review ZIP is ready for upload.",
+                state,
+                status="passed" if rc == 0 else "failed",
+                details={"artifact_sha256": state.get("artifact_sha256"), "exit_code": rc},
+                required_notification=False,
+            )
+            return rc
+        except BaseException as exc:
+            return publish_failure_diagnostic(
+                control=control,
+                work=work,
+                state=state,
+                exc=exc,
+                capsule=capsule,
+            )
+
+
+def runtime_history_records() -> list[dict[str, Any]]:
+    path = state_root() / "runtime-history.jsonl"
+    if not path.is_file():
+        return []
+    records: list[dict[str, Any]] = []
+    with path.open("rb") as stream:
+        for raw in stream:
+            if not raw.endswith(b"\n") or len(raw) > 1024 * 1024:
+                continue
+            try:
+                value = json.loads(raw.decode("utf-8", "strict"))
+            except (UnicodeDecodeError, json.JSONDecodeError):
+                continue
+            if isinstance(value, dict):
+                records.append(value)
+    return records
+
+
+def recover_artifact(run_id_or_prefix: str) -> int:
+    token = [REDACTED]
+    if not token or not SAFE_ID.fullmatch(token):
+        raise SupervisorError("ARTIFACT_RECOVERY_FAILURE", "run ID is invalid", 74)
+    matches = [
+        row for row in runtime_history_records()
+        if isinstance(row.get("run_id"), str) and str(row["run_id"]).startswith(token)
+    ]
+    if not matches:
+        raise SupervisorError("ARTIFACT_RECOVERY_FAILURE", f"no completed runtime record matches {token}", 74)
+    unique_ids = sorted({str(row["run_id"]) for row in matches})
+    if len(unique_ids) != 1:
+        raise SupervisorError("ARTIFACT_RECOVERY_FAILURE", f"run prefix is ambiguous: {unique_ids[:10]}", 74)
+    record = next(row for row in reversed(matches) if str(row["run_id"]) == unique_ids[0])
+    runtime = record.get("runtime_summary")
+    runtime = runtime if isinstance(runtime, dict) else {}
+    candidate_raw = runtime.get("artifact")
+    candidate = Path(candidate_raw) if isinstance(candidate_raw, str) else None
+    expected_sha = record.get("artifact_sha256")
+    if candidate is None or not candidate.is_file() or candidate.is_symlink():
+        if isinstance(expected_sha, str) and SHA256_RE.fullmatch(expected_sha):
+            stored = default_control_root().expanduser() / "Artifacts" / expected_sha[:2] / f"{expected_sha}.zip"
+            candidate = stored if stored.is_file() and not stored.is_symlink() else None
+    if candidate is None:
+        raise SupervisorError(
+            "ARTIFACT_RECOVERY_FAILURE",
+            "the runtime record exists but its immutable artifact bytes are unavailable",
+            74,
+        )
+    verify_archive_manifest(candidate, allow_source=True)
+    digest = sha256_file(candidate)
+    if isinstance(expected_sha, str) and expected_sha and digest != expected_sha:
+        raise SupervisorError(
+            "ARTIFACT_RECOVERY_FAILURE",
+            f"artifact digest mismatch for {unique_ids[0]}: expected {expected_sha}, actual {digest}",
+            74,
+        )
+    result: dict[str, Any] = {}
+    with zipfile.ZipFile(candidate) as zf:
+        if "RESULT.json" in zf.namelist():
+            loaded = json.loads(read_zip_member(zf, "RESULT.json").decode("utf-8"))
+            if isinstance(loaded, dict):
+                result = loaded
+    capsule_sha = result.get("capsule_sha256") or record.get("capsule_sha256")
+    published = publish_artifact(
+        candidate,
+        default_control_root().expanduser(),
+        digest,
+        alias_name=CANONICAL_ZIP,
+        run_id=unique_ids[0],
+        kind="recovered-product-review",
+        capsule_sha256=str(capsule_sha) if capsule_sha else None,
+    )
+    print("SysGrid: ARTIFACT_RECOVERED")
+    print(f"Run ID: {unique_ids[0]}")
+    print(f"Artifact: {published}")
+    print(f"SHA-256: {digest}")
+    print(f"Next action: upload Outbox/{CANONICAL_ZIP}.")
+    return 0
+
+
+def status() -> int:
+    path = state_root() / "latest.json"
+    if not path.is_file():
+        print("SysGrid: IDLE\nNo supervisor state exists.\nNext action: place exactly one capsule in Inbox and run sg.")
+        return 0
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except Exception as exc:
+        print(f"SysGrid: STATE_CORRUPT\n{type(exc).__name__}: {exc}")
+        return 1
+    print(f"SysGrid: {data.get('state', 'UNKNOWN')}")
+    print(f"Run ID: {data.get('run_id', 'none')}")
+    print(f"Stage: {data.get('stage', 'unknown')}")
+    print(f"Issue: {data.get('issue', 'unknown')}")
+    print(f"Engine: {data.get('engine_sha256', ENGINE_SHA256)}")
+    print(f"Classification: {data.get('classification', 'pending')}")
+    print(f"Message: {data.get('message', 'pending')}")
+    if data.get("last_progress_event"):
+        print(f"Progress: {data.get('last_progress_event')} [{data.get('last_progress_status', 'unknown')}]")
+        print(f"Progress message: {data.get('last_progress_message', 'unknown')}")
+    if data.get("product_progress_last_event"):
+        print(f"Product subgate: {data['product_progress_last_event']} (sequence {data.get('product_progress_sequence', 'n/a')})")
+    if data.get("state") in {"STARTING", "RUNNING"}:
+        elapsed = elapsed_seconds_since(data.get("engine_started_utc") or data.get("started_utc"))
+        if elapsed is not None:
+            print(f"Elapsed: {int(elapsed // 60)}m {int(elapsed % 60)}s")
+        if data.get("engine_last_heartbeat_utc"):
+            print(f"Last Telegram heartbeat: {data['engine_last_heartbeat_utc']}")
+        pid = data.get("engine_pid")
+        metrics = process_tree_metrics(pid) if isinstance(pid, int) and pid > 0 else data.get("engine_process_metrics")
+        if isinstance(metrics, dict) and metrics.get("available"):
+            print(
+                f"Process tree: {metrics.get('process_count')} processes, "
+                f"CPU {metrics.get('cpu_percent')}%, RSS {int(metrics.get('rss_bytes', 0) or 0) // (1024 * 1024)} MiB"
+            )
+        activity_age = latest_activity_age_seconds([
+            Path(str(data.get("work_dir", ""))) / "engine.stdout.txt",
+            Path(str(data.get("work_dir", ""))) / "engine.stderr.txt",
+            Path(str(data.get("work_dir", ""))) / "product-progress.jsonl",
+        ]) if data.get("work_dir") else data.get("engine_last_activity_age_seconds")
+        if isinstance(activity_age, (int, float)):
+            print(f"Last process/evidence activity: {activity_age:.1f}s ago")
+        print(f"Stall suspected: {'yes' if data.get('engine_stall_suspected') else 'no'}")
+    runtime = data.get("runtime_summary")
+    if isinstance(runtime, dict) and isinstance(runtime.get("engine_total_seconds"), (int, float)):
+        print(f"Last engine runtime: {runtime['engine_total_seconds']:.1f}s")
+    telegram = data.get("telegram")
+    if isinstance(telegram, dict):
+        print(f"Telegram: {'configured' if telegram.get('configured') else 'not configured'}")
+    resources = data.get("resource_plan")
+    if isinstance(resources, dict):
+        print(
+            "Worker budget: "
+            f"backend={resources.get('backend_workers', 'n/a')}, "
+            f"frontend={resources.get('frontend_workers', 'n/a')}, "
+            f"e2e={resources.get('e2e_workers', 'n/a')}, "
+            f"CPU budget={resources.get('test_cpu_budget', 'n/a')}"
+        )
+    if data.get("artifact"):
+        print(f"Artifact: {data['artifact']}")
+        print(f"Artifact SHA-256: {data.get('artifact_sha256', 'pending')}")
+        print("Next action: upload Outbox/UPLOAD_THIS_TO_CHATGPT.zip.")
+    elif data.get("state") in {"STARTING", "RUNNING"}:
+        print("Next action: no action required; use sgs or sgwatch.")
+    else:
+        print("Next action: resolve the reported preflight gate.")
+    return 0
+
+
+def watch(interval: float = 1.0) -> int:
+    latest = None
+    while True:
+        path = state_root() / "latest.json"
+        content = path.read_text(encoding="utf-8") if path.is_file() else ""
+        if content != latest:
+            if sys.stdout.isatty() and os.environ.get("NO_CLEAR", "").lower() not in {"1", "true", "yes"}:
+                print("\033[2J\033[H", end="")
+            status()
+            latest = content
+        if content:
+            with contextlib.suppress(Exception):
+                if json.loads(content).get("state") in TERMINAL_STATES:
+                    return 0
+        try:
+            time.sleep(max(0.2, interval))
+        except KeyboardInterrupt:
+            return 0
+
+
+def notification_test() -> int:
+    try:
+        result = telegram_probe(f"SysGrid supervisor v{SUPERVISOR_VERSION} Telegram test: PASS")
+        print(json.dumps({"supervisor_version": SUPERVISOR_VERSION, "result": "PASS", "telegram": result}, indent=2, sort_keys=True))
+        return 0
+    except SupervisorError as exc:
+        print(json.dumps({"supervisor_version": SUPERVISOR_VERSION, "result": "FAIL", "classification": exc.classification, "message": str(exc)}, indent=2, sort_keys=True))
+        return exc.exit_code
+
+
+def self_test() -> int:
+    failures: list[str] = []
+    try:
+        safe_member("RUN.json")
+        for bad in ("../x", "/x", "./x", "a\\b", "a//b"):
+            try:
+                safe_member(bad)
+                failures.append(f"unsafe member accepted: {bad}")
+            except SupervisorError:
+                pass
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            target = root / "atomic.txt"
+            atomic_write_bytes(target, b"one")
+            if target.read_bytes() != b"one":
+                failures.append("atomic write mismatch")
+            atomic_write_bytes(target, b"two")
+            if target.read_bytes() != b"two":
+                failures.append("atomic replace mismatch")
+    except Exception as exc:
+        failures.append(f"unexpected self-test exception: {type(exc).__name__}: {exc}")
+    result = {"supervisor_version": SUPERVISOR_VERSION, "result": "FAIL" if failures else "PASS", "failures": failures}
+    print(json.dumps(result, indent=2, sort_keys=True))
+    return 1 if failures else 0
+
+
+def main(argv: Sequence[str] | None = None) -> int:
+    parser = argparse.ArgumentParser(prog="sysgrid-supervisor")
+    sub = parser.add_subparsers(dest="command", required=True)
+    run_parser = sub.add_parser("run")
+    run_parser.add_argument("capsule", nargs="?", type=Path)
+    run_parser.add_argument("--repo", type=Path)
+    sub.add_parser("status")
+    watch_parser = sub.add_parser("watch")
+    watch_parser.add_argument("--interval", type=float, default=1.0)
+    sub.add_parser("self-test")
+    sub.add_parser("notification-test")
+    recover_parser = sub.add_parser("recover-artifact")
+    recover_parser.add_argument("run_id")
+    discover = sub.add_parser("discover-engine")
+    discover.add_argument("--sha256", default=ENGINE_SHA256)
+    args = parser.parse_args(argv)
+    if args.command == "run":
+        return run_supervised(args.capsule, args.repo)
+    if args.command == "status":
+        return status()
+    if args.command == "watch":
+        return watch(args.interval)
+    if args.command == "self-test":
+        return self_test()
+    if args.command == "notification-test":
+        return notification_test()
+    if args.command == "recover-artifact":
+        return recover_artifact(args.run_id)
+    if args.command == "discover-engine":
+        print(discover_engine(expected_sha=args.sha256))
+        return 0
+    return 2
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

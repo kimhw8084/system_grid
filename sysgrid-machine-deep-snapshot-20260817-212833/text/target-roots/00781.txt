@@ -1,0 +1,18 @@
+ORIGINAL_PATH: /Users/haewonkim/.local/state/sysgrid-supervisor/runs/20260805T154724Z-54115-783000/diagnostic/RESULT.json
+ORIGINAL_SHA256: 01481c9cd0446b64bbb439f37ed6c33bef9be283a0c97b55f25f3931aa7b9495
+================================================================================
+{
+  "capsule_file": "SYSGRID_OUT31_PA15_PS4_FAR_SAVED_VIEWS_BODY_PORTAL_PRODUCT_SOURCE_CORRECTION_v1.0.0.sgcap",
+  "capsule_sha256": "ce6b735952e81fee645812da27340283c38fda2ca90f620edeb39d2247594dd3",
+  "classification": "CAPSULE_CROSS_LEDGER_FAILURE",
+  "engine_version": "1.1.1",
+  "exit_code": 65,
+  "finished_utc": "2026-08-05T15:47:24Z",
+  "lane": "execution_platform",
+  "message": "mutation patch contains no canonical diff paths",
+  "mode": "qualification",
+  "mutation_state": "not_started",
+  "result": "failure",
+  "safe_automatic_retry_performed": 0,
+  "supervisor_version": "2.2.1"
+}

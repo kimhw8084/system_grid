@@ -1,0 +1,42 @@
+ORIGINAL_PATH: /Users/haewonkim/.local/share/sysgrid-supervisor/v2.1.5/RESEARCH_AND_DESIGN.md
+ORIGINAL_SHA256: b13be7af757a9469814fd385c3cad7c76c6b36047ffcdacf0856f90bc049e7b5
+================================================================================
+# Research and Design — SysGrid Supervisor v2.1.5
+
+## Objective
+
+Minimize operator loops and wall time without weakening source authority, tenant/permission safeguards, complete evidence, exact state proof, final application verification, or remote equality.
+
+## Architecture
+
+1. **Campaign/promotion separation.** Development campaigns run declared risk-targeted checks against cumulative retained state and cannot commit or claim acceptance. Promotion qualification runs the complete release matrix once the campaign is ready.
+2. **Immutable per-run evidence.** Every review and diagnostic ZIP is stored by SHA-256 and run identity. The fixed product-review alias is changed only by verified engine evidence; preflight diagnostics use a separate alias.
+3. **Duplicate mutation refusal.** When the repository exactly matches a mutation capsule's declared post-state, the supervisor classifies it as already applied and prohibits replay.
+4. **Artifact recovery without execution.** Runtime history and per-run state permit `sg recover-artifact <run-id>` to republish verified prior bytes without invoking the engine.
+5. **Quiet operator channel.** All internal events and two-minute health samples remain local. Telegram sends only start, one high-level progress summary, and final completion/failure.
+6. **Generated immutable release facts.** One source descriptor produces runtime policy, documentation, release report, manifest, and deterministic package.
+7. **File-exact untracked state.** When Git collapses an embedded untracked repository to one `dir/` path, the supervisor expands only its regular product files, excludes nested Git metadata and symlink traversal, and enforces a bounded count.
+8. **Preserved execution trust.** Exact live-process reattachment, verified-output recovery, exact-prestate-only retry, post/unknown-state refusal, and bounded resource exports remain mandatory.
+
+## Qualification contract
+
+- complete deterministic package identity
+- exact Stable Engine identity and self-test
+- capsule cross-ledger consistency before mutation
+- exact repository state and patch-state proof
+- duplicate mutation replay refusal with exact post-state classification
+- immutable per-run artifact history and canonical-review preservation
+- one authorized engine invocation with replay refusal
+- three-message Telegram summary policy with full local event telemetry
+- machine-readable resource and runtime telemetry
+- verified evidence publication, artifact recovery, and deterministic rebuild
+- development-campaign and promotion-qualification profile separation
+- campaign delivery cannot commit or claim product acceptance
+- promotion requires complete final gate, commit/push, and remote equality
+- validated targeted scope exported declaratively to trusted recipes
+- file-exact expansion of collapsed embedded untracked directories without nested Git metadata traversal
+- duplicate post-state automatically republishes the latest matching immutable product review or emits an explicit no-artifact continuation diagnosis
+
+## Honest boundary
+
+Telegram delivery remains durably deduplicated at-least-once. The three-message policy is an operator presentation layer only; it does not remove internal events, evidence, diagnostics, or fail-closed checks.

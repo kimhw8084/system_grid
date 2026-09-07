@@ -1,0 +1,7 @@
+ORIGINAL_PATH: /Users/haewonkim/.local/share/sysgrid-supervisor/v1.2.0/INSTALL_AND_QUALIFY.command
+ORIGINAL_SHA256: e1233eb236eeead06ad11924eec7bc6b515d8162fc28f0717a5bea78ba0691c0
+================================================================================
+#!/usr/bin/env bash
+set -Eeuo pipefail
+cd -- "$(dirname -- "$0")"
+exec python3 ./INSTALL_AND_QUALIFY.py

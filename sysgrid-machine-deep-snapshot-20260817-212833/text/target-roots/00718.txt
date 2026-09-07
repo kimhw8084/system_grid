@@ -1,0 +1,7 @@
+ORIGINAL_PATH: /Users/haewonkim/.local/state/sysgrid-supervisor/runs/20260801T200531Z-64552-381000/diagnostic/MANIFEST.sha256
+ORIGINAL_SHA256: ae127cf62577486364e006be3041c4247968df24e5fd7dd3c3fa59ee8e0fdb1e
+================================================================================
+fae80868c3b1b7c342f2d1b8ef19ff7797fe9fb69c14d9b81708de2ca2ed05f9  RESULT.json
+4b56acaab5c09bfeac29201c60c1f48cdce50fe43058f237332b8f2ad72a4135  REVIEW_ME_FIRST.md
+e355488db56f42f1e70d22b3910ae76ebd96035a1d9a01b5188264d349036276  SUPERVISOR_STATE.json
+a3754583fc2ea7eacc0a9299152f3d6162f29bbaf10c16c4eba1cf1a2d712c85  TRACEBACK.txt

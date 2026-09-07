@@ -1,0 +1,34 @@
+=== top level ===
+total 112
+drwx------   60 haewonkim  staff  1920 Aug  7 21:08 _diag
+drwxr-xr-x    7 haewonkim  staff   224 Aug  7 21:08 _work
+drwx------   21 haewonkim  staff   672 Aug  7 16:00 .
+drwxr-xr-x+  89 haewonkim  staff  2848 Aug 17 20:42 ..
+-rw-------    1 haewonkim  staff   266 Aug  4 09:01 .credentials
+-rw-------    1 haewonkim  staff  1667 Aug  4 09:01 .credentials_rsaparams
+-rw-------    1 haewonkim  staff     0 Aug  4 09:01 .env
+-rw-------    1 haewonkim  staff   745 Aug  4 09:01 .path
+-rw-------    1 haewonkim  staff   418 Aug  4 09:01 .runner
+-rw-r--r--    1 haewonkim  staff   418 Aug  7 16:00 .runner_migrated
+-rw-------    1 haewonkim  staff   121 Aug  4 09:01 .service
+drwx------  258 haewonkim  staff  8256 Aug  4 09:01 bin
+-rwx------    1 haewonkim  staff  2458 Jul 20 12:42 config.sh
+-rwx------    1 haewonkim  staff   646 Jul 20 12:42 env.sh
+drwx------    4 haewonkim  staff   128 Jul 20 12:43 externals
+-rw-------    1 haewonkim  staff  1824 Jul 20 12:42 run-helper.cmd.template
+-rwx------    1 haewonkim  staff  2866 Jul 20 12:42 run-helper.sh.template
+-rwx------    1 haewonkim  staff  2885 Jul 20 12:42 run.sh
+-rwx------    1 haewonkim  staff   532 Aug  4 09:01 runsvc.sh
+-rwx------    1 haewonkim  staff   751 Jul 20 12:42 safe_sleep.sh
+-rwxr-xr-x    1 haewonkim  staff  3664 Aug  4 09:01 svc.sh
+
+=== relevant files ===
+/Users/haewonkim/sysgrid-actions-runner/svc.sh
+/Users/haewonkim/sysgrid-actions-runner/.credentials_rsaparams
+/Users/haewonkim/sysgrid-actions-runner/bin/runsvc.sh
+/Users/haewonkim/sysgrid-actions-runner/.runner
+/Users/haewonkim/sysgrid-actions-runner/run.sh
+/Users/haewonkim/sysgrid-actions-runner/runsvc.sh
+/Users/haewonkim/sysgrid-actions-runner/config.sh
+/Users/haewonkim/sysgrid-actions-runner/.credentials
+/Users/haewonkim/sysgrid-actions-runner/.service

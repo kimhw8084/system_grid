@@ -1,0 +1,54 @@
+================================================================
+PATH: /Users/haewonkim/.local/bin/sg
+-rwxr-xr-x  1 haewonkim  staff  147 Aug  8 11:24 /Users/haewonkim/.local/bin/sg
+/Users/haewonkim/.local/bin/sg: Bourne-Again shell script text executable, ASCII text
+8568fbb49e3664076d4f3c4871bfa520c675f6cc80f4be54dc9649d3a69b9360  /Users/haewonkim/.local/bin/sg
+
+================================================================
+PATH: /Users/haewonkim/.local/bin/sgd
+-rwxr-xr-x@ 1 haewonkim  staff  142979 Aug  1 22:47 /Users/haewonkim/.local/bin/sgd
+/Users/haewonkim/.local/bin/sgd: Python script text executable, ASCII text
+e2da4a773bfe7684de88c60f037130c4625ea82591d351a819e5955f09247478  /Users/haewonkim/.local/bin/sgd
+
+================================================================
+PATH: /Users/haewonkim/.local/bin/sgd.backup.20260802T014654Z
+-rwxr-xr-x@ 1 haewonkim  staff  45403 Aug  1 20:24 /Users/haewonkim/.local/bin/sgd.backup.20260802T014654Z
+/Users/haewonkim/.local/bin/sgd.backup.20260802T014654Z: Python script text executable, ASCII text
+2f1df4dc649b76efee835c569a2d2d7d3109b1214c6df86e7cacfd1c1061544f  /Users/haewonkim/.local/bin/sgd.backup.20260802T014654Z
+
+================================================================
+PATH: /Users/haewonkim/.local/bin/sgd.backup.20260802T030839Z
+-rwxr-xr-x@ 1 haewonkim  staff  92097 Aug  1 20:46 /Users/haewonkim/.local/bin/sgd.backup.20260802T030839Z
+/Users/haewonkim/.local/bin/sgd.backup.20260802T030839Z: Python script text executable, ASCII text
+99885484045b9eda7561597bf4a2f808a5784d9e3e71ceb8577989c551744665  /Users/haewonkim/.local/bin/sgd.backup.20260802T030839Z
+
+================================================================
+PATH: /Users/haewonkim/.local/bin/sgd.backup.20260802T030902Z
+-rwxr-xr-x  1 haewonkim  staff  124575 Aug  1 22:08 /Users/haewonkim/.local/bin/sgd.backup.20260802T030902Z
+/Users/haewonkim/.local/bin/sgd.backup.20260802T030902Z: Python script text executable, ASCII text
+a6fc44b3b0ce5cb11fdaef47aa2e436726162b0089fa377d1d8842eebc1080aa  /Users/haewonkim/.local/bin/sgd.backup.20260802T030902Z
+
+================================================================
+PATH: /Users/haewonkim/.local/bin/sgd.backup.20260802T034707Z
+-rwxr-xr-x  1 haewonkim  staff  124575 Aug  1 22:09 /Users/haewonkim/.local/bin/sgd.backup.20260802T034707Z
+/Users/haewonkim/.local/bin/sgd.backup.20260802T034707Z: Python script text executable, ASCII text
+a6fc44b3b0ce5cb11fdaef47aa2e436726162b0089fa377d1d8842eebc1080aa  /Users/haewonkim/.local/bin/sgd.backup.20260802T034707Z
+
+================================================================
+PATH: /Users/haewonkim/.local/bin/sgnotify
+-rwxr-xr-x  1 haewonkim  staff  884 Jul 26 16:57 /Users/haewonkim/.local/bin/sgnotify
+/Users/haewonkim/.local/bin/sgnotify: Python script text executable, ASCII text
+2eed22d5a8ecf303caef988d713a0b6815faa176d887df4d882170b2bd39c56f  /Users/haewonkim/.local/bin/sgnotify
+
+================================================================
+PATH: /Users/haewonkim/.local/bin/sgs
+-rwxr-xr-x  1 haewonkim  staff  187 Aug  1 17:49 /Users/haewonkim/.local/bin/sgs
+/Users/haewonkim/.local/bin/sgs: Bourne-Again shell script text executable, ASCII text
+b27c93978a88390459c87b404ce017d3fd46a1619f7233b1eae302d7233c76d3  /Users/haewonkim/.local/bin/sgs
+
+================================================================
+PATH: /Users/haewonkim/.local/bin/sgwatch
+-rwxr-xr-x  1 haewonkim  staff  186 Aug  1 17:49 /Users/haewonkim/.local/bin/sgwatch
+/Users/haewonkim/.local/bin/sgwatch: Bourne-Again shell script text executable, ASCII text
+560e2ab91d09969740280daf04ac82f9f29ffb5781ace5b1598dabf2053ac639  /Users/haewonkim/.local/bin/sgwatch
+

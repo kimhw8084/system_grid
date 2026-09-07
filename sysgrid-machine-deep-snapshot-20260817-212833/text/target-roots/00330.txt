@@ -1,0 +1,20 @@
+ORIGINAL_PATH: /Users/haewonkim/.local/share/sysgrid-campaign-platform/v1.0.0/tests/test_state_identity.py
+ORIGINAL_SHA256: c79bb59438b22431a490b878e416fe34a484181f7767f101c42195b2ff88d97f
+================================================================================
+import os, subprocess, tempfile, unittest
+from pathlib import Path
+import sys
+sys.path.insert(0,str(Path(__file__).resolve().parents[1]/"payload"))
+from sysgrid_state_identity import canonical_dirty_paths
+class StateIdentityTests(unittest.TestCase):
+    def test_individual_untracked_files(self):
+        with tempfile.TemporaryDirectory() as td:
+            repo=Path(td); subprocess.run(["git","init","-q",str(repo)],check=True)
+            subprocess.run(["git","-C",str(repo),"config","user.email","test@example.com"],check=True)
+            subprocess.run(["git","-C",str(repo),"config","user.name","Test"],check=True)
+            (repo/"base.txt").write_text("base")
+            subprocess.run(["git","-C",str(repo),"add","base.txt"],check=True); subprocess.run(["git","-C",str(repo),"commit","-qm","base"],check=True)
+            (repo/"frontend/src/components/far").mkdir(parents=True); (repo/"frontend/src/components/far/A.tsx").write_text("A")
+            (repo/"patches/x").mkdir(parents=True); (repo/"patches/x/a.patch").write_text("p")
+            self.assertEqual(canonical_dirty_paths(repo),("frontend/src/components/far/A.tsx","patches/x/a.patch"))
+if __name__=="__main__": unittest.main()

@@ -1,0 +1,15 @@
+ORIGINAL_PATH: /Users/haewonkim/.local/state/sysgrid-supervisor/runs/20260801T200852Z-68332-518000/patch.diff
+ORIGINAL_SHA256: db076e565453174f5782cf8a112a4377a371000c05dc0f65d3d1a0997fe77958
+================================================================================
+diff --git a/scripts/verify-app.sh b/scripts/verify-app.sh
+--- a/scripts/verify-app.sh
++++ b/scripts/verify-app.sh
+@@ -429,7 +429,7 @@
+     npm run check:canonical-verification
+     npm run test:lint
+     npm run typecheck
+-    npm run test:coverage -- --maxWorkers "$FRONTEND_WORKERS" --run frontend/src/components/shared/GoldenWorkspaceGeometryContract.test.ts
++    npm run test:coverage -- --maxWorkers "$FRONTEND_WORKERS" --run src/components/shared/GoldenWorkspaceGeometryContract.test.ts
+     VITE_API_BASE_URL="$BACKEND_ORIGIN" VITE_FRONTEND_ORIGIN="$FRONTEND_ORIGIN" npm run build
+   )
+   emit_progress frontend_completed passed "Campaign changed-area verification and production build passed."

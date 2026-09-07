@@ -1,0 +1,18 @@
+ORIGINAL_PATH: /Users/haewonkim/.local/state/sysgrid-supervisor/runs/20260803T210459Z-89376-290000/diagnostic/RESULT.json
+ORIGINAL_SHA256: c2037cea0713a3facd16a642fa6400e4d70b30a1d11e7febbd752d3487897215
+================================================================================
+{
+  "capsule_file": "SYSGRID_OUT31_PA13_R1_RENDERED_READINESS_AND_FAR_LOCATOR_VERIFICATION_REPAIR_v1.0.0.sgcap",
+  "capsule_sha256": "2973872dd78c8590359f8ca99aa8d4fc8e05934dce2d84350d5e3f6f187b1ec2",
+  "classification": "SUPERVISOR_INTERNAL_FAILURE",
+  "engine_version": "1.1.1",
+  "exit_code": 70,
+  "finished_utc": "2026-08-03T21:05:55Z",
+  "lane": "execution_platform",
+  "message": "[Errno 5] Input/output error",
+  "mode": "qualification",
+  "mutation_state": "engine_completed",
+  "result": "failure",
+  "safe_automatic_retry_performed": 0,
+  "supervisor_version": "2.2.1"
+}

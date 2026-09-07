@@ -1,0 +1,32 @@
+ORIGINAL_PATH: /Users/haewonkim/.local/state/sysgrid-supervisor/runs/20260802T004647Z-89736-456000/preflight.json
+ORIGINAL_SHA256: 95ae48b41877620c869a4353bde16588c11418c1bc0f27ab973451e2f729cb07
+================================================================================
+{
+  "declared_state": {
+    "dirty_path_count": 61,
+    "pre_hash_count": 61,
+    "protected_hash_count": 19
+  },
+  "engine_self_test": {
+    "engine_version": "1.0.4",
+    "result": "PASS",
+    "tests": [
+      "safe-path",
+      "manifest",
+      "corruption"
+    ]
+  },
+  "patch": {
+    "applicable": true,
+    "forward_diagnostic": "Checking patch frontend/src/components/far/FARGoldenWorkspace.tsx...\nChecking patch frontend/tests/far-golden-workspace.spec.ts...",
+    "forward_exit_code": 0,
+    "reverse_applicable": false,
+    "reverse_diagnostic": "Checking patch frontend/tests/far-golden-workspace.spec.ts...\nerror: while searching for:\n\n    const workspace = page.locator('[data-far-golden-workspace=\"true\"]')\n    await expect(workspace.locator('[data-golden-command-bar=\"true\"]')).toBeVisible()\n    await expect(workspace.locator('[data-far-summary=\"true\"]')).toHaveCount(0)\n    await expect(workspace.locator('[data-far-mode-control=\"true\"]')).toBeVisible()\n\n    const grid = workspace.locator('[data-far-grid=\"true\"]')\n    await expect(grid).toBeVisible()\n\nerror: patch failed: frontend/tests/far-golden-workspace.spec.ts:17\nerror: frontend/tests/far-golden-workspace.spec.ts: patch does not apply\nChecking patch frontend/src/components/far/FARGoldenWorkspace.tsx...\nerror: while searching for:\n  BarChart3,\n  CheckCircle2,\n  ClipboardCopy,\n  CloudOff,\n  Filter,\n  Link2,\n\nerror: patch failed: frontend/src/components/far/FARGoldenWorkspace.tsx:6\nerror: frontend/src/components/far/FARGoldenWorkspace.tsx: patch does not apply",
+    "reverse_exit_code": 1
+  },
+  "storage": {
+    "control_free": 59358568448,
+    "local_free": 59358568448,
+    "required": 536870912
+  }
+}

@@ -1,0 +1,74 @@
+ORIGINAL_PATH: /Users/haewonkim/.local/share/sysgrid-campaign-platform/v1.1.1/QUALIFICATION_REPORT.json
+ORIGINAL_SHA256: f3f40bb5d9217de097676d931610e37745fddc91415344166341df82347a781a
+================================================================================
+{
+  "pending_final_package_gates": [],
+  "platform_version": "1.1.1",
+  "qualification_summary": "PASS \u2014 read-only source-authority command and cumulative platform release are qualified for user-machine activation.",
+  "result": "PASS",
+  "schema_version": "1.0",
+  "tests": [
+    {
+      "count": "8/8",
+      "name": "retained platform component tests",
+      "result": "PASS"
+    },
+    {
+      "count": "2/2",
+      "name": "source-authority component tests",
+      "result": "PASS"
+    },
+    {
+      "name": "source-authority self-test",
+      "result": "PASS"
+    },
+    {
+      "name": "Stable Engine v1.1.1 self-test",
+      "result": "PASS"
+    },
+    {
+      "name": "Supervisor v2.2.1 self-test",
+      "result": "PASS"
+    },
+    {
+      "name": "Campaign Controller v1.1.0 self-test",
+      "result": "PASS"
+    },
+    {
+      "name": "clean-room cumulative installer",
+      "result": "PASS"
+    },
+    {
+      "name": "production source-capture simulation outside repository",
+      "result": "PASS"
+    },
+    {
+      "name": "tracked plus nested untracked file capture",
+      "result": "PASS"
+    },
+    {
+      "name": "secret exclusion",
+      "result": "PASS"
+    },
+    {
+      "name": "manifest verification",
+      "result": "PASS"
+    },
+    {
+      "name": "source and Git non-mutation proof",
+      "result": "PASS"
+    },
+    {
+      "name": "exact final-ZIP extraction and installation",
+      "result": "PASS"
+    },
+    {
+      "name": "activation evidence manifest",
+      "result": "PASS"
+    },
+    {
+      "name": "deterministic final ZIP rebuild",
+      "result": "PASS"
+    }
+  ]
+}

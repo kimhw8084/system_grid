@@ -1,0 +1,15 @@
+ORIGINAL_PATH: /Users/haewonkim/.local/share/sysgrid-supervisor/backups/20260801T194946Z-pre-v2.1.2/sg
+ORIGINAL_SHA256: cca0513c9bda77fb43ecac061a110371845b90f6e91d9520e0a1381a654c961c
+================================================================================
+#!/usr/bin/env bash
+set -Eeuo pipefail
+case "${1:-}" in
+  run) shift; exec /opt/anaconda3/bin/python3 /Users/haewonkim/.local/share/sysgrid-supervisor/v2.0.2/payload/sysgrid_supervisor.py run "$@" ;;
+  status) shift; exec /opt/anaconda3/bin/python3 /Users/haewonkim/.local/share/sysgrid-supervisor/v2.0.2/payload/sysgrid_supervisor.py status "$@" ;;
+  watch) shift; exec /opt/anaconda3/bin/python3 /Users/haewonkim/.local/share/sysgrid-supervisor/v2.0.2/payload/sysgrid_supervisor.py watch "$@" ;;
+  self-test) shift; exec /opt/anaconda3/bin/python3 /Users/haewonkim/.local/share/sysgrid-supervisor/v2.0.2/payload/sysgrid_supervisor.py self-test "$@" ;;
+  notification-test) shift; exec /opt/anaconda3/bin/python3 /Users/haewonkim/.local/share/sysgrid-supervisor/v2.0.2/payload/sysgrid_supervisor.py notification-test "$@" ;;
+  recover-artifact) shift; exec /opt/anaconda3/bin/python3 /Users/haewonkim/.local/share/sysgrid-supervisor/v2.0.2/payload/sysgrid_supervisor.py recover-artifact "$@" ;;
+  "") exec /opt/anaconda3/bin/python3 /Users/haewonkim/.local/share/sysgrid-supervisor/v2.0.2/payload/sysgrid_supervisor.py run ;;
+  *) exec /opt/anaconda3/bin/python3 /Users/haewonkim/.local/share/sysgrid-supervisor/v2.0.2/payload/sysgrid_supervisor.py run "$@" ;;
+esac

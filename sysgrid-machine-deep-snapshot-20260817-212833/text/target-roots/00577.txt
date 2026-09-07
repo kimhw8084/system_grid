@@ -1,0 +1,14 @@
+ORIGINAL_PATH: /Users/haewonkim/.local/state/sysgrid-supervisor/runs/20260805T174920Z-95186-601000/patch.diff
+ORIGINAL_SHA256: 5d12b7286a2ee1fda2791aa56f8694596768c03409b72c4fba87a7ce4d1b5a1d
+================================================================================
+diff --git a/frontend/tests/far-golden-workspace.spec.ts b/frontend/tests/far-golden-workspace.spec.ts
+--- a/frontend/tests/far-golden-workspace.spec.ts
++++ b/frontend/tests/far-golden-workspace.spec.ts
+@@ -139,6 +139,7 @@
+ 
+ test.describe('FAR whole-view golden workspace', () => {
+   test('retains the detailed FAR runtime inside the Monitoring-protected shell', async ({ page }, testInfo) => {
++    test.setTimeout(120_000)
+     await resetBrowserState(page)
+     await page.setViewportSize({ width: 1440, height: 1000 })
+     await page.goto('/far')

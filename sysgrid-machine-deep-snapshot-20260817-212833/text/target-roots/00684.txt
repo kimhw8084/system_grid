@@ -1,0 +1,32 @@
+ORIGINAL_PATH: /Users/haewonkim/.local/state/sysgrid-supervisor/runs/20260801T205642Z-22445-763000/preflight.json
+ORIGINAL_SHA256: 3ae25a80010fd17fcf2c9c4675207ad26420f6cb060d6515bef53438f2187bf4
+================================================================================
+{
+  "declared_state": {
+    "dirty_path_count": 57,
+    "pre_hash_count": 57,
+    "protected_hash_count": 19
+  },
+  "engine_self_test": {
+    "engine_version": "1.0.4",
+    "result": "PASS",
+    "tests": [
+      "safe-path",
+      "manifest",
+      "corruption"
+    ]
+  },
+  "patch": {
+    "applicable": true,
+    "forward_diagnostic": "Checking patch frontend/src/components/shared/OperationalWorkspaceShells.tsx...",
+    "forward_exit_code": 0,
+    "reverse_applicable": false,
+    "reverse_diagnostic": "Checking patch frontend/src/components/shared/OperationalWorkspaceShells.tsx...\nerror: while searching for:\n\nexport const GOLDEN_WORKSPACE_GEOMETRY_VERSION = '3'\nexport const GOLDEN_WORKSPACE_FRAME_CLASS = 'h-full min-h-0 min-w-0 w-full max-w-full box-border flex flex-col items-stretch space-y-4 overflow-hidden [&>*]:!ml-0 [&>*]:!mr-0 [&>*]:!min-w-0 [&>*]:!max-w-full [&>*]:!w-full [&>*]:self-stretch'\nexport const GOLDEN_GRID_BASE_CLASS = 'operational-grid-shell operational-grid relative box-border flex min-h-0 min-w-0 w-full max-w-full flex-1 flex-col overflow-hidden glass-panel ag-theme-alpine-dark [&_.ag-root-wrapper]:!min-w-0 [&_.ag-root-wrapper]:!w-full [&_.ag-root-wrapper]:!max-w-full [&_.ag-root]:!min-w-0 [&_.ag-root]:!w-full [&_.ag-root]:!max-w-full [&_.ag-body]:!min-w-0 [&_.ag-body]:!max-w-full [&_.ag-body-viewport]:!min-w-0 [&_.ag-body-viewport]:!max-w-full [&_.ag-center-cols-viewport]:!min-w-0 [&_.ag-center-cols-viewport]:!max-w-full [&_.ag-center-cols-container]:!min-w-full'\nexport const GOLDEN_GRID_VARIANT_CLASS = {\n  golden: 'rounded-lg',\n  'attached-panel': 'rounded-t-none border-x border-b border-white/5',\n\nerror: patch failed: frontend/src/components/shared/OperationalWorkspaceShells.tsx:13\nerror: frontend/src/components/shared/OperationalWorkspaceShells.tsx: patch does not apply",
+    "reverse_exit_code": 1
+  },
+  "storage": {
+    "control_free": 55955419136,
+    "local_free": 55955419136,
+    "required": 536870912
+  }
+}

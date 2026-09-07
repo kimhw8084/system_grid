@@ -1,0 +1,111 @@
+ORIGINAL_PATH: /Users/haewonkim/.local/state/sysgrid-supervisor/runs/20260804T143053Z-21666-726000/patch.diff
+ORIGINAL_SHA256: ba6ef9c7cc000ce286ad5b8b560dd37861d66a591756f3f5e3227f3b4dba0e45
+================================================================================
+diff --git a/frontend/tests/far-golden-workspace.spec.ts b/frontend/tests/far-golden-workspace.spec.ts
+index 3aec221e6a6131d23e03051af9095d5a96964f5d..5a5b08ebb57202c7b7b3f6d010e057e1ab03c7d6 100644
+--- a/frontend/tests/far-golden-workspace.spec.ts
++++ b/frontend/tests/far-golden-workspace.spec.ts
+@@ -15,15 +15,35 @@ function findMissingHeaders(available: string[], required: string[]) {
+   return required.filter((label) => !normalized.has(label))
+ }
+ 
+-async function collectReachableHeaders(page: any, grid: any) {
+-  const horizontalViewport = grid.locator('.ag-body-horizontal-scroll-viewport')
+-  await expect(horizontalViewport).toBeAttached()
++async function collectReachableHeaders(page: any, grid: any, required: string[]) {
++  const centerViewport = grid.locator('.ag-center-cols-viewport')
++  await expect(centerViewport).toBeAttached()
+ 
+-  const metrics = await horizontalViewport.evaluate((element: HTMLElement) => ({
++  const headers = new Set<string>()
++  const collectInstantiatedHeaders = async () => {
++    for (const text of await grid.locator('.ag-header-cell').allTextContents()) {
++      const normalized = text.replace(/\s+/g, ' ').trim()
++      if (normalized) headers.add(normalized)
++    }
++  }
++  await collectInstantiatedHeaders()
++
++  const metrics = await centerViewport.evaluate((element: HTMLElement) => ({
+     clientWidth: element.clientWidth,
++    scrollWidth: element.scrollWidth,
+     maxScrollLeft: Math.max(0, element.scrollWidth - element.clientWidth),
+   }))
+-  const step = Math.max(80, Math.floor(Math.max(metrics.clientWidth, 1) * 0.7))
++  expect(metrics.clientWidth, 'FAR center-column viewport must have measurable width').toBeGreaterThan(0)
++  expect(metrics.scrollWidth).toBeGreaterThanOrEqual(metrics.clientWidth)
++  const initiallyMissing = findMissingHeaders([...headers], required)
++  if (initiallyMissing.length > 0) {
++    expect(
++      metrics.maxScrollLeft,
++      `FAR center-column viewport must overflow when required headers are virtualized. Initially missing: ${initiallyMissing.join(', ')}`,
++    ).toBeGreaterThan(0)
++  }
++
++  const step = Math.max(80, Math.floor(metrics.clientWidth * 0.7))
+   const positions = Array.from(
+     new Set([
+       0,
+@@ -31,30 +51,35 @@ async function collectReachableHeaders(page: any, grid: any) {
+       metrics.maxScrollLeft,
+     ]),
+   ).sort((a, b) => a - b)
+-  const headers = new Set<string>()
++  const observedScrollPositions: number[] = []
+ 
+   for (const left of positions) {
+-    await horizontalViewport.evaluate((element: HTMLElement, nextLeft: number) => {
++    await centerViewport.evaluate((element: HTMLElement, nextLeft: number) => {
+       element.scrollLeft = nextLeft
+     }, left)
+-    await expect.poll(async () => Math.round(await horizontalViewport.evaluate((element: HTMLElement) => element.scrollLeft))).toBeGreaterThanOrEqual(Math.max(0, Math.round(left) - 2))
++    await expect.poll(async () => {
++      const actual = await centerViewport.evaluate((element: HTMLElement) => element.scrollLeft)
++      return Math.abs(Math.round(actual) - Math.round(left))
++    }).toBeLessThanOrEqual(2)
++    const actual = await centerViewport.evaluate((element: HTMLElement) => element.scrollLeft)
++    observedScrollPositions.push(actual)
+     await page.evaluate(() => new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve()))))
+-    for (const text of await grid.locator('.ag-header-cell').allTextContents()) {
+-      const normalized = text.replace(/\s+/g, ' ').trim()
+-      if (normalized) headers.add(normalized)
+-    }
++    await collectInstantiatedHeaders()
+   }
+ 
+-  await horizontalViewport.evaluate((element: HTMLElement) => {
++  if (metrics.maxScrollLeft > 0) {
++    expect(Math.max(...observedScrollPositions)).toBeGreaterThanOrEqual(metrics.maxScrollLeft - 2)
++  }
++  await centerViewport.evaluate((element: HTMLElement) => {
+     element.scrollLeft = 0
+   })
+-  await expect.poll(async () => Math.round(await horizontalViewport.evaluate((element: HTMLElement) => element.scrollLeft))).toBeLessThanOrEqual(2)
++  await expect.poll(async () => Math.round(await centerViewport.evaluate((element: HTMLElement) => element.scrollLeft))).toBeLessThanOrEqual(2)
+   await page.evaluate(() => new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve()))))
+   return [...headers]
+ }
+ 
+ async function expectReachableHeaders(page: any, grid: any, required: string[]) {
+-  const available = await collectReachableHeaders(page, grid)
++  const available = await collectReachableHeaders(page, grid, required)
+   expect(findMissingHeaders(available, required), `Missing reachable FAR headers. Available: ${available.join(', ')}`).toEqual([])
+   return available
+ }
+diff --git a/frontend/tests/far-workflows.spec.ts b/frontend/tests/far-workflows.spec.ts
+index 8776b33dfb391403b3536b7602b58b742e2371c5..3c2e27c117fcfb957fb7f55816538e2dc836ed04 100644
+--- a/frontend/tests/far-workflows.spec.ts
++++ b/frontend/tests/far-workflows.spec.ts
+@@ -69,7 +69,11 @@ test.describe('FAR workflows', () => {
+     const rowIndex = await centerRow.getAttribute('row-index')
+     if (rowIndex === null) throw new Error('FAR row is missing row-index')
+     const actionRow = workspace.locator(`.ag-pinned-right-cols-container .ag-row[row-index="${rowIndex}"]`)
+-    await actionRow.getByTitle('Retire failure vector').click()
++    await expect(actionRow).toBeVisible()
++    const retirementAction = actionRow.getByTitle('Select for evidence-preserving retirement')
++    await expect(retirementAction).toBeVisible()
++    await expect(retirementAction).toBeEnabled()
++    await retirementAction.click()
+ 
+     await expect(page.getByRole('heading', { name: 'FAR bulk preview' })).toBeVisible()
+     await expect(page.getByText('Retire failure vectors', { exact: true })).toBeVisible()

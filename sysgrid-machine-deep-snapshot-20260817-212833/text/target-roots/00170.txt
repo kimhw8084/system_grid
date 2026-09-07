@@ -1,0 +1,72 @@
+ORIGINAL_PATH: /Users/haewonkim/.local/share/sysgrid-supervisor/v1.3.1/RESEARCH_AND_DESIGN.md
+ORIGINAL_SHA256: eedf9a07f360926bfd9b2583ac9168fdea394267eb9919a623d9a5dc69877910
+================================================================================
+# Research and Design Record
+
+## Stable mechanisms
+
+The implementation uses standard-library and Git primitives with narrow, testable semantics:
+
+- `fcntl.flock(LOCK_EX | LOCK_NB)` for one live execution owner.
+- `os.replace`, file `fsync`, and directory `fsync` for durable atomic state and publication.
+- `subprocess` argument vectors with `shell=False`, closed descriptors, sanitized environment, and direct child ownership.
+- `ThreadPoolExecutor` for independent read-only preflight with complete aggregate reporting.
+- ZIP member validation, CRC, complete path equality, streamed SHA-256, size limits, and decompression-ratio limits.
+- NUL-delimited Git path output for exact dirty-path handling.
+- `git apply --check` and `--reverse` for non-mutating patch-state classification.
+- `ps` plus `kill(pid, 0)` for exact interrupted-process liveness and command-identity verification on the supported macOS execution platform.
+
+Primary references used during design:
+
+- Python documentation: `fcntl`, `os`, `subprocess`, `concurrent.futures`, `zipfile`.
+- Git documentation: `git status`, `git ls-files`, `git apply`, `git worktree`.
+
+## Failure-elimination model
+
+### Before engine start
+
+Independent trust prerequisites run concurrently and non-short-circuit: capsule identity, exact engine verification, repository identity/state proof, storage, and writeability. Patch applicability is intentionally sequenced after exact repository-state proof because it is dependent on those bytes; this prevents misleading duplicate failures and never evaluates a mutation patch against an unproven worktree. No product mutation begins.
+
+### While the exact engine is running
+
+The supervisor records a durable launch identity before process creation. A later `sg` invocation will not start a second process when the exact recorded PID and command are still active; it waits for the authorized process to finish.
+
+### After engine execution
+
+A private local Outbox isolates engine evidence from cloud synchronization and stale shared outputs. If the supervisor stops after the engine produced evidence, the next invocation verifies and publishes those exact bytes without replay.
+
+### Safe automatic retry boundary
+
+An engine-start marker alone does not authorize retry. Retry is permitted at most once and only when all of the following are proven again:
+
+1. exact capsule identity;
+2. exact baseline branch, HEAD, and upstream;
+3. exact declared dirty-path set;
+4. exact pre-state and protected hashes;
+5. mutation patch uniquely forward-applicable and not reverse-applicable;
+6. no complete engine artifact exists;
+7. no exact engine process remains active.
+
+This proves the product patch did not apply. Any post-state, reverse-applicable patch, state mismatch, unknown process identity, or missing proof blocks replay and produces evidence.
+
+## Resource use
+
+The supervisor derives CPU and physical-memory capacity. Platform preflight uses up to `min(32, max(4, 2 × CPU))` workers and exports conservative resource hints to the trusted engine environment. Product-test parallelism remains capsule/recipe-owned because the supervisor may not invent per-run commands or weaken deterministic isolation.
+
+## Released-byte verification
+
+The 57-test suite covers:
+
+- archive and manifest safety;
+- package/staged/installed-tree identity;
+- capsule schema, patch identity, JSON state ledgers, canonical newline path ledgers, and GNU-style SHA-256 ledgers;
+- Git baseline, dirty paths, pre/protected hashes, dependency-ordered patch classification, and bounded forward/reverse diagnostics;
+- lock behavior, process identity, resource planning, and JSON-safe structured diagnostics;
+- exact duplicate Inbox convergence and distinct-identity rejection;
+- complete-output recovery without replay;
+- exact live-process wait before finalization;
+- safe single retry from proven pre-state;
+- blocked replay from post/ambiguous state;
+- canonical diagnostic production for recovery failure;
+- end-to-end success and application failure with exactly one engine invocation;
+- end-to-end canonical `.txt`/`.sha256` capsule-state compatibility.

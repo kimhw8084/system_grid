@@ -1,0 +1,10 @@
+ORIGINAL_PATH: /Users/haewonkim/.local/state/sysgrid-supervisor/runs/20260801T152842Z-46260-369000/diagnostic/TRACEBACK.txt
+ORIGINAL_SHA256: b2aa01cfde0b4486754e76d136d403e1fbdacee8712a7300aa3e167e694de70c
+================================================================================
+Traceback (most recent call last):
+  File "/Users/haewonkim/.local/share/sysgrid-supervisor/v2.0.1/payload/sysgrid_supervisor.py", line 2480, in run_supervised
+    checks = parallel_checks({
+             ^^^^^^^^^^^^^^^^^
+  File "/Users/haewonkim/.local/share/sysgrid-supervisor/v2.0.1/payload/sysgrid_supervisor.py", line 2112, in parallel_checks
+    raise PreflightAggregateError("; ".join(rendered), exit_code, results, failures)
+PreflightAggregateError: repository: REPOSITORY_HASH_FAILURE: pre_hashes mismatch (2 paths): {'frontend/scripts/check-canonical-verification-contract.cjs': {'expected': '875998334455f935e0cd3b914414fb530025618755409f0954ddeeb0de9789dd', 'actual': 'a1c48c9381738f24260f6ca50390048c22c520cac397e29c13c7fd996a3d7d27'}, 'scripts/verify-app.sh': {'expected': '45f60ee30c7dfe6d22131db43f0ec40f0a80ffec144e6383b2b85ba569965d8e', 'actual': 'b3a06db7e6ff97b52bef18bfc06d35238675fee954ee4071981d67fe51f2372e'}}

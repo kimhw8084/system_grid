@@ -1,0 +1,18 @@
+ORIGINAL_PATH: /Users/haewonkim/.local/state/sysgrid-supervisor/runs/20260802T034709Z-47369-145000/diagnostic/RESULT.json
+ORIGINAL_SHA256: 45a646ca746364e4081cc9befea86ecf349a3389e8929d34728291eb9ba948b1
+================================================================================
+{
+  "capsule_file": "DOWNLOAD_Attempt_12_Repair_R3_Engine_Normalized_Dirty_Path_Identity.sgcap",
+  "capsule_sha256": "47c60ab60593f865ce33015db90e84a838dc47ab53b193bc9008ec6e8c4db735",
+  "classification": "CAPSULE_CROSS_LEDGER_FAILURE",
+  "engine_version": "1.0.4",
+  "exit_code": 65,
+  "finished_utc": "2026-08-02T03:47:09Z",
+  "lane": "execution_platform",
+  "message": "pre dirty paths/hash keys differ: paths_only=['frontend/src/components/far', 'patches'] hashes_only=['frontend/src/components/far/FARGoldenWorkspace.tsx', 'frontend/src/components/far/FARGoldenWorkspaceModel.test.ts', 'frontend/src/components/far/FARGoldenWorkspaceModel.ts', 'patches/FAR_DIRECT_APPLY_FULL_GOLDEN_RECOVERY/APPLY_FAR_RECOVERY.command', 'patches/FAR_DIRECT_APPLY_FULL_GOLDEN_RECOVERY/FAR_FULL_GOLDEN_RECOVERY.patch', 'patches/FAR_DIRECT_APPLY_FULL_GOLDEN_RECOVERY/README.md', 'patches/FAR_DIRECT_APPLY_FULL_GOLDEN_RECOVERY/ROLLBACK_FAR_FULL_GOLDEN_RECOVERY.patch']",
+  "mode": "qualification",
+  "mutation_state": "not_started",
+  "result": "failure",
+  "safe_automatic_retry_performed": 0,
+  "supervisor_version": "2.1.5"
+}

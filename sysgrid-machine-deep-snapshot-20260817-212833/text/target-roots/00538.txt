@@ -1,0 +1,18 @@
+ORIGINAL_PATH: /Users/haewonkim/.local/state/sysgrid-supervisor/runs/20260803T141636Z-47121-836000/diagnostic/RESULT.json
+ORIGINAL_SHA256: 8dae103adce338cdfa85138a46a2c3d84f0dfa9379104564c921ea907d6c35bd
+================================================================================
+{
+  "capsule_file": null,
+  "capsule_sha256": null,
+  "classification": "CAPSULE_SCHEMA_FAILURE",
+  "engine_version": "1.1.1",
+  "exit_code": 65,
+  "finished_utc": "2026-08-03T14:16:36Z",
+  "lane": "execution_platform",
+  "message": "unsupported schema_version: '1.0'",
+  "mode": "qualification",
+  "mutation_state": "not_started",
+  "result": "failure",
+  "safe_automatic_retry_performed": 0,
+  "supervisor_version": "2.2.1"
+}

@@ -1,0 +1,34 @@
+ORIGINAL_PATH: /Users/haewonkim/.local/state/sysgrid-supervisor/runs/20260805T104339Z-2079-216000/preflight.json
+ORIGINAL_SHA256: 2622fe39642aae840bcc289e3e89796aeff09719e8402b558dc2d57060ca31b9
+================================================================================
+{
+  "declared_state": {
+    "dirty_path_count": 96,
+    "pre_hash_count": 96,
+    "protected_hash_count": 721
+  },
+  "engine_self_test": {
+    "engine_version": "1.1.1",
+    "result": "PASS",
+    "tests": [
+      "safe-path",
+      "manifest",
+      "corruption",
+      "canonical-dirty-paths",
+      "aggregate-recipes"
+    ]
+  },
+  "patch": {
+    "applicable": true,
+    "forward_diagnostic": "Checking patch frontend/scripts/check-canonical-verification-contract.cjs...",
+    "forward_exit_code": 0,
+    "reverse_applicable": false,
+    "reverse_diagnostic": "Checking patch frontend/scripts/check-canonical-verification-contract.cjs...\nerror: while searching for:\nrequireText(verify, 'emit_progress playwright_started', 'verify-app.sh must publish Playwright progress')\nrequireText(verify, 'npm run test:coverage -- --maxWorkers \"$FRONTEND_WORKERS\"', 'verify-app.sh must consume the bounded frontend worker budget')\nrequireText(verify, 'VITE_API_BASE_URL=\"$BACKEND_ORIGIN\" VITE_FRONTEND_ORIGIN=\"$FRONTEND_ORIGIN\" npm run build', 'verify-app.sh must bind the production build to the canonical runtime')\nrequireText(verify, 'local vite_bin=\"$FRONTEND_DIR/node_modules/.bin/vite\"', 'verify-app.sh must own the isolated production frontend through the direct Vite executable')\nrequireText(verify, '\"$vite_bin\" preview --host \"$FRONTEND_HOST\" --port \"$FRONTEND_PORT\" --strictPort', 'verify-app.sh must serve the exact production build through direct Vite ownership')\nrequireText(verify, 'wait_for_listener \"$FRONTEND_PORT\" \"isolated production frontend\"', 'verify-app.sh must prove the isolated production frontend listener before HTTP readiness')\nrequireText(verify, 'wait_for_http \"$FRONTEND_URL\" \"isolated production frontend\"', 'verify-app.sh must prove isolated production frontend HTTP readiness')\nrequireText(verify, \"curl --noproxy '*' --connect-timeout 1 --max-time 3 -fsS \\\"$url\\\"\", 'verify-app.sh must bypass proxies and bound loopback HTTP probes')\nrequireText(verify, 'readiness_diagnostics', 'verify-app.sh must capture deterministic readiness diagnostics')\nrequireText(verify, 'launch_frontend_with_readiness', 'verify-app.sh must use the bounded frontend readiness launch path')\nif (verify.includes('npm run preview --')) failures.push('verify-app.sh must not restore the npm preview wrapper')\nif (/^\\s*npm run check:shell-contracts\\s*$/m.test(verify)) failures.push('verify-app.sh must not run the shell contract twice')\nif (verify.includes('npm run dev --')) failures.push('verify-app.sh must not validate a development server after production bu",
+    "reverse_exit_code": 1
+  },
+  "storage": {
+    "control_free": 54833311744,
+    "local_free": 54833311744,
+    "required": 3221225472
+  }
+}

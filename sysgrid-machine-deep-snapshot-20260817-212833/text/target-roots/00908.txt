@@ -1,0 +1,59 @@
+ORIGINAL_PATH: /Users/haewonkim/.local/state/sysgrid-supervisor/runs/20260805T113731Z-63890-573000/patch.diff
+ORIGINAL_SHA256: 52a64cb88df0a7e41853f93e8013d9e3d00099aab21bf300df122fa5e260394a
+================================================================================
+diff --git a/frontend/src/components/shared/OperationalSavedViewsPanel.test.tsx b/frontend/src/components/shared/OperationalSavedViewsPanel.test.tsx
+index 6ae302a..d777caf 100644
+--- a/frontend/src/components/shared/OperationalSavedViewsPanel.test.tsx
++++ b/frontend/src/components/shared/OperationalSavedViewsPanel.test.tsx
+@@ -250,6 +250,26 @@ describe('Operational anchored-panel interaction continuity', () => {
+     expect(moved.style.maxHeight).toBe(40)
+   })
+ 
++  it('keeps the rendered border box inside protected narrow viewport margins', () => {
++    const narrow = computeWorkspaceAnchoredPanelStyle({
++      triggerRect: { top: 120, right: 378, bottom: 160, left: 300, width: 78 },
++      viewportWidth: 390,
++      viewportHeight: 844,
++      offset: 8,
++      minWidth: 420,
++      placement: null,
++    })
++
++    expect(narrow.style).toMatchObject({
++      left: 12,
++      width: 366,
++      boxSizing: 'border-box',
++      overflowY: 'auto',
++      scrollbarGutter: 'stable',
++    })
++    expect(Number(narrow.style.left) + Number(narrow.style.width)).toBeLessThanOrEqual(378)
++  })
++
+   it('classifies only panel-descendant scroll as internal', () => {
+     const panel = document.createElement('div')
+     const child = document.createElement('div')
+diff --git a/frontend/src/components/shared/OperationalWorkspacePrimitives.tsx b/frontend/src/components/shared/OperationalWorkspacePrimitives.tsx
+index f8d2be6..88e59ba 100644
+--- a/frontend/src/components/shared/OperationalWorkspacePrimitives.tsx
++++ b/frontend/src/components/shared/OperationalWorkspacePrimitives.tsx
+@@ -55,6 +55,7 @@ export function computeWorkspaceAnchoredPanelStyle({
+       bottom: resolvedPlacement === 'above' ? viewportHeight - triggerRect.top + offset : undefined,
+       left,
+       width,
++      boxSizing: 'border-box',
+       maxHeight: Math.max(40, availableHeight),
+       overflowY: 'auto',
+       overscrollBehavior: 'contain',
+diff --git a/frontend/tests/far-golden-workspace.spec.ts b/frontend/tests/far-golden-workspace.spec.ts
+index 4182c85..5a1aeff 100644
+--- a/frontend/tests/far-golden-workspace.spec.ts
++++ b/frontend/tests/far-golden-workspace.spec.ts
+@@ -142,7 +142,7 @@ test.describe('FAR whole-view golden workspace', () => {
+     await clickResilientButton(page, 'Filters')
+     await expect(page.locator('[data-far-filter-bar="true"]')).toHaveCount(0)
+ 
+-    const riskHeader = grid.locator('.ag-header-cell').filter({ hasText: /^Risk$/ }).first()
++    const riskHeader = grid.getByRole('columnheader', { name: 'Risk', exact: true })
+     await riskHeader.click()
+     await expect(riskHeader).toHaveAttribute('aria-sort', /ascending|descending/)
+ 

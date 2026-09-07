@@ -1,0 +1,135 @@
+ORIGINAL_PATH: /Users/haewonkim/.local/share/sysgrid-campaign-platform/v1.1.1/PROJECT_CONTINUITY/04_SYSGRID_NEW_CHAT_BOOTSTRAP_PROTOCOL_v1.0.0.md
+ORIGINAL_SHA256: 95edbc188f26792e7a7a2c844caa7cb68e1fb96acf35fe748f79847ea616654b
+================================================================================
+# SysGrid New-Chat Bootstrap Protocol v1.0.0
+
+## Purpose
+
+This static protocol makes continuation inside the ChatGPT Project deterministic. It does not store mutable project state. Live Linear and immutable machine evidence remain the state authorities.
+
+## Scope
+
+This protocol applies to the first substantive SysGrid turn in every new chat created inside the SysGrid ChatGPT Project. A message such as `Continue`, `Proceed`, a status question, a direction, or an uploaded result is substantive.
+
+## Authority order
+
+1. `00_ACTIVE_LAW_MANIFEST_v1.2.1.yaml`.
+2. The three active law files named by that manifest, in manifest authority order.
+3. Live Linear project `SysGrid`, master `OUT-5`, sole active issue, relations, and latest relevant comments.
+4. Latest independently accepted platform qualification record.
+5. Current safe source snapshot identity.
+6. At most one active immutable artifact or handoff record.
+7. The current chat only for user intent that is not contradicted by higher authority.
+
+No manually maintained current-state Project file is authoritative.
+
+## Mandatory first-turn procedure
+
+Before making a state claim, recommendation, artifact decision, mutation decision, or asking the user to repeat known context, the assistant must:
+
+1. Read the active manifest once.
+2. Read exactly the three active law files once, in authority order.
+3. Verify that active v1.2 and v1.2.1 law are not mixed.
+4. Query live Linear for project `SysGrid` and master `OUT-5`.
+5. Resolve the sole active issue, its status, parent, blockers, and relations.
+6. Read only the latest relevant comments needed to determine:
+   - latest accepted platform qualification;
+   - current Product Attempt;
+   - active Verification Repair, if any;
+   - active campaign or questionnaire stage;
+   - current permitted next action;
+   - current prohibited actions.
+7. Verify the current safe source snapshot identity and latest accepted platform identities.
+8. Inspect no more than one active artifact or handoff record.
+9. Reconcile the artifact expectation against live Linear. Linear wins for current operational state; immutable evidence wins for exact run and byte identities.
+10. Return the required bootstrap snapshot before continuing substantive work.
+
+Within the same chat, do not reread unchanged law or replay full Linear history. Refresh live Linear and only changed current artifacts before any later state claim, write, issuance, or mutation decision.
+
+## Required bootstrap snapshot
+
+The first substantive response must begin with either `SYSGRID BOOTSTRAP — PASS` or `SYSGRID BOOTSTRAP — BLOCKED` and include:
+
+```text
+SYSGRID BOOTSTRAP — PASS|BLOCKED
+
+Law
+- Active version
+- Manifest identity
+- Three active law identities
+- Mixed-law result
+
+Linear
+- Project
+- Master
+- Sole active issue
+- Status
+- Parent
+- Blockers
+- Latest relevant state-record timestamp
+
+Platform
+- Accepted platform version and package SHA-256
+- Stable Engine version and SHA-256
+- Supervisor version and SHA-256
+- Campaign Controller version and SHA-256
+
+Product
+- Product Attempt number
+- Acceptance state
+- Active Verification Repair, if any
+- Active product mutation count
+- Active capsule count
+- Current campaign/questionnaire stage
+
+Source
+- Repository
+- Branch
+- HEAD
+- Safe source snapshot/fingerprint identity
+
+Gate
+- Current permitted next action
+- Explicitly prohibited actions
+- Active artifact identity, or none
+```
+
+The assistant must distinguish observed facts from inferences and must not claim universal absence of unknown defects.
+
+## Fail-closed conditions
+
+Return `SYSGRID BOOTSTRAP — BLOCKED` and do not proceed when any of the following is true:
+
+- Manifest or one of the three active law files is missing or hash-inconsistent.
+- Active v1.2 and v1.2.1 law are mixed.
+- Linear cannot be read.
+- The project, master, or sole active issue cannot be uniquely resolved.
+- More than one active issue, unaccepted product mutation, or active capsule exists.
+- Live Linear conflicts materially with the active immutable handoff and the conflict cannot be resolved from authority order.
+- Accepted platform identity is missing or inconsistent.
+- Current safe source identity is unavailable when the next action depends on source.
+- An unresolved result artifact must be reviewed before continuation.
+- The requested action is ahead of the current approval or verification gate.
+
+A blocked bootstrap may request only the minimum evidence or user action necessary to restore authority. It must not reconstruct state from memory.
+
+## Trust boundaries
+
+- ChatGPT authors source changes and immutable declarative campaign artifacts.
+- The qualified Stable Engine alone verifies/applies exact payloads, runs trusted recipes, collects evidence, and performs commit/push after all gates pass and remote equality is verified.
+- Per-run executable logic, manual product edits, manual staging, manual commit/push, and manual cleanup to satisfy a gate are prohibited.
+- Monitoring remains the immutable golden reference.
+- One active issue, one unaccepted product mutation, and one active capsule are mandatory.
+
+## Handoff reconciliation
+
+When a machine result contains `HANDOFF/CHAT_HANDOFF.json`, verify:
+
+- its manifest and internal file hashes;
+- law identity against active Project law files;
+- platform identity against the latest accepted qualification;
+- source identity against the included source authority and current accepted snapshot;
+- Linear expectation against live Linear;
+- current gate and next permitted action against the latest relevant Linear comment.
+
+The handoff accelerates reconstruction but never replaces live Linear.

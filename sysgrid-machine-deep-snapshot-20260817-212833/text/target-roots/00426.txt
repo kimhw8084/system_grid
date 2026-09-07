@@ -1,0 +1,334 @@
+ORIGINAL_PATH: /Users/haewonkim/.local/share/sysgrid-campaign-platform/v1.1.0/payload/sysgrid_campaign.py
+ORIGINAL_SHA256: 28d102080c0086d68b9626ea2c507464f3390c67da3a5a6f1ad5a5233b4f23eb
+================================================================================
+#!/usr/bin/env python3
+"""SysGrid Evidence-Closed Campaign Controller v1.1.0.
+
+The controller validates campaign approval and evidence declarations before it
+installs an immutable declarative capsule into the qualified supervisor Inbox.
+It never edits product source, executes capsule-supplied code, stages, commits,
+or pushes.
+"""
+from __future__ import annotations
+
+import argparse
+import contextlib
+import hashlib
+import json
+import os
+import shutil
+import stat
+import subprocess
+import sys
+import tempfile
+import zipfile
+from pathlib import Path, PurePosixPath
+from typing import Any
+
+from sysgrid_supervisor import (inspect_capsule, validate_capsule_cross_ledger, discover_repo, probe_repo_and_state, patch_state_precheck, discover_engine, verify_engine)
+from sysgrid_runner import validate_run as validate_engine_run
+
+VERSION = "1.1.0"
+FINAL_QUESTION_STATUSES = {"APPROVED", "APPROVED_WITH_MODIFICATION", "EXPLICITLY_OUT_OF_SCOPE", "EVIDENCE_BACKED_NOT_APPLICABLE"}
+RISK_CATEGORIES = (
+    "nominal", "boundary", "empty_null", "malformed", "tenant_permission",
+    "concurrency_conflict", "retry_idempotency", "offline_network",
+    "destructive_recovery", "persistence_migration", "routed_deep_link",
+    "responsive_visual", "accessibility_interaction", "performance_resource",
+)
+HANDOFF_MEMBERS = {
+    "CHAT_HANDOFF.json", "LAW_IDENTITY.json", "LINEAR_STATE_EXPECTATION.json",
+    "PLATFORM_IDENTITY.json", "SOURCE_IDENTITY.json", "ACTIVE_ARTIFACT_IDENTITY.json",
+    "CURRENT_GATE.json", "NEXT_PERMITTED_ACTION.json",
+}
+ACTIVE_LAW_SHA256 = {
+    "00_ACTIVE_LAW_MANIFEST_v1.2.1.yaml": "c0bd95b4d2e812a08b41c71e40c726579a6ef34124acc18fa0a9d509040c1550",
+    "01_AI_Controlled_Delivery_Constitution_v1.2.1.md": "6f82f8cf5e781393661354ea3d615c5a46857f9e69e0f2c0ea589b7185ecac00",
+    "02_SYSGRID_PRODUCT_GOLDEN_CONTRACT_v1.2.1.md": "df8b975fc4db264808ed2955ed23418d70b5bf8cf351c8ec2bb5ed71014894b8",
+    "03_LEAN_WORKHORSE_CONTROL_CONTEXT_AND_REVIEW_LAW_v1.2.1.md": "c27dcf68ee388392c094e596f4fe2213f1a1e8bf3cd014aa804c6420c4ebbd79",
+}
+BOOTSTRAP_PROTOCOL_SHA256 = "95edbc188f26792e7a7a2c844caa7cb68e1fb96acf35fe748f79847ea616654b"
+CONFORMANCE_SPEC_SHA256 = "0d29a1017a3ac009d6c30ae53b17b0d8c09419700b86fd59068a9815ca5875c2"
+REQUIRED_MEMBERS = HANDOFF_MEMBERS | {
+    "RUN.json", "MANIFEST.sha256", "QUESTIONNAIRE.json", "QUESTIONNAIRE_CLOSURE.json",
+    "APPROVAL_LOCK.json", "CHANGE_SPEC.json", "RISK_MATRIX.json", "TEST_PLAN.json",
+    "VISUAL_MATRIX.json", "IMPROVEMENT_LEDGER.json", "NEXT_CAMPAIGN_SEED.json",
+}
+
+class CampaignError(RuntimeError):
+    def __init__(self, classification: str, message: str, exit_code: int = 65):
+        super().__init__(message); self.classification=classification; self.exit_code=exit_code
+
+
+def sha256_bytes(data: bytes) -> str: return hashlib.sha256(data).hexdigest()
+def sha256_file(path: Path) -> str:
+    h=hashlib.sha256()
+    with path.open('rb') as f:
+        for chunk in iter(lambda:f.read(1024*1024), b''): h.update(chunk)
+    return h.hexdigest()
+
+
+def safe_member(name: str) -> PurePosixPath:
+    if not isinstance(name,str) or not name or name.startswith('/') or name.startswith('./') or '\\' in name or '\0' in name or '//' in name:
+        raise CampaignError('CAMPAIGN_PACKAGE_FAILURE', f'unsafe member path: {name!r}')
+    p=PurePosixPath(name)
+    if any(part in {'','.', '..'} for part in p.parts):
+        raise CampaignError('CAMPAIGN_PACKAGE_FAILURE', f'unsafe member path: {name!r}')
+    return p
+
+
+def control_root() -> Path:
+    override=os.environ.get('SYSGRID_CONTROL_ROOT')
+    if override: return Path(override).expanduser()
+    icloud=Path.home()/"Library/Mobile Documents/com~apple~CloudDocs"
+    return (icloud/'SysGrid-Control') if icloud.exists() else (Path.home()/'SysGrid-Control')
+
+
+def package_root() -> Path: return Path(__file__).resolve().parent.parent
+
+def supervisor_path() -> Path: return package_root()/'payload'/'sysgrid_supervisor.py'
+
+
+def read_manifest(zf: zipfile.ZipFile) -> dict[str,str]:
+    try: raw=zf.read('MANIFEST.sha256').decode('utf-8','strict')
+    except Exception as exc: raise CampaignError('CAMPAIGN_MANIFEST_FAILURE', f'invalid MANIFEST.sha256: {exc}') from exc
+    expected: dict[str,str]={}
+    for line in raw.splitlines():
+        if not line.strip(): continue
+        parts=line.split(None,1)
+        if len(parts)!=2 or len(parts[0])!=64: raise CampaignError('CAMPAIGN_MANIFEST_FAILURE', f'invalid manifest line: {line!r}')
+        rel=parts[1].lstrip('* '); safe_member(rel)
+        if rel=='MANIFEST.sha256' or rel in expected: raise CampaignError('CAMPAIGN_MANIFEST_FAILURE', f'duplicate/invalid manifest path: {rel}')
+        expected[rel]=parts[0]
+    actual=sorted(i.filename for i in zf.infolist() if not i.is_dir() and i.filename!='MANIFEST.sha256')
+    if sorted(expected)!=actual:
+        raise CampaignError('CAMPAIGN_MANIFEST_FAILURE', f'manifest paths differ missing={sorted(set(expected)-set(actual))} extra={sorted(set(actual)-set(expected))}')
+    for rel,digest in expected.items():
+        got=sha256_bytes(zf.read(rel))
+        if got!=digest: raise CampaignError('CAMPAIGN_MANIFEST_FAILURE', f'digest mismatch for {rel}')
+    return expected
+
+
+def load_json(zf: zipfile.ZipFile, name: str) -> dict[str,Any]:
+    try: value=json.loads(zf.read(name).decode('utf-8','strict'))
+    except Exception as exc: raise CampaignError('CAMPAIGN_SCHEMA_FAILURE', f'{name} invalid: {exc}') from exc
+    if not isinstance(value,dict): raise CampaignError('CAMPAIGN_SCHEMA_FAILURE', f'{name} must contain an object')
+    return value
+
+
+def validate_campaign(path: Path, *, platform_preflight: bool = False) -> dict[str,Any]:
+    if not path.is_file() or path.is_symlink(): raise CampaignError('CAMPAIGN_SELECTION_FAILURE', f'campaign is not a regular file: {path}',66)
+    with zipfile.ZipFile(path) as zf:
+        infos=zf.infolist(); names={i.filename for i in infos if not i.is_dir()}
+        if len(names)!=len([i for i in infos if not i.is_dir()]): raise CampaignError('CAMPAIGN_PACKAGE_FAILURE','duplicate ZIP member names')
+        for info in infos:
+            safe_member(info.filename.rstrip('/')) if info.filename.rstrip('/') else None
+            if ((info.external_attr>>16)&0o170000)==stat.S_IFLNK: raise CampaignError('CAMPAIGN_PACKAGE_FAILURE',f'symlink member prohibited: {info.filename}')
+        missing=sorted(REQUIRED_MEMBERS-names)
+        if missing: raise CampaignError('CAMPAIGN_SCHEMA_FAILURE',f'missing campaign members: {missing}')
+        manifest=read_manifest(zf)
+        run=load_json(zf,'RUN.json'); questionnaire=load_json(zf,'QUESTIONNAIRE.json')
+        closure=load_json(zf,'QUESTIONNAIRE_CLOSURE.json'); approval=load_json(zf,'APPROVAL_LOCK.json')
+        spec=load_json(zf,'CHANGE_SPEC.json'); risk=load_json(zf,'RISK_MATRIX.json')
+        tests=load_json(zf,'TEST_PLAN.json'); visual=load_json(zf,'VISUAL_MATRIX.json')
+        ledger=load_json(zf,'IMPROVEMENT_LEDGER.json'); seed=load_json(zf,'NEXT_CAMPAIGN_SEED.json')
+        handoff=load_json(zf,'CHAT_HANDOFF.json'); law_identity=load_json(zf,'LAW_IDENTITY.json')
+        linear_expectation=load_json(zf,'LINEAR_STATE_EXPECTATION.json'); platform_identity=load_json(zf,'PLATFORM_IDENTITY.json')
+        source_identity=load_json(zf,'SOURCE_IDENTITY.json'); artifact_identity=load_json(zf,'ACTIVE_ARTIFACT_IDENTITY.json')
+        current_gate=load_json(zf,'CURRENT_GATE.json'); next_action=load_json(zf,'NEXT_PERMITTED_ACTION.json')
+        campaign_id=questionnaire.get('campaign_id')
+        if not isinstance(campaign_id,str) or not campaign_id: raise CampaignError('QUESTIONNAIRE_FAILURE','campaign_id missing')
+        for name,obj in [('closure',closure),('approval',approval),('spec',spec),('risk',risk),('tests',tests),('visual',visual),('ledger',ledger),('seed',seed),('handoff',handoff),('law_identity',law_identity),('linear_expectation',linear_expectation),('platform_identity',platform_identity),('source_identity',source_identity),('artifact_identity',artifact_identity),('current_gate',current_gate),('next_action',next_action)]:
+            if obj.get('campaign_id')!=campaign_id: raise CampaignError('CAMPAIGN_IDENTITY_FAILURE',f'{name} campaign_id mismatch')
+        if law_identity.get('active_law_version') != '1.2.1':
+            raise CampaignError('LAW_IDENTITY_FAILURE','active law version must be v1.2.1')
+        law_files=law_identity.get('files')
+        if not isinstance(law_files,dict) or law_files != ACTIVE_LAW_SHA256:
+            raise CampaignError('LAW_IDENTITY_FAILURE','active law file identities differ from the qualified P2 authority')
+        if law_identity.get('bootstrap_protocol_sha256') != BOOTSTRAP_PROTOCOL_SHA256 or law_identity.get('conformance_spec_sha256') != CONFORMANCE_SPEC_SHA256:
+            raise CampaignError('LAW_IDENTITY_FAILURE','Project continuity source identities differ')
+        bound=handoff.get('bound_files_sha256')
+        if not isinstance(bound,dict): raise CampaignError('HANDOFF_IDENTITY_FAILURE','CHAT_HANDOFF bound_files_sha256 missing')
+        for rel in sorted(HANDOFF_MEMBERS-{'CHAT_HANDOFF.json'}):
+            if bound.get(rel) != sha256_bytes(zf.read(rel)):
+                raise CampaignError('HANDOFF_IDENTITY_FAILURE',f'CHAT_HANDOFF digest mismatch for {rel}')
+        if linear_expectation.get('project')!='SysGrid' or linear_expectation.get('master')!='OUT-5':
+            raise CampaignError('LINEAR_EXPECTATION_FAILURE','Linear expectation must target SysGrid / OUT-5')
+        if linear_expectation.get('active_issue_count')!=1 or linear_expectation.get('unaccepted_product_mutation_count')!=1:
+            raise CampaignError('LINEAR_EXPECTATION_FAILURE','Linear expectation must preserve one active issue and one unaccepted mutation')
+        if linear_expectation.get('issue') != run.get('issue') or linear_expectation.get('product_attempt') != run.get('attempt'):
+            raise CampaignError('LINEAR_EXPECTATION_FAILURE','Linear issue/attempt expectation differs from RUN')
+        if source_identity.get('branch') != run.get('baseline',{}).get('branch') or source_identity.get('head') != run.get('baseline',{}).get('head'):
+            raise CampaignError('SOURCE_IDENTITY_FAILURE','source identity branch/head differs from RUN baseline')
+        if current_gate.get('gate') != 'SHADOW_QUALIFICATION_AUTHORIZED' or current_gate.get('questionnaire_closed') is not True or current_gate.get('approval_lock_valid') is not True:
+            raise CampaignError('CURRENT_GATE_FAILURE','campaign execution requires closed questionnaire and valid Approval Lock')
+        if next_action.get('action') != 'SHADOW_QUALIFICATION_THEN_CONTROLLED_APPLY':
+            raise CampaignError('NEXT_ACTION_FAILURE','unexpected next permitted action')
+        if artifact_identity.get('sole_active') is not True or not str(artifact_identity.get('sha256','')).strip():
+            raise CampaignError('ACTIVE_ARTIFACT_FAILURE','one exact active artifact identity is required')
+        questions=questionnaire.get('questions')
+        if not isinstance(questions,list): raise CampaignError('QUESTIONNAIRE_FAILURE','questions must be an array')
+        classification=str(questionnaire.get('classification','product_attempt'))
+        required_count=64
+        exception=questionnaire.get('minimum_exception')
+        if classification in {'verification_repair','exact_defect_correction'} and isinstance(exception,dict) and exception.get('approved') is True:
+            required_count=max(15,int(exception.get('minimum',15)))
+            if not str(exception.get('reason','')).strip(): raise CampaignError('QUESTIONNAIRE_FAILURE','minimum exception requires reason')
+        if len(questions)<required_count: raise CampaignError('QUESTIONNAIRE_FAILURE',f'{len(questions)} questions provided; at least {required_count} required')
+        ids=set(); unresolved=[]; low_unapproved=[]
+        for index,q in enumerate(questions):
+            if not isinstance(q,dict): raise CampaignError('QUESTIONNAIRE_FAILURE',f'question {index} must be an object')
+            qid=q.get('id'); status=q.get('status'); decision=q.get('decision')
+            if not isinstance(qid,str) or not qid or qid in ids: raise CampaignError('QUESTIONNAIRE_FAILURE',f'invalid/duplicate question id at {index}')
+            ids.add(qid)
+            if status not in FINAL_QUESTION_STATUSES or not isinstance(decision,str) or not decision.strip(): unresolved.append(qid)
+            if q.get('confidence')=='LOW' and status not in {'APPROVED','APPROVED_WITH_MODIFICATION'}: low_unapproved.append(qid)
+            for field in ('question','observed_behavior','recommended_answer','implementation_consequences','required_tests','required_evidence'):
+                if field not in q: raise CampaignError('QUESTIONNAIRE_FAILURE',f'{qid} missing {field}')
+        if unresolved: raise CampaignError('QUESTIONNAIRE_UNRESOLVED',f'unresolved questions: {unresolved[:20]}')
+        if low_unapproved: raise CampaignError('QUESTIONNAIRE_LOW_CONFIDENCE_FAILURE',f'low-confidence decisions lack explicit approval: {low_unapproved[:20]}')
+        if closure.get('closed') is not True or closure.get('unresolved_count')!=0: raise CampaignError('QUESTIONNAIRE_CLOSURE_FAILURE','closure must declare zero unresolved questions')
+        expected_hashes={
+            'questionnaire_sha256':sha256_bytes(zf.read('QUESTIONNAIRE.json')),
+            'change_spec_sha256':sha256_bytes(zf.read('CHANGE_SPEC.json')),
+            'risk_matrix_sha256':sha256_bytes(zf.read('RISK_MATRIX.json')),
+            'test_plan_sha256':sha256_bytes(zf.read('TEST_PLAN.json')),
+            'visual_matrix_sha256':sha256_bytes(zf.read('VISUAL_MATRIX.json')),
+            'chat_handoff_sha256':sha256_bytes(zf.read('CHAT_HANDOFF.json')),
+        }
+        for key,digest in expected_hashes.items():
+            if approval.get(key)!=digest: raise CampaignError('APPROVAL_LOCK_FAILURE',f'{key} mismatch')
+        entries=risk.get('categories')
+        if not isinstance(entries,list): raise CampaignError('RISK_MATRIX_FAILURE','categories must be an array')
+        by_name={e.get('id'):e for e in entries if isinstance(e,dict)}
+        if set(by_name)!=set(RISK_CATEGORIES): raise CampaignError('RISK_MATRIX_FAILURE',f'risk categories differ: {sorted(set(RISK_CATEGORIES)-set(by_name))}')
+        for rid,e in by_name.items():
+            if e.get('status') not in {'PROVED','EVIDENCE_BACKED_NA'} or not e.get('evidence'): raise CampaignError('RISK_MATRIX_FAILURE',f'{rid} lacks closed evidence')
+        behavior_ids=set(spec.get('approved_behavior_ids',[]))
+        mappings=tests.get('behavior_mappings')
+        if not isinstance(mappings,list): raise CampaignError('TEST_PLAN_FAILURE','behavior_mappings must be an array')
+        mapped={m.get('behavior_id') for m in mappings if isinstance(m,dict) and m.get('tests')}
+        missing_behavior=sorted(behavior_ids-mapped)
+        if missing_behavior: raise CampaignError('TEST_PLAN_FAILURE',f'approved behaviors without tests: {missing_behavior[:20]}')
+        if visual.get('applicable') is True and not visual.get('entries'): raise CampaignError('VISUAL_MATRIX_FAILURE','visual changes require rendered/programmatic entries')
+        allowed_dispositions={'ACT_NOW','DEFER_MATERIAL','DEFER_OUT_OF_SCOPE','REJECT_WITH_REASON'}
+        for item in ledger.get('items',[]):
+            if item.get('disposition') not in allowed_dispositions: raise CampaignError('IMPROVEMENT_LEDGER_FAILURE',f'invalid disposition: {item}')
+        if run.get('project')!='SysGrid': raise CampaignError('PROJECT_SCOPE_FAILURE','RUN project must be SysGrid')
+        try:
+            validate_engine_run(run)
+        except Exception as exc:
+            classification = getattr(exc, 'classification', 'CAMPAIGN_SCHEMA_FAILURE')
+            exit_code = getattr(exc, 'exit_code', 65)
+            raise CampaignError(classification, str(exc), exit_code) from exc
+        platform = {}
+        if platform_preflight:
+            try:
+                capsule_info = inspect_capsule(path)
+                cross = validate_capsule_cross_ledger(capsule_info)
+                repo = discover_repo()
+                repo_info, state = probe_repo_and_state(repo, capsule_info)
+                with tempfile.TemporaryDirectory(prefix='sysgrid-campaign-preflight-') as temp_dir:
+                    patch = patch_state_precheck(repo, capsule_info, Path(temp_dir))
+                engine = discover_engine()
+                engine_test = verify_engine(engine)
+                actual_platform={
+                    'platform_version': str(json.loads((package_root()/'RELEASE_DESCRIPTOR.json').read_text()).get('platform_version')),
+                    'engine_version': str(json.loads((package_root()/'RELEASE_DESCRIPTOR.json').read_text())['engine']['version']),
+                    'engine_sha256': sha256_file(package_root()/'payload'/'sysgrid_runner.py'),
+                    'supervisor_version': str(json.loads((package_root()/'RELEASE_DESCRIPTOR.json').read_text())['supervisor_version']),
+                    'supervisor_sha256': sha256_file(package_root()/'payload'/'sysgrid_supervisor.py'),
+                    'campaign_controller_version': VERSION,
+                    'campaign_controller_sha256': sha256_file(Path(__file__).resolve()),
+                }
+                for key,value in actual_platform.items():
+                    if platform_identity.get(key)!=value: raise CampaignError('PLATFORM_IDENTITY_FAILURE',f'{key} mismatch')
+                if source_identity.get('branch')!=repo_info.branch or source_identity.get('head')!=repo_info.head:
+                    raise CampaignError('SOURCE_IDENTITY_FAILURE','source identity does not match live repository')
+                platform = {'cross_ledger':cross,'repo':str(repo_info.path),'branch':repo_info.branch,'head':repo_info.head,'state':state,'patch':patch,'engine':str(engine),'engine_self_test':engine_test,'identity':actual_platform}
+            except Exception as exc:
+                classification = getattr(exc, 'classification', 'PLATFORM_PREFLIGHT_FAILURE')
+                exit_code = getattr(exc, 'exit_code', 69)
+                raise CampaignError(classification, str(exc), exit_code) from exc
+        return {'campaign_id':campaign_id,'classification':classification,'questions':len(questions),'sha256':sha256_file(path),'run':run,'manifest_entries':len(manifest),'platform_preflight':platform,'handoff':handoff}
+
+
+def select_campaign(explicit: Path|None) -> Path:
+    if explicit: return explicit.expanduser().resolve()
+    inbox=control_root()/'Campaign-Inbox'; inbox.mkdir(parents=True,exist_ok=True)
+    candidates=sorted([p for p in inbox.iterdir() if p.is_file() and not p.is_symlink() and p.suffix.lower() in {'.sgcap','.zip'} and not p.name.startswith('.')])
+    if len(candidates)!=1: raise CampaignError('CAMPAIGN_SELECTION_FAILURE',f'Campaign-Inbox must contain exactly one package; found {len(candidates)}',66)
+    return candidates[0]
+
+
+def install_capsule(path: Path, report: dict[str,Any]) -> Path:
+    inbox=control_root()/'Inbox'; inbox.mkdir(parents=True,exist_ok=True)
+    for existing in inbox.glob('*.sgcap'): existing.unlink()
+    name=path.name if path.suffix.lower()=='.sgcap' else path.stem+'.sgcap'
+    destination=inbox/name
+    shutil.copy2(path,destination)
+    if sha256_file(destination)!=report['sha256']: raise CampaignError('CAMPAIGN_INSTALL_FAILURE','installed capsule checksum mismatch',74)
+    return destination
+
+
+def write_failure(exc: CampaignError) -> Path:
+    out=control_root()/'Outbox'; out.mkdir(parents=True,exist_ok=True)
+    path=out/'UPLOAD_DIAGNOSTIC_TO_CHATGPT.zip'
+    with tempfile.TemporaryDirectory(prefix='sysgrid-campaign-failure-') as td:
+        root=Path(td)
+        (root/'RESULT.json').write_text(json.dumps({'result':'FAIL','classification':exc.classification,'message':str(exc),'controller_version':VERSION},indent=2,sort_keys=True)+'\n')
+        lines=[]
+        for p in sorted(root.rglob('*')):
+            if p.is_file(): lines.append(f'{sha256_file(p)}  {p.relative_to(root).as_posix()}')
+        (root/'MANIFEST.sha256').write_text('\n'.join(lines)+'\n')
+        with zipfile.ZipFile(path,'w',zipfile.ZIP_DEFLATED,compresslevel=9) as zf:
+            for p in sorted(root.rglob('*')):
+                if p.is_file(): zf.write(p,p.relative_to(root).as_posix())
+    return path
+
+
+def cmd_validate(args: argparse.Namespace) -> int:
+    try:
+        path=select_campaign(args.package); report=validate_campaign(path, platform_preflight=True)
+        print(json.dumps({'result':'PASS','controller_version':VERSION,**report},indent=2,sort_keys=True)); return 0
+    except CampaignError as exc:
+        diagnostic=write_failure(exc); print(json.dumps({'result':'FAIL','classification':exc.classification,'message':str(exc),'diagnostic':str(diagnostic)},indent=2)); return exc.exit_code
+
+
+def cmd_run(args: argparse.Namespace) -> int:
+    try:
+        path=select_campaign(args.package); report=validate_campaign(path, platform_preflight=True); installed=install_capsule(path,report)
+        command=[sys.executable,str(supervisor_path()),'run',str(installed)]
+        completed=subprocess.run(command,check=False)
+        return completed.returncode
+    except CampaignError as exc:
+        diagnostic=write_failure(exc)
+        print(f'SysGrid campaign blocked: {exc.classification}\n{exc}\nDiagnostic: {diagnostic}',file=sys.stderr)
+        return exc.exit_code
+
+
+def cmd_status(_args: argparse.Namespace) -> int:
+    return subprocess.run([sys.executable,str(supervisor_path()),'status'],check=False).returncode
+
+
+def cmd_self_test(_args: argparse.Namespace) -> int:
+    failures=[]
+    try:
+        safe_member('QUESTIONNAIRE.json')
+        for bad in ('../x','/x','./x','a\\b'):
+            try: safe_member(bad); failures.append(f'unsafe path accepted: {bad}')
+            except CampaignError: pass
+    except Exception as exc: failures.append(f'{type(exc).__name__}: {exc}')
+    print(json.dumps({'controller_version':VERSION,'result':'FAIL' if failures else 'PASS','failures':failures},indent=2,sort_keys=True)); return 1 if failures else 0
+
+
+def main(argv=None) -> int:
+    parser=argparse.ArgumentParser(prog='sysgrid-campaign')
+    sub=parser.add_subparsers(dest='command',required=True)
+    run=sub.add_parser('run'); run.add_argument('package',nargs='?',type=Path)
+    validate=sub.add_parser('validate'); validate.add_argument('package',nargs='?',type=Path)
+    sub.add_parser('status'); sub.add_parser('self-test')
+    args=parser.parse_args(argv)
+    return {'run':cmd_run,'validate':cmd_validate,'status':cmd_status,'self-test':cmd_self_test}[args.command](args)
+
+if __name__=='__main__': raise SystemExit(main())

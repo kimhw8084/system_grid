@@ -1,0 +1,33 @@
+TARGET: frontend/src/components/ProjectsSchedulingCompletion.tsx
+PURPOSE: Stop assigning dependency semantics by SVG path array index. The base Gantt now owns explicit source/target identity.
+
+Replace this block inside decorateTimeline():
+
+  const relations = dependencyRelations(project)
+  const paths = Array.from(root.querySelectorAll<SVGPathElement>('svg path.pointer-events-auto'))
+  paths.forEach((path, index) => {
+    const relation = relations[index]
+    if (!relation) return
+    path.setAttribute('role', 'button')
+    path.setAttribute('tabindex', '0')
+    path.setAttribute('aria-label', `Remove dependency ${relation.sourceName} → ${relation.targetName}`)
+    path.setAttribute('data-project-timeline-dependency-connector', 'true')
+    path.setAttribute('data-project-timeline-dependency-source', relation.sourceId)
+    path.setAttribute('data-project-timeline-dependency-target', relation.targetId)
+  })
+
+with:
+
+  const paths = Array.from(root.querySelectorAll<SVGPathElement>('[data-project-timeline-dependency-connector="true"]'))
+  paths.forEach((path) => {
+    const sourceId = String(path.getAttribute('data-project-timeline-dependency-source') || '')
+    const targetId = String(path.getAttribute('data-project-timeline-dependency-target') || '')
+    const sourceTask = taskFor(project, sourceId)
+    const targetTask = taskFor(project, targetId)
+    if (!sourceId || !targetId || !sourceTask || !targetTask) return
+    path.setAttribute('role', 'button')
+    path.setAttribute('tabindex', '0')
+    path.setAttribute('aria-label', `Remove dependency ${String(sourceTask.name || `Task ${sourceId}`)} → ${String(targetTask.name || `Task ${targetId}`)}`)
+  })
+
+This keeps keyboard removal behavior unchanged because handleTimelineKeyDown already reads data-project-timeline-dependency-source/target directly from the path.

@@ -1,0 +1,13 @@
+ORIGINAL_PATH: /Users/haewonkim/.local/state/sysgrid-supervisor/runs/20260801T190436Z-91642-876000/launch.json
+ORIGINAL_SHA256: 57c46e487ce9fb8b25ed22e21efb985b19c3ba911d4e52828aab2b7299f5446c
+================================================================================
+{
+  "capsule_path": "/Users/haewonkim/.local/state/sysgrid-supervisor/runs/20260801T190436Z-91642-876000/input/OUT-31_Golden-Eight_Iteration-36-Attempt-05_Cumulative-Analytical-Grid-Paint-Containment-and-Proof-Closure.sgcap",
+  "capsule_sha256": "b1729f972a8f10b90fa63f1778a70131279e908d4e633815f69e6dfd6478fb26",
+  "command_sha256": "7b3c400da8c7f919c6f585fe3a4ff048120f9d54b5f52df6f6b0e210108ff340",
+  "engine_path": "/Users/haewonkim/.local/lib/sysgrid-runner/1.0.4/sysgrid_runner.py",
+  "engine_sha256": "ab63bb20c0de32771e20b0159475205f685f28910a0956c217fb3693c02f96e1",
+  "launched_utc": "2026-08-01T19:04:37Z",
+  "repo": "/Users/haewonkim/home/development/sysgrid",
+  "run_id": "20260801T190436Z-91642-876000"
+}

@@ -1,0 +1,19 @@
+{
+  "schema": "SYSGRID_PROJECT_VIEW_REPAIR_EVIDENCE_V1",
+  "repair_iteration": 3,
+  "parent_result_sha256": "4e620bccd8f5bb68153302febf7eeb05bf910b0d196398440ee4f7540a18b584",
+  "parent_status": "FAIL",
+  "parent_passed_stages": [
+    "repair-ancestry-preflight",
+    "isolated-candidate-construction"
+  ],
+  "parent_failed_stage": "out40-slice-h-regression",
+  "parent_failure_count": 1,
+  "parent_slice_h_result": "4 passed / 1 failed",
+  "failure_layers": [
+    "Repair 2 cleared all pre-R4 harness assumptions",
+    "remaining narrow-screen primary target: first toolbar control Today measured 34px high against >=40px acceptance threshold"
+  ],
+  "product_evidence": "Parent initial RESULT recorded production build + model/geometry + all 15 real-app visual tests PASS; Repair 3 reruns Slice H and the complete visual suite after the scoped target-size correction.",
+  "repair_scope": "approved product target-size acceptance + cumulative harness compatibility; no scheduling/data-model change"
+}

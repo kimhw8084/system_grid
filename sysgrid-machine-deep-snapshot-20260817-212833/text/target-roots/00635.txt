@@ -1,0 +1,13 @@
+ORIGINAL_PATH: /Users/haewonkim/.local/state/sysgrid-supervisor/runs/20260807T030131Z-10511-174000/launch.json
+ORIGINAL_SHA256: d4e036ba6eb3bf2db7561b2411fff05c69f0bd8da90b7b2d031d4d15beb51b17
+================================================================================
+{
+  "capsule_path": "/Users/haewonkim/.local/state/sysgrid-supervisor/runs/20260807T030131Z-10511-174000/input/SYSGRID_OUT31_PA15_PS5_SERVICES_HYDRATION_INPUT_PRESERVATION_PRODUCT_SOURCE_CORRECTION_v1.0.2.sgcap",
+  "capsule_sha256": "f5188b57f9058a4372a16b94fd9f9b59d55a647bbfa4b9e22cddbbe0ccb475fa",
+  "command_sha256": "1cc2f491914bd0db986487f4535201874633db82ffa325366199ed2f4b254bea",
+  "engine_path": "/Users/haewonkim/.local/share/sysgrid-runner/engine-v1.1.1/sysgrid_runner.py",
+  "engine_sha256": "66b082fec1e9f6c49152e5ecb4cbb3f998e60ce27d53a2325e5f658634a8d032",
+  "launched_utc": "2026-08-07T03:01:32Z",
+  "repo": "/Users/haewonkim/home/development/sysgrid",
+  "run_id": "20260807T030131Z-10511-174000"
+}

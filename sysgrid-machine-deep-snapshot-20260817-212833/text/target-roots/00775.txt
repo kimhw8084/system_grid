@@ -1,0 +1,18 @@
+ORIGINAL_PATH: /Users/haewonkim/.local/state/sysgrid-supervisor/runs/20260805T120932Z-1024-503000/diagnostic/RESULT.json
+ORIGINAL_SHA256: 6e62201eda875ec20687d090c8fa8b5583ff721d2edbee3a850984cabdf00733
+================================================================================
+{
+  "capsule_file": null,
+  "capsule_sha256": null,
+  "classification": "CAPSULE_SELECTION_FAILURE",
+  "engine_version": "1.1.1",
+  "exit_code": 66,
+  "finished_utc": "2026-08-05T12:09:32Z",
+  "lane": "execution_platform",
+  "message": "Inbox must contain one capsule; found 0",
+  "mode": "qualification",
+  "mutation_state": "not_started",
+  "result": "failure",
+  "safe_automatic_retry_performed": 0,
+  "supervisor_version": "2.2.1"
+}

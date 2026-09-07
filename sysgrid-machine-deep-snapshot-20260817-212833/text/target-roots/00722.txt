@@ -1,0 +1,11 @@
+ORIGINAL_PATH: /Users/haewonkim/.local/state/sysgrid-supervisor/runs/20260801T200531Z-64552-381000/diagnostic/TRACEBACK.txt
+ORIGINAL_SHA256: a3754583fc2ea7eacc0a9299152f3d6162f29bbaf10c16c4eba1cf1a2d712c85
+================================================================================
+Traceback (most recent call last):
+  File "/Users/haewonkim/.local/share/sysgrid-supervisor/v2.1.2/payload/sysgrid_supervisor.py", line 2738, in run_supervised
+    cross_ledger = validate_capsule_cross_ledger(capsule)
+  File "/Users/haewonkim/.local/share/sysgrid-supervisor/v2.1.2/payload/sysgrid_supervisor.py", line 1278, in validate_capsule_cross_ledger
+    patch_paths = patch_paths_from_bytes(read_zip_member(zf, patch_rel, max_bytes=MAX_SINGLE_UNCOMPRESSED))
+  File "/Users/haewonkim/.local/share/sysgrid-supervisor/v2.1.2/payload/sysgrid_supervisor.py", line 1213, in patch_paths_from_bytes
+    raise SupervisorError("CAPSULE_CROSS_LEDGER_FAILURE", "mutation patch contains no canonical diff paths", 65)
+SupervisorError: mutation patch contains no canonical diff paths

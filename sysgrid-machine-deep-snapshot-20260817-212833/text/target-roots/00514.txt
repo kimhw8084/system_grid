@@ -1,0 +1,34 @@
+ORIGINAL_PATH: /Users/haewonkim/.local/state/sysgrid-supervisor/runs/20260803T145323Z-77691-464000/preflight.json
+ORIGINAL_SHA256: 2e3f6ccff7afd657b31fed5be0bed5e9c9b078fff459226b11adfa6a9fc26456
+================================================================================
+{
+  "declared_state": {
+    "dirty_path_count": 95,
+    "pre_hash_count": 95,
+    "protected_hash_count": 93
+  },
+  "engine_self_test": {
+    "engine_version": "1.1.1",
+    "result": "PASS",
+    "tests": [
+      "safe-path",
+      "manifest",
+      "corruption",
+      "canonical-dirty-paths",
+      "aggregate-recipes"
+    ]
+  },
+  "patch": {
+    "applicable": true,
+    "forward_diagnostic": "Checking patch backend/test_dashboard_metrics.py...\nChecking patch backend/test_devices_api_edges.py...",
+    "forward_exit_code": 0,
+    "reverse_applicable": false,
+    "reverse_diagnostic": "Checking patch backend/test_devices_api_edges.py...\nerror: while searching for:\n        },\n        headers=headers,\n    )\n    assert mode_res.status_code == 201, mode_res.text\n    mode = mode_res.json()\n    assert device[\"id\"] in [asset[\"id\"] for asset in mode[\"affected_assets\"]]\n\n\nerror: patch failed: backend/test_devices_api_edges.py:385\nerror: backend/test_devices_api_edges.py: patch does not apply\nChecking patch backend/test_dashboard_metrics.py...\nerror: while searching for:\n        },\n        headers=headers,\n    )\n    assert far_res.status_code == 201, far_res.text\n\n    flow_res = await client.post(\n        \"/api/v1/data-flows\",\n\nerror: patch failed: backend/test_dashboard_metrics.py:173\nerror: backend/test_dashboard_metrics.py: patch does not apply",
+    "reverse_exit_code": 1
+  },
+  "storage": {
+    "control_free": 57269784576,
+    "local_free": 57269784576,
+    "required": 3221225472
+  }
+}

@@ -1,0 +1,147 @@
+ORIGINAL_PATH: /Users/haewonkim/.local/share/sysgrid-runner/continuity-v1.0.7/active_law/01_AI_Controlled_Delivery_Constitution_v1.2.md
+ORIGINAL_SHA256: ffb7ae43107fe96e39e70d41f48c0e61ee5f608e470f9a934667d6115cf5b03f
+================================================================================
+# AI-Controlled Delivery Constitution v1.2 — Lean Workhorse
+
+**Status:** Draft pending explicit activation  
+**Project:** SysGrid  
+**Proposed effective date:** 2026-07-30  
+**Supersedes after activation:** AI-Controlled Delivery Law Kit v1.1
+
+## 1. Objective
+
+Convert approved human direction into accepted SysGrid value with the shortest safe feedback loop:
+
+```text
+maximum verified product value
+÷
+minimum operator effort, waiting, rework, context load, and control-plane work
+```
+
+The governing loop is:
+
+```text
+verified live state
+→ one bounded product decision
+→ one immutable patch/capsule
+→ deterministic execution
+→ machine-readable evidence
+→ independent review
+→ accept or narrow recovery
+```
+
+## 2. Trust boundaries
+
+### User
+
+The user sets product direction, approves material decisions and law activation, runs one supplied artifact when required, and uploads one canonical ZIP. The user does not diagnose executor failures, repair Git state, choose shell commands, compare competing artifacts, or manage stale processes.
+
+### ChatGPT control room
+
+The control room reads the active law and live project ledger, inspects source/evidence, makes principal-engineering decisions, authors all source changes and immutable patches, compiles schema-valid declarative capsules, reviews returned evidence, and records concise verdicts.
+
+### Qualified stable engine
+
+The engine verifies exact state, applies only the declared immutable payload, runs only qualified recipe IDs, owns bounded processes, collects evidence, commits and pushes only after every gate passes, verifies remote equality, and creates one canonical ZIP. It never generates or improvises product source.
+
+### Independent review
+
+Review is evidence-based and logically separate from authoring and execution. Confidence, compilation, screenshots, or installer narrative alone cannot establish PASS.
+
+## 3. Authority and live state
+
+Authority order:
+
+1. explicit user instruction for the named task, provided it explicitly overrides any affected boundary;
+2. this Constitution;
+3. the SysGrid Product and Golden Contract;
+4. the Lean Control Cycle and Review Law;
+5. the GPT Project Bootstrap and Context Law;
+6. live Linear state and reviewed immutable artifacts for current project facts.
+
+Chat memory and manually maintained state files are context only. Current project state is read from live Linear and immutable evidence.
+
+## 4. Work-in-progress limits
+
+At most:
+
+- one active SysGrid mutation issue;
+- one unaccepted product mutation;
+- one active capsule;
+- one unresolved primary failure class.
+
+Parallel read-only research is allowed. Parallel product mutations and mixed product/platform releases are prohibited.
+
+## 5. Product value law
+
+Every accepted product slice delivers all three:
+
+1. **Behavior delta:** clear user/operator value.
+2. **Proof delta:** evidence that fails without the change and passes with it.
+3. **Protection delta:** an invariant or off-nominal regression preventing recurrence.
+
+Use the smallest complete vertical slice. Platform qualification, context cleanup, and evidence packaging are not product completion.
+
+## 6. Zero-accepted-regression standard
+
+Literal defect impossibility is not claimable. The binding standard is:
+
+> No regression may be accepted, committed, pushed, or classified PASS without its required evidence.
+
+Stop before mutation when project scope, baseline, patch identity, protected state, tenant ownership, permissions, destructive behavior, migration safety, or source authority cannot be proven.
+
+## 7. Stable-platform minimum scope
+
+The qualified platform may only:
+
+1. identify one immutable capsule;
+2. verify capsule and repository identity;
+3. apply the exact patch;
+4. run trusted recipes;
+5. verify exact final state;
+6. commit/push after complete success;
+7. verify remote equality;
+8. package one canonical review ZIP.
+
+It is not a second project manager, source generator, background monitoring service, approval system, or historical archive.
+
+After independent qualification, platform bytes are frozen. Platform work is authorized only by a reproduced critical executor defect. A product or fixture failure does not authorize platform redesign.
+
+## 8. Operator economy
+
+The normal operator path is exactly:
+
+```text
+approve material direction
+→ run one supplied artifact or `sg run <capsule>`
+→ upload one canonical ZIP
+```
+
+Target: no more than three operator actions per accepted product cycle and zero operator diagnosis.
+
+## 9. Evidence and delivery
+
+Raw attributable evidence is primary; narrative is secondary. Mechanical gates are preferred.
+
+A successful product mutation requires:
+
+```text
+exact final state
+→ all declared proof gates
+→ one named commit
+→ verified upstream push
+→ local SHA equals remote SHA
+→ clean worktree/staging
+→ one manifest-valid canonical ZIP
+→ independent PASS
+```
+
+Failures still produce reviewable evidence and do not commit or push.
+
+## 10. Learning without bureaucracy
+
+Record a new permanent lesson only when it changes a future product test, engine regression, capsule compiler check, review gate, or law. Do not repeat settled lessons or full machine evidence in prose.
+
+## 11. Completion
+
+Done requires a canonical artifact, formal PASS, proven behavior/proof/protection deltas, accepted remote state, no unresolved critical defect, and an explicit transition or lock statement.

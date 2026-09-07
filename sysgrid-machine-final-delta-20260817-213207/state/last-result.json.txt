@@ -1,0 +1,46 @@
+ORIGINAL_PATH=/Users/haewonkim/Library/Application Support/SysGridDelivery/last-result.json
+SHA256=bb67b8d9bd68b8598aac717a0c8e893a5f6e488d9d4ffa14a2fe54f345fa29ab
+SIZE=2352
+============================================================
+{
+  "actions": [
+    {
+      "adapter": "frontend.vitest",
+      "elapsed_seconds": 3.83,
+      "exit_code": 0,
+      "id": "pa18-far-diagnostics-g04-g05",
+      "status": "PASS",
+      "tail": "6:32:15 PM [vite] warning: `esbuild` option was specified by \"vite:react-babel\" plugin. This option is deprecated, please use `oxc` instead.\n6:32:15 PM [vite] warning: `optimizeDeps.esbuildOptions` option was specified by \"vite:react-babel\" plugin. This option is deprecated, please use `optimizeDeps.rolldownOptions` instead.\nBoth esbuild and oxc options were set. oxc options will be used and esbuild options will be ignored. The following esbuild options were set: `{ jsx: 'automatic', jsxImportSource: undefined }`\n\n\u001b[1m\u001b[30m\u001b[46m RUN \u001b[49m\u001b[39m\u001b[22m \u001b[36mv4.1.9 \u001b[39m\u001b[90m/private/var/folders/nz/6q2p_ldx3txdbw_gttbpnwjr0000gn/T/sysgrid-vnext-6ahbgslg/worktree/frontend\u001b[39m\n\n \u001b[32m\u2713\u001b[39m src/components/FAR.diagnostics.test.ts \u001b[2m(\u001b[22m\u001b[2m2 tests\u001b[22m\u001b[2m)\u001b[22m\u001b[32m 5\u001b[2mms\u001b[22m\u001b[39m\n\n\u001b[2m Test Files \u001b[22m \u001b[1m\u001b[32m1 passed\u001b[39m\u001b[22m\u001b[90m (1)\u001b[39m\n\u001b[2m      Tests \u001b[22m \u001b[1m\u001b[32m2 passed\u001b[39m\u001b[22m\u001b[90m (2)\u001b[39m\n\u001b[2m   Start at \u001b[22m 18:32:15\n\u001b[2m   Duration \u001b[22m 1.72s\u001b[2m (transform 132ms, setup 99ms, import 422ms, tests 5ms, environment 955ms)\u001b[22m\n\n"
+    }
+  ],
+  "apply": "PASS",
+  "artifacts": [],
+  "base_sha": "f26fbc5830f7630015ef82922720a5a1653a407b",
+  "dependency_families": [
+    "frontend"
+  ],
+  "elapsed_seconds": 42.775,
+  "evidence_return": "LINEAR_SUMMARY_ONLY",
+  "issue": "OUT-31",
+  "mode": "targeted",
+  "patch_id": "PA18-FAR-DIAGNOSTICS-G04-G05-1",
+  "phase_seconds": {
+    "bundle": 0.002,
+    "cleanup": 3.631,
+    "dependencies": 31.602,
+    "patch": 0.296,
+    "proof": 3.83,
+    "publication": 2.674,
+    "source": 0.738
+  },
+  "proof_passed": 1,
+  "proof_total": 1,
+  "remote_sha": "2f9fee7a4d23ff35241ea81827c34499daa096f1",
+  "replay_admitted": true,
+  "replay_id": "e54662cf-3747-44b8-b473-e72b48be2144",
+  "result": "TARGETED_PASS",
+  "return": "AUTO_POSTED_TO_LINEAR",
+  "run_id": "20260816T233140Z-653bf496",
+  "runner_version": "1.3.0-rc4-fastpath1",
+  "tdre": []
+}

@@ -1,0 +1,10 @@
+ORIGINAL_PATH: /Users/haewonkim/.local/share/sysgrid-campaign-platform/v1.1.1/templates/QUESTIONNAIRE_CLOSURE.template.json
+ORIGINAL_SHA256: dbb1131f73e7c100327ae295779b2f106a80073bc5f2330d62e81a14bc9a3e76
+================================================================================
+{
+  "schema_version": "1.0",
+  "campaign_id": "SYSGRID-CAMPAIGN-XXXX",
+  "closed": false,
+  "unresolved_count": 64,
+  "contradictions": []
+}

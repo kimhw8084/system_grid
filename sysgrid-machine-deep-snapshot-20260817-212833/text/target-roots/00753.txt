@@ -1,0 +1,32 @@
+ORIGINAL_PATH: /Users/haewonkim/.local/state/sysgrid-supervisor/runs/20260801T011735Z-77734-734000/preflight.json
+ORIGINAL_SHA256: 491514d08896762c7947bf732c868c1dcaaafb311ec5c73fc1a82ce359d6385b
+================================================================================
+{
+  "declared_state": {
+    "dirty_path_count": 55,
+    "pre_hash_count": 55,
+    "protected_hash_count": 19
+  },
+  "engine_self_test": {
+    "engine_version": "1.0.4",
+    "result": "PASS",
+    "tests": [
+      "safe-path",
+      "manifest",
+      "corruption"
+    ]
+  },
+  "patch": {
+    "applicable": true,
+    "forward_diagnostic": "Checking patch frontend/src/components/shared/GoldenWorkspaceGeometryContract.test.ts...",
+    "forward_exit_code": 0,
+    "reverse_applicable": false,
+    "reverse_diagnostic": "Checking patch frontend/src/components/shared/GoldenWorkspaceGeometryContract.test.ts...\nerror: while searching for:\n    const commandBar = read('shared/WorkspaceCommandBar.tsx')\n\n    expect(shell).toContain(\"GOLDEN_WORKSPACE_GEOMETRY_VERSION = '1'\")\n    expect(shell).toContain(\"GOLDEN_WORKSPACE_FRAME_CLASS = 'h-full min-h-0 min-w-0 w-full flex flex-col space-y-4 overflow-hidden'\")\n    expect(shell).toContain(\"golden: 'rounded-lg'\")\n    expect(shell).toContain(\"'attached-panel': 'rounded-t-none border-x border-b border-white/5'\")\n    expect(shell).toContain('data-golden-geometry-version={GOLDEN_WORKSPACE_GEOMETRY_VERSION}')\n\nerror: patch failed: frontend/src/components/shared/GoldenWorkspaceGeometryContract.test.ts:23\nerror: frontend/src/components/shared/GoldenWorkspaceGeometryContract.test.ts: patch does not apply",
+    "reverse_exit_code": 1
+  },
+  "storage": {
+    "control_free": 57472987136,
+    "local_free": 57472987136,
+    "required": 536870912
+  }
+}

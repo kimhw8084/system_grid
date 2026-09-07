@@ -1,0 +1,79 @@
+ORIGINAL_PATH: /Users/haewonkim/.local/share/sysgrid-campaign-platform/v1.0.0/templates/RISK_MATRIX.template.json
+ORIGINAL_SHA256: 428901b3a9c16f40d84760cc47e4f30fe19a29acb38abd54ea2656665d8a1126
+================================================================================
+{
+  "schema_version": "1.0",
+  "campaign_id": "SYSGRID-CAMPAIGN-XXXX",
+  "categories": [
+    {
+      "id": "nominal",
+      "status": "PENDING",
+      "evidence": []
+    },
+    {
+      "id": "boundary",
+      "status": "PENDING",
+      "evidence": []
+    },
+    {
+      "id": "empty_null",
+      "status": "PENDING",
+      "evidence": []
+    },
+    {
+      "id": "malformed",
+      "status": "PENDING",
+      "evidence": []
+    },
+    {
+      "id": "tenant_permission",
+      "status": "PENDING",
+      "evidence": []
+    },
+    {
+      "id": "concurrency_conflict",
+      "status": "PENDING",
+      "evidence": []
+    },
+    {
+      "id": "retry_idempotency",
+      "status": "PENDING",
+      "evidence": []
+    },
+    {
+      "id": "offline_network",
+      "status": "PENDING",
+      "evidence": []
+    },
+    {
+      "id": "destructive_recovery",
+      "status": "PENDING",
+      "evidence": []
+    },
+    {
+      "id": "persistence_migration",
+      "status": "PENDING",
+      "evidence": []
+    },
+    {
+      "id": "routed_deep_link",
+      "status": "PENDING",
+      "evidence": []
+    },
+    {
+      "id": "responsive_visual",
+      "status": "PENDING",
+      "evidence": []
+    },
+    {
+      "id": "accessibility_interaction",
+      "status": "PENDING",
+      "evidence": []
+    },
+    {
+      "id": "performance_resource",
+      "status": "PENDING",
+      "evidence": []
+    }
+  ]
+}

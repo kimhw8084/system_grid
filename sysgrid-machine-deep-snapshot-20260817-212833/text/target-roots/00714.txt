@@ -1,0 +1,11 @@
+ORIGINAL_PATH: /Users/haewonkim/.local/state/sysgrid-supervisor/runs/20260801T004111Z-35240-366000/diagnostic/REVIEW_ME_FIRST.md
+ORIGINAL_SHA256: 5a4a53b5d83ab8678b1ff4b3fe65234c5761efcad31b285081e32019f4612f5c
+================================================================================
+# SysGrid Supervisor Diagnostic
+
+- Result: failure
+- Classification: CAPSULE_SCHEMA_FAILURE
+- Message: patch must be an object for mutation/resume
+- Product mutation authority: none added by this diagnostic
+
+Review RESULT.json, SUPERVISOR_STATE.json, TRACEBACK.txt, and MANIFEST.sha256.

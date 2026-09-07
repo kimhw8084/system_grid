@@ -1,0 +1,46 @@
+{
+  "diagnostic_sweep": [
+    "Slice H",
+    "Slice G",
+    "Slice F",
+    "Slice E",
+    "Slice D",
+    "Slice C",
+    "Scheduling",
+    "Navigation",
+    "Readability"
+  ],
+  "files": {
+    "README.md": {
+      "bytes": 1869,
+      "sha256": "48c5c04663639c9f7693c4ffd4acbc54486a4e13b08426d54f796b34562ca0c7"
+    },
+    "evidence/failure-signature.json": {
+      "bytes": 842,
+      "sha256": "c9da31bd1b6cde0509b5c99bbc583b78052242749ca7ce706948df66810d7976"
+    },
+    "repair_and_prove.py": {
+      "bytes": 44769,
+      "sha256": "0125b331f1f98b64cc797f2cda48bf794c0038737a3272cae7860ced626faad0"
+    },
+    "run_from_repo.sh": {
+      "bytes": 123,
+      "sha256": "fb0ab5ebece8443e95c123732e11cb41e5f3c2197274800177aba007e19356b3"
+    }
+  },
+  "objective": "Approved Project View Perfection",
+  "parent_result_sha256": "30d01f16fa2cba6de437e3e690d642661cde281c455e65c0c00825c59b1a29c5",
+  "product_change": "Retain the 40px Gantt toolbar correction and portal the existing scheduling dialog to document.body for viewport-anchored narrow-screen containment.",
+  "proof_before_apply": true,
+  "repair_iteration": 6,
+  "repair_paths": [
+    "frontend/tests/projects-out40-slice-h-gantt-modernization.spec.ts",
+    "frontend/tests/projects-out40-slice-g-accessible-name-audit.spec.ts",
+    "frontend/tests/projects-out40-slice-e-timeline-dependency-a11y.spec.ts",
+    "frontend/tests/projects-navigation.spec.ts",
+    "frontend/src/components/ProjectsVisualRepair.css",
+    "frontend/src/components/ProjectsSchedulingCompletion.tsx"
+  ],
+  "same_semantics": true,
+  "schema": "SYSGRID_PROJECT_VIEW_REPAIR_EXECUTOR_V1"
+}

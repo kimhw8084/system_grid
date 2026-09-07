@@ -1,0 +1,134 @@
+ORIGINAL_PATH: /Users/haewonkim/.local/share/sysgrid-supervisor/v2.2.1/RELEASE_DESCRIPTOR.json
+ORIGINAL_SHA256: c74dcada308128baf7c592bf7189477b2b485fa380abebf95f869b2539111ebc
+================================================================================
+{
+  "engine": {
+    "sha256": "66b082fec1e9f6c49152e5ecb4cbb3f998e60ce27d53a2325e5f658634a8d032",
+    "version": "1.1.1"
+  },
+  "notification": {
+    "heartbeat_seconds": 300,
+    "mandatory": false,
+    "max_messages_per_run": 3,
+    "postlaunch_retries": 3,
+    "prelaunch_retries": 3,
+    "presentation_mode": "summary",
+    "retry_base_seconds": 0.5,
+    "summary_progress_event": "playwright_started",
+    "telegram_heartbeats": false
+  },
+  "package": {
+    "canonical_artifact": "UPLOAD_THIS_TO_CHATGPT.zip",
+    "deterministic_timestamp": "2026-08-02T00:00:00Z",
+    "diagnostic_artifact": "UPLOAD_DIAGNOSTIC_TO_CHATGPT.zip",
+    "p2_activation_artifact": "UPLOAD_THIS_TO_CHATGPT_P2_CONTINUITY_ACTIVATION.zip",
+    "source_authority_activation_artifact": "UPLOAD_THIS_TO_CHATGPT_SOURCE_AUTHORITY_ACTIVATION.zip"
+  },
+  "platform_version": "1.1.1",
+  "progress_events": [
+    {
+      "id": "recovery_reattached",
+      "phase": "platform"
+    },
+    {
+      "id": "recovery_evidence_recovered",
+      "phase": "platform"
+    },
+    {
+      "id": "recovery_retry_authorized",
+      "phase": "platform"
+    },
+    {
+      "id": "capsule_selected",
+      "phase": "platform"
+    },
+    {
+      "id": "capsule_verified",
+      "phase": "platform"
+    },
+    {
+      "id": "preflight_started",
+      "phase": "platform"
+    },
+    {
+      "id": "preflight_completed",
+      "phase": "platform"
+    },
+    {
+      "id": "engine_launch",
+      "phase": "platform"
+    },
+    {
+      "id": "engine_completed",
+      "phase": "platform"
+    },
+    {
+      "id": "evidence_verified",
+      "phase": "platform"
+    },
+    {
+      "id": "publication_started",
+      "phase": "platform"
+    },
+    {
+      "id": "publication_completed",
+      "phase": "platform"
+    },
+    {
+      "id": "static_completed",
+      "phase": "product"
+    },
+    {
+      "id": "backend_completed",
+      "phase": "product"
+    },
+    {
+      "id": "frontend_completed",
+      "phase": "product"
+    },
+    {
+      "id": "build_completed",
+      "phase": "product"
+    },
+    {
+      "id": "playwright_started",
+      "phase": "product"
+    },
+    {
+      "id": "playwright_completed",
+      "phase": "product"
+    },
+    {
+      "id": "visual_completed",
+      "phase": "product"
+    },
+    {
+      "id": "accessibility_completed",
+      "phase": "product"
+    },
+    {
+      "id": "performance_completed",
+      "phase": "product"
+    }
+  ],
+  "resource_policy": {
+    "backend_worker_cap": 8,
+    "e2e_worker_cap": 4,
+    "frontend_worker_cap": 8,
+    "memory_per_backend_worker_bytes": 1073741824,
+    "memory_per_e2e_worker_bytes": 2147483648,
+    "memory_per_frontend_worker_bytes": 1073741824,
+    "preflight_worker_cap": 32,
+    "reserve_memory_bytes": 2147483648
+  },
+  "schema_version": "2.1",
+  "source_authority": {
+    "canonical_artifact": "UPLOAD_THIS_TO_CHATGPT_SOURCE_AUTHORITY.zip",
+    "command": "sg source-authority",
+    "diagnostic_artifact": "UPLOAD_DIAGNOSTIC_TO_CHATGPT_SOURCE_AUTHORITY.zip",
+    "mutation": "read_only",
+    "sha256": "106a1b16f429ab9893781d037a302184f7c626fb3d4134b9e8f5df315c624158",
+    "version": "1.0.0"
+  },
+  "supervisor_version": "2.2.1"
+}

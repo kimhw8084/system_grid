@@ -1,0 +1,18 @@
+{
+  "EXPECTED_BLOBS.json": {
+    "bytes": 843,
+    "sha256": "58017403244f9705eef5732da4f03f1d1d8be1d803a32e39d27b74f3a4ea2523"
+  },
+  "README.md": {
+    "bytes": 1164,
+    "sha256": "1f2d355901ac2ae32e74455e58bd6703d8092352cf6435c35d9e36fa50ea6ff4"
+  },
+  "publish_and_return.py": {
+    "bytes": 11185,
+    "sha256": "d7b0b84920a3a3b9b57c89d1753e48c2567adfa8806629065b57b4a1b9b641ce"
+  },
+  "run_from_repo.sh": {
+    "bytes": 132,
+    "sha256": "ed45b3fa9bdf8a2bb6ccce9373c14311a84a332d23a77f2fc2cfb86d35cb6e1c"
+  }
+}

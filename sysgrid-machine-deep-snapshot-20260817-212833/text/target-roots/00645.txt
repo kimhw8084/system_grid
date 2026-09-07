@@ -1,0 +1,492 @@
+ORIGINAL_PATH: /Users/haewonkim/.local/state/sysgrid-supervisor/runs/20260801T200852Z-68332-518000/SUPERVISOR_STATE.json
+ORIGINAL_SHA256: c1eb5f3045500df717d21dfe42bdf6c75a799e265d9155c8e3bddbecd8be73a5
+================================================================================
+{
+  "artifact": "/Users/haewonkim/Library/Mobile Documents/com~apple~CloudDocs/SysGrid-Control/Outbox/UPLOAD_THIS_TO_CHATGPT.zip",
+  "artifact_sha256": "419e0cc29217d3b4e8f5a217d403e262e4232f9973e0c25235032bcc2b0d469c",
+  "artifact_size": 1535841,
+  "attempt": 6,
+  "capsule_archive": "/Users/haewonkim/Library/Mobile Documents/com~apple~CloudDocs/SysGrid-Control/Archive/Processed-Capsules/20260801T201015Z__b6d91af142cc__DOWNLOAD_Attempt_06_Verification_Repair_R2.sgcap",
+  "capsule_cross_ledger": {
+    "changed_path_count": 1,
+    "execution_profile": "development_campaign",
+    "execution_scope": {
+      "changed_paths": [
+        "scripts/verify-app.sh"
+      ],
+      "execution_profile": "development_campaign",
+      "targeted_tests": [
+        "playwright:golden-seeded",
+        "playwright:shell-geometry"
+      ],
+      "targeted_views": [
+        "monitoring",
+        "far",
+        "research"
+      ]
+    },
+    "patch_paths": [
+      "scripts/verify-app.sh"
+    ],
+    "post_path_count": 57,
+    "pre_path_count": 57,
+    "protected_path_count": 19,
+    "recipe_ids": [
+      "full-app-gate"
+    ]
+  },
+  "capsule_file": "DOWNLOAD_Attempt_06_Verification_Repair_R2.sgcap",
+  "capsule_sha256": "b6d91af142cc850230402b8e28cfde78cf04bb76914122e675929f701484fb72",
+  "capsule_size": 11608,
+  "capsule_stage": "Golden Eight Development Campaign \u2014 Product Attempt 06 \u2014 Verification Repair R2 \u2014 Canonical Diff Envelope",
+  "capsule_title": "Iteration 36 Product Attempt 06 \u2014 Verification Repair R2: Canonical Diff Envelope",
+  "classification": "TEST_OR_RECIPE_FAILURE",
+  "dirty_path_count": 57,
+  "engine_command": [
+    "/opt/homebrew/opt/python@3.14/bin/python3.14",
+    "<exact-engine>",
+    "execute",
+    "<exact-capsule>",
+    "--repo",
+    "/Users/haewonkim/home/development/sysgrid",
+    "--outbox",
+    "/Users/haewonkim/.local/state/sysgrid-supervisor/runs/20260801T200852Z-68332-518000/engine-outbox"
+  ],
+  "engine_completed": true,
+  "engine_completed_utc": "2026-08-01T20:10:15Z",
+  "engine_exit_code": 1,
+  "engine_path": "/Users/haewonkim/.local/lib/sysgrid-runner/1.0.4/sysgrid_runner.py",
+  "engine_pid": 68413,
+  "engine_sha256": "ab63bb20c0de32771e20b0159475205f685f28910a0956c217fb3693c02f96e1",
+  "engine_started": true,
+  "engine_started_utc": "2026-08-01T20:08:53Z",
+  "event_timeline": [
+    {
+      "details": {},
+      "elapsed_seconds": 0.01,
+      "event_id": "capsule_selected",
+      "message": "Selecting the one immutable capsule and converging only byte-identical Inbox duplicates.",
+      "notification": {
+        "event_id": "capsule_selected",
+        "presentation_mode": "summary",
+        "required": false,
+        "status": "local_only",
+        "updated_utc": "2026-08-01T20:08:52Z"
+      },
+      "status": "started",
+      "utc": "2026-08-01T20:08:52Z"
+    },
+    {
+      "details": {
+        "changed_path_count": 1,
+        "execution_profile": "development_campaign",
+        "execution_scope": {
+          "changed_paths": [
+            "scripts/verify-app.sh"
+          ],
+          "execution_profile": "development_campaign",
+          "targeted_tests": [
+            "playwright:golden-seeded",
+            "playwright:shell-geometry"
+          ],
+          "targeted_views": [
+            "monitoring",
+            "far",
+            "research"
+          ]
+        },
+        "patch_paths": [
+          "scripts/verify-app.sh"
+        ],
+        "post_path_count": 57,
+        "pre_path_count": 57,
+        "protected_path_count": 19,
+        "recipe_ids": [
+          "full-app-gate"
+        ]
+      },
+      "elapsed_seconds": 0.021,
+      "event_id": "capsule_verified",
+      "message": "Capsule archive, manifest, schema, patch identity, and cross-ledger contract are exact.",
+      "notification": {
+        "attempts": 1,
+        "chat_id_suffix": "1055",
+        "event_id": "run_started",
+        "first_attempt_utc": "2026-08-01T20:08:52Z",
+        "message_id": 506,
+        "payload_sha256": "f3c080a4f14e9e730e2a0238f5b82ed29f3b031a226f44464b2386d8b944642f",
+        "required": true,
+        "status": "delivered",
+        "updated_utc": "2026-08-01T20:08:53Z"
+      },
+      "status": "passed",
+      "utc": "2026-08-01T20:08:53Z"
+    },
+    {
+      "details": {},
+      "elapsed_seconds": 1.498,
+      "event_id": "preflight_started",
+      "message": "Running independent platform checks and exact repository-state proof.",
+      "notification": {
+        "event_id": "preflight_started",
+        "presentation_mode": "summary",
+        "required": false,
+        "status": "local_only",
+        "updated_utc": "2026-08-01T20:08:53Z"
+      },
+      "status": "started",
+      "utc": "2026-08-01T20:08:53Z"
+    },
+    {
+      "details": {
+        "dirty_paths": 57,
+        "head": "dbc3f870b5b37dbd53de7ac82697221270e19381",
+        "patch": {
+          "applicable": true,
+          "forward_diagnostic": "Checking patch scripts/verify-app.sh...",
+          "forward_exit_code": 0,
+          "reverse_applicable": false,
+          "reverse_diagnostic": "Checking patch scripts/verify-app.sh...\nerror: while searching for:\n    npm run check:canonical-verification\n    npm run test:lint\n    npm run typecheck\n    npm run test:coverage -- --maxWorkers \"$FRONTEND_WORKERS\" --run src/components/shared/GoldenWorkspaceGeometryContract.test.ts\n    VITE_API_BASE_URL=\"$BACKEND_ORIGIN\" VITE_FRONTEND_ORIGIN=\"$FRONTEND_ORIGIN\" npm run build\n  )\n  emit_progress frontend_completed passed \"Campaign changed-area verification and production build passed.\"\n\nerror: patch failed: scripts/verify-app.sh:429\nerror: scripts/verify-app.sh: patch does not apply",
+          "reverse_exit_code": 1
+        }
+      },
+      "elapsed_seconds": 1.819,
+      "event_id": "preflight_completed",
+      "message": "Exact engine, repository, storage, state, protected hashes, and patch state passed.",
+      "notification": {
+        "event_id": "preflight_completed",
+        "presentation_mode": "summary",
+        "required": false,
+        "status": "local_only",
+        "updated_utc": "2026-08-01T20:08:53Z"
+      },
+      "status": "passed",
+      "utc": "2026-08-01T20:08:53Z"
+    },
+    {
+      "details": {},
+      "elapsed_seconds": 1.821,
+      "event_id": "engine_launch",
+      "message": "Launching the exact Stable Engine once; ambiguous mutation replay remains prohibited.",
+      "notification": {
+        "event_id": "engine_launch",
+        "presentation_mode": "summary",
+        "required": false,
+        "status": "local_only",
+        "updated_utc": "2026-08-01T20:08:53Z"
+      },
+      "status": "started",
+      "utc": "2026-08-01T20:08:53Z"
+    },
+    {
+      "details": {},
+      "elapsed_seconds": 2.841,
+      "event_id": "static_started",
+      "message": "Campaign static and changed-area verification started.",
+      "notification": {
+        "event_id": "static_started",
+        "presentation_mode": "summary",
+        "required": false,
+        "status": "local_only",
+        "updated_utc": "2026-08-01T20:08:54Z"
+      },
+      "status": "started",
+      "utc": "2026-08-01T20:08:54Z"
+    },
+    {
+      "details": {},
+      "elapsed_seconds": 74.509,
+      "event_id": "frontend_completed",
+      "message": "Campaign changed-area verification and production build passed.",
+      "notification": {
+        "event_id": "frontend_completed",
+        "presentation_mode": "summary",
+        "required": false,
+        "status": "local_only",
+        "updated_utc": "2026-08-01T20:10:06Z"
+      },
+      "status": "passed",
+      "utc": "2026-08-01T20:10:06Z"
+    },
+    {
+      "details": {
+        "engine_exit_code": 1
+      },
+      "elapsed_seconds": 83.086,
+      "event_id": "engine_completed",
+      "message": "Stable Engine exited with code 1; verifying its complete evidence.",
+      "notification": {
+        "event_id": "engine_completed",
+        "presentation_mode": "summary",
+        "required": false,
+        "status": "local_only",
+        "updated_utc": "2026-08-01T20:10:15Z"
+      },
+      "status": "failed",
+      "utc": "2026-08-01T20:10:15Z"
+    },
+    {
+      "details": {
+        "artifact_size": 1535841,
+        "manifest_entries": 74
+      },
+      "elapsed_seconds": 83.097,
+      "event_id": "evidence_verified",
+      "message": "Engine evidence is complete and exactly correlated to capsule, engine, and process exit.",
+      "notification": {
+        "event_id": "evidence_verified",
+        "presentation_mode": "summary",
+        "required": false,
+        "status": "local_only",
+        "updated_utc": "2026-08-01T20:10:15Z"
+      },
+      "status": "passed",
+      "utc": "2026-08-01T20:10:15Z"
+    },
+    {
+      "details": {},
+      "elapsed_seconds": 83.102,
+      "event_id": "publication_started",
+      "message": "Publishing one content-addressed, fsynced, atomic canonical review ZIP.",
+      "notification": {
+        "event_id": "publication_started",
+        "presentation_mode": "summary",
+        "required": false,
+        "status": "local_only",
+        "updated_utc": "2026-08-01T20:10:15Z"
+      },
+      "status": "started",
+      "utc": "2026-08-01T20:10:15Z"
+    },
+    {
+      "details": {
+        "artifact_sha256": "419e0cc29217d3b4e8f5a217d403e262e4232f9973e0c25235032bcc2b0d469c",
+        "exit_code": 1
+      },
+      "elapsed_seconds": 83.14,
+      "event_id": "publication_completed",
+      "message": "Run complete. Engine runtime: 80.0s. Canonical review ZIP is ready for upload.",
+      "notification": {
+        "attempts": 1,
+        "chat_id_suffix": "1055",
+        "event_id": "run_completed",
+        "first_attempt_utc": "2026-08-01T20:10:15Z",
+        "message_id": 507,
+        "payload_sha256": "03aab8435687f26878271a20f5654a3c649a809866ff5932acd04dff5eebb4de",
+        "required": false,
+        "status": "delivered",
+        "updated_utc": "2026-08-01T20:10:15Z"
+      },
+      "status": "failed",
+      "utc": "2026-08-01T20:10:15Z"
+    }
+  ],
+  "execution_profile": "development_campaign",
+  "execution_scope": {
+    "changed_paths": [
+      "scripts/verify-app.sh"
+    ],
+    "execution_profile": "development_campaign",
+    "targeted_tests": [
+      "playwright:golden-seeded",
+      "playwright:shell-geometry"
+    ],
+    "targeted_views": [
+      "monitoring",
+      "far",
+      "research"
+    ]
+  },
+  "issue": "OUT-31",
+  "iteration": 36,
+  "last_progress_event": "publication_completed",
+  "last_progress_message": "Run complete. Engine runtime: 80.0s. Canonical review ZIP is ready for upload.",
+  "last_progress_status": "failed",
+  "last_progress_utc": "2026-08-01T20:10:15Z",
+  "message": "recipe full-app-gate failed with exit 1",
+  "monotonic_started": 3891487.967456125,
+  "notification_events": {
+    "capsule_selected": {
+      "event_id": "capsule_selected",
+      "presentation_mode": "summary",
+      "required": false,
+      "status": "local_only",
+      "updated_utc": "2026-08-01T20:08:52Z"
+    },
+    "capsule_verified": {
+      "attempts": 1,
+      "chat_id_suffix": "1055",
+      "event_id": "run_started",
+      "first_attempt_utc": "2026-08-01T20:08:52Z",
+      "message_id": 506,
+      "payload_sha256": "f3c080a4f14e9e730e2a0238f5b82ed29f3b031a226f44464b2386d8b944642f",
+      "required": true,
+      "status": "delivered",
+      "updated_utc": "2026-08-01T20:08:53Z"
+    },
+    "engine_completed": {
+      "event_id": "engine_completed",
+      "presentation_mode": "summary",
+      "required": false,
+      "status": "local_only",
+      "updated_utc": "2026-08-01T20:10:15Z"
+    },
+    "engine_launch": {
+      "event_id": "engine_launch",
+      "presentation_mode": "summary",
+      "required": false,
+      "status": "local_only",
+      "updated_utc": "2026-08-01T20:08:53Z"
+    },
+    "evidence_verified": {
+      "event_id": "evidence_verified",
+      "presentation_mode": "summary",
+      "required": false,
+      "status": "local_only",
+      "updated_utc": "2026-08-01T20:10:15Z"
+    },
+    "frontend_completed": {
+      "event_id": "frontend_completed",
+      "presentation_mode": "summary",
+      "required": false,
+      "status": "local_only",
+      "updated_utc": "2026-08-01T20:10:06Z"
+    },
+    "preflight_completed": {
+      "event_id": "preflight_completed",
+      "presentation_mode": "summary",
+      "required": false,
+      "status": "local_only",
+      "updated_utc": "2026-08-01T20:08:53Z"
+    },
+    "preflight_started": {
+      "event_id": "preflight_started",
+      "presentation_mode": "summary",
+      "required": false,
+      "status": "local_only",
+      "updated_utc": "2026-08-01T20:08:53Z"
+    },
+    "publication_completed": {
+      "attempts": 1,
+      "chat_id_suffix": "1055",
+      "event_id": "run_completed",
+      "first_attempt_utc": "2026-08-01T20:10:15Z",
+      "message_id": 507,
+      "payload_sha256": "03aab8435687f26878271a20f5654a3c649a809866ff5932acd04dff5eebb4de",
+      "required": false,
+      "status": "delivered",
+      "updated_utc": "2026-08-01T20:10:15Z"
+    },
+    "publication_started": {
+      "event_id": "publication_started",
+      "presentation_mode": "summary",
+      "required": false,
+      "status": "local_only",
+      "updated_utc": "2026-08-01T20:10:15Z"
+    },
+    "static_started": {
+      "event_id": "static_started",
+      "presentation_mode": "summary",
+      "required": false,
+      "status": "local_only",
+      "updated_utc": "2026-08-01T20:08:54Z"
+    }
+  },
+  "notification_policy": {
+    "delivery_semantics": "durably-deduplicated-at-least-once",
+    "engine_heartbeat_seconds": 120,
+    "max_messages_per_run": 3,
+    "presentation_mode": "summary",
+    "registered_events": 24,
+    "required_before_engine": true,
+    "telegram_heartbeats": false
+  },
+  "original_capsule": "/Users/haewonkim/Library/Mobile Documents/com~apple~CloudDocs/SysGrid-Control/Inbox/DOWNLOAD_Attempt_06_Verification_Repair_R2.sgcap",
+  "pid": 68332,
+  "preflight": {
+    "declared_state": {
+      "dirty_path_count": 57,
+      "pre_hash_count": 57,
+      "protected_hash_count": 19
+    },
+    "engine_self_test": {
+      "engine_version": "1.0.4",
+      "result": "PASS",
+      "tests": [
+        "safe-path",
+        "manifest",
+        "corruption"
+      ]
+    },
+    "patch": {
+      "applicable": true,
+      "forward_diagnostic": "Checking patch scripts/verify-app.sh...",
+      "forward_exit_code": 0,
+      "reverse_applicable": false,
+      "reverse_diagnostic": "Checking patch scripts/verify-app.sh...\nerror: while searching for:\n    npm run check:canonical-verification\n    npm run test:lint\n    npm run typecheck\n    npm run test:coverage -- --maxWorkers \"$FRONTEND_WORKERS\" --run src/components/shared/GoldenWorkspaceGeometryContract.test.ts\n    VITE_API_BASE_URL=\"$BACKEND_ORIGIN\" VITE_FRONTEND_ORIGIN=\"$FRONTEND_ORIGIN\" npm run build\n  )\n  emit_progress frontend_completed passed \"Campaign changed-area verification and production build passed.\"\n\nerror: patch failed: scripts/verify-app.sh:429\nerror: scripts/verify-app.sh: patch does not apply",
+      "reverse_exit_code": 1
+    },
+    "storage": {
+      "control_free": 56698183680,
+      "local_free": 56698183680,
+      "required": 536870912
+    }
+  },
+  "product_event_status": {
+    "frontend_completed": "passed",
+    "static_started": "started"
+  },
+  "product_progress_last_event": "frontend_completed",
+  "product_progress_last_utc": "2026-08-01T20:10:06Z",
+  "product_progress_sequence": 2,
+  "recovered_without_product_replay": false,
+  "repo": "/Users/haewonkim/home/development/sysgrid",
+  "repo_branch": "main",
+  "repo_head": "dbc3f870b5b37dbd53de7ac82697221270e19381",
+  "resource_plan": {
+    "backend_workers": 4,
+    "cpu_count": 12,
+    "e2e_workers": 2,
+    "frontend_workers": 4,
+    "memory_bytes": 19327352832,
+    "preflight_workers": 24,
+    "reserve_memory_bytes": 2147483648,
+    "test_cpu_budget": 11,
+    "usable_memory_bytes": 17179869184
+  },
+  "run_id": "20260801T200852Z-68332-518000",
+  "runtime_summary": {
+    "artifact": "/Users/haewonkim/.local/state/sysgrid-supervisor/runs/20260801T200852Z-68332-518000/engine-outbox/UPLOAD_THIS_TO_CHATGPT.zip",
+    "classification": "TEST_OR_RECIPE_FAILURE",
+    "commands": [
+      {
+        "duration_seconds": 79.885,
+        "exit_code": 1,
+        "recipe_id": "full-app-gate",
+        "timed_out": false
+      }
+    ],
+    "engine_total_seconds": 80.0,
+    "failed_stage": "full-app-gate",
+    "finished_utc": "2026-08-01T20:10:14Z",
+    "result": "failure",
+    "started_utc": "2026-08-01T20:08:54Z"
+  },
+  "safe_cleanup": {
+    "inspected": 0,
+    "removed": 0
+  },
+  "safe_retry_count": 0,
+  "stage": "complete",
+  "staged_capsule": "/Users/haewonkim/.local/state/sysgrid-supervisor/runs/20260801T200852Z-68332-518000/input/DOWNLOAD_Attempt_06_Verification_Repair_R2.sgcap",
+  "started_utc": "2026-08-01T20:08:52Z",
+  "state": "FAILED_REVIEW_READY",
+  "supervisor_version": "2.1.2",
+  "telegram": {
+    "chat_id_suffix": "1055",
+    "configured": true,
+    "source": "/Users/haewonkim/.config/sysgrid-supervisor/telegram.json"
+  },
+  "updated_utc": "2026-08-01T20:10:15Z",
+  "work_dir": "/Users/haewonkim/.local/state/sysgrid-supervisor/runs/20260801T200852Z-68332-518000"
+}

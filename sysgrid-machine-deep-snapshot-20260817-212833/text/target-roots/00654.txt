@@ -1,0 +1,13 @@
+ORIGINAL_PATH: /Users/haewonkim/.local/state/sysgrid-supervisor/runs/20260801T070156Z-70948-427000/launch.json
+ORIGINAL_SHA256: f0fc0ae765b5f80f0e63ac482a6815f9cefe7df7c24cd150fdde89f78a4a4485
+================================================================================
+{
+  "capsule_path": "/Users/haewonkim/.local/state/sysgrid-supervisor/runs/20260801T070156Z-70948-427000/input/OUT-31_Golden-Eight_Iteration-36-Attempt-03_Cumulative-Harness-Determinism-and-Safe-Runtime-Optimization.sgcap",
+  "capsule_sha256": "098393c4140f1d8367073062141a828d2c0d40cbd04454feb56ca364add1550b",
+  "command_sha256": "804f97a1f0980ce6f9525023b2ac9b44009617f6b5cc7db064bf64242ce27838",
+  "engine_path": "/Users/haewonkim/.local/lib/sysgrid-runner/1.0.4/sysgrid_runner.py",
+  "engine_sha256": "ab63bb20c0de32771e20b0159475205f685f28910a0956c217fb3693c02f96e1",
+  "launched_utc": "2026-08-01T07:02:01Z",
+  "repo": "/Users/haewonkim/home/development/sysgrid",
+  "run_id": "20260801T070156Z-70948-427000"
+}

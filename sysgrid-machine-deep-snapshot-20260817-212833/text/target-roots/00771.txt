@@ -1,0 +1,48 @@
+ORIGINAL_PATH: /Users/haewonkim/.local/state/sysgrid-supervisor/runs/20260803T041135Z-42614-274000/patch.diff
+ORIGINAL_SHA256: c97daf80debab5013bc8da2a679e37d215a12b0d3d9b4c794089a1a2a7313a85
+================================================================================
+diff --git a/backend/app/services/far_service.py b/backend/app/services/far_service.py
+index 8769c0f91a433459f5d6238aef7d1a269a7782be..da2d64dce2623889acfd880bf056865799b575a2 100644
+--- a/backend/app/services/far_service.py
++++ b/backend/app/services/far_service.py
+@@ -1495,14 +1495,19 @@ async def _write_nested_and_parent_history(
+     affected_causes: dict[int, models.FarFailureCause],
+     summary: str,
+ ) -> None:
+-    relationships = await nested_relationship_snapshot(db, entity_type, item)
++    # Columns with server-side/on-update values are expired by the flush above.
++    # Refresh and reload the entity through the authoritative loader before
++    # synchronous serialization so history capture never triggers async IO.
++    await db.refresh(item)
++    loaded_item = await get_nested_entity(db, entity_type, item.id, include_retired=True)
++    relationships = await nested_relationship_snapshot(db, entity_type, loaded_item)
+     await write_entity_history(
+         db,
+         request,
+         entity_type=entity_type,
+-        entity_id=item.id,
+-        version=item.version,
+-        snapshot=nested_serializer(entity_type, item),
++        entity_id=loaded_item.id,
++        version=loaded_item.version,
++        snapshot=nested_serializer(entity_type, loaded_item),
+         relationships=relationships,
+         summary=summary,
+     )
+diff --git a/frontend/src/components/far/FARDomain.ts b/frontend/src/components/far/FARDomain.ts
+index e2b7704048fa34e42a0278c75db5aa9a750adca7..117b2ead6f22179e6f8aedc47ff474f954b066c1 100644
+--- a/frontend/src/components/far/FARDomain.ts
++++ b/frontend/src/components/far/FARDomain.ts
+@@ -237,7 +237,11 @@ export function sanitizeFARSavedViewDefinition(value: unknown): FARSavedViewDefi
+         const next: FARSavedViewDefinition['columnLayoutState'][number] = { colId }
+         if (typeof record.hide === 'boolean') next.hide = record.hide
+         const pinned = record.pinned
+-        if (pinned === 'left' || pinned === 'right' || pinned === null) next.pinned = pinned
++        if (pinned === 'left' || pinned === 'right') {
++          next.pinned = pinned
++        } else if (pinned === null) {
++          next.pinned = null
++        }
+         if (typeof record.width === 'number' && Number.isFinite(record.width) && record.width >= 40 && record.width <= 2000) next.width = Math.trunc(record.width)
+         if (record.sort === 'asc' || record.sort === 'desc') next.sort = record.sort
+         return [next]

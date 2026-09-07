@@ -1,0 +1,9 @@
+{
+  "classification": "PORTAL_BOUNDARY_GEOMETRY_AND_ACCESSIBLE_NAME",
+  "observed": "Repair 6 kept Slice H 5/5 PASS. Scheduling still measured x=-7px at 390x844, and Slice G found the portaled Scenario task select unnamed.",
+  "parent_result_sha256": "d0807b48453bc4f88872547bab9a736ec3e7d0a5391b0d34a6314d2bbca862db",
+  "proof_gate": "Run the complete diagnostic sweep first; then canonical OUT-40 regression; then full Projects visual-repair proof. Apply locally only after all gates PASS.",
+  "repair": "Keep the schedule dialog portal, replace mobile 100vw sizing with fixed left/right edge anchoring, and add direct accessible names to scenario/baseline controls rendered outside the Projects root.",
+  "repair_iteration": 7,
+  "schema": "SYSGRID_PROJECT_VIEW_REPAIR_FAILURE_SIGNATURE_V1"
+}

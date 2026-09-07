@@ -1,0 +1,29 @@
+ORIGINAL_PATH: /Users/haewonkim/.local/share/sysgrid-campaign-platform/v1.1.1/IMPROVEMENT_LEDGER.json
+ORIGINAL_SHA256: e7fd2359c191fc74ccdfdd2403d0537131b8d5cfd41694af7213ac9c07de8af5
+================================================================================
+{
+  "ACT_NOW": [
+    "Expose complete safe source capture as one qualified command.",
+    "Write the canonical artifact directly to the iCloud Outbox.",
+    "Include all source, Git, ownership, dependency, route/API/test, platform, and non-mutation evidence.",
+    "Fail closed rather than issue an incomplete source authority."
+  ],
+  "DEFER_MATERIAL": [],
+  "DEFER_OUT_OF_SCOPE": [
+    "Product Attempt 12 behavior changes",
+    "repository cleanup",
+    "dependency upgrades"
+  ],
+  "REJECT_WITH_REASON": [
+    {
+      "item": "inline terminal-generated source export script",
+      "reason": "violates the qualified-platform trust boundary"
+    },
+    {
+      "item": "partial changed-files-only export",
+      "reason": "insufficient for production source analysis"
+    }
+  ],
+  "classification": "Platform Verification Repair P2-R1",
+  "schema_version": "1.0"
+}

@@ -1,0 +1,8 @@
+ORIGINAL_PATH: /Users/haewonkim/.local/share/sysgrid-campaign-platform/v1.1.0/GPT_WORKFLOW_CONTRACT.md
+ORIGINAL_SHA256: ee741c074b83b2e051790267d4c157bc7c061a9c780929f49bc7ff3a4619c1e3
+================================================================================
+# GPT Workflow Contract — Continuity Amendment
+
+Every new SysGrid Project chat must reconstruct state from the active law manifest, three law files, live Linear, accepted platform identity, current source identity, and no more than one immutable handoff. Chat memory is never state authority.
+
+Every future campaign package and review ZIP carries a hash-bound continuity handoff. Live Linear remains authoritative for current operational state.

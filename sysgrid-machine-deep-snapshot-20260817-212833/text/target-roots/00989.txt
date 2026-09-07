@@ -1,0 +1,55 @@
+ORIGINAL_PATH: /Users/haewonkim/.local/state/sysgrid-supervisor/runs/20260804T010704Z-54912-696000/patch.diff
+ORIGINAL_SHA256: 34f32f065c6ce620333b268957259ad15e6b80af063e807528f7f799a69b5235
+================================================================================
+diff --git a/frontend/src/components/FAR.tsx b/frontend/src/components/FAR.tsx
+index 2071c05..7e78794 100644
+--- a/frontend/src/components/FAR.tsx
++++ b/frontend/src/components/FAR.tsx
+@@ -936,10 +936,43 @@ export default function FAR() {
+         </div>
+       )
+     }
+-  ].map((column: any) => ({
+-    ...column,
+-    suppressAutoSize: true,
+-  })), [fontSize, hiddenColumns, mutationBlocked, workspaceMode]) as any
++  ].map((column: any) => {
++    const columnId = String(column.colId || column.field || '')
++    const explicitWidth = typeof column.width === 'number' && typeof column.flex !== 'number'
++      ? column.width
++      : null
++    const utilityWidthLocked = columnId === 'selection' || columnId === 'actions'
++
++    if (explicitWidth !== null) {
++      const boundedMaxWidth = utilityWidthLocked
++        ? explicitWidth
++        : Math.max(explicitWidth, Math.min(explicitWidth * 2, 320))
++      return {
++        ...column,
++        cellDataType: false,
++        initialWidth: explicitWidth,
++        minWidth: utilityWidthLocked ? explicitWidth : Math.min(explicitWidth, 80),
++        maxWidth: boundedMaxWidth,
++        suppressAutoSize: true,
++        suppressSizeToFit: true,
++      }
++    }
++
++    const flexBounds = columnId === 'title'
++      ? { minWidth: 260, maxWidth: 420 }
++      : columnId === 'effect'
++        ? { minWidth: 220, maxWidth: 420 }
++        : columnId === 'analytical_focus'
++          ? { minWidth: 240, maxWidth: 480 }
++          : {}
++
++    return {
++      ...column,
++      ...flexBounds,
++      cellDataType: false,
++      suppressAutoSize: true,
++    }
++  }), [fontSize, hiddenColumns, mutationBlocked, workspaceMode]) as any
+ 
+   const canonicalColumnLayoutState = useMemo(() => columnDefs.map((column: any, index: number) => {
+     const state: Record<string, any> = {

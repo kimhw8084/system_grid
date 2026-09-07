@@ -1,0 +1,40 @@
+ORIGINAL_PATH: /Users/haewonkim/.local/share/sysgrid-campaign-platform/v1.1.0/IMPLEMENTATION_REPORT.json
+ORIGINAL_SHA256: cb1119cd8282759d08e30fb09b99c5f052bd8a8b3bced45a08cf866009e498ee
+================================================================================
+{
+  "changes": [
+    "mandatory fresh-chat bootstrap protocol",
+    "continuity conformance specification",
+    "paste-ready Project instructions",
+    "hash-bound campaign handoff schema",
+    "pre-execution handoff/law/platform/source/gate validation",
+    "HANDOFF evidence in every canonical review ZIP",
+    "iCloud Project-continuity export",
+    "P2 activation evidence"
+  ],
+  "components": {
+    "bootstrap_protocol": "1.0.0",
+    "campaign_controller": "1.1.0",
+    "continuity_conformance": "1.0.0",
+    "engine": "1.1.1",
+    "platform": "1.1.0",
+    "supervisor": "2.2.1"
+  },
+  "product_attempt": 12,
+  "product_repository_mutation": "none",
+  "product_value_added": false,
+  "project_source_sha256": {
+    "bootstrap_protocol": "95edbc188f26792e7a7a2c844caa7cb68e1fb96acf35fe748f79847ea616654b",
+    "conformance_spec": "0d29a1017a3ac009d6c30ae53b17b0d8c09419700b86fd59068a9815ca5875c2",
+    "project_instructions": "821674f6eb6dd1e046cffb73bfc4fdcd26ccef1b74bee84763a6768de1fb473f"
+  },
+  "qualified_component_sha256": {
+    "campaign_controller": "28d102080c0086d68b9626ea2c507464f3390c67da3a5a6f1ad5a5233b4f23eb",
+    "dispatcher": "baa9b40c2c5b99702806f498f5c806f16b710844989fa977933cf131df2e02f7",
+    "engine": "66b082fec1e9f6c49152e5ecb4cbb3f998e60ce27d53a2325e5f658634a8d032",
+    "supervisor": "fe14901c1487eaf578b1ec1c24ecf4362e940e104e408926ccfa5d8dfc459d80"
+  },
+  "repair": "P2",
+  "schema_version": "1.0",
+  "work_class": "platform_verification_repair"
+}

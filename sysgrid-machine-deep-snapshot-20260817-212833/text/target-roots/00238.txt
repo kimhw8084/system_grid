@@ -1,0 +1,33 @@
+ORIGINAL_PATH: /Users/haewonkim/.local/share/sysgrid-supervisor/v1.3.4/RELEASE_TEST_REPORT.json
+ORIGINAL_SHA256: 2b13de329a6e3279ceb9cec8799ae179af9e7c521332c3e6169dffebb7b16117
+================================================================================
+{
+  "coverage": [
+    "archive safety and complete manifest coverage",
+    "capsule schema, patch identity, JSON state ledgers, canonical newline path ledgers, and GNU-style SHA-256 ledgers",
+    "exact Stable Engine-compatible resume_verify schema with no patch member or patch-state precheck",
+    "strict UTF-8, duplicate, malformed-line, repository-escape, and Git-metadata state rejection",
+    "Git baseline, dirty-path, protected-hash, and dependency-ordered patch-state verification",
+    "bounded forward and reverse git-apply diagnostics",
+    "resource-aware non-short-circuit independent preflight with structured partial results",
+    "non-blocking run serialization and exact process identity",
+    "interrupted engine reattachment and verified-output recovery without replay",
+    "single safe retry only from exact proven pre-mutation state",
+    "post-state and ambiguous-state replay prevention",
+    "mandatory Telegram configuration, secret redaction, official sendMessage delivery, retries, and durable event deduplication",
+    "automatic Telegram private-chat discovery from a fresh update baseline, with active-webhook refusal and ambiguous-chat selection",
+    "six numbered Telegram progress events, five-minute engine heartbeats, failure notification, and installed-byte notification probe",
+    "verified engine runtime extraction, live elapsed status, and durable local runtime history without artifact mutation",
+    "bounded diagnostic logs and canonical failure artifact publication",
+    "end-to-end JSON-ledger, canonical text-ledger, and no-patch resume execution paths",
+    "complete distribution, staged-tree, existing-target, and installed-tree identity"
+  ],
+  "engine_contract_sha256": "ab63bb20c0de32771e20b0159475205f685f28910a0956c217fb3693c02f96e1",
+  "engine_contract_version": "1.0.4",
+  "installer_tests_sha256": "2474113ce5954d2abbf05b87fbf9ecb8094b1a7ffbb0b75f626719526890d41f",
+  "result": "PASS",
+  "source_sha256": "22194d7f73c172111429303818f7fa3fd53f9d7474a40f6ac8a798b227987a33",
+  "supervisor_version": "1.3.4",
+  "tests": 74,
+  "tests_sha256": "39cc6ef9e43c92d596d8eca02e995a76dbd3aca53affbdffb099ab18ed398b96"
+}

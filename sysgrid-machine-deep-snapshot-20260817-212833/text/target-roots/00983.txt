@@ -1,0 +1,34 @@
+ORIGINAL_PATH: /Users/haewonkim/.local/state/sysgrid-supervisor/runs/20260804T214512Z-86863-442000/preflight.json
+ORIGINAL_SHA256: 1a8bee25d1188f0102c0596f2fef615a0bc712814939455190c954fe6d5d3d9f
+================================================================================
+{
+  "declared_state": {
+    "dirty_path_count": 95,
+    "pre_hash_count": 95,
+    "protected_hash_count": 717
+  },
+  "engine_self_test": {
+    "engine_version": "1.1.1",
+    "result": "PASS",
+    "tests": [
+      "safe-path",
+      "manifest",
+      "corruption",
+      "canonical-dirty-paths",
+      "aggregate-recipes"
+    ]
+  },
+  "patch": {
+    "applicable": true,
+    "forward_diagnostic": "Checking patch backend/app/api/tenants.py...\nChecking patch backend/app/services/far_service.py...\nChecking patch backend/test_far_workflows.py...\nChecking patch frontend/src/components/FAR.tsx...\nChecking patch frontend/tests/far-golden-workspace.spec.ts...\nChecking patch frontend/tests/far-workflows.spec.ts...",
+    "forward_exit_code": 0,
+    "reverse_applicable": false,
+    "reverse_diagnostic": "Checking patch frontend/tests/far-workflows.spec.ts...\nerror: while searching for:\n\n    await expect(page.getByRole('heading', { name: 'FAR bulk preview' })).toBeVisible()\n    await expect(page.getByText('Retire failure vectors', { exact: true })).toBeVisible()\n    const retirementReason = page.getByRole('textbox', { name: 'Retirement reason' })\n    await expect(retirementReason).toHaveCount(1)\n    await retirementReason.fill('Superseded failure vector retained for audit evidence')\n    await clickResilientButton(page, 'Prepare retirement preview')\n    await expect(page.getByRole('heading', { name: 'FAR bulk preview' })).toBeVisible()\n    await expect(page.getByText('Retire failure vectors', { exact: true })).toBeVisible()\n\nerror: patch failed: frontend/tests/far-workflows.spec.ts:77\nerror: frontend/tests/far-workflows.spec.ts: patch does not apply\nChecking patch frontend/tests/far-golden-workspace.spec.ts...\nerror: while searching for:\n    await firstCell.click()\n    await page.keyboard.press('Home')\n    const observedScrollPositions: number[] = []\n    const maximumKeyboardSteps = Math.min(512, Math.max(96, Math.ceil(metrics.maxScrollLeft / 10) + 32))\n    for (let index = 0; index < maximumKeyboardSteps; index += 1) {\n      await page.evaluate(() => new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve()))))\n      await collectInstantiatedHeaders()\n      const position = await centerViewport.evaluate((element: HTMLElement) => element.scrollLeft)\n      observedScrollPositions.push(position)\n      if (position >= metrics.maxScrollLeft - 2 && findMissingHeaders([...headers], required).length === 0) break\n      await page.keyboard.press('ArrowRight')\n    }\n    expect(\n      Math.max(...observedScrollPositions),\n      `Keyboard traversal must reach the measured FAR maximum ${metrics.maxScrollLeft}. Observed: ${observedScrollPositions.join(', ')}`,\n    ).toBeGreaterThanOrEqual(metrics.maxScrollLeft - 2)\n    await page.keyboard.pres",
+    "reverse_exit_code": 1
+  },
+  "storage": {
+    "control_free": 50947211264,
+    "local_free": 50947211264,
+    "required": 3221225472
+  }
+}

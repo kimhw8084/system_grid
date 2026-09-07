@@ -1,0 +1,156 @@
+ORIGINAL_PATH: /Users/haewonkim/.local/state/sysgrid-supervisor/runs/20260805T121046Z-3314-457000/patch.diff
+ORIGINAL_SHA256: 74f382161a746421e836dbcc7364085719080f957c440bfa953518a80f446417
+================================================================================
+diff --git a/frontend/src/components/shared/OperationalSavedViewsPanel.test.tsx b/frontend/src/components/shared/OperationalSavedViewsPanel.test.tsx
+index d777caf..ce8d66a 100644
+--- a/frontend/src/components/shared/OperationalSavedViewsPanel.test.tsx
++++ b/frontend/src/components/shared/OperationalSavedViewsPanel.test.tsx
+@@ -265,8 +265,8 @@ describe('Operational anchored-panel interaction continuity', () => {
+       width: 366,
+       boxSizing: 'border-box',
+       overflowY: 'auto',
+-      scrollbarGutter: 'stable',
+     })
++    expect(narrow.style.scrollbarGutter).toBeUndefined()
+     expect(Number(narrow.style.left) + Number(narrow.style.width)).toBeLessThanOrEqual(378)
+   })
+ 
+diff --git a/frontend/src/components/shared/OperationalWorkspacePrimitives.tsx b/frontend/src/components/shared/OperationalWorkspacePrimitives.tsx
+index 88e59ba..f9f127b 100644
+--- a/frontend/src/components/shared/OperationalWorkspacePrimitives.tsx
++++ b/frontend/src/components/shared/OperationalWorkspacePrimitives.tsx
+@@ -59,7 +59,6 @@ export function computeWorkspaceAnchoredPanelStyle({
+       maxHeight: Math.max(40, availableHeight),
+       overflowY: 'auto',
+       overscrollBehavior: 'contain',
+-      scrollbarGutter: 'stable',
+       zIndex: WORKSPACE_LAYER_Z.floatingPanel,
+       visibility: 'visible',
+       pointerEvents: 'auto',
+diff --git a/frontend/tests/far-golden-workspace.spec.ts b/frontend/tests/far-golden-workspace.spec.ts
+index 5a1aeff..be57856 100644
+--- a/frontend/tests/far-golden-workspace.spec.ts
++++ b/frontend/tests/far-golden-workspace.spec.ts
+@@ -10,6 +10,29 @@ async function waitForFAR(page: any) {
+   return workspace
+ }
+ 
++async function waitForSettledAnchoredGeometry(page: any, trigger: any, panel: any) {
++  let previousSignature = ''
++  let latest: { triggerBox: any; panelBox: any; viewport: any } | null = null
++  await expect.poll(async () => {
++    await page.evaluate(() => new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve()))))
++    const triggerBox = await trigger.boundingBox()
++    const panelBox = await panel.boundingBox()
++    const viewport = page.viewportSize()
++    if (!triggerBox || !panelBox || !viewport) return false
++    latest = { triggerBox, panelBox, viewport }
++    const signature = JSON.stringify([
++      triggerBox.x, triggerBox.y, triggerBox.width, triggerBox.height,
++      panelBox.x, panelBox.y, panelBox.width, panelBox.height,
++      viewport.width, viewport.height,
++    ])
++    const settled = signature === previousSignature
++    previousSignature = signature
++    return settled
++  }, { timeout: 10_000 }).toBe(true)
++  if (!latest) throw new Error('Anchored panel geometry did not become measurable')
++  return latest
++}
++
+ function findMissingHeaders(available: string[], required: string[]) {
+   const normalized = new Set(available.map((label) => label.replace(/\s+/g, ' ').trim()).filter(Boolean))
+   return required.filter((label) => !normalized.has(label))
+@@ -174,19 +197,12 @@ test.describe('FAR whole-view golden workspace', () => {
+     const viewsPanel = page.locator('[data-workspace-panel-key="views-menu"]')
+     await expect(viewsPanel).toBeVisible()
+     await expect(page.getByTestId('workspace-view-sync-status')).toContainText(/Synced|Loading|Saving|Unsaved/)
+-    const viewsButtonBox = await viewsButton.boundingBox()
+-    const viewsPanelBox = await viewsPanel.boundingBox()
+-    const viewport = page.viewportSize()
+-    expect(viewsButtonBox).not.toBeNull()
+-    expect(viewsPanelBox).not.toBeNull()
+-    expect(viewport).not.toBeNull()
+-    if (viewsButtonBox && viewsPanelBox && viewport) {
+-      const expectedLeft = Math.max(12, Math.min(viewsButtonBox.x, viewport.width - viewsPanelBox.width - 12))
+-      expect(Math.abs(viewsPanelBox.x - expectedLeft)).toBeLessThanOrEqual(2)
+-      expect(viewsPanelBox.y).toBeGreaterThanOrEqual(viewsButtonBox.y + viewsButtonBox.height + 6)
+-      expect(viewsPanelBox.x).toBeGreaterThanOrEqual(12)
+-      expect(viewsPanelBox.x + viewsPanelBox.width).toBeLessThanOrEqual(viewport.width - 12)
+-    }
++    const { triggerBox: viewsButtonBox, panelBox: viewsPanelBox, viewport } = await waitForSettledAnchoredGeometry(page, viewsButton, viewsPanel)
++    const expectedLeft = Math.max(12, Math.min(viewsButtonBox.x, viewport.width - viewsPanelBox.width - 12))
++    expect(Math.abs(viewsPanelBox.x - expectedLeft)).toBeLessThanOrEqual(2)
++    expect(viewsPanelBox.y).toBeGreaterThanOrEqual(viewsButtonBox.y + viewsButtonBox.height + 6)
++    expect(viewsPanelBox.x).toBeGreaterThanOrEqual(12)
++    expect(viewsPanelBox.x + viewsPanelBox.width).toBeLessThanOrEqual(viewport.width - 12)
+     await clickResilientButton(page, 'Close saved views')
+ 
+     const search = page.getByLabel('Search FAR failure modes')
+@@ -243,14 +259,9 @@ test.describe('FAR whole-view golden workspace', () => {
+     await narrowViewsButton.click()
+     const narrowViewsPanel = page.locator('[data-workspace-panel-key="views-menu"]')
+     await expect(narrowViewsPanel).toBeVisible()
+-    const narrowPanelBox = await narrowViewsPanel.boundingBox()
+-    const narrowViewport = page.viewportSize()
+-    expect(narrowPanelBox).not.toBeNull()
+-    expect(narrowViewport).not.toBeNull()
+-    if (narrowPanelBox && narrowViewport) {
+-      expect(narrowPanelBox.x).toBeGreaterThanOrEqual(12)
+-      expect(narrowPanelBox.x + narrowPanelBox.width).toBeLessThanOrEqual(narrowViewport.width - 12)
+-    }
++    const { panelBox: narrowPanelBox, viewport: narrowViewport } = await waitForSettledAnchoredGeometry(page, narrowViewsButton, narrowViewsPanel)
++    expect(narrowPanelBox.x).toBeGreaterThanOrEqual(12)
++    expect(narrowPanelBox.x + narrowPanelBox.width).toBeLessThanOrEqual(narrowViewport.width - 12)
+     await clickResilientButton(page, 'Close saved views')
+ 
+     await page.screenshot({ path: testInfo.outputPath('far-whole-view-golden-narrow.png'), fullPage: false, animations: 'disabled' })
+diff --git a/frontend/tests/golden-eight-seeded-visual-matrix.spec.ts b/frontend/tests/golden-eight-seeded-visual-matrix.spec.ts
+index 570ea78..6a9e66a 100644
+--- a/frontend/tests/golden-eight-seeded-visual-matrix.spec.ts
++++ b/frontend/tests/golden-eight-seeded-visual-matrix.spec.ts
+@@ -77,6 +77,33 @@ async function seedGoldenEight(request: APIRequestContext) {
+   await createVendor(request, stamp)
+ }
+ 
++async function waitForSettledGoldenGeometry(page: any, workspace: any, commandBar: any, grid: any) {
++  await expect(grid).toHaveAttribute('data-golden-grid-loading', 'false')
++  await page.evaluate(async () => {
++    if (document.fonts?.ready) await document.fonts.ready
++  })
++  let previousSignature = ''
++  let latest: { shellBox: any; commandBox: any; gridBox: any } | null = null
++  await expect.poll(async () => {
++    await page.evaluate(() => new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve()))))
++    const shellBox = await workspace.boundingBox()
++    const commandBox = await commandBar.boundingBox()
++    const gridBox = await grid.boundingBox()
++    if (!shellBox || !commandBox || !gridBox) return false
++    latest = { shellBox, commandBox, gridBox }
++    const signature = JSON.stringify([
++      shellBox.x, shellBox.y, shellBox.width, shellBox.height,
++      commandBox.x, commandBox.y, commandBox.width, commandBox.height,
++      gridBox.x, gridBox.y, gridBox.width, gridBox.height,
++    ])
++    const settled = signature === previousSignature
++    previousSignature = signature
++    return settled
++  }, { timeout: 10_000 }).toBe(true)
++  if (!latest) throw new Error('Golden workspace geometry did not become measurable')
++  return latest
++}
++
+ async function paintedPixelEvidence(locator: any) {
+   return locator.evaluate((element: HTMLElement) => {
+     const rect = element.getBoundingClientRect()
+@@ -194,9 +221,7 @@ test.describe.parallel('Golden Eight non-short-circuit populated validation matr
+         if (!(await grid.isVisible().catch(() => false))) failures.push('shared grid surface not visible')
+         await expect(grid.locator('.ag-center-cols-container .ag-row').first()).toBeVisible({ timeout: 30_000 })
+ 
+-        const shellBox = await workspace.boundingBox()
+-        const gridBox = await grid.boundingBox()
+-        const commandBox = await commandBar.boundingBox()
++        const { shellBox, gridBox, commandBox } = await waitForSettledGoldenGeometry(page, workspace, commandBar, grid)
+         if (!shellBox || !gridBox) failures.push('missing shell/grid bounding box')
+         if (shellBox && gridBox) {
+           const leftDelta = Math.abs(gridBox.x - shellBox.x)

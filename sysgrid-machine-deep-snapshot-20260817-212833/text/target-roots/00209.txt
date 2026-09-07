@@ -1,0 +1,1386 @@
+ORIGINAL_PATH: /Users/haewonkim/.local/share/sysgrid-supervisor/v2.1.2/payload/test_sysgrid_supervisor.py
+ORIGINAL_SHA256: d1679ef5b225847bd841e0a92adc3625d9cf8215926405d77389d7f25983b719
+================================================================================
+#!/usr/bin/env python3
+from __future__ import annotations
+
+import contextlib
+import hashlib
+import json
+import os
+import stat
+import subprocess
+import tempfile
+import threading
+import time
+import unittest
+import warnings
+import zipfile
+from pathlib import Path
+from unittest import mock
+
+import sysgrid_supervisor as sg
+
+
+TEST_TELEGRAM_CONFIG = {"bot_token": "12345:abcdefghijklmnopqrstuvwxyzABCDE", "chat_id": "123456", "source": "test"}
+
+
+def manifest_bytes(files: dict[str, bytes]) -> bytes:
+    return ("\n".join(f"{hashlib.sha256(data).hexdigest()}  {name}" for name, data in sorted(files.items())) + "\n").encode()
+
+
+def write_zip(path: Path, files: dict[str, bytes], *, modes: dict[str, int] | None = None, add_manifest: bool = True) -> None:
+    payload = dict(files)
+    if add_manifest:
+        payload["MANIFEST.sha256"] = manifest_bytes(files)
+    with zipfile.ZipFile(path, "w", compression=zipfile.ZIP_DEFLATED) as zf:
+        for name, data in payload.items():
+            info = zipfile.ZipInfo(name)
+            info.compress_type = zipfile.ZIP_DEFLATED
+            mode = (modes or {}).get(name, stat.S_IFREG | 0o600)
+            info.external_attr = mode << 16
+            zf.writestr(info, data)
+
+
+def base_run() -> dict:
+    return {
+        "schema_version": "1.0",
+        "capsule_version": "test",
+        "project": "SysGrid",
+        "master_context": "OUT-5",
+        "issue": "OUT-31",
+        "stage": "test",
+        "iteration": 1,
+        "attempt": 1,
+        "title": "test",
+        "lane": "read_only",
+        "mode": "read_only",
+        "engine": {"required_version": sg.ENGINE_VERSION},
+        "baseline": {"branch": "main", "head": "0" * 40, "upstream": "origin/main"},
+        "state": {},
+        "patch": None,
+        "recipes": [],
+        "acceptance": {},
+        "delivery": {"commit_push": False},
+        "evidence": {},
+    }
+
+
+def make_capsule(path: Path, run: dict | None = None, extra: dict[str, bytes] | None = None) -> Path:
+    files = {"RUN.json": (json.dumps(run or base_run(), sort_keys=True) + "\n").encode()}
+    files.update(extra or {})
+    write_zip(path, files)
+    return path
+
+
+def make_output(path: Path, capsule_name: str, capsule_sha: str, *, engine_version: str = sg.ENGINE_VERSION, exit_code: int = 0) -> Path:
+    result = {
+        "result": "success" if exit_code == 0 else "failure",
+        "classification": "PASS" if exit_code == 0 else "APP_TEST_FAILURE",
+        "message": "done",
+        "exit_code": exit_code,
+        "capsule_file": capsule_name,
+        "capsule_sha256": capsule_sha,
+        "engine_version": engine_version,
+    }
+    write_zip(path, {"RESULT.json": (json.dumps(result) + "\n").encode(), "LOGS/a.txt": b"ok\n"})
+    return path
+
+
+class SupervisorTests(unittest.TestCase):
+    def test_safe_member_accepts_normal_path(self):
+        self.assertEqual(sg.safe_member("STATE/pre.json").as_posix(), "STATE/pre.json")
+
+    def test_safe_member_rejects_traversal_and_ambiguous_paths(self):
+        for bad in ("../x", "/x", "./x", "a\\b", "a//b", ""):
+            with self.subTest(bad=bad), self.assertRaises(sg.SupervisorError):
+                sg.safe_member(bad)
+
+    def test_manifest_rejects_duplicate(self):
+        line = f"{'0'*64}  a.txt"
+        with self.assertRaises(sg.SupervisorError):
+            sg.parse_manifest_text(line + "\n" + line + "\n")
+
+    def test_atomic_write_replaces_complete_bytes(self):
+        with tempfile.TemporaryDirectory() as td:
+            path = Path(td) / "x"
+            sg.atomic_write_bytes(path, b"first")
+            sg.atomic_write_bytes(path, b"second")
+            self.assertEqual(path.read_bytes(), b"second")
+            self.assertFalse(any(p.name.startswith(".x.tmp") for p in path.parent.iterdir()))
+
+    def test_atomic_copy_rejects_wrong_digest(self):
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            source, target = root / "source", root / "target"
+            source.write_bytes(b"data")
+            with self.assertRaises(sg.SupervisorError):
+                sg.copy_verified_atomic(source, target, "0" * 64)
+            self.assertFalse(target.exists())
+
+    def test_zip_rejects_duplicate_paths(self):
+        with tempfile.TemporaryDirectory() as td:
+            path = Path(td) / "d.zip"
+            with warnings.catch_warnings():
+                warnings.simplefilter("ignore")
+                with zipfile.ZipFile(path, "w") as zf:
+                    zf.writestr("a.txt", b"a")
+                    zf.writestr("a.txt", b"b")
+            with self.assertRaises(sg.SupervisorError):
+                sg.inspect_zip(path, allow_source=True)
+
+    def test_zip_rejects_symlink(self):
+        with tempfile.TemporaryDirectory() as td:
+            path = Path(td) / "s.zip"
+            write_zip(path, {"a": b"target"}, modes={"a": stat.S_IFLNK | 0o777}, add_manifest=False)
+            with self.assertRaises(sg.SupervisorError):
+                sg.inspect_zip(path, allow_source=True)
+
+    def test_capsule_rejects_source_member(self):
+        with tempfile.TemporaryDirectory() as td:
+            path = Path(td) / "c.sgcap"
+            write_zip(path, {"RUN.json": b"{}", "evil.py": b"pass"})
+            with self.assertRaises(sg.SupervisorError):
+                sg.inspect_zip(path, allow_source=False)
+
+    def test_zip_rejects_extreme_compression_ratio(self):
+        with tempfile.TemporaryDirectory() as td:
+            path = Path(td) / "bomb.zip"
+            write_zip(path, {"zeros.bin": b"0" * (2 * 1024 * 1024)}, add_manifest=False)
+            with self.assertRaises(sg.SupervisorError):
+                sg.inspect_zip(path, allow_source=True)
+
+    def test_manifest_requires_complete_coverage(self):
+        with tempfile.TemporaryDirectory() as td:
+            path = Path(td) / "x.zip"
+            files = {"a.txt": b"a", "b.txt": b"b"}
+            with zipfile.ZipFile(path, "w") as zf:
+                for name, data in files.items():
+                    zf.writestr(name, data)
+                zf.writestr("MANIFEST.sha256", f"{hashlib.sha256(b'a').hexdigest()}  a.txt\n")
+            with self.assertRaises(sg.SupervisorError):
+                sg.verify_archive_manifest(path, allow_source=True)
+
+    def test_manifest_rejects_digest_mismatch(self):
+        with tempfile.TemporaryDirectory() as td:
+            path = Path(td) / "x.zip"
+            with zipfile.ZipFile(path, "w") as zf:
+                zf.writestr("a.txt", b"a")
+                zf.writestr("MANIFEST.sha256", f"{'0'*64}  a.txt\n")
+            with self.assertRaises(sg.SupervisorError):
+                sg.verify_archive_manifest(path, allow_source=True)
+
+    def test_valid_capsule_inspection(self):
+        with tempfile.TemporaryDirectory() as td:
+            path = make_capsule(Path(td) / "x.sgcap")
+            info = sg.inspect_capsule(path)
+            self.assertEqual(info.run["project"], "SysGrid")
+            self.assertEqual(info.sha256, sg.sha256_file(path))
+
+    def test_capsule_rejects_wrong_project(self):
+        with tempfile.TemporaryDirectory() as td:
+            run = base_run(); run["project"] = "Other"
+            path = make_capsule(Path(td) / "x.sgcap", run)
+            with self.assertRaises(sg.SupervisorError):
+                sg.inspect_capsule(path)
+
+    def test_capsule_rejects_wrong_engine_version(self):
+        with tempfile.TemporaryDirectory() as td:
+            run = base_run(); run["engine"] = {"required_version": "9.9.9"}
+            path = make_capsule(Path(td) / "x.sgcap", run)
+            with self.assertRaises(sg.SupervisorError):
+                sg.inspect_capsule(path)
+
+    def test_mutation_patch_identity(self):
+        with tempfile.TemporaryDirectory() as td:
+            patch = b"diff --git a/a b/a\n"
+            run = base_run(); run["lane"] = "product"; run["mode"] = "mutation"
+            run["patch"] = {"path": "PATCH/change.diff", "sha256": hashlib.sha256(patch).hexdigest()}
+            path = make_capsule(Path(td) / "x.sgcap", run, {"PATCH/change.diff": patch})
+            self.assertEqual(sg.inspect_capsule(path).run["mode"], "mutation")
+
+    def test_mutation_patch_digest_mismatch_rejected(self):
+        with tempfile.TemporaryDirectory() as td:
+            patch = b"diff --git a/a b/a\n"
+            run = base_run(); run["lane"] = "product"; run["mode"] = "mutation"
+            run["patch"] = {"path": "PATCH/change.diff", "sha256": "0" * 64}
+            path = make_capsule(Path(td) / "x.sgcap", run, {"PATCH/change.diff": patch})
+            with self.assertRaises(sg.SupervisorError):
+                sg.inspect_capsule(path)
+
+    def test_resume_verify_without_patch_is_schema_valid(self):
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            run = base_run()
+            run["lane"] = "product"
+            run["mode"] = "resume_verify"
+            run["patch"] = None
+            info = sg.inspect_capsule(make_capsule(root / "resume.sgcap", run))
+            self.assertEqual(info.run["mode"], "resume_verify")
+            self.assertIsNone(info.run.get("patch"))
+
+    def test_resume_verify_with_patch_is_rejected(self):
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            run = base_run()
+            run["lane"] = "product"
+            run["mode"] = "resume_verify"
+            patch = b"diff --git a/a b/a\n"
+            run["patch"] = {"path": "PATCH/change.diff", "sha256": hashlib.sha256(patch).hexdigest()}
+            cap = make_capsule(root / "resume-with-patch.sgcap", run, {"PATCH/change.diff": patch})
+            with self.assertRaisesRegex(sg.SupervisorError, "non-mutation capsule must not carry a patch"):
+                sg.inspect_capsule(cap)
+
+    def test_select_explicit_capsule(self):
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td); cap = make_capsule(root / "x.sgcap")
+            self.assertEqual(sg.select_capsule(cap, root), cap)
+
+    def test_select_inbox_converges_identical_duplicates_and_rejects_distinct(self):
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td); (root / "Inbox").mkdir()
+            with self.assertRaises(sg.SupervisorError):
+                sg.select_capsule(None, root)
+            make_capsule(root / "Inbox/a.sgcap")
+            self.assertEqual(sg.select_capsule(None, root).name, "a.sgcap")
+            make_capsule(root / "Inbox/b.sgcap")
+            self.assertEqual(sg.select_capsule(None, root).name, "a.sgcap")
+            self.assertFalse((root / "Inbox/b.sgcap").exists())
+            self.assertEqual(len(list((root / "Archive/Duplicate-Capsules").glob("*.sgcap"))), 1)
+            distinct = base_run(); distinct["title"] = "different"
+            make_capsule(root / "Inbox/c.sgcap", distinct)
+            with self.assertRaises(sg.SupervisorError):
+                sg.select_capsule(None, root)
+
+    def test_split_nul_preserves_spaces(self):
+        self.assertEqual(sg.split_nul(b"a b\0c\0"), ["a b", "c"])
+
+    def test_sanitized_environment_removes_secrets(self):
+        with mock.patch.dict(os.environ, {"SECRET_TOKEN": "no", "PATH": "/bin", "HOME": "/tmp"}, clear=False):
+            env = sg.sanitized_env()
+            self.assertNotIn("SECRET_TOKEN", env)
+            self.assertEqual(env["GIT_TERMINAL_PROMPT"], "0")
+            self.assertGreaterEqual(int(env["SYSGRID_MAX_PARALLEL"]), 1)
+
+    def test_resource_plan_uses_available_cpu_without_unbounded_oversubscription(self):
+        with mock.patch.object(os, "cpu_count", return_value=12):
+            plan = sg.resource_plan()
+        self.assertEqual(plan["cpu_count"], 12)
+        self.assertEqual(plan["test_cpu_budget"], 11)
+        self.assertEqual(plan["preflight_workers"], 24)
+        self.assertGreaterEqual(plan["backend_workers"], 1)
+        self.assertLessEqual(plan["backend_workers"], 4)
+        self.assertGreaterEqual(plan["frontend_workers"], 1)
+        self.assertLessEqual(plan["frontend_workers"], 4)
+        self.assertGreaterEqual(plan["e2e_workers"], 1)
+        self.assertLessEqual(plan["e2e_workers"], 2)
+
+    def test_parallel_checks_collects_all_failures(self):
+        calls: list[str] = []
+        def fail(name: str):
+            calls.append(name)
+            raise sg.SupervisorError(name.upper(), name)
+        with self.assertRaises(sg.PreflightAggregateError) as caught:
+            sg.parallel_checks({"a": lambda: fail("a"), "b": lambda: fail("b"), "ok": lambda: 7})
+        self.assertEqual(set(calls), {"a", "b"})
+        self.assertIn("a:", str(caught.exception))
+        self.assertIn("b:", str(caught.exception))
+        self.assertEqual(caught.exception.results["ok"], 7)
+        self.assertEqual(set(caught.exception.failures), {"a", "b"})
+
+    def test_process_identity_requires_all_exact_tokens(self):
+        with mock.patch.object(sg, "pid_command", return_value="python /exact/engine.py execute /tmp/cap.sgcap --repo /repo"):
+            self.assertTrue(sg.process_matches(123, ["/exact/engine.py", "execute", "/tmp/cap.sgcap"]))
+            self.assertFalse(sg.process_matches(123, ["/other/engine.py", "/tmp/cap.sgcap"]))
+
+    def test_json_safe_serializes_repo_info_paths_and_tuples(self):
+        value = {
+            "repository": (
+                sg.RepoInfo(Path("/repo"), "main", "a" * 40, "origin/main", ("a.txt",)),
+                {"path": Path("/tmp/x")},
+            )
+        }
+        rendered = sg.json_safe(value)
+        self.assertEqual(rendered["repository"][0]["path"], "/repo")
+        self.assertEqual(rendered["repository"][1]["path"], "/tmp/x")
+        json.dumps(rendered)
+
+    def test_exclusive_lock_rejects_overlap(self):
+        with tempfile.TemporaryDirectory() as td, mock.patch.dict(os.environ, {"SYSGRID_SUPERVISOR_STATE": td}):
+            entered = threading.Event(); release = threading.Event(); errors: list[Exception] = []
+            def holder():
+                with sg.exclusive_run_lock():
+                    entered.set(); release.wait(5)
+            thread = threading.Thread(target=holder); thread.start(); self.assertTrue(entered.wait(2))
+            try:
+                with self.assertRaises(sg.SupervisorError):
+                    with sg.exclusive_run_lock():
+                        pass
+            finally:
+                release.set(); thread.join(5)
+            self.assertFalse(errors)
+
+    def init_repo(self, root: Path) -> tuple[Path, str]:
+        repo = root / "repo"; repo.mkdir()
+        subprocess.run(["git", "init", "-b", "main", str(repo)], check=True, stdout=subprocess.DEVNULL)
+        subprocess.run(["git", "-C", str(repo), "config", "user.email", "test@example.com"], check=True)
+        subprocess.run(["git", "-C", str(repo), "config", "user.name", "Test"], check=True)
+        (repo / "a.txt").write_text("a\n")
+        subprocess.run(["git", "-C", str(repo), "add", "a.txt"], check=True)
+        subprocess.run(["git", "-C", str(repo), "commit", "-m", "init"], check=True, stdout=subprocess.DEVNULL)
+        subprocess.run(["git", "-C", str(repo), "remote", "add", "origin", str(root / "remote.git")], check=True)
+        subprocess.run(["git", "init", "--bare", str(root / "remote.git")], check=True, stdout=subprocess.DEVNULL)
+        subprocess.run(["git", "-C", str(repo), "push", "-u", "origin", "main"], check=True, stdout=subprocess.DEVNULL)
+        head = subprocess.check_output(["git", "-C", str(repo), "rev-parse", "HEAD"], text=True).strip()
+        return repo, head
+
+    def test_probe_repo_exact_identity(self):
+        with tempfile.TemporaryDirectory() as td:
+            repo, head = self.init_repo(Path(td))
+            run = base_run(); run["baseline"] = {"branch": "main", "head": head, "upstream": "origin/main"}
+            info = sg.probe_repo(repo, run)
+            self.assertEqual(info.head, head)
+            self.assertEqual(info.dirty_paths, ())
+
+    def test_probe_repo_rejects_head_mismatch(self):
+        with tempfile.TemporaryDirectory() as td:
+            repo, _ = self.init_repo(Path(td))
+            with self.assertRaises(sg.SupervisorError):
+                sg.probe_repo(repo, base_run())
+
+    def test_dirty_paths_includes_tracked_and_untracked(self):
+        with tempfile.TemporaryDirectory() as td:
+            repo, _ = self.init_repo(Path(td))
+            (repo / "a.txt").write_text("changed\n")
+            (repo / "new file.txt").write_text("new\n")
+            self.assertEqual(set(sg.dirty_paths(repo)), {"a.txt", "new file.txt"})
+
+    def test_discover_engine_by_custom_digest(self):
+        with tempfile.TemporaryDirectory() as td:
+            engine = Path(td) / "engine.py"; engine.write_text("print('x')\n")
+            digest = sg.sha256_file(engine)
+            with mock.patch.object(sg, "candidate_engine_paths", return_value=iter([engine])):
+                self.assertEqual(sg.discover_engine(expected_sha=digest), engine.resolve())
+
+    def test_verify_engine_output_correlates_identity(self):
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td); cap_path = make_capsule(root / "x.sgcap"); cap = sg.inspect_capsule(cap_path)
+            output = make_output(root / sg.CANONICAL_ZIP, cap.path.name, cap.sha256)
+            data = sg.verify_engine_output(output, cap)
+            self.assertEqual(data["result"]["classification"], "PASS")
+
+    def test_verify_engine_output_rejects_wrong_capsule(self):
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td); cap_path = make_capsule(root / "x.sgcap"); cap = sg.inspect_capsule(cap_path)
+            output = make_output(root / sg.CANONICAL_ZIP, cap.path.name, "0" * 64)
+            with self.assertRaises(sg.SupervisorError):
+                sg.verify_engine_output(output, cap)
+
+    def test_publish_artifact_is_content_addressed_and_atomic(self):
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td); source = root / "source.zip"; source.write_bytes(b"artifact")
+            digest = sg.sha256_file(source)
+            alias = sg.publish_artifact(source, root / "control", digest)
+            self.assertEqual(sg.sha256_file(alias), digest)
+            stored = root / "control/Artifacts" / digest[:2] / f"{digest}.zip"
+            self.assertTrue(stored.is_file())
+
+    def test_archive_consumed_capsule_only_for_inbox(self):
+        with tempfile.TemporaryDirectory() as td:
+            control = Path(td) / "control"; inbox = control / "Inbox"; inbox.mkdir(parents=True)
+            cap = inbox / "x.sgcap"; cap.write_bytes(b"cap"); digest = sg.sha256_file(cap)
+            archived = sg.archive_consumed_inbox_capsule(cap, control, digest)
+            self.assertIsNotNone(archived)
+            self.assertFalse(cap.exists())
+            self.assertEqual(sg.sha256_file(archived), digest)
+
+    def capsule_for_repo_state(self, root: Path, repo: Path, head: str, *, expected_dirty: list[str], pre_hashes: dict, protected_hashes: dict) -> sg.CapsuleInfo:
+        run = base_run()
+        run["lane"] = "product"
+        run["mode"] = "resume_verify"
+        run["baseline"] = {"branch": "main", "head": head, "upstream": "origin/main"}
+        run["state"] = {
+            "pre_expected_dirty_paths": "STATE/pre-dirty.json",
+            "pre_hashes": "STATE/pre-hashes.json",
+            "post_expected_dirty_paths": "STATE/post-dirty.json",
+            "post_hashes": "STATE/post-hashes.json",
+            "protected_hashes": "STATE/protected-hashes.json",
+        }
+        run["recipes"] = [{"id": "full-app-gate", "params": {"timeout": 3000}, "required": True}]
+        run["delivery"] = {"branch": "main", "remote": "origin", "commit_push": True}
+        cap = make_capsule(root / "state.sgcap", run, {
+            "STATE/pre-dirty.json": json.dumps(expected_dirty).encode(),
+            "STATE/pre-hashes.json": json.dumps(pre_hashes).encode(),
+            "STATE/post-dirty.json": json.dumps(expected_dirty).encode(),
+            "STATE/post-hashes.json": json.dumps(pre_hashes).encode(),
+            "STATE/protected-hashes.json": json.dumps(protected_hashes).encode(),
+        })
+        return sg.inspect_capsule(cap)
+
+    def canonical_capsule_for_repo_state(
+        self,
+        root: Path,
+        repo: Path,
+        head: str,
+        *,
+        expected_dirty: list[str],
+        pre_hashes: dict[str, str | None],
+        protected_hashes: dict[str, str | None],
+    ) -> sg.CapsuleInfo:
+        def path_ledger(paths: list[str]) -> bytes:
+            return (("\n".join(paths) + "\n") if paths else "").encode()
+
+        def hash_ledger(hashes: dict[str, str | None]) -> bytes:
+            lines = [
+                f"{digest if digest is not None else 'MISSING'}  {path}"
+                for path, digest in sorted(hashes.items())
+            ]
+            return (("\n".join(lines) + "\n") if lines else "").encode()
+
+        run = base_run()
+        run["lane"] = "product"
+        run["mode"] = "resume_verify"
+        run["baseline"] = {"branch": "main", "head": head, "upstream": "origin/main"}
+        run["state"] = {
+            "pre_expected_dirty_paths": "STATE/pre_expected_dirty_paths.txt",
+            "pre_hashes": "STATE/pre_hashes.sha256",
+            "post_expected_dirty_paths": "STATE/post_expected_dirty_paths.txt",
+            "post_hashes": "STATE/post_hashes.sha256",
+            "protected_hashes": "STATE/protected_hashes.sha256",
+        }
+        run["recipes"] = [{"id": "full-app-gate", "params": {"timeout": 3000}, "required": True}]
+        run["delivery"] = {"branch": "main", "remote": "origin", "commit_push": True}
+        cap = make_capsule(root / "canonical-state.sgcap", run, {
+            "STATE/pre_expected_dirty_paths.txt": path_ledger(expected_dirty),
+            "STATE/pre_hashes.sha256": hash_ledger(pre_hashes),
+            "STATE/post_expected_dirty_paths.txt": path_ledger(expected_dirty),
+            "STATE/post_hashes.sha256": hash_ledger(pre_hashes),
+            "STATE/protected_hashes.sha256": hash_ledger(protected_hashes),
+        })
+        return sg.inspect_capsule(cap)
+
+    def mutation_capsule_for_repo(self, root: Path, repo: Path, head: str) -> sg.CapsuleInfo:
+        original = (repo / "a.txt").read_text()
+        (repo / "a.txt").write_text("b\n")
+        patch = subprocess.check_output(["git", "-C", str(repo), "diff", "--binary", "HEAD", "--", "a.txt"])
+        (repo / "a.txt").write_text(original)
+        run = base_run()
+        run["lane"] = "product"
+        run["mode"] = "mutation"
+        run["baseline"] = {"branch": "main", "head": head, "upstream": "origin/main"}
+        run["patch"] = {"path": "PATCH/change.diff", "sha256": hashlib.sha256(patch).hexdigest()}
+        run["state"] = {
+            "pre_expected_dirty_paths": "STATE/pre-dirty.json",
+            "pre_hashes": "STATE/pre-hashes.json",
+            "post_expected_dirty_paths": "STATE/post-dirty.json",
+            "post_hashes": "STATE/post-hashes.json",
+            "protected_hashes": "STATE/protected-hashes.json",
+        }
+        run["recipes"] = [{"id": "full-app-gate", "params": {"timeout": 3000}, "required": True}]
+        run["delivery"] = {"branch": "main", "remote": "origin", "commit_push": True}
+        post_digest = hashlib.sha256(b"b\n").hexdigest()
+        cap = make_capsule(root / "mutation.sgcap", run, {
+            "PATCH/change.diff": patch,
+            "STATE/pre-dirty.json": b"[]\n",
+            "STATE/pre-hashes.json": b"{}\n",
+            "STATE/post-dirty.json": b"[\"a.txt\"]\n",
+            "STATE/post-hashes.json": json.dumps({"a.txt": post_digest}).encode(),
+            "STATE/protected-hashes.json": b"{}\n",
+        })
+        return sg.inspect_capsule(cap)
+
+    def test_declared_pre_state_exact_match(self):
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td); repo, head = self.init_repo(root)
+            digest = sg.sha256_file(repo / "a.txt")
+            cap = self.capsule_for_repo_state(root, repo, head, expected_dirty=[], pre_hashes={"a.txt": digest}, protected_hashes={"missing.txt": None})
+            info = sg.probe_repo(repo, cap.run)
+            summary = sg.verify_declared_pre_state(repo, cap, info)
+            self.assertEqual(summary["pre_hash_count"], 1)
+
+    def test_declared_pre_state_accepts_canonical_text_and_sha256_ledgers(self):
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td); repo, head = self.init_repo(root)
+            (repo / "a.txt").write_text("changed\n")
+            (repo / "new file.txt").write_text("new\n")
+            cap = self.canonical_capsule_for_repo_state(
+                root,
+                repo,
+                head,
+                expected_dirty=["a.txt", "new file.txt"],
+                pre_hashes={
+                    "a.txt": sg.sha256_file(repo / "a.txt"),
+                    "new file.txt": sg.sha256_file(repo / "new file.txt"),
+                },
+                protected_hashes={"missing.txt": None},
+            )
+            info = sg.probe_repo(repo, cap.run)
+            summary = sg.verify_declared_pre_state(repo, cap, info)
+            self.assertEqual(summary, {
+                "dirty_path_count": 2,
+                "pre_hash_count": 2,
+                "protected_hash_count": 1,
+            })
+
+    def test_empty_canonical_ledgers_are_valid(self):
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td); repo, head = self.init_repo(root)
+            cap = self.canonical_capsule_for_repo_state(
+                root,
+                repo,
+                head,
+                expected_dirty=[],
+                pre_hashes={},
+                protected_hashes={},
+            )
+            info = sg.probe_repo(repo, cap.run)
+            summary = sg.verify_declared_pre_state(repo, cap, info)
+            self.assertEqual(summary["dirty_path_count"], 0)
+            self.assertEqual(summary["pre_hash_count"], 0)
+            self.assertEqual(summary["protected_hash_count"], 0)
+
+    def test_canonical_ledgers_reject_duplicate_and_malformed_lines(self):
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            run = base_run()
+            run["state"] = {
+                "pre_expected_dirty_paths": "STATE/paths.txt",
+                "pre_hashes": "STATE/hashes.sha256",
+                "protected_hashes": "STATE/protected.sha256",
+            }
+            cap = sg.inspect_capsule(make_capsule(root / "bad.sgcap", run, {
+                "STATE/paths.txt": b"a.txt\na.txt\n",
+                "STATE/hashes.sha256": b"not-a-ledger-line\n",
+                "STATE/protected.sha256": b"",
+            }))
+            with self.assertRaisesRegex(sg.SupervisorError, "duplicate paths"):
+                sg.read_expected_paths(cap, "STATE/paths.txt", "paths")
+            with self.assertRaisesRegex(sg.SupervisorError, "invalid canonical hash-ledger line"):
+                sg.read_expected_hashes(cap, "STATE/hashes.sha256", "hashes")
+
+    def test_patch_state_failure_contains_forward_and_reverse_git_diagnostics(self):
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td); repo, head = self.init_repo(root)
+            cap = self.mutation_capsule_for_repo(root, repo, head)
+            (repo / "a.txt").write_text("conflicting content\n")
+            with self.assertRaises(sg.SupervisorError) as caught:
+                sg.patch_state_precheck(repo, cap, root / "work")
+            message = str(caught.exception)
+            self.assertIn("forward=", message)
+            self.assertIn("reverse=", message)
+            self.assertIn("a.txt", message)
+
+    def test_resume_verify_patch_precheck_is_a_noop(self):
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td); repo, head = self.init_repo(root)
+            run = base_run()
+            run["lane"] = "product"
+            run["mode"] = "resume_verify"
+            run["patch"] = None
+            run["baseline"] = {"branch": "main", "head": head, "upstream": "origin/main"}
+            run["state"] = {
+                "pre_expected_dirty_paths": "STATE/pre-dirty.json",
+                "pre_hashes": "STATE/pre-hashes.json",
+                "protected_hashes": "STATE/protected-hashes.json",
+            }
+            cap = sg.inspect_capsule(make_capsule(root / "resume.sgcap", run, {
+                "STATE/pre-dirty.json": b"[]\n",
+                "STATE/pre-hashes.json": json.dumps({"a.txt": sg.sha256_file(repo / "a.txt")}).encode(),
+                "STATE/protected-hashes.json": b"{}\n",
+            }))
+            with mock.patch.object(sg, "run_git") as run_git:
+                result = sg.patch_state_precheck(repo, cap, root / "work")
+            self.assertEqual(result, {"applicable": None, "reverse_applicable": None})
+            run_git.assert_not_called()
+
+    def test_declared_pre_state_rejects_dirty_path_mismatch(self):
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td); repo, head = self.init_repo(root)
+            (repo / "new.txt").write_text("new\n")
+            cap = self.capsule_for_repo_state(root, repo, head, expected_dirty=[], pre_hashes={}, protected_hashes={})
+            info = sg.probe_repo(repo, cap.run)
+            with self.assertRaises(sg.SupervisorError):
+                sg.verify_declared_pre_state(repo, cap, info)
+
+    def test_declared_pre_state_rejects_hash_mismatch(self):
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td); repo, head = self.init_repo(root)
+            cap = self.capsule_for_repo_state(root, repo, head, expected_dirty=[], pre_hashes={"a.txt": "0" * 64}, protected_hashes={})
+            info = sg.probe_repo(repo, cap.run)
+            with self.assertRaises(sg.SupervisorError):
+                sg.verify_declared_pre_state(repo, cap, info)
+
+    def test_declared_state_rejects_repo_escape(self):
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td); repo, head = self.init_repo(root)
+            cap = self.capsule_for_repo_state(root, repo, head, expected_dirty=[], pre_hashes={"../escape": None}, protected_hashes={})
+            info = sg.probe_repo(repo, cap.run)
+            with self.assertRaises(sg.SupervisorError):
+                sg.verify_declared_pre_state(repo, cap, info)
+
+    def test_interrupted_run_recovers_verified_output_without_product_replay(self):
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            control = root / "control"
+            inbox = control / "Inbox"
+            inbox.mkdir(parents=True)
+            state_root = root / "state"
+            work = state_root / "runs" / "old-run"
+            (work / "input").mkdir(parents=True)
+            (work / "engine-outbox").mkdir(parents=True)
+            cap_path = make_capsule(work / "input/recover.sgcap")
+            cap = sg.inspect_capsule(cap_path)
+            (inbox / cap.path.name).write_bytes(cap.path.read_bytes())
+            make_output(work / "engine-outbox" / sg.CANONICAL_ZIP, cap.path.name, cap.sha256)
+            previous = {
+                "state": "RUNNING",
+                "stage": "output-verification",
+                "run_id": "old-run",
+                "work_dir": str(work),
+                "staged_capsule": str(cap.path),
+                "capsule_sha256": cap.sha256,
+                "engine_exit_code": 0,
+            }
+            with mock.patch.dict(os.environ, {
+                "SYSGRID_CONTROL_ROOT": str(control),
+                "SYSGRID_SUPERVISOR_STATE": str(state_root),
+            }, clear=False):
+                decision = sg.recover_interrupted_run(control, previous)
+            self.assertEqual(decision.action, "completed")
+            self.assertEqual(decision.exit_code, 0)
+            self.assertTrue((control / "Outbox" / sg.CANONICAL_ZIP).is_file())
+            self.assertFalse((inbox / cap.path.name).exists())
+            latest = json.loads((state_root / "latest.json").read_text())
+            self.assertTrue(latest["recovered_without_product_replay"])
+
+    def test_recovery_waits_for_exact_live_process_before_finalizing_existing_output(self):
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            state_root = root / "state"
+            work = state_root / "runs" / "old-run"
+            (work / "input").mkdir(parents=True)
+            (work / "engine-outbox").mkdir(parents=True)
+            cap = sg.inspect_capsule(make_capsule(work / "input/recover.sgcap"))
+            (work / "engine-outbox" / sg.CANONICAL_ZIP).write_bytes(b"placeholder")
+            previous = {
+                "state": "RUNNING",
+                "stage": "engine",
+                "run_id": "old-run",
+                "work_dir": str(work),
+                "staged_capsule": str(cap.path),
+                "capsule_sha256": cap.sha256,
+                "engine_pid": 123,
+                "engine_path": "/exact/engine.py",
+            }
+            events: list[str] = []
+            responses = iter([True, False])
+            def matches(*_args, **_kwargs):
+                events.append("process")
+                return next(responses)
+            def finalize(**_kwargs):
+                events.append("finalize")
+                return 0
+            with mock.patch.dict(os.environ, {"SYSGRID_SUPERVISOR_STATE": str(state_root)}, clear=False), \
+                 mock.patch.object(sg, "process_matches", side_effect=matches), \
+                 mock.patch.object(sg, "finalize_verified_engine_output", side_effect=finalize), \
+                 mock.patch.object(sg.time, "sleep", return_value=None):
+                decision = sg.recover_interrupted_run(root / "control", previous)
+            self.assertEqual(decision.action, "completed")
+            self.assertEqual(events, ["process", "process", "finalize"])
+            recovered_state = json.loads((work / "SUPERVISOR_STATE.json").read_text())
+            event_ids = {
+                row["event_id"] for row in recovered_state.get("event_timeline", [])
+                if isinstance(row, dict)
+            }
+            self.assertEqual(event_ids, {"recovery_reattached", "recovery_evidence_recovered"})
+            self.assertTrue(all(
+                row.get("notification", {}).get("status") == "local_only"
+                for row in recovered_state.get("event_timeline", [])
+            ))
+
+    def test_compat_recovery_progress_binds_event_identity_to_payload(self):
+        with tempfile.TemporaryDirectory() as td:
+            state_root = Path(td) / "state"
+            state = {"run_id": "compat-run", "issue": "OUT-31"}
+            with mock.patch.dict(os.environ, {"SYSGRID_SUPERVISOR_STATE": str(state_root)}, clear=False):
+                sg.progress(1, 6, "first recovery message", state, required_notification=False)
+                sg.progress(1, 6, "second recovery message", state, required_notification=False)
+            ledger = json.loads((state_root / "notifications" / "compat-run.json").read_text())
+            self.assertEqual(len(ledger["events"]), 2)
+            self.assertTrue(all(key.startswith("recovery-step-1-") for key in ledger["events"]))
+
+    def test_interrupted_mutation_retries_once_only_when_exact_pre_state_is_proven(self):
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            repo, head = self.init_repo(root)
+            cap = self.mutation_capsule_for_repo(root, repo, head)
+            state_root = root / "state"
+            work = state_root / "runs" / "old-run"
+            (work / "input").mkdir(parents=True)
+            staged = work / "input" / cap.path.name
+            staged.write_bytes(cap.path.read_bytes())
+            previous = {
+                "state": "RUNNING",
+                "stage": "engine",
+                "run_id": "old-run",
+                "work_dir": str(work),
+                "staged_capsule": str(staged),
+                "capsule_sha256": cap.sha256,
+                "repo": str(repo),
+                "safe_retry_count": 0,
+            }
+            with mock.patch.dict(os.environ, {"SYSGRID_SUPERVISOR_STATE": str(state_root)}, clear=False):
+                decision = sg.recover_interrupted_run(root / "control", previous)
+            self.assertEqual(decision.action, "retry")
+            self.assertEqual(decision.context["safe_retry_count"], 1)
+            self.assertIn("no product mutation", decision.context["safe_retry_reason"])
+            recovered_state = json.loads((work / "SUPERVISOR_STATE.json").read_text())
+            self.assertEqual(
+                {row["event_id"] for row in recovered_state.get("event_timeline", [])},
+                {"recovery_retry_authorized"},
+            )
+
+    def test_interrupted_mutation_never_replays_when_post_state_or_ambiguity_exists(self):
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            repo, head = self.init_repo(root)
+            cap = self.mutation_capsule_for_repo(root, repo, head)
+            state_root = root / "state"
+            work = state_root / "runs" / "old-run"
+            (work / "input").mkdir(parents=True)
+            staged = work / "input" / cap.path.name
+            staged.write_bytes(cap.path.read_bytes())
+            patch = work / "patch.diff"
+            sg.extract_patch_for_check(sg.inspect_capsule(staged), patch)
+            subprocess.run(["git", "-C", str(repo), "apply", str(patch)], check=True)
+            previous = {
+                "state": "RUNNING",
+                "stage": "engine",
+                "run_id": "old-run",
+                "work_dir": str(work),
+                "staged_capsule": str(staged),
+                "capsule_sha256": cap.sha256,
+                "repo": str(repo),
+                "safe_retry_count": 0,
+            }
+            with mock.patch.dict(os.environ, {"SYSGRID_SUPERVISOR_STATE": str(state_root)}, clear=False):
+                decision = sg.recover_interrupted_run(root / "control", previous)
+            self.assertEqual(decision.action, "blocked")
+            self.assertTrue(decision.context["recovery_blocked"])
+
+    def test_diagnostic_includes_bounded_engine_logs_and_mutation_state(self):
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            work = root / "work"
+            work.mkdir()
+            (work / "engine.stdout.txt").write_text("stdout\n")
+            (work / "engine.stderr.txt").write_text("stderr\n")
+            state = {"engine_started": True, "engine_completed": False, "safe_retry_count": 1}
+            exc = sg.SupervisorError("TEST_FAILURE", "boom", 70)
+            try:
+                raise exc
+            except sg.SupervisorError as caught:
+                out = sg.build_diagnostic_zip(work, state, caught, None)
+            with zipfile.ZipFile(out) as zf:
+                self.assertIn("LOGS/engine.stdout.txt", zf.namelist())
+                result = json.loads(zf.read("RESULT.json"))
+            self.assertEqual(result["mutation_state"], "engine_started_result_unknown")
+            self.assertEqual(result["safe_automatic_retry_performed"], 1)
+
+    def test_telegram_prepare_discovery_validates_bot_and_records_baseline(self):
+        responses = [
+            {"ok": True, "result": {"is_bot": True, "username": "sysgrid_notify_bot"}},
+            {"ok": True, "result": {"url": ""}},
+            {"ok": True, "result": [{"update_id": 40}, {"update_id": 43}]},
+        ]
+        with mock.patch.object(sg, "_telegram_api_call", side_effect=responses) as api:
+            prepared = sg.telegram_prepare_private_chat_discovery(TEST_TELEGRAM_CONFIG["bot_token"])
+        self.assertEqual(prepared["username"], "sysgrid_notify_bot")
+        self.assertEqual(prepared["baseline_update_id"], 43)
+        self.assertEqual([call.args[1] for call in api.call_args_list], ["getMe", "getWebhookInfo", "getUpdates"])
+
+    def test_telegram_prepare_discovery_rejects_active_webhook(self):
+        responses = [
+            {"ok": True, "result": {"is_bot": True, "username": "sysgrid_notify_bot"}},
+            {"ok": True, "result": {"url": "https://example.invalid/hook"}},
+        ]
+        with mock.patch.object(sg, "_telegram_api_call", side_effect=responses):
+            with self.assertRaisesRegex(sg.SupervisorError, "active webhook"):
+                sg.telegram_prepare_private_chat_discovery(TEST_TELEGRAM_CONFIG["bot_token"])
+
+    def test_private_chat_candidates_deduplicate_and_ignore_groups(self):
+        updates = [
+            {"update_id": 1, "message": {"chat": {"id": 100, "type": "private", "first_name": "Old"}}},
+            {"update_id": 2, "message": {"chat": {"id": -200, "type": "group", "title": "Ignore"}}},
+            {"update_id": 3, "message": {"chat": {"id": 100, "type": "private", "first_name": "New", "username": "owner"}}},
+        ]
+        candidates = sg._private_chat_candidates(updates)
+        self.assertEqual(len(candidates), 1)
+        self.assertEqual(candidates[0]["chat_id"], "100")
+        self.assertEqual(candidates[0]["update_id"], 3)
+        self.assertIn("@owner", candidates[0]["display"])
+
+    def test_telegram_wait_for_fresh_private_chat_uses_new_update_offset(self):
+        response = {
+            "ok": True,
+            "result": [
+                {"update_id": 51, "message": {"chat": {"id": 987654, "type": "private", "first_name": "Owner"}}}
+            ],
+        }
+        with mock.patch.object(sg, "_telegram_api_call", return_value=response) as api:
+            candidates = sg.telegram_wait_for_fresh_private_chats(
+                TEST_TELEGRAM_CONFIG["bot_token"],
+                after_update_id=50,
+                wait_seconds=5,
+                poll_seconds=0,
+            )
+        self.assertEqual(candidates[0]["chat_id"], "987654")
+        params = api.call_args.args[2]
+        self.assertEqual(params["offset"], 51)
+        self.assertEqual(json.loads(params["allowed_updates"]), ["message"])
+
+    def test_telegram_config_round_trip_is_private_and_redacted(self):
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            with mock.patch.dict(os.environ, {"SYSGRID_SUPERVISOR_CONFIG": str(root)}, clear=False):
+                path = sg.save_telegram_config(TEST_TELEGRAM_CONFIG["bot_token"], TEST_TELEGRAM_CONFIG["chat_id"])
+                self.assertEqual(stat.S_IMODE(path.stat().st_mode), 0o600)
+                loaded = sg.load_telegram_config(required=True)
+                self.assertEqual(loaded["bot_token"], TEST_TELEGRAM_CONFIG["bot_token"])
+                public = sg.telegram_public_summary(loaded)
+                self.assertNotIn("bot_token", public)
+                self.assertEqual(public["chat_id_suffix"], "3456")
+
+    def test_telegram_config_rejects_group_readable_secret(self):
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            path = root / "telegram.json"
+            path.write_text(json.dumps({"bot_token": TEST_TELEGRAM_CONFIG["bot_token"], "chat_id": "123456"}))
+            path.chmod(0o644)
+            with mock.patch.dict(os.environ, {"SYSGRID_SUPERVISOR_CONFIG": str(root)}, clear=False):
+                with self.assertRaisesRegex(sg.SupervisorError, "0600"):
+                    sg.load_telegram_config(required=True)
+
+    def test_telegram_request_uses_official_send_message_and_accepts_ok(self):
+        class Response:
+            def __enter__(self): return self
+            def __exit__(self, *args): return False
+            def read(self, _limit): return b'{"ok":true,"result":{"message_id":77,"date":1}}'
+        with mock.patch.object(sg.urllib.request, "urlopen", return_value=Response()) as opened:
+            result = sg._telegram_request(TEST_TELEGRAM_CONFIG, "hello")
+        self.assertEqual(result["message_id"], 77)
+        request = opened.call_args.args[0]
+        self.assertIn("/sendMessage", request.full_url)
+        self.assertIn(b"chat_id=123456", request.data)
+
+    def test_telegram_request_rejects_api_failure(self):
+        class Response:
+            def __enter__(self): return self
+            def __exit__(self, *args): return False
+            def read(self, _limit): return b'{"ok":false,"description":"chat not found"}'
+        with mock.patch.object(sg.urllib.request, "urlopen", return_value=Response()):
+            with self.assertRaisesRegex(sg.SupervisorError, "chat not found"):
+                sg._telegram_request(TEST_TELEGRAM_CONFIG, "hello")
+
+    def test_notification_event_is_deduplicated_durably(self):
+        with tempfile.TemporaryDirectory() as td:
+            with mock.patch.dict(os.environ, {"SYSGRID_SUPERVISOR_STATE": td}, clear=False), \
+                 mock.patch.object(sg, "load_telegram_config", return_value=TEST_TELEGRAM_CONFIG), \
+                 mock.patch.object(sg, "_telegram_request", return_value={"ok": True, "message_id": 9}) as sender:
+                first = sg.deliver_notification_event(run_id="r1", event_id="step-1", message="one", required=True)
+                second = sg.deliver_notification_event(run_id="r1", event_id="step-1", message="one", required=True)
+            self.assertEqual(first["status"], "delivered")
+            self.assertEqual(second["status"], "delivered")
+            sender.assert_called_once()
+
+    def test_progress_fails_closed_before_engine_when_telegram_fails(self):
+        state = {"run_id": "r2", "engine_started": False}
+        with mock.patch.object(sg, "deliver_notification_event", side_effect=sg.SupervisorError("TELEGRAM_DELIVERY_FAILURE", "offline", 76)):
+            with self.assertRaisesRegex(sg.SupervisorError, "offline"):
+                sg.progress(1, 6, "select", state, required_notification=True)
+
+    def test_internal_progress_is_local_only_without_telegram_spam(self):
+        with tempfile.TemporaryDirectory() as td:
+            state = {"run_id": "r3", "engine_started": True}
+            with mock.patch.dict(os.environ, {"SYSGRID_SUPERVISOR_STATE": td}, clear=False), \
+                 mock.patch.object(sg, "deliver_notification_event") as notify:
+                sg.emit_progress_event("evidence_verified", "verify", state, required_notification=False)
+            self.assertEqual(state["notification_events"]["evidence_verified"]["status"], "local_only")
+            notify.assert_not_called()
+
+    def test_runtime_summary_extracts_command_duration_without_mutating_artifact(self):
+        with tempfile.TemporaryDirectory() as td:
+            artifact = Path(td) / "out.zip"
+            result = {"result": "failure", "classification": "TEST_OR_RECIPE_FAILURE", "started_utc": "2026-01-01T00:00:00Z", "finished_utc": "2026-01-01T00:02:00Z"}
+            commands = [{"recipe_id": "full-app-gate", "duration_seconds": 119.5, "exit_code": 1, "timed_out": False}]
+            write_zip(artifact, {"RESULT.json": json.dumps(result).encode(), "COMMANDS.json": json.dumps(commands).encode()})
+            before = sg.sha256_file(artifact)
+            summary = sg.runtime_summary_from_artifact(artifact)
+            self.assertEqual(summary["engine_total_seconds"], 120.0)
+            self.assertEqual(summary["commands"][0]["duration_seconds"], 119.5)
+            self.assertEqual(sg.sha256_file(artifact), before)
+
+    def test_summary_notification_policy_sends_only_start_progress_and_completion(self):
+        state = {
+            "run_id": "r-summary",
+            "issue": "OUT-31",
+            "attempt": 4,
+            "capsule_file": "attempt-04.sgcap",
+            "capsule_title": "Exact local runner",
+            "capsule_sha256": "a" * 64,
+            "product_event_status": {
+                "static_completed": "passed",
+                "backend_completed": "passed",
+                "frontend_completed": "passed",
+                "build_completed": "passed",
+            },
+        }
+        with mock.patch.object(sg, "deliver_notification_event", return_value={"status": "delivered"}) as notify, \
+             mock.patch.object(sg, "write_state"):
+            sg.emit_progress_event("capsule_verified", "verified", state, status="passed", required_notification=True)
+            sg.emit_progress_event("preflight_started", "preflight", state, required_notification=True)
+            sg.emit_progress_event(sg.TELEGRAM_SUMMARY_PROGRESS_EVENT, "e2e", state, status="started")
+            sg.emit_progress_event("publication_completed", "done", state, status="passed")
+        self.assertEqual([call.kwargs["event_id"] for call in notify.call_args_list], [
+            "run_started", "run_progress", "run_completed"
+        ])
+
+    def test_diagnostic_publication_preserves_canonical_review_alias(self):
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            control = root / "control"
+            product = root / "product.zip"
+            diagnostic = root / "diagnostic.zip"
+            product.write_bytes(b"product")
+            diagnostic.write_bytes(b"diagnostic")
+            product_sha = sg.sha256_file(product)
+            diagnostic_sha = sg.sha256_file(diagnostic)
+            canonical = sg.publish_artifact(
+                product, control, product_sha, run_id="run-product", kind="product-review"
+            )
+            published_diagnostic = sg.publish_artifact(
+                diagnostic,
+                control,
+                diagnostic_sha,
+                alias_name=sg.DIAGNOSTIC_ZIP,
+                run_id="run-diagnostic",
+                kind="diagnostic",
+            )
+            self.assertEqual(sg.sha256_file(canonical), product_sha)
+            self.assertEqual(sg.sha256_file(published_diagnostic), diagnostic_sha)
+            self.assertEqual(sg.sha256_file(control / "Outbox" / sg.CANONICAL_ZIP), product_sha)
+            self.assertTrue(any((control / "Outbox" / "History").glob("run-product__product-review*.zip")))
+            self.assertTrue(any((control / "Outbox" / "History").glob("run-diagnostic__diagnostic*.zip")))
+
+    def test_exact_post_state_blocks_duplicate_mutation_replay(self):
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            repo, head = self.init_repo(root)
+            cap = self.mutation_capsule_for_repo(root, repo, head)
+            (repo / "a.txt").write_text("b\n")
+            with self.assertRaises(sg.SupervisorError) as caught:
+                sg.probe_repo_and_state(repo, cap)
+            self.assertEqual(caught.exception.classification, "DUPLICATE_MUTATION_CAPSULE_POST_STATE")
+
+    def test_recover_artifact_republishes_prior_runtime_without_engine(self):
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            control = root / "control"
+            state_root = root / "state"
+            artifact = root / "prior.zip"
+            make_output(artifact, "x.sgcap", "a" * 64, exit_code=1)
+            record = {
+                "run_id": "prior-run-123",
+                "capsule_sha256": "a" * 64,
+                "artifact_sha256": sg.sha256_file(artifact),
+                "runtime_summary": {"artifact": str(artifact)},
+            }
+            state_root.mkdir(parents=True)
+            (state_root / "runtime-history.jsonl").write_text(json.dumps(record) + "\n")
+            with mock.patch.dict(os.environ, {
+                "SYSGRID_CONTROL_ROOT": str(control),
+                "SYSGRID_SUPERVISOR_STATE": str(state_root),
+            }, clear=False):
+                self.assertEqual(sg.recover_artifact("prior-run"), 0)
+            self.assertEqual(
+                sg.sha256_file(control / "Outbox" / sg.CANONICAL_ZIP),
+                sg.sha256_file(artifact),
+            )
+
+    def test_self_test_passes(self):
+        self.assertEqual(sg.self_test(), 0)
+
+    def test_cross_ledger_accepts_exact_mutation(self):
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td); repo, head = self.init_repo(root)
+            cap = self.mutation_capsule_for_repo(root, repo, head)
+            summary = sg.validate_capsule_cross_ledger(cap)
+            self.assertEqual(summary["changed_path_count"], 1)
+            self.assertEqual(summary["patch_paths"], ["a.txt"])
+
+    def test_cross_ledger_accepts_read_only_without_product_state(self):
+        with tempfile.TemporaryDirectory() as td:
+            cap = sg.inspect_capsule(make_capsule(Path(td) / "read-only.sgcap"))
+            summary = sg.validate_capsule_cross_ledger(cap)
+            self.assertEqual(summary["changed_path_count"], 0)
+            self.assertEqual(summary["recipe_ids"], [])
+
+    def test_cross_ledger_rejects_changed_and_protected_overlap(self):
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td); repo, head = self.init_repo(root)
+            cap = self.mutation_capsule_for_repo(root, repo, head)
+            with zipfile.ZipFile(cap.path) as zf:
+                files = {name: zf.read(name) for name in zf.namelist() if name != "MANIFEST.sha256"}
+            files["STATE/protected-hashes.json"] = json.dumps({"a.txt": sg.sha256_file(repo / "a.txt")}).encode()
+            rebuilt = root / "overlap.sgcap"
+            write_zip(rebuilt, files)
+            with self.assertRaisesRegex(sg.SupervisorError, "also protected"):
+                sg.validate_capsule_cross_ledger(sg.inspect_capsule(rebuilt))
+
+    def test_cross_ledger_rejects_patch_path_not_explained_by_ledgers(self):
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td); repo, head = self.init_repo(root)
+            cap = self.mutation_capsule_for_repo(root, repo, head)
+            with zipfile.ZipFile(cap.path) as zf:
+                files = {name: zf.read(name) for name in zf.namelist() if name != "MANIFEST.sha256"}
+            files["STATE/post-dirty.json"] = b"[\"other.txt\"]\n"
+            files["STATE/post-hashes.json"] = json.dumps({"other.txt": hashlib.sha256(b"b\n").hexdigest()}).encode()
+            rebuilt = root / "mismatch.sgcap"
+            write_zip(rebuilt, files)
+            with self.assertRaisesRegex(sg.SupervisorError, "patch paths do not exactly explain"):
+                sg.validate_capsule_cross_ledger(sg.inspect_capsule(rebuilt))
+
+    def test_cross_ledger_accepts_explicit_missing_postimage_for_deletion(self):
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td); repo, head = self.init_repo(root)
+            subprocess.run(["git", "-C", str(repo), "rm", "a.txt"], check=True, stdout=subprocess.DEVNULL)
+            patch = subprocess.check_output(["git", "-C", str(repo), "diff", "--binary", "HEAD"])
+            subprocess.run(["git", "-C", str(repo), "restore", "--staged", "--worktree", "a.txt"], check=True)
+            run = base_run()
+            run.update({"lane": "product", "mode": "mutation"})
+            run["baseline"] = {"branch": "main", "head": head, "upstream": "origin/main"}
+            run["patch"] = {"path": "PATCH/delete.diff", "sha256": hashlib.sha256(patch).hexdigest()}
+            run["state"] = {
+                "pre_expected_dirty_paths": "STATE/pre.json", "pre_hashes": "STATE/pre-hashes.json",
+                "post_expected_dirty_paths": "STATE/post.json", "post_hashes": "STATE/post-hashes.json",
+                "protected_hashes": "STATE/protected.json",
+            }
+            run["recipes"] = [{"id": "full-app-gate", "params": {"timeout": 3000}, "required": True}]
+            run["delivery"] = {"branch": "main", "remote": "origin", "commit_push": True}
+            cap = sg.inspect_capsule(make_capsule(root / "delete.sgcap", run, {
+                "PATCH/delete.diff": patch,
+                "STATE/pre.json": b"[]\n", "STATE/pre-hashes.json": b"{}\n",
+                "STATE/post.json": b"[\"a.txt\"]\n", "STATE/post-hashes.json": b"{\"a.txt\": null}\n",
+                "STATE/protected.json": b"{}\n",
+            }))
+            summary = sg.validate_capsule_cross_ledger(cap)
+            self.assertEqual(summary["changed_path_count"], 1)
+
+    def test_product_progress_accepts_run_bound_registered_sequence(self):
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td); progress_path = root / "progress.jsonl"
+            row = {"run_id": "r-progress", "sequence": 1, "event_id": "backend_started", "status": "started", "message": "Backend lane started", "details": {"workers": 2}}
+            progress_path.write_text(json.dumps(row) + "\n")
+            state = {"run_id": "r-progress", "issue": "OUT-31", "engine_started": True, "monotonic_started": time.monotonic()}
+            with mock.patch.dict(os.environ, {"SYSGRID_SUPERVISOR_STATE": str(root / "state")}, clear=False), \
+                 mock.patch.object(sg, "deliver_notification_event", return_value={"status": "delivered"}):
+                offset = sg.consume_product_progress(progress_path, 0, state)
+            self.assertEqual(offset, progress_path.stat().st_size)
+            self.assertEqual(state["product_progress_sequence"], 1)
+            self.assertEqual(state["product_progress_last_event"], "backend_started")
+
+    def test_product_progress_rejects_wrong_run_and_nonincreasing_sequence(self):
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td); progress_path = root / "progress.jsonl"
+            progress_path.write_text(json.dumps({"run_id": "wrong", "sequence": 1, "event_id": "backend_started", "message": "x"}) + "\n")
+            with self.assertRaisesRegex(sg.SupervisorError, "run ID mismatch"):
+                sg.consume_product_progress(progress_path, 0, {"run_id": "expected"})
+            progress_path.write_text(json.dumps({"run_id": "expected", "sequence": 1, "event_id": "backend_started", "message": "x"}) + "\n")
+            with self.assertRaisesRegex(sg.SupervisorError, "strictly increasing"):
+                sg.consume_product_progress(progress_path, 0, {"run_id": "expected", "product_progress_sequence": 1})
+
+    def test_notification_event_id_cannot_be_reused_with_different_payload(self):
+        with tempfile.TemporaryDirectory() as td:
+            with mock.patch.dict(os.environ, {"SYSGRID_SUPERVISOR_STATE": td}, clear=False), \
+                 mock.patch.object(sg, "load_telegram_config", return_value=TEST_TELEGRAM_CONFIG), \
+                 mock.patch.object(sg, "_telegram_request", return_value={"message_id": 1}):
+                sg.deliver_notification_event(run_id="r", event_id="e", message="first", required=True)
+                with self.assertRaisesRegex(sg.SupervisorError, "reused with different payload"):
+                    sg.deliver_notification_event(run_id="r", event_id="e", message="second", required=True)
+
+    def test_zip_directory_stores_compressed_media_and_deflates_text(self):
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td) / "evidence"; root.mkdir()
+            (root / "image.png").write_bytes(b"\x89PNG\r\n" + b"x" * 100)
+            (root / "log.txt").write_text("log\n" * 100)
+            archive = Path(td) / "evidence.zip"
+            sg.zip_directory(root, archive)
+            with zipfile.ZipFile(archive) as zf:
+                self.assertEqual(zf.getinfo("image.png").compress_type, zipfile.ZIP_STORED)
+                self.assertEqual(zf.getinfo("log.txt").compress_type, zipfile.ZIP_DEFLATED)
+
+    def test_sanitized_environment_exports_dedicated_resource_budgets(self):
+        env = sg.sanitized_env()
+        for key in ("SYSGRID_CPU_COUNT", "SYSGRID_MEMORY_BYTES", "SYSGRID_TEST_CPU_BUDGET", "SYSGRID_BACKEND_WORKERS", "SYSGRID_FRONTEND_WORKERS", "SYSGRID_E2E_WORKERS"):
+            self.assertIn(key, env)
+            self.assertGreaterEqual(int(env[key]), 0)
+
+    def test_release_descriptor_registry_has_unique_generated_events(self):
+        events = sg.RELEASE_DESCRIPTOR.get("progress_events")
+        self.assertIsInstance(events, list)
+        ids = [row["id"] for row in events]
+        self.assertEqual(len(ids), len(set(ids)))
+        self.assertEqual(set(ids), set(sg.PROGRESS_EVENT_REGISTRY))
+        self.assertEqual(sg.DEFAULT_ENGINE_HEARTBEAT_SECONDS, 120)
+
+
+    def test_execution_profile_defaults_to_promotion(self):
+        run = base_run()
+        self.assertEqual(sg.execution_profile_from_run(run), "promotion_qualification")
+
+    def test_development_campaign_requires_declared_scope(self):
+        run = base_run()
+        run["recipes"] = [{"id": "full-app-gate", "required": True, "params": {"timeout": 300, "execution_profile": "development_campaign"}}]
+        with self.assertRaisesRegex(sg.SupervisorError, "changed_paths"):
+            sg.validate_run_minimal(run)
+
+    def test_development_campaign_scope_and_env_are_deterministic(self):
+        run = base_run()
+        run["recipes"] = [{"id": "full-app-gate", "required": True, "params": {
+            "timeout": 300,
+            "execution_profile": "development_campaign",
+            "changed_paths": ["frontend/src/a.ts", "scripts/verify-app.sh"],
+            "targeted_tests": ["vitest:shared", "playwright:research"],
+            "targeted_views": ["far", "research"],
+        }}]
+        scope = sg.execution_scope_from_run(run)
+        self.assertEqual(scope["execution_profile"], "development_campaign")
+        env = sg.execution_env_overlay(run)
+        self.assertEqual(json.loads(env["SYSGRID_CHANGED_PATHS_JSON"]), ["frontend/src/a.ts", "scripts/verify-app.sh"])
+        self.assertEqual(json.loads(env["SYSGRID_TARGETED_VIEWS_JSON"]), ["far", "research"])
+
+    def test_campaign_scope_rejects_traversal_and_duplicates(self):
+        for paths in (["../secret"], ["frontend/src/a.ts", "frontend/src/a.ts"]):
+            run = base_run()
+            run["recipes"] = [{"id": "full-app-gate", "required": True, "params": {
+                "timeout": 300, "execution_profile": "development_campaign",
+                "changed_paths": paths, "targeted_tests": ["vitest:shared"],
+            }}]
+            with self.assertRaises(sg.SupervisorError):
+                sg.execution_scope_from_run(run)
+
+    def test_execution_profile_rejects_unknown_value(self):
+        run = base_run()
+        run["recipes"] = [{"id": "full-app-gate", "required": True, "params": {"timeout": 300, "execution_profile": "fast_and_loose"}}]
+        with self.assertRaisesRegex(sg.SupervisorError, "unsupported execution_profile"):
+            sg.execution_profile_from_run(run)
+
+class IntegrationTests(unittest.TestCase):
+    init_repo = SupervisorTests.init_repo
+    capsule_for_repo_state = SupervisorTests.capsule_for_repo_state
+    canonical_capsule_for_repo_state = SupervisorTests.canonical_capsule_for_repo_state
+    def write_fake_engine(self, path: Path, count_path: Path, exit_code: int = 0) -> Path:
+        script = f"""#!/usr/bin/env python3
+import hashlib, json, pathlib, stat, sys, zipfile
+count=pathlib.Path({str(count_path)!r})
+count.write_text(str(int(count.read_text())+1) if count.exists() else '1')
+cap=pathlib.Path(sys.argv[2]); out=pathlib.Path(sys.argv[sys.argv.index('--outbox')+1]); out.mkdir(parents=True,exist_ok=True)
+sha=hashlib.sha256(cap.read_bytes()).hexdigest()
+rc={exit_code}
+result={{'result':'success' if rc==0 else 'failure','classification':'PASS' if rc==0 else 'APP_TEST_FAILURE','message':'fake complete','exit_code':rc,'capsule_file':cap.name,'capsule_sha256':sha,'engine_version':'1.0.4'}}
+files={{'RESULT.json':(json.dumps(result,sort_keys=True)+'\\n').encode(),'LOGS/fake.txt':b'fake\\n'}}
+files['MANIFEST.sha256']=('\\n'.join(f"{{hashlib.sha256(data).hexdigest()}}  {{name}}" for name,data in sorted(files.items()))+'\\n').encode()
+with zipfile.ZipFile(out/'UPLOAD_THIS_TO_CHATGPT.zip','w',compression=zipfile.ZIP_DEFLATED) as z:
+    for name,data in files.items():
+        info=zipfile.ZipInfo(name); info.compress_type=zipfile.ZIP_DEFLATED; info.external_attr=(stat.S_IFREG|0o600)<<16; z.writestr(info,data)
+raise SystemExit(rc)
+"""
+        path.write_text(script)
+        return path
+
+    def run_fake(self, root: Path, exit_code: int) -> tuple[int, Path, Path, sg.CapsuleInfo]:
+        repo, head = self.init_repo(root)
+        digest = sg.sha256_file(repo / "a.txt")
+        cap = self.capsule_for_repo_state(root, repo, head, expected_dirty=[], pre_hashes={}, protected_hashes={"a.txt": digest})
+        count = root / "count.txt"
+        fake = self.write_fake_engine(root / "fake_engine.py", count, exit_code)
+        control = root / "control"
+        state = root / "state"
+        env = {
+            "SYSGRID_CONTROL_ROOT": str(control),
+            "SYSGRID_SUPERVISOR_STATE": str(state),
+            "SYSGRID_SUPERVISOR_CONFIG": str(root / "config"),
+        }
+        with mock.patch.dict(os.environ, env, clear=False), \
+             mock.patch.object(sg, "discover_engine", return_value=fake), \
+             mock.patch.object(sg, "verify_engine", return_value={"engine_version": "1.0.4", "result": "PASS"}), \
+             mock.patch.object(sg, "load_telegram_config", return_value=TEST_TELEGRAM_CONFIG), \
+             mock.patch.object(sg, "deliver_notification_event", return_value={"status": "delivered"}):
+            rc = sg.run_supervised(cap.path, repo)
+        return rc, count, control, cap
+
+    def test_end_to_end_supervised_success_invokes_engine_once(self):
+        with tempfile.TemporaryDirectory() as td:
+            rc, count, control, cap = self.run_fake(Path(td), 0)
+            self.assertEqual(rc, 0)
+            self.assertEqual(count.read_text(), "1")
+            alias = control / "Outbox" / sg.CANONICAL_ZIP
+            self.assertTrue(alias.is_file())
+            _, result = sg.verify_archive_manifest(alias, allow_source=True)
+            self.assertEqual(result["capsule_file"], cap.path.name)
+
+    def test_end_to_end_app_failure_is_review_ready_without_retry(self):
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            rc, count, control, _ = self.run_fake(root, 7)
+            self.assertEqual(rc, 7)
+            self.assertEqual(count.read_text(), "1")
+            latest = json.loads((root / "state/latest.json").read_text())
+            self.assertEqual(latest["state"], "FAILED_REVIEW_READY")
+            self.assertEqual(latest["classification"], "APP_TEST_FAILURE")
+            self.assertTrue((control / "Outbox" / sg.CANONICAL_ZIP).is_file())
+
+    def test_end_to_end_canonical_text_ledgers_invoke_engine_once(self):
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            repo, head = self.init_repo(root)
+            cap = self.canonical_capsule_for_repo_state(
+                root,
+                repo,
+                head,
+                expected_dirty=[],
+                pre_hashes={},
+                protected_hashes={"a.txt": sg.sha256_file(repo / "a.txt")},
+            )
+            count = root / "count.txt"
+            fake = self.write_fake_engine(root / "fake_engine.py", count, 0)
+            control = root / "control"
+            env = {
+                "SYSGRID_CONTROL_ROOT": str(control),
+                "SYSGRID_SUPERVISOR_STATE": str(root / "state"),
+                "SYSGRID_SUPERVISOR_CONFIG": str(root / "config"),
+            }
+            with mock.patch.dict(os.environ, env, clear=False), \
+                 mock.patch.object(sg, "discover_engine", return_value=fake), \
+                 mock.patch.object(sg, "verify_engine", return_value={"engine_version": "1.0.4", "result": "PASS"}), \
+                 mock.patch.object(sg, "load_telegram_config", return_value=TEST_TELEGRAM_CONFIG), \
+                 mock.patch.object(sg, "deliver_notification_event", return_value={"status": "delivered"}):
+                rc = sg.run_supervised(cap.path, repo)
+            self.assertEqual(rc, 0)
+            self.assertEqual(count.read_text(), "1")
+            self.assertTrue((control / "Outbox" / sg.CANONICAL_ZIP).is_file())
+
+    def test_end_to_end_resume_verify_without_patch_invokes_engine_once(self):
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            repo, head = self.init_repo(root)
+            digest = sg.sha256_file(repo / "a.txt")
+            run = base_run()
+            run["lane"] = "product"
+            run["mode"] = "resume_verify"
+            run["patch"] = None
+            run["baseline"] = {"branch": "main", "head": head, "upstream": "origin/main"}
+            run["state"] = {
+                "pre_expected_dirty_paths": "STATE/pre_expected_dirty_paths.txt",
+                "pre_hashes": "STATE/pre_hashes.sha256",
+                "post_expected_dirty_paths": "STATE/post_expected_dirty_paths.txt",
+                "post_hashes": "STATE/post_hashes.sha256",
+                "protected_hashes": "STATE/protected_hashes.sha256",
+            }
+            run["recipes"] = [{"id": "full-app-gate", "params": {"timeout": 3000}, "required": True}]
+            run["delivery"] = {"branch": "main", "remote": "origin", "commit_push": True}
+            files = {
+                "STATE/pre_expected_dirty_paths.txt": b"",
+                "STATE/pre_hashes.sha256": b"",
+                "STATE/post_expected_dirty_paths.txt": b"",
+                "STATE/post_hashes.sha256": b"",
+                "STATE/protected_hashes.sha256": f"{digest}  a.txt\n".encode(),
+            }
+            cap = sg.inspect_capsule(make_capsule(root / "resume.sgcap", run, files))
+            count = root / "count.txt"
+            fake = self.write_fake_engine(root / "fake_engine.py", count, 0)
+            control = root / "control"
+            env = {
+                "SYSGRID_CONTROL_ROOT": str(control),
+                "SYSGRID_SUPERVISOR_STATE": str(root / "state"),
+                "SYSGRID_SUPERVISOR_CONFIG": str(root / "config"),
+            }
+            with mock.patch.dict(os.environ, env, clear=False), \
+                 mock.patch.object(sg, "discover_engine", return_value=fake), \
+                 mock.patch.object(sg, "verify_engine", return_value={"engine_version": "1.0.4", "result": "PASS"}), \
+                 mock.patch.object(sg, "load_telegram_config", return_value=TEST_TELEGRAM_CONFIG), \
+                 mock.patch.object(sg, "deliver_notification_event", return_value={"status": "delivered"}), \
+                 mock.patch.object(sg, "run_git", wraps=sg.run_git) as run_git:
+                rc = sg.run_supervised(cap.path, repo)
+            self.assertEqual(rc, 0)
+            self.assertEqual(count.read_text(), "1")
+            self.assertTrue((control / "Outbox" / sg.CANONICAL_ZIP).is_file())
+            self.assertFalse(any("apply" in call.args for call in run_git.call_args_list))
+
+    def test_patch_check_is_not_scheduled_before_repository_proof(self):
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            repo, head = self.init_repo(root)
+            cap = self.capsule_for_repo_state(
+                root,
+                repo,
+                head,
+                expected_dirty=[],
+                pre_hashes={},
+                protected_hashes={"a.txt": sg.sha256_file(repo / "a.txt")},
+            )
+            control = root / "control"
+            env = {
+                "SYSGRID_CONTROL_ROOT": str(control),
+                "SYSGRID_SUPERVISOR_STATE": str(root / "state"),
+                "SYSGRID_SUPERVISOR_CONFIG": str(root / "config"),
+            }
+
+            def reject_repository(checks):
+                self.assertEqual(set(checks), {"engine", "repository", "storage"})
+                raise sg.PreflightAggregateError(
+                    "repository: synthetic state failure",
+                    70,
+                    {},
+                    {"repository": {
+                        "classification": "CAPSULE_STATE_FAILURE",
+                        "message": "synthetic state failure",
+                        "exit_code": 65,
+                    }},
+                )
+
+            with mock.patch.dict(os.environ, env, clear=False), \
+                 mock.patch.object(sg, "parallel_checks", side_effect=reject_repository), \
+                 mock.patch.object(sg, "load_telegram_config", return_value=TEST_TELEGRAM_CONFIG), \
+                 mock.patch.object(sg, "deliver_notification_event", return_value={"status": "delivered"}), \
+                 mock.patch.object(sg, "patch_state_precheck") as patch_check:
+                rc = sg.run_supervised(cap.path, repo)
+            self.assertEqual(rc, 70)
+            patch_check.assert_not_called()
+
+    def test_recovery_failure_still_publishes_one_review_zip_without_engine_start(self):
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            control = root / "control"
+            state = root / "state"
+            env = {
+                "SYSGRID_CONTROL_ROOT": str(control),
+                "SYSGRID_SUPERVISOR_STATE": str(state),
+                "SYSGRID_SUPERVISOR_CONFIG": str(root / "config"),
+            }
+            with mock.patch.dict(os.environ, env, clear=False), \
+                 mock.patch.object(sg, "recover_interrupted_run", side_effect=sg.SupervisorError("RUN_RECOVERY_ACTIVE", "still active", 73)), \
+                 mock.patch.object(sg, "deliver_notification_event", return_value={"status": "delivered"}), \
+                 mock.patch.object(subprocess, "Popen") as popen:
+                rc = sg.run_supervised(None, None)
+            self.assertEqual(rc, 73)
+            popen.assert_not_called()
+            artifact = control / "Outbox" / sg.DIAGNOSTIC_ZIP
+            self.assertTrue(artifact.is_file())
+            self.assertFalse((control / "Outbox" / sg.CANONICAL_ZIP).exists())
+            _, result = sg.verify_archive_manifest(artifact, allow_source=True)
+            self.assertEqual(result["classification"], "RUN_RECOVERY_ACTIVE")
+
+
+if __name__ == "__main__":
+    unittest.main(verbosity=2)

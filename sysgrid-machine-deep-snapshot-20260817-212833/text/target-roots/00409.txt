@@ -1,0 +1,20 @@
+ORIGINAL_PATH: /Users/haewonkim/.local/share/sysgrid-campaign-platform/v1.1.0/ORIGINAL_SOURCE_IDENTITY.json
+ORIGINAL_SHA256: c3a89a0b9214b6ed3451299161017dbe9fdca2667df035c7d33d66877eb990d4
+================================================================================
+{
+  "active_law_version": "1.2.1",
+  "base_platform": {
+    "package_sha256": "126386106288698f1cefd25008aa7fa1139c9817350b22a0aee3169f49f20c3a",
+    "version": "1.0.0"
+  },
+  "files": {
+    "base_controller_sha256": "c1d322644646efbaa937ab1a5bbe6e2c07631cc0a082543dd8ee7a105b025c23",
+    "base_engine_sha256": "490b3e9f2313f3b912be1b1c77d096fdb06542acf75aa0a5a737b277118dcc0b",
+    "base_supervisor_sha256": "fe14901c1487eaf578b1ec1c24ecf4362e940e104e408926ccfa5d8dfc459d80"
+  },
+  "product_attempt": 12,
+  "product_source_mutation": false,
+  "repair": "P2",
+  "schema_version": "1.0",
+  "work_class": "platform_verification_repair"
+}

@@ -1,0 +1,5 @@
+ORIGINAL_PATH: /Users/haewonkim/.local/state/sysgrid-phone/config
+ORIGINAL_SHA256: cc9f5b2cae002303e060802e36eadd9679659ae543be0bb671b56553b4eec6c0
+================================================================================
+REPO=/Users/haewonkim/home/development/sysgrid
+ICLOUD_ROOT=/Users/haewonkim/Library/Mobile\ Documents/com~apple~CloudDocs/SysGrid-Control

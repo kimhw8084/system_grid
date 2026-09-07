@@ -1,0 +1,34 @@
+ORIGINAL_PATH: /Users/haewonkim/.local/state/sysgrid-supervisor/runs/20260807T030131Z-10511-174000/preflight.json
+ORIGINAL_SHA256: 0bb3d6bbe6e15418947cec09e9cf1653e05d412b119296b9bedbc5ee8b79415b
+================================================================================
+{
+  "declared_state": {
+    "dirty_path_count": 0,
+    "pre_hash_count": 0,
+    "protected_hash_count": 703
+  },
+  "engine_self_test": {
+    "engine_version": "1.1.1",
+    "result": "PASS",
+    "tests": [
+      "safe-path",
+      "manifest",
+      "corruption",
+      "canonical-dirty-paths",
+      "aggregate-recipes"
+    ]
+  },
+  "patch": {
+    "applicable": true,
+    "forward_diagnostic": "Checking patch frontend/src/components/ServicesReal.tsx...",
+    "forward_exit_code": 0,
+    "reverse_applicable": false,
+    "reverse_diagnostic": "Checking patch frontend/src/components/ServicesReal.tsx...\nerror: while searching for:\n  const autoSizeFrameRef = useRef<number | null>(null)\n  const autoSizeTimeoutRef = useRef<number | null>(null)\n  const servicePreferenceHydratedRef = useRef(false)\n  const serviceSearchInteractedBeforeHydrationRef = useRef(false)\n  const servicePreferenceMigratedRef = useRef(false)\n  const servicePreferenceSyncRef = useRef<string | null>(null)\n  const servicePreferenceSyncTimeoutRef = useRef<number | null>(null)\n\nerror: patch failed: frontend/src/components/ServicesReal.tsx:581\nerror: frontend/src/components/ServicesReal.tsx: patch does not apply",
+    "reverse_exit_code": 1
+  },
+  "storage": {
+    "control_free": 17446518784,
+    "local_free": 17446518784,
+    "required": 3221225472
+  }
+}

@@ -1,0 +1,23 @@
+ORIGINAL_PATH: /Users/haewonkim/.local/share/sysgrid-campaign-platform/v1.0.0/GPT_WORKFLOW_CONTRACT.md
+ORIGINAL_SHA256: 3fd00dd2b8780e42003a7baa1cb2910e9a7c1b4991e32ee6bb5f6c2ed98b75b9
+================================================================================
+# SysGrid GPT Evidence-Closed Campaign Contract
+
+This contract implements the user-approved GPT-side workflow.
+
+1. Refresh live Linear before any state claim, artifact issuance, or mutation decision.
+2. Read the current safe source authority before forming implementation questions.
+3. Start material product changes with at least 64 low-level source-specific questions.
+4. Expand beyond 64 until no implementation ambiguity remains.
+5. Provide a recommended answer, alternatives, consequences, tests, evidence, and confidence for every question.
+6. Never treat a recommendation as user approval.
+7. Close every question as APPROVED, APPROVED_WITH_MODIFICATION, EXPLICITLY_OUT_OF_SCOPE, or EVIDENCE_BACKED_NOT_APPLICABLE.
+8. Generate Questionnaire Closure, Approval Lock, Change Specification, fourteen-category Risk Matrix, Test Plan, Visual Matrix, Improvement Ledger, and Next Campaign Seed before patch issuance.
+9. Author one cumulative patch against the exact captured source authority.
+10. Carry every evidence-supported in-scope non-material ACT_NOW item into the same campaign's next cumulative patch.
+11. Do not initialize a new campaign while the current campaign has unresolved ACT_NOW findings or an unaccepted mutation.
+12. Classify test/evidence/platform-only changes as Verification Repairs without incrementing Product Attempt value.
+13. Require isolated preflight and shadow qualification before live product mutation.
+14. Review all safe independent validation lanes, not only the first blocker.
+15. Require programmatic and rendered evidence for applicable shared, visual, or routed behavior.
+16. Accept no commit or push until all gates pass and remote equality is verified.

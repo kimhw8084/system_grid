@@ -1,0 +1,13 @@
+ORIGINAL_PATH: /Users/haewonkim/.local/share/sysgrid-campaign-platform/v1.1.1/tests/test_campaign_controller.py
+ORIGINAL_SHA256: 5ecefab81e08f34499cb5030f77d8272a3b9cd80a33b19d2a091e22e26cca7fe
+================================================================================
+import json, tempfile, unittest, zipfile, hashlib, sys
+from pathlib import Path
+sys.path.insert(0,str(Path(__file__).resolve().parents[1]/"payload"))
+from sysgrid_campaign import safe_member, CampaignError, RISK_CATEGORIES
+class CampaignControllerTests(unittest.TestCase):
+    def test_unsafe_paths(self):
+        for value in ("../x","/x","./x","a\\b"):
+            with self.assertRaises(CampaignError): safe_member(value)
+    def test_risk_count(self): self.assertEqual(len(RISK_CATEGORIES),14)
+if __name__=="__main__": unittest.main()

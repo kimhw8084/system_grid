@@ -1,0 +1,13 @@
+ORIGINAL_PATH: /Users/haewonkim/.local/state/sysgrid-supervisor/runs/20260802T004647Z-89736-456000/launch.json
+ORIGINAL_SHA256: 8b72b0620da9279c48ef5f18592dc95114a485fe29415e42e2ffd5b320e9b372
+================================================================================
+{
+  "capsule_path": "/Users/haewonkim/.local/state/sysgrid-supervisor/runs/20260802T004647Z-89736-456000/input/DOWNLOAD_Attempt_12_Superseding_FAR_Full_Golden_Recovery.sgcap",
+  "capsule_sha256": "e064d6ad9b590af4d277f1d8d3462102ef519521b89f5383ec51a38afa7b260f",
+  "command_sha256": "46049bf6354c8c7a1b8f8ecb93e676c1d64ecbf0fe0d3de6eed6e411b70d97c1",
+  "engine_path": "/Users/haewonkim/.local/lib/sysgrid-runner/1.0.4/sysgrid_runner.py",
+  "engine_sha256": "ab63bb20c0de32771e20b0159475205f685f28910a0956c217fb3693c02f96e1",
+  "launched_utc": "2026-08-02T00:46:49Z",
+  "repo": "/Users/haewonkim/home/development/sysgrid",
+  "run_id": "20260802T004647Z-89736-456000"
+}

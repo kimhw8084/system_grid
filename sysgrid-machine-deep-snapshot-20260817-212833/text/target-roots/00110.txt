@@ -1,0 +1,16 @@
+ORIGINAL_PATH: /Users/haewonkim/.local/share/sysgrid-runner/backups/20260731T194319Z-pre-launcher-v104-repair/ROLLBACK.sh
+ORIGINAL_SHA256: 63532a9f1d87df2182a39315821d7d2a1edf122ff0b0067beac00453a8aa62de
+================================================================================
+#!/usr/bin/env bash
+set -Eeuo pipefail
+install -m 755 "/Users/haewonkim/.local/share/sysgrid-runner/backups/20260731T194319Z-pre-launcher-v104-repair/local-bin/sg" "/Users/haewonkim/.local/bin/sg"
+install -m 755 "/Users/haewonkim/.local/share/sysgrid-runner/backups/20260731T194319Z-pre-launcher-v104-repair/continuity/sg" "/Users/haewonkim/.local/share/sysgrid-runner/continuity-v1.0.7/sg"
+install -m 755 "/Users/haewonkim/.local/share/sysgrid-runner/backups/20260731T194319Z-pre-launcher-v104-repair/continuity/continuity_packager.py" "/Users/haewonkim/.local/share/sysgrid-runner/continuity-v1.0.7/continuity_packager.py"
+install -m 755 "/Users/haewonkim/.local/share/sysgrid-runner/backups/20260731T194319Z-pre-launcher-v104-repair/continuity/continuity_watcher.py" "/Users/haewonkim/.local/share/sysgrid-runner/continuity-v1.0.7/continuity_watcher.py"
+rm -rf "/Users/haewonkim/.local/share/sysgrid-runner/continuity-v1.0.7/active_law"
+cp -a "/Users/haewonkim/.local/share/sysgrid-runner/backups/20260731T194319Z-pre-launcher-v104-repair/continuity/active_law" "/Users/haewonkim/.local/share/sysgrid-runner/continuity-v1.0.7/active_law"
+cp -a "/Users/haewonkim/.local/share/sysgrid-runner/backups/20260731T194319Z-pre-launcher-v104-repair/continuity/INSTALLATION.json" "/Users/haewonkim/.local/share/sysgrid-runner/continuity-v1.0.7/INSTALLATION.json"
+if [[ -f "/Users/haewonkim/.local/share/sysgrid-runner/backups/20260731T194319Z-pre-launcher-v104-repair/lib/previous-current-link.txt" ]]; then
+  ln -sfn "$(cat "/Users/haewonkim/.local/share/sysgrid-runner/backups/20260731T194319Z-pre-launcher-v104-repair/lib/previous-current-link.txt")" "/Users/haewonkim/.local/lib/sysgrid-runner/current"
+fi
+echo "Rollback complete."

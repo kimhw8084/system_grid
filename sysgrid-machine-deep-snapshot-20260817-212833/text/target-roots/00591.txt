@@ -1,0 +1,34 @@
+ORIGINAL_PATH: /Users/haewonkim/.local/state/sysgrid-supervisor/runs/20260805T142128Z-55754-337000/preflight.json
+ORIGINAL_SHA256: b09b1de9c051b1121f0126242b285fdbeccea7f430490b8243651b5eed3fe2da
+================================================================================
+{
+  "declared_state": {
+    "dirty_path_count": 97,
+    "pre_hash_count": 97,
+    "protected_hash_count": 716
+  },
+  "engine_self_test": {
+    "engine_version": "1.1.1",
+    "result": "PASS",
+    "tests": [
+      "safe-path",
+      "manifest",
+      "corruption",
+      "canonical-dirty-paths",
+      "aggregate-recipes"
+    ]
+  },
+  "patch": {
+    "applicable": true,
+    "forward_diagnostic": "Checking patch frontend/scripts/check-canonical-verification-contract.cjs...\nChecking patch scripts/sysgrid/verify_accelerator.py...\nChecking patch scripts/verify-app.sh...\nwarning: scripts/verify-app.sh has type 100755, expected 100644",
+    "forward_exit_code": 0,
+    "reverse_applicable": false,
+    "reverse_diagnostic": "Checking patch scripts/verify-app.sh...\nwarning: scripts/verify-app.sh has type 100755, expected 100644\nerror: while searching for:\nPROGRESS_SEQUENCE=0\nFRONTEND_WORKERS=\"${SYSGRID_FRONTEND_WORKERS:-4}\"\nEXECUTION_PROFILE=\"${SYSGRID_EXECUTION_PROFILE:-promotion_qualification}\"\nACCELERATOR=\"$ROOT_DIR/scripts/sysgrid/verify_accelerator.py\"\nACCEL_PY=\"$BACKEND_DIR/venv/bin/python\"\nACCEL_DIR=\"$FRONTEND_DIR/test-results/sysgrid-accelerator\"\nACCEL_PLAN=\"$ACCEL_DIR/impact-plan.json\"\nACCEL_ENV=\"$ACCEL_DIR/accelerator.env\"\nACCEL_TIMELINE=\"$ACCEL_DIR/timeline.jsonl\"\nACCEL_PARALLEL_HEAVY=0\nACCEL_PROFILE=\"legacy\"\nPLAYWRIGHT_WORKERS=1\nPROMOTION_SPECS=()\nREMAINING_SPECS=()\nBACKEND_COVERAGE_PID=\"\"\nFRONTEND_COVERAGE_PID=\"\"\nFRONTEND_COVERAGE_DEFERRED=0\n\nGOLDEN_WORKSPACE_KEYS=(monitoring assets services external network far research vendors)\nPLAYWRIGHT_SPECS=(\n\nerror: patch failed: scripts/verify-app.sh:29\nerror: scripts/verify-app.sh: patch does not apply\nChecking patch scripts/sysgrid/verify_accelerator.py...\nerror: scripts/sysgrid/verify_accelerator.py: No such file or directory\nChecking patch frontend/scripts/check-canonical-verification-contract.cjs...\nerror: while searching for:\nrequireText(verify, 'assert_local_playwright_runtime', 'verify-app.sh must verify the exact local Playwright package identity before expensive application verification')\nrequireText(verify, \"require('./node_modules/@playwright/test/package.json').version\", 'verify-app.sh must inspect the local @playwright/test version')\nrequireText(verify, \"require('./node_modules/playwright/package.json').version\", 'verify-app.sh must inspect the local Playwright runner version')\nrequireText(verify, '\"${PLAYWRIGHT_ENV_COMMAND[@]}\" \"$FRONTEND_DIR/node_modules/.bin/playwright\" test \"${specs[@]}\" --workers=\"$PLAYWRIGHT_WORKERS\"', 'verify-app.sh must execute each canonical Playwright group through the exact local runner and environment array')\nrequireText(verify, 'split_playwright_specs', 'verify-app.sh must split affected pr",
+    "reverse_exit_code": 1
+  },
+  "storage": {
+    "control_free": 54206373888,
+    "local_free": 54206373888,
+    "required": 3221225472
+  }
+}

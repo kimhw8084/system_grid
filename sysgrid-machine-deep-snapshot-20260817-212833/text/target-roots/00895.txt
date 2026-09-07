@@ -1,0 +1,31 @@
+ORIGINAL_PATH: /Users/haewonkim/.local/state/sysgrid-supervisor/runs/20260801T152842Z-46260-369000/diagnostic/LOGS/preflight.json
+ORIGINAL_SHA256: 4c1a8595f3a24145d5286406acb6668190b1cdf96008a2699955fa0da59faba7
+================================================================================
+{
+  "failures": {
+    "repository": {
+      "classification": "REPOSITORY_HASH_FAILURE",
+      "exit_code": 69,
+      "message": "pre_hashes mismatch (2 paths): {'frontend/scripts/check-canonical-verification-contract.cjs': {'expected': '875998334455f935e0cd3b914414fb530025618755409f0954ddeeb0de9789dd', 'actual': 'a1c48c9381738f24260f6ca50390048c22c520cac397e29c13c7fd996a3d7d27'}, 'scripts/verify-app.sh': {'expected': '45f60ee30c7dfe6d22131db43f0ec40f0a80ffec144e6383b2b85ba569965d8e', 'actual': 'b3a06db7e6ff97b52bef18bfc06d35238675fee954ee4071981d67fe51f2372e'}}"
+    }
+  },
+  "results": {
+    "engine": {
+      "path": "/Users/haewonkim/.local/lib/sysgrid-runner/1.0.4/sysgrid_runner.py",
+      "self_test": {
+        "engine_version": "1.0.4",
+        "result": "PASS",
+        "tests": [
+          "safe-path",
+          "manifest",
+          "corruption"
+        ]
+      }
+    },
+    "storage": {
+      "control_free": 57600913408,
+      "local_free": 57600913408,
+      "required": 536870912
+    }
+  }
+}

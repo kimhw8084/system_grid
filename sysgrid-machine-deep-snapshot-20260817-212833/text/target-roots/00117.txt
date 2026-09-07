@@ -1,0 +1,124 @@
+ORIGINAL_PATH: /Users/haewonkim/.local/share/sysgrid-runner/backups/20260731T194319Z-pre-launcher-v104-repair/continuity/active_law/02_SYSGRID_PRODUCT_GOLDEN_CONTRACT_v1.2.md
+ORIGINAL_SHA256: ccdc54bcb7994224c9527357fcb1d67f14986df45b494d0c0605303f7c126dbe
+================================================================================
+# SysGrid Product and Golden Contract v1.2
+
+**Status:** Draft pending explicit activation  
+**Project:** SysGrid  
+**Proposed effective date:** 2026-07-30
+
+## 1. Scope gate
+
+Only the Linear project `SysGrid` may be read or written unless the user explicitly names another project and duration. Before a state mutation or artifact issuance, verify live project `SysGrid`, master `OUT-5`, sole active issue, status, relations, latest relevant verdict, accepted baseline, actual repository state, qualified engine, and safe next action.
+
+Only one SysGrid mutation issue may be active. Parent goals provide context, not a parallel mutation lane.
+
+## 2. Source-authoring boundary
+
+The ChatGPT control room authors all SysGrid source changes and immutable patches. Terminal generative coding, coding agents, dynamic patch generation, auto-fix, assertion weakening, manual product edits, and manual product commit/push are prohibited.
+
+## 3. Monitoring golden contract
+
+Monitoring is the immutable high-level visual and behavioral reference unless the user explicitly approves a golden-contract change.
+
+Goldenization means dynamic synchronization of all applicable shared:
+
+- shell, header, command bar, controls, visuals and responsive behavior;
+- table/grid framing, columns, rows, cells, selection, grouping, density and sizing;
+- loading, empty, error, offline, conflict and permission states;
+- overlays, panels, modals, lifecycle actions, receipts and undo;
+- routed behavior and convenience features.
+
+A change to an authoritative shared contract propagates to every registered applicable view. Domain views may provide only typed declarative adapters, capability declarations, endpoint/data mappings, explicit slots, and documented N/A exceptions. Local copies of shared behavior or presentation cannot PASS.
+
+Source-file protection alone does not prove rendered golden preservation when a changed shared dependency affects Monitoring. Applicable shared visual changes require routed before/after geometry or screenshot evidence across the relevant states.
+
+## 4. Product architecture boundaries
+
+Unless explicitly authorized:
+
+- do not flatten Network, FAR, or Research into table-only experiences;
+- do not modify Projects or Architecture product code outside their approved stage;
+- do not replace domain APIs with a giant generic CRUD engine;
+- do not replace AG Grid or redesign the complete visual system;
+- do not broadly rewrite deployment, authentication, tenant selection, or container infrastructure;
+- do not weaken tenant isolation, permissions, assertions, recovery, or destructive-operation safeguards;
+- do not mix product and execution-platform changes.
+
+## 5. Material-decision packet
+
+A five-question user approval packet is required only for new behavior, shared-contract changes, data/API semantics, permissions, destructive behavior, migrations, scope expansion, or ambiguous intent:
+
+1. What exact user-visible outcome changes?
+2. What is the smallest complete vertical slice?
+3. Which shared contract owns it and which views are applicable?
+4. What must remain unchanged, including tenant/safety invariants?
+5. What exact evidence constitutes acceptance?
+
+Provide principal-engineer recommended answers. The user may approve all or edit numbered rows.
+
+No new approval is required for exact correction of a proven defect, test-only hardening, evidence/capsule-envelope repair with unchanged product bytes, or continuation of an already approved slice.
+
+## 6. Risk-tiered proof
+
+Risk tier changes early feedback order, not the final acceptance bar.
+
+### Tier 0 — metadata/docs/declarative maps
+
+Schema, syntax, identity, and relevant contract tests.
+
+### Tier 1 — bounded nonvisual implementation
+
+Focused unit/contract tests, architecture checks, typecheck, then the full final app gate.
+
+### Tier 2 — shared behavior or visual contract
+
+Focused integration plus all affected routed views/states, responsive geometry or screenshots, then the full final app gate.
+
+### Tier 3 — tenant, permission, data model, migration, or destructive behavior
+
+Negative authorization/isolation tests, migration/recovery tests, off-nominal routed proof, then the full final app gate.
+
+### Tier 4 — execution platform
+
+Released-byte fault injection and independent platform qualification; no product mutation.
+
+## 7. Product proof order
+
+Use economic fail-fast order:
+
+1. capsule/schema/safety;
+2. live issue and repository baseline;
+3. patch dry-apply and exact state transition;
+4. cheapest focused architecture/static tests;
+5. focused unit/contract/integration tests;
+6. typecheck and build;
+7. runtime identity, routes, tenant/profile and fixtures;
+8. critical routed workflow and relevant off-nominal states;
+9. bounded adjacent regressions;
+10. full `verify-app.sh` or qualified equivalent;
+11. exact final/protected hashes;
+12. commit, push, remote equality and clean state;
+13. canonical packaging.
+
+## 8. Commit and push
+
+A successful bounded product mutation creates one commit:
+
+```text
+OUT-<issue> <stage> Iteration <N>: <accepted slice title>
+```
+
+The engine verifies upstream identity, pushes the exact commit, reads the remote branch SHA, requires local/remote equality, and requires clean worktree and staging before packaging success.
+
+Qualification, read-only, acquisition, and failed runs never commit or push.
+
+## 9. Recovery
+
+Use the narrowest correction matching evidence:
+
+- product defect → new cumulative product patch;
+- exact retained post-state → `resume_verify`, never reapply;
+- stale test/fixture → bounded test-contract correction;
+- environment drift → resolve environment without source mutation;
+- executor defect → platform lane only, product bytes frozen.

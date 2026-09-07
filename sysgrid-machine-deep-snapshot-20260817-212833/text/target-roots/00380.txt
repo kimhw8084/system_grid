@@ -1,0 +1,121 @@
+ORIGINAL_PATH: /Users/haewonkim/.local/share/sysgrid-campaign-platform/v1.1.1/DIFFS/controller_v1.0.0_to_v1.1.0.patch
+ORIGINAL_SHA256: 37539f13965246734da97770385846f1b898bc68200a1d80722aed2e96f1c030
+================================================================================
+--- /mnt/data/p2_work/base/SYSGRID_CAMPAIGN_PLATFORM_v1.0.0/payload/sysgrid_campaign.py	2026-08-02 00:00:00.000000000 +0000
++++ /mnt/data/p2_work/build/SYSGRID_CAMPAIGN_PLATFORM_v1.1.0/payload/sysgrid_campaign.py	2026-08-02 15:04:14.978698754 +0000
+@@ -1,5 +1,5 @@
+ #!/usr/bin/env python3
+-"""SysGrid Evidence-Closed Campaign Controller v1.0.0.
++"""SysGrid Evidence-Closed Campaign Controller v1.1.0.
+ 
+ The controller validates campaign approval and evidence declarations before it
+ installs an immutable declarative capsule into the qualified supervisor Inbox.
+@@ -25,7 +25,7 @@
+ from sysgrid_supervisor import (inspect_capsule, validate_capsule_cross_ledger, discover_repo, probe_repo_and_state, patch_state_precheck, discover_engine, verify_engine)
+ from sysgrid_runner import validate_run as validate_engine_run
+ 
+-VERSION = "1.0.0"
++VERSION = "1.1.0"
+ FINAL_QUESTION_STATUSES = {"APPROVED", "APPROVED_WITH_MODIFICATION", "EXPLICITLY_OUT_OF_SCOPE", "EVIDENCE_BACKED_NOT_APPLICABLE"}
+ RISK_CATEGORIES = (
+     "nominal", "boundary", "empty_null", "malformed", "tenant_permission",
+@@ -33,7 +33,20 @@
+     "destructive_recovery", "persistence_migration", "routed_deep_link",
+     "responsive_visual", "accessibility_interaction", "performance_resource",
+ )
+-REQUIRED_MEMBERS = {
++HANDOFF_MEMBERS = {
++    "CHAT_HANDOFF.json", "LAW_IDENTITY.json", "LINEAR_STATE_EXPECTATION.json",
++    "PLATFORM_IDENTITY.json", "SOURCE_IDENTITY.json", "ACTIVE_ARTIFACT_IDENTITY.json",
++    "CURRENT_GATE.json", "NEXT_PERMITTED_ACTION.json",
++}
++ACTIVE_LAW_SHA256 = {
++    "00_ACTIVE_LAW_MANIFEST_v1.2.1.yaml": "c0bd95b4d2e812a08b41c71e40c726579a6ef34124acc18fa0a9d509040c1550",
++    "01_AI_Controlled_Delivery_Constitution_v1.2.1.md": "6f82f8cf5e781393661354ea3d615c5a46857f9e69e0f2c0ea589b7185ecac00",
++    "02_SYSGRID_PRODUCT_GOLDEN_CONTRACT_v1.2.1.md": "df8b975fc4db264808ed2955ed23418d70b5bf8cf351c8ec2bb5ed71014894b8",
++    "03_LEAN_WORKHORSE_CONTROL_CONTEXT_AND_REVIEW_LAW_v1.2.1.md": "c27dcf68ee388392c094e596f4fe2213f1a1e8bf3cd014aa804c6420c4ebbd79",
++}
++BOOTSTRAP_PROTOCOL_SHA256 = "95edbc188f26792e7a7a2c844caa7cb68e1fb96acf35fe748f79847ea616654b"
++CONFORMANCE_SPEC_SHA256 = "0d29a1017a3ac009d6c30ae53b17b0d8c09419700b86fd59068a9815ca5875c2"
++REQUIRED_MEMBERS = HANDOFF_MEMBERS | {
+     "RUN.json", "MANIFEST.sha256", "QUESTIONNAIRE.json", "QUESTIONNAIRE_CLOSURE.json",
+     "APPROVAL_LOCK.json", "CHANGE_SPEC.json", "RISK_MATRIX.json", "TEST_PLAN.json",
+     "VISUAL_MATRIX.json", "IMPROVEMENT_LEDGER.json", "NEXT_CAMPAIGN_SEED.json",
+@@ -116,10 +129,40 @@
+         spec=load_json(zf,'CHANGE_SPEC.json'); risk=load_json(zf,'RISK_MATRIX.json')
+         tests=load_json(zf,'TEST_PLAN.json'); visual=load_json(zf,'VISUAL_MATRIX.json')
+         ledger=load_json(zf,'IMPROVEMENT_LEDGER.json'); seed=load_json(zf,'NEXT_CAMPAIGN_SEED.json')
++        handoff=load_json(zf,'CHAT_HANDOFF.json'); law_identity=load_json(zf,'LAW_IDENTITY.json')
++        linear_expectation=load_json(zf,'LINEAR_STATE_EXPECTATION.json'); platform_identity=load_json(zf,'PLATFORM_IDENTITY.json')
++        source_identity=load_json(zf,'SOURCE_IDENTITY.json'); artifact_identity=load_json(zf,'ACTIVE_ARTIFACT_IDENTITY.json')
++        current_gate=load_json(zf,'CURRENT_GATE.json'); next_action=load_json(zf,'NEXT_PERMITTED_ACTION.json')
+         campaign_id=questionnaire.get('campaign_id')
+         if not isinstance(campaign_id,str) or not campaign_id: raise CampaignError('QUESTIONNAIRE_FAILURE','campaign_id missing')
+-        for name,obj in [('closure',closure),('approval',approval),('spec',spec),('risk',risk),('tests',tests),('visual',visual),('ledger',ledger),('seed',seed)]:
++        for name,obj in [('closure',closure),('approval',approval),('spec',spec),('risk',risk),('tests',tests),('visual',visual),('ledger',ledger),('seed',seed),('handoff',handoff),('law_identity',law_identity),('linear_expectation',linear_expectation),('platform_identity',platform_identity),('source_identity',source_identity),('artifact_identity',artifact_identity),('current_gate',current_gate),('next_action',next_action)]:
+             if obj.get('campaign_id')!=campaign_id: raise CampaignError('CAMPAIGN_IDENTITY_FAILURE',f'{name} campaign_id mismatch')
++        if law_identity.get('active_law_version') != '1.2.1':
++            raise CampaignError('LAW_IDENTITY_FAILURE','active law version must be v1.2.1')
++        law_files=law_identity.get('files')
++        if not isinstance(law_files,dict) or law_files != ACTIVE_LAW_SHA256:
++            raise CampaignError('LAW_IDENTITY_FAILURE','active law file identities differ from the qualified P2 authority')
++        if law_identity.get('bootstrap_protocol_sha256') != BOOTSTRAP_PROTOCOL_SHA256 or law_identity.get('conformance_spec_sha256') != CONFORMANCE_SPEC_SHA256:
++            raise CampaignError('LAW_IDENTITY_FAILURE','Project continuity source identities differ')
++        bound=handoff.get('bound_files_sha256')
++        if not isinstance(bound,dict): raise CampaignError('HANDOFF_IDENTITY_FAILURE','CHAT_HANDOFF bound_files_sha256 missing')
++        for rel in sorted(HANDOFF_MEMBERS-{'CHAT_HANDOFF.json'}):
++            if bound.get(rel) != sha256_bytes(zf.read(rel)):
++                raise CampaignError('HANDOFF_IDENTITY_FAILURE',f'CHAT_HANDOFF digest mismatch for {rel}')
++        if linear_expectation.get('project')!='SysGrid' or linear_expectation.get('master')!='OUT-5':
++            raise CampaignError('LINEAR_EXPECTATION_FAILURE','Linear expectation must target SysGrid / OUT-5')
++        if linear_expectation.get('active_issue_count')!=1 or linear_expectation.get('unaccepted_product_mutation_count')!=1:
++            raise CampaignError('LINEAR_EXPECTATION_FAILURE','Linear expectation must preserve one active issue and one unaccepted mutation')
++        if linear_expectation.get('issue') != run.get('issue') or linear_expectation.get('product_attempt') != run.get('attempt'):
++            raise CampaignError('LINEAR_EXPECTATION_FAILURE','Linear issue/attempt expectation differs from RUN')
++        if source_identity.get('branch') != run.get('baseline',{}).get('branch') or source_identity.get('head') != run.get('baseline',{}).get('head'):
++            raise CampaignError('SOURCE_IDENTITY_FAILURE','source identity branch/head differs from RUN baseline')
++        if current_gate.get('gate') != 'SHADOW_QUALIFICATION_AUTHORIZED' or current_gate.get('questionnaire_closed') is not True or current_gate.get('approval_lock_valid') is not True:
++            raise CampaignError('CURRENT_GATE_FAILURE','campaign execution requires closed questionnaire and valid Approval Lock')
++        if next_action.get('action') != 'SHADOW_QUALIFICATION_THEN_CONTROLLED_APPLY':
++            raise CampaignError('NEXT_ACTION_FAILURE','unexpected next permitted action')
++        if artifact_identity.get('sole_active') is not True or not str(artifact_identity.get('sha256','')).strip():
++            raise CampaignError('ACTIVE_ARTIFACT_FAILURE','one exact active artifact identity is required')
+         questions=questionnaire.get('questions')
+         if not isinstance(questions,list): raise CampaignError('QUESTIONNAIRE_FAILURE','questions must be an array')
+         classification=str(questionnaire.get('classification','product_attempt'))
+@@ -148,6 +191,7 @@
+             'risk_matrix_sha256':sha256_bytes(zf.read('RISK_MATRIX.json')),
+             'test_plan_sha256':sha256_bytes(zf.read('TEST_PLAN.json')),
+             'visual_matrix_sha256':sha256_bytes(zf.read('VISUAL_MATRIX.json')),
++            'chat_handoff_sha256':sha256_bytes(zf.read('CHAT_HANDOFF.json')),
+         }
+         for key,digest in expected_hashes.items():
+             if approval.get(key)!=digest: raise CampaignError('APPROVAL_LOCK_FAILURE',f'{key} mismatch')
+@@ -185,12 +229,25 @@
+                     patch = patch_state_precheck(repo, capsule_info, Path(temp_dir))
+                 engine = discover_engine()
+                 engine_test = verify_engine(engine)
+-                platform = {'cross_ledger':cross,'repo':str(repo_info.path),'branch':repo_info.branch,'head':repo_info.head,'state':state,'patch':patch,'engine':str(engine),'engine_self_test':engine_test}
++                actual_platform={
++                    'platform_version': str(json.loads((package_root()/'RELEASE_DESCRIPTOR.json').read_text()).get('platform_version')),
++                    'engine_version': str(json.loads((package_root()/'RELEASE_DESCRIPTOR.json').read_text())['engine']['version']),
++                    'engine_sha256': sha256_file(package_root()/'payload'/'sysgrid_runner.py'),
++                    'supervisor_version': str(json.loads((package_root()/'RELEASE_DESCRIPTOR.json').read_text())['supervisor_version']),
++                    'supervisor_sha256': sha256_file(package_root()/'payload'/'sysgrid_supervisor.py'),
++                    'campaign_controller_version': VERSION,
++                    'campaign_controller_sha256': sha256_file(Path(__file__).resolve()),
++                }
++                for key,value in actual_platform.items():
++                    if platform_identity.get(key)!=value: raise CampaignError('PLATFORM_IDENTITY_FAILURE',f'{key} mismatch')
++                if source_identity.get('branch')!=repo_info.branch or source_identity.get('head')!=repo_info.head:
++                    raise CampaignError('SOURCE_IDENTITY_FAILURE','source identity does not match live repository')
++                platform = {'cross_ledger':cross,'repo':str(repo_info.path),'branch':repo_info.branch,'head':repo_info.head,'state':state,'patch':patch,'engine':str(engine),'engine_self_test':engine_test,'identity':actual_platform}
+             except Exception as exc:
+                 classification = getattr(exc, 'classification', 'PLATFORM_PREFLIGHT_FAILURE')
+                 exit_code = getattr(exc, 'exit_code', 69)
+                 raise CampaignError(classification, str(exc), exit_code) from exc
+-        return {'campaign_id':campaign_id,'classification':classification,'questions':len(questions),'sha256':sha256_file(path),'run':run,'manifest_entries':len(manifest),'platform_preflight':platform}
++        return {'campaign_id':campaign_id,'classification':classification,'questions':len(questions),'sha256':sha256_file(path),'run':run,'manifest_entries':len(manifest),'platform_preflight':platform,'handoff':handoff}
+ 
+ 
+ def select_campaign(explicit: Path|None) -> Path:

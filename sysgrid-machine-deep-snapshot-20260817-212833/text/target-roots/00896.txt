@@ -1,0 +1,276 @@
+ORIGINAL_PATH: /Users/haewonkim/.local/state/sysgrid-supervisor/runs/20260801T223107Z-33025-767000/SUPERVISOR_STATE.json
+ORIGINAL_SHA256: 7615f17dd980254aa21903a7695c2f1c732418e500424507449cde92d65b3c08
+================================================================================
+{
+  "artifact": "/Users/haewonkim/Library/Mobile Documents/com~apple~CloudDocs/SysGrid-Control/Outbox/UPLOAD_DIAGNOSTIC_TO_CHATGPT.zip",
+  "artifact_sha256": "84a2dd6c64541445d7182bf41a3e1bedd2afe9dcfe91f4db8042b75f69522225",
+  "artifact_size": 5336,
+  "attempt": 11,
+  "capsule_cross_ledger": {
+    "changed_path_count": 11,
+    "execution_profile": "development_campaign",
+    "execution_scope": {
+      "changed_paths": [
+        "backend/app/api/workspaces.py",
+        "backend/test_workspace_views.py",
+        "frontend/src/components/far/FARGoldenWorkspace.tsx",
+        "frontend/src/components/far/FARGoldenWorkspaceModel.test.ts",
+        "frontend/src/components/far/FARGoldenWorkspaceModel.ts",
+        "frontend/src/components/shared/GoldenWorkspaceGeometryContract.test.ts",
+        "frontend/src/components/shared/OperationalWorkspace.ts",
+        "frontend/src/components/shared/OperationalWorkspaceCapabilities.test.ts",
+        "frontend/src/components/shared/OperationalWorkspaceShells.tsx",
+        "frontend/tests/far-golden-workspace.spec.ts",
+        "scripts/verify-app.sh"
+      ],
+      "execution_profile": "development_campaign",
+      "targeted_tests": [
+        "playwright:far-golden",
+        "playwright:golden-seeded",
+        "playwright:shell-geometry"
+      ],
+      "targeted_views": [
+        "far",
+        "monitoring"
+      ]
+    },
+    "patch_paths": [
+      "backend/app/api/workspaces.py",
+      "backend/test_workspace_views.py",
+      "frontend/src/components/far/FARGoldenWorkspace.tsx",
+      "frontend/src/components/far/FARGoldenWorkspaceModel.test.ts",
+      "frontend/src/components/far/FARGoldenWorkspaceModel.ts",
+      "frontend/src/components/shared/GoldenWorkspaceGeometryContract.test.ts",
+      "frontend/src/components/shared/OperationalWorkspace.ts",
+      "frontend/src/components/shared/OperationalWorkspaceCapabilities.test.ts",
+      "frontend/src/components/shared/OperationalWorkspaceShells.tsx",
+      "frontend/tests/far-golden-workspace.spec.ts",
+      "scripts/verify-app.sh"
+    ],
+    "post_path_count": 61,
+    "pre_path_count": 57,
+    "protected_path_count": 19,
+    "recipe_ids": [
+      "full-app-gate"
+    ]
+  },
+  "capsule_file": "FAR_WHOLE_VIEW_ATTEMPT_11.sgcap",
+  "capsule_sha256": "f0b7b8b8cd71945c7bac32ecdf3284c9cb7c21835d94587203ad5a08b351d3b2",
+  "capsule_size": 31900,
+  "capsule_stage": "FAR Whole-View Goldenization Development Campaign \u2014 Product Attempt 11",
+  "capsule_title": "Iteration 36 Product Attempt 11: Complete FAR Golden Operational Workspace",
+  "classification": "DUPLICATE_MUTATION_CAPSULE_POST_STATE",
+  "event_timeline": [
+    {
+      "details": {},
+      "elapsed_seconds": 0.007,
+      "event_id": "capsule_selected",
+      "message": "Selecting the one immutable capsule and converging only byte-identical Inbox duplicates.",
+      "notification": {
+        "event_id": "capsule_selected",
+        "presentation_mode": "summary",
+        "required": false,
+        "status": "local_only",
+        "updated_utc": "2026-08-01T22:31:07Z"
+      },
+      "status": "started",
+      "utc": "2026-08-01T22:31:07Z"
+    },
+    {
+      "details": {
+        "changed_path_count": 11,
+        "execution_profile": "development_campaign",
+        "execution_scope": {
+          "changed_paths": [
+            "backend/app/api/workspaces.py",
+            "backend/test_workspace_views.py",
+            "frontend/src/components/far/FARGoldenWorkspace.tsx",
+            "frontend/src/components/far/FARGoldenWorkspaceModel.test.ts",
+            "frontend/src/components/far/FARGoldenWorkspaceModel.ts",
+            "frontend/src/components/shared/GoldenWorkspaceGeometryContract.test.ts",
+            "frontend/src/components/shared/OperationalWorkspace.ts",
+            "frontend/src/components/shared/OperationalWorkspaceCapabilities.test.ts",
+            "frontend/src/components/shared/OperationalWorkspaceShells.tsx",
+            "frontend/tests/far-golden-workspace.spec.ts",
+            "scripts/verify-app.sh"
+          ],
+          "execution_profile": "development_campaign",
+          "targeted_tests": [
+            "playwright:far-golden",
+            "playwright:golden-seeded",
+            "playwright:shell-geometry"
+          ],
+          "targeted_views": [
+            "far",
+            "monitoring"
+          ]
+        },
+        "patch_paths": [
+          "backend/app/api/workspaces.py",
+          "backend/test_workspace_views.py",
+          "frontend/src/components/far/FARGoldenWorkspace.tsx",
+          "frontend/src/components/far/FARGoldenWorkspaceModel.test.ts",
+          "frontend/src/components/far/FARGoldenWorkspaceModel.ts",
+          "frontend/src/components/shared/GoldenWorkspaceGeometryContract.test.ts",
+          "frontend/src/components/shared/OperationalWorkspace.ts",
+          "frontend/src/components/shared/OperationalWorkspaceCapabilities.test.ts",
+          "frontend/src/components/shared/OperationalWorkspaceShells.tsx",
+          "frontend/tests/far-golden-workspace.spec.ts",
+          "scripts/verify-app.sh"
+        ],
+        "post_path_count": 61,
+        "pre_path_count": 57,
+        "protected_path_count": 19,
+        "recipe_ids": [
+          "full-app-gate"
+        ]
+      },
+      "elapsed_seconds": 0.021,
+      "event_id": "capsule_verified",
+      "message": "Capsule archive, manifest, schema, patch identity, and cross-ledger contract are exact.",
+      "notification": {
+        "attempts": 1,
+        "chat_id_suffix": "1055",
+        "event_id": "run_started",
+        "first_attempt_utc": "2026-08-01T22:31:07Z",
+        "message_id": 537,
+        "payload_sha256": "d3fad02c3c21db2134a83b0d19d92b172a99ae12373a9917d2f4d8f4ec5a54a8",
+        "required": true,
+        "status": "delivered",
+        "updated_utc": "2026-08-01T22:31:08Z"
+      },
+      "status": "passed",
+      "utc": "2026-08-01T22:31:08Z"
+    },
+    {
+      "details": {},
+      "elapsed_seconds": 0.84,
+      "event_id": "preflight_started",
+      "message": "Running independent platform checks and exact repository-state proof.",
+      "notification": {
+        "event_id": "preflight_started",
+        "presentation_mode": "summary",
+        "required": false,
+        "status": "local_only",
+        "updated_utc": "2026-08-01T22:31:08Z"
+      },
+      "status": "started",
+      "utc": "2026-08-01T22:31:08Z"
+    }
+  ],
+  "exit_code": 73,
+  "issue": "OUT-31",
+  "iteration": 36,
+  "last_progress_event": "preflight_started",
+  "last_progress_message": "Running independent platform checks and exact repository-state proof.",
+  "last_progress_status": "started",
+  "last_progress_utc": "2026-08-01T22:31:08Z",
+  "message": "repository exactly matches this mutation capsule's declared post-state; the mutation was already applied by an earlier run and replay is prohibited. The prior canonical review ZIP is preserved. Use 'sg recover-artifact <run-id>' to republish an earlier run artifact without executing the product again.",
+  "monotonic_started": 3900016.927656166,
+  "notification_events": {
+    "capsule_selected": {
+      "event_id": "capsule_selected",
+      "presentation_mode": "summary",
+      "required": false,
+      "status": "local_only",
+      "updated_utc": "2026-08-01T22:31:07Z"
+    },
+    "capsule_verified": {
+      "attempts": 1,
+      "chat_id_suffix": "1055",
+      "event_id": "run_started",
+      "first_attempt_utc": "2026-08-01T22:31:07Z",
+      "message_id": 537,
+      "payload_sha256": "d3fad02c3c21db2134a83b0d19d92b172a99ae12373a9917d2f4d8f4ec5a54a8",
+      "required": true,
+      "status": "delivered",
+      "updated_utc": "2026-08-01T22:31:08Z"
+    },
+    "preflight_started": {
+      "event_id": "preflight_started",
+      "presentation_mode": "summary",
+      "required": false,
+      "status": "local_only",
+      "updated_utc": "2026-08-01T22:31:08Z"
+    },
+    "run_failed": {
+      "attempts": 1,
+      "chat_id_suffix": "1055",
+      "event_id": "run_failed",
+      "first_attempt_utc": "2026-08-01T22:31:08Z",
+      "message_id": 538,
+      "payload_sha256": "4904a0906c64fb9e6c57b6e7d09828840ca478818be590a7098fe575efc02571",
+      "required": false,
+      "status": "delivered",
+      "updated_utc": "2026-08-01T22:31:08Z"
+    }
+  },
+  "notification_policy": {
+    "delivery_semantics": "durably-deduplicated-at-least-once",
+    "engine_heartbeat_seconds": 120,
+    "max_messages_per_run": 3,
+    "presentation_mode": "summary",
+    "registered_events": 24,
+    "required_before_engine": true,
+    "telegram_heartbeats": false
+  },
+  "original_capsule": "/Users/haewonkim/Library/Mobile Documents/com~apple~CloudDocs/SysGrid-Control/Inbox/FAR_WHOLE_VIEW_ATTEMPT_11.sgcap",
+  "pid": 33025,
+  "preflight": {
+    "failures": {
+      "repository": {
+        "classification": "DUPLICATE_MUTATION_CAPSULE_POST_STATE",
+        "exit_code": 73,
+        "message": "repository exactly matches this mutation capsule's declared post-state; the mutation was already applied by an earlier run and replay is prohibited. The prior canonical review ZIP is preserved. Use 'sg recover-artifact <run-id>' to republish an earlier run artifact without executing the product again."
+      }
+    },
+    "results": {
+      "engine": {
+        "path": "/Users/haewonkim/.local/lib/sysgrid-runner/1.0.4/sysgrid_runner.py",
+        "self_test": {
+          "engine_version": "1.0.4",
+          "result": "PASS",
+          "tests": [
+            "safe-path",
+            "manifest",
+            "corruption"
+          ]
+        }
+      },
+      "storage": {
+        "control_free": 59552460800,
+        "local_free": 59552460800,
+        "required": 536870912
+      }
+    }
+  },
+  "resource_plan": {
+    "backend_workers": 4,
+    "cpu_count": 12,
+    "e2e_workers": 2,
+    "frontend_workers": 4,
+    "memory_bytes": 19327352832,
+    "preflight_workers": 24,
+    "reserve_memory_bytes": 2147483648,
+    "test_cpu_budget": 11,
+    "usable_memory_bytes": 17179869184
+  },
+  "run_id": "20260801T223107Z-33025-767000",
+  "safe_cleanup": {
+    "inspected": 0,
+    "removed": 0
+  },
+  "safe_retry_count": 0,
+  "stage": "preflight",
+  "staged_capsule": "/Users/haewonkim/.local/state/sysgrid-supervisor/runs/20260801T223107Z-33025-767000/input/FAR_WHOLE_VIEW_ATTEMPT_11.sgcap",
+  "started_utc": "2026-08-01T22:31:07Z",
+  "state": "FAILED_REVIEW_READY",
+  "supervisor_version": "2.1.4",
+  "telegram": {
+    "chat_id_suffix": "1055",
+    "configured": true,
+    "source": "/Users/haewonkim/.config/sysgrid-supervisor/telegram.json"
+  },
+  "updated_utc": "2026-08-01T22:31:08Z",
+  "work_dir": "/Users/haewonkim/.local/state/sysgrid-supervisor/runs/20260801T223107Z-33025-767000"
+}

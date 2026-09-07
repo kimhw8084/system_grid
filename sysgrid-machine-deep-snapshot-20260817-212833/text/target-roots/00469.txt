@@ -1,0 +1,11 @@
+ORIGINAL_PATH: /Users/haewonkim/.local/state/sysgrid-workstation/profiles/work/runs/20260811T024021Z/frontend.log
+ORIGINAL_SHA256: 0e0ce78a6fcd397eaed12d8a3090d29ef62f4287154ef653c1c36becf6fe6770
+================================================================================
+
+> system-grid-frontend@1.2.4 dev
+> vite --host --host 127.0.0.1 --port 5173
+
+
+  VITE v5.4.21  ready in 446 ms
+
+  ➜  Local:   http://127.0.0.1:5173/

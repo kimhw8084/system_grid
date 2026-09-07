@@ -1,0 +1,34 @@
+ORIGINAL_PATH: /Users/haewonkim/.local/state/sysgrid-supervisor/runs/20260808T020703Z-11221-149000/preflight.json
+ORIGINAL_SHA256: 2a65097bae1ab55e6aec08bfcc7a27a54778cb24c9a90eaacb359c98ddf61b7b
+================================================================================
+{
+  "declared_state": {
+    "dirty_path_count": 3,
+    "pre_hash_count": 3,
+    "protected_hash_count": 3
+  },
+  "engine_self_test": {
+    "engine_version": "1.1.1",
+    "result": "PASS",
+    "tests": [
+      "safe-path",
+      "manifest",
+      "corruption",
+      "canonical-dirty-paths",
+      "aggregate-recipes"
+    ]
+  },
+  "patch": {
+    "applicable": true,
+    "forward_diagnostic": "Checking patch scripts/verify-app.sh...\nwarning: scripts/verify-app.sh has type 100755, expected 100644",
+    "forward_exit_code": 0,
+    "reverse_applicable": false,
+    "reverse_diagnostic": "Checking patch scripts/verify-app.sh...\nwarning: scripts/verify-app.sh has type 100755, expected 100644\nerror: while searching for:\nset -euo pipefail\n\nROOT_DIR=\"$(cd \"$(dirname \"${BASH_SOURCE[0]}\")/..\" && pwd)\"\ncd \"$ROOT_DIR\"\n\nBASE=\"3c286ff96da8aeb53b029b767bcd358556ec4fda\"\nREPO=\"kimhw8084/system_grid\"\nWORKFLOW=\"sysgrid-public-outbox-relay.yml\"\nBRIDGE_PATH=\"scripts/sysgrid-relay/relay_bridge_v1.py\"\nWORKFLOW_PATH=\".github/workflows/sysgrid-public-outbox-relay.yml\"\nVERIFIER_PATH=\"scripts/sysgrid-relay/prepare_outbox_relay.py\"\nVERIFY_PATH=\"scripts/verify-app.sh\"\nBASE_VERIFY_SHA=\"3c8735e2f4c1ef4ceb167facceabea80fd052e64a0b7737012b2cf2b075ddc16\"\nBASE_WORKFLOW_SHA=\"b366f37646579852ff6d1147d55d52b01ab23b066e55ff5fc4a33445ea05ec9d\"\nACCEPTED_VERIFIER_SHA=\"12a3c690a434d30ff0f9d2c05ba0b21f302fd8508f8c183614bf97223c22ab35\"\nTARGET_BRIDGE_SHA=\"b6a5400c30353952164e5d0dd8d66c5b153e08f385b75360fdb6abbdc2ed10a8\"\nTARGET_WORKFLOW_SHA=\"765e1a79b9cd1c2614e3c2ef748b7bd99ea1e0c010c2e32a64f064cd3a0c1b5a\"\nHISTORY_BASENAME=\"20260807T133122Z-29060-374000__product-review__51db2cfc3733__bfbd49e93bc2.zip\"\nSOURCE_PAYLOAD_SHA=\"bfbd49e93bc299dc2a17777a15679c47d8561edd61b8b5f3f533f28218b14cae\"\nSOURCE_PAYLOAD_SIZE=\"51592321\"\nEXPECTED_REVIEW_SHA=\"06878fd22defadf7ff97f10cdf741dde12ce3a241f5a4b2dcf0c0f3c617a7eda\"\nEXPECTED_REVIEW_SIZE=\"51599756\"\nENGINE_RUN_ID=\"20260807T133122Z-29060-374000\"\nPROTECTED_PATHS=(\n  \"frontend/src/components/ServicesReal.tsx\"\n  \"frontend/src/components/shared/ServicesDirtyGuardRecovery.test.tsx\"\n  \"frontend/tests/shell-and-search.spec.ts\"\n)\nPROTECTED_SHAS=(\n  \"2d309c0a3e772d8893867f6fcc8b23295e18d5ff32ce092e39963804b38a0321\"\n  \"d9d7490c98ed59f74dbba1560fed581e06bf401b4067dbab7d7c107ab316e602\"\n  \"efc9ae41a2de76c67143b3b6dc107ff12785cef196d9cbe428176039655b7cbd\"\n)\nBRIDGE_B64='H4sIAAAAAAAC/+09a3PbOJLf/Ss4vKuLlEgK9bTsG82Vx5YT7Tq214/ZzXh8LIqkbK4lUktSSRyv//t140UABCU5mbuau7okFVt4NBqNRqMb3Q39yw9vV1n6dhrFb8P4k7V8zO+TuLszS5OF5bqzVb5KQ9e1osUySXPLi+Mk9/IoibOdHV6W3i29NAv5Zz9ZPvLf773sfh5N+ce/",
+    "reverse_exit_code": 1
+  },
+  "storage": {
+    "control_free": 31470088192,
+    "local_free": 31470088192,
+    "required": 3221225472
+  }
+}

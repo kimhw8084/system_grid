@@ -1,0 +1,23 @@
+ORIGINAL_PATH: /Users/haewonkim/.local/state/sysgrid-supervisor/runs/20260805T104339Z-2079-216000/patch.diff
+ORIGINAL_SHA256: aa11bac23c6debba920b8f072be0edc41e2075b7914b4c4874dc8d686403ca16
+================================================================================
+diff --git a/frontend/scripts/check-canonical-verification-contract.cjs b/frontend/scripts/check-canonical-verification-contract.cjs
+index ca6a348be1518984c6d1538b6505dd329854f23d..cfe9b1a89f1af3004ee12fb8f435539a66b06a38 100644
+--- a/frontend/scripts/check-canonical-verification-contract.cjs
++++ b/frontend/scripts/check-canonical-verification-contract.cjs
+@@ -48,7 +48,14 @@ requireText(verify, 'emit_progress frontend_started', 'verify-app.sh must publis
+ requireText(verify, 'emit_progress playwright_started', 'verify-app.sh must publish Playwright progress')
+ requireText(verify, 'npm run test:coverage -- --maxWorkers "$FRONTEND_WORKERS"', 'verify-app.sh must consume the bounded frontend worker budget')
+ requireText(verify, 'VITE_API_BASE_URL="$BACKEND_ORIGIN" VITE_FRONTEND_ORIGIN="$FRONTEND_ORIGIN" npm run build', 'verify-app.sh must bind the production build to the canonical runtime')
+-requireText(verify, 'npm run preview -- --host "$FRONTEND_HOST" --port "$FRONTEND_PORT" --strictPort', 'verify-app.sh must serve the exact production build')
++requireText(verify, 'local vite_bin="$FRONTEND_DIR/node_modules/.bin/vite"', 'verify-app.sh must own the isolated production frontend through the direct Vite executable')
++requireText(verify, '"$vite_bin" preview --host "$FRONTEND_HOST" --port "$FRONTEND_PORT" --strictPort', 'verify-app.sh must serve the exact production build through direct Vite ownership')
++requireText(verify, 'wait_for_listener "$FRONTEND_PORT" "isolated production frontend"', 'verify-app.sh must prove the isolated production frontend listener before HTTP readiness')
++requireText(verify, 'wait_for_http "$FRONTEND_URL" "isolated production frontend"', 'verify-app.sh must prove isolated production frontend HTTP readiness')
++requireText(verify, "curl --noproxy '*' --connect-timeout 1 --max-time 3 -fsS \"$url\"", 'verify-app.sh must bypass proxies and bound loopback HTTP probes')
++requireText(verify, 'readiness_diagnostics', 'verify-app.sh must capture deterministic readiness diagnostics')
++requireText(verify, 'launch_frontend_with_readiness', 'verify-app.sh must use the bounded frontend readiness launch path')
++if (verify.includes('npm run preview --')) failures.push('verify-app.sh must not restore the npm preview wrapper')
+ if (/^\s*npm run check:shell-contracts\s*$/m.test(verify)) failures.push('verify-app.sh must not run the shell contract twice')
+ if (verify.includes('npm run dev --')) failures.push('verify-app.sh must not validate a development server after production build')
+ requireText(verify, 'assert_canonical_runtime_evidence', 'verify-app.sh must validate runtime-binding evidence')

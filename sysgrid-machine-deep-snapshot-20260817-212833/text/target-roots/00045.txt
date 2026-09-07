@@ -1,0 +1,57 @@
+ORIGINAL_PATH: /Users/haewonkim/.local/share/sysgrid-runner/continuity-v1.0.7/transition_cleanup.py
+ORIGINAL_SHA256: 63a86d1baba15e569e697ea7bf51208a356194b83dad05f2604a63f82a51e8e8
+================================================================================
+#!/usr/bin/env python3
+from __future__ import annotations
+import argparse, datetime, hashlib, json, os, pathlib, shutil
+OLD_VERSIONS=("1.0.5","1.0.6")
+
+def sha256_file(p):
+    h=hashlib.sha256()
+    with p.open('rb') as f:
+        for b in iter(lambda:f.read(1024*1024),b''): h.update(b)
+    return h.hexdigest()
+
+def quarantine_legacy_state(control_root:pathlib.Path)->dict:
+    state=control_root/'State'; qroot=state/'Quarantine'; qroot.mkdir(parents=True,exist_ok=True)
+    lock=state/'continuity-active.lock'; owner=None; launch=None; data={}; reasons=[]
+    if lock.is_dir():
+        try: owner=(lock/'launch_id').read_text(encoding='utf-8').strip() or None
+        except OSError: owner=None
+    if owner:
+        candidate=state/f'continuity-launch-{owner}.json'
+        if candidate.is_file():
+            launch=candidate
+            try: data=json.loads(candidate.read_text(encoding='utf-8'))
+            except Exception: data={}; reasons.append('malformed-launch-record')
+    version=str(data.get('continuity_version') or '')
+    watcher=str(data.get('watcher') or '')
+    old=version in OLD_VERSIONS or any(f'/continuity-v{v}/' in watcher for v in OLD_VERSIONS)
+    complete=bool(data.get('watcher_pid') and data.get('launch_id') and data.get('expected_capsule_name') and data.get('expected_capsule_sha256') and data.get('expected_capsule_size'))
+    entries=[]
+    if lock.exists() and old and not complete:
+        qid=owner or 'pidless-legacy'
+        dest=qroot/qid; dest.mkdir(parents=True,exist_ok=True)
+        if launch and launch.exists():
+            ld=dest/launch.name
+            if not ld.exists(): os.replace(launch,ld)
+            entries.append({'kind':'launch_record','original':str(launch),'quarantined':str(ld),'sha256':sha256_file(ld),'size':ld.stat().st_size})
+        lock_dest=dest/'continuity-active.lock'
+        if lock.exists():
+            if lock_dest.exists(): shutil.rmtree(lock_dest)
+            os.replace(lock,lock_dest)
+            entries.append({'kind':'lock','original':str(lock),'quarantined':str(lock_dest)})
+        reasons.append('legacy-pidless-incomplete-immutable-identity')
+    report={'schema_version':'1.0','control_root':str(control_root),'old_versions':list(OLD_VERSIONS),'legacy_state_discovered':bool(old and lock.exists() or entries),'legacy_version':version or None,'lock_owner':owner,'complete_current_identity':complete,'quarantined':entries,'authority_removed':bool(entries),'process_discovery_used':False,'process_inferred':False,'process_signaled':False,'terminated':[],'killed':[],'candidates':[],'lock_removed':not lock.exists(),'blocked_current_run':False,'attached_foreign_output':False,'reasons':reasons,'status':'PASS'}
+    return report
+
+def terminate_exact_old_watchers(control_root:pathlib.Path)->dict:
+    return quarantine_legacy_state(control_root)
+
+def main():
+    ap=argparse.ArgumentParser(); ap.add_argument('--control-root',required=True); ap.add_argument('--report',required=True); a=ap.parse_args()
+    root=pathlib.Path(a.control_root).expanduser().resolve(); r=quarantine_legacy_state(root)
+    out=pathlib.Path(a.report); out.parent.mkdir(parents=True,exist_ok=True); out.write_text(json.dumps(r,indent=2)+'\n',encoding='utf-8')
+    print(f"PASS: legacy state quarantine; quarantined={len(r['quarantined'])}, process_inferred=false, process_signaled=false")
+    return 0
+if __name__=='__main__': raise SystemExit(main())

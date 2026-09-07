@@ -1,0 +1,34 @@
+ORIGINAL_PATH: /Users/haewonkim/.local/state/sysgrid-supervisor/runs/20260803T033944Z-15861-201000/preflight.json
+ORIGINAL_SHA256: 9f70a175d32d0f0418abf94d092691f1c763182d810d0334b8139fc376b2b45b
+================================================================================
+{
+  "declared_state": {
+    "dirty_path_count": 65,
+    "pre_hash_count": 65,
+    "protected_hash_count": 22
+  },
+  "engine_self_test": {
+    "engine_version": "1.1.1",
+    "result": "PASS",
+    "tests": [
+      "safe-path",
+      "manifest",
+      "corruption",
+      "canonical-dirty-paths",
+      "aggregate-recipes"
+    ]
+  },
+  "patch": {
+    "applicable": true,
+    "forward_diagnostic": "Checking patch backend/alembic/versions/e3f4a5b6c7d8_harden_far_integrity_and_recovery.py...\nChecking patch backend/app/api/far.py...\nChecking patch backend/app/api/import_engine.py...\nChecking patch backend/app/models/models.py...\nChecking patch backend/app/schemas/schemas.py...\nChecking patch backend/app/services/__init__.py...\nChecking patch backend/app/services/far_exchange.py...\nChecking patch backend/app/services/far_service.py...\nChecking patch backend/test_cross_module_integrations.py...\nChecking patch backend/test_far_import_export.py...\nChecking patch backend/test_far_integrity.py...\nChecking patch backend/test_far_migration.py...\nChecking patch backend/test_far_permissions_and_tenants.py...\nChecking patch backend/test_far_workflows.py...\nChecking patch frontend/src/components/AuditLogs.tsx...\nChecking patch frontend/src/components/Dashboard.tsx...\nChecking patch frontend/src/components/FAR.tsx...\nChecking patch frontend/src/components/Knowledge.tsx...\nChecking patch frontend/src/components/assets/AssetDetailsView.tsx...\nChecking patch frontend/src/components/far/FARDomain.ts...\nChecking patch frontend/src/components/far/FARGoldenWorkspace.tsx...\nChecking patch frontend/src/components/far/FARGoldenWorkspaceModel.test.ts...\nChecking patch frontend/src/components/far/FARGoldenWorkspaceModel.ts...\nChecking patch frontend/src/components/far/FARLifecycle.ts...\nChecking patch frontend/src/components/shared/FARModals.tsx...\nChecking patch frontend/src/components/shared/FARResearchGoldenPresentationContract.test.ts...\nChecking patch frontend/src/components/shared/LayoutPrimitives.tsx...\nChecking patch frontend/src/components/shared/OperationalDataGrid.tsx...\nChecking patch frontend/src/components/shared/OperationalWorkspaceShells.tsx...\nChecking patch frontend/tests/far-golden-workspace.spec.ts...\nChecking patch frontend/tests/far-workflows.spec.ts...\nChecking patch frontend/tests/helpers/sysgrid.ts...\nChecking patch frontend/tests/resilience/far-chaos.spec.ts...",
+    "forward_exit_code": 0,
+    "reverse_applicable": false,
+    "reverse_diagnostic": "Checking patch frontend/tests/resilience/far-chaos.spec.ts...\nerror: while searching for:\n    mode_ids: [far.id],\n  });\n\n  await page.goto(`/far?far=${far.id}`);\n  const roadmapTab = page.getByRole('button', { name: /Strategic Roadmap/i });\n  await expect(roadmapTab).toBeVisible();\n  await roadmapTab.click();\n\nerror: patch failed: frontend/tests/resilience/far-chaos.spec.ts:28\nerror: frontend/tests/resilience/far-chaos.spec.ts: patch does not apply\nChecking patch frontend/tests/helpers/sysgrid.ts...\nerror: while searching for:\n}\n\nconst apiBase = testApiBase\n\nfunction farIdempotencyKey(scope: string) {\n  return `pw-far-${scope}-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`\n}\nconst apiOrigin = new URL(apiBase).origin\nexport const testUserId = process.env.USER_ID || 'haewon.kim'\nexport const testTenantId = process.env.PW_TENANT_ID || '1'\n\nerror: patch failed: frontend/tests/helpers/sysgrid.ts:19\nerror: frontend/tests/helpers/sysgrid.ts: patch does not apply\nChecking patch frontend/tests/far-workflows.spec.ts...\nerror: while searching for:\n      detection: 2,\n    })\n\n    await page.goto(`/far?far=${far.id}`)\n    await expect(page.locator('[data-workspace=\"far\"]')).toBeVisible()\n    await expect(page).toHaveURL(new RegExp(`/far\\\\?id=${far.id}$`))\n    await expect(page.getByRole('button', { name: /Causal Forensics/i })).toBeVisible()\n\nerror: patch failed: frontend/tests/far-workflows.spec.ts:24\nerror: frontend/tests/far-workflows.spec.ts: patch does not apply\nChecking patch frontend/tests/far-golden-workspace.spec.ts...\nerror: while searching for:\n\nasync function waitForFAR(page: any) {\n  await waitForAppIdle(page)\n  const workspace = page.locator('[data-workspace=\"far\"]')\n  await expect(workspace).toBeVisible({ timeout: 15_000 })\n  await expect(workspace.locator('[data-far-loading=\"true\"]')).toBeHidden({ timeout: 15_000 })\n  return workspace\n}\n\ntest.describe('FAR whole-view golden workspace', () => {\n  test('retains the detailed FAR runtime inside the Monitor",
+    "reverse_exit_code": 1
+  },
+  "storage": {
+    "control_free": 56568655872,
+    "local_free": 56568655872,
+    "required": 3221225472
+  }
+}

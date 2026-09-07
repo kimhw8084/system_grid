@@ -1,0 +1,34 @@
+ORIGINAL_PATH: /Users/haewonkim/.local/state/sysgrid-supervisor/runs/20260804T000803Z-39212-674000/preflight.json
+ORIGINAL_SHA256: 188736f167e5f85193710e080a355e8f08a296c60617351bb6d1cb7afdf3d85a
+================================================================================
+{
+  "declared_state": {
+    "dirty_path_count": 95,
+    "pre_hash_count": 95,
+    "protected_hash_count": 94
+  },
+  "engine_self_test": {
+    "engine_version": "1.1.1",
+    "result": "PASS",
+    "tests": [
+      "safe-path",
+      "manifest",
+      "corruption",
+      "canonical-dirty-paths",
+      "aggregate-recipes"
+    ]
+  },
+  "patch": {
+    "applicable": true,
+    "forward_diagnostic": "Checking patch frontend/src/components/FAR.tsx...",
+    "forward_exit_code": 0,
+    "reverse_applicable": false,
+    "reverse_diagnostic": "Checking patch frontend/src/components/FAR.tsx...\nerror: while searching for:\n\n  const columnDefs = useMemo(() => [\n    { \n      colId: \"selection\",\n      headerName: \"\", \n      width: 50,\n      checkboxSelection: true, \n\nerror: patch failed: frontend/src/components/FAR.tsx:595\nerror: frontend/src/components/FAR.tsx: patch does not apply",
+    "reverse_exit_code": 1
+  },
+  "storage": {
+    "control_free": 56183189504,
+    "local_free": 56183189504,
+    "required": 3221225472
+  }
+}

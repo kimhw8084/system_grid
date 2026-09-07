@@ -1,0 +1,34 @@
+ORIGINAL_PATH: /Users/haewonkim/.local/state/sysgrid-supervisor/runs/20260804T223738Z-98558-119000/patch.diff
+ORIGINAL_SHA256: 4c9b4a46f26b18237c263d962c33774021b9330b18931a01db1f40f7b759b194
+================================================================================
+diff --git a/frontend/src/components/FAR.tsx b/frontend/src/components/FAR.tsx
+index 2465cd8..21a93d4 100644
+--- a/frontend/src/components/FAR.tsx
++++ b/frontend/src/components/FAR.tsx
+@@ -1376,7 +1376,13 @@ export default function FAR() {
+           rows={filteredModes || []}
+           columnDefs={columnDefs as any}
+           runtime={farGridRuntime}
+-          onFirstDataRendered={(event) => synchronizeAnalyticalFocus(event.api)}
++          onFirstDataRendered={(event) => {
++            if (!firstDataColumnLayoutAppliedRef.current) {
++              firstDataColumnLayoutAppliedRef.current = true
++              applyInitialColumnLayout(event.api)
++            }
++            synchronizeAnalyticalFocus(event.api)
++          }}
+           onRowDataUpdated={(event) => synchronizeAnalyticalFocus(event.api)}
+           quickFilterText={searchTerm}
+           fontSize={fontSize}
+@@ -1437,11 +1443,6 @@ export default function FAR() {
+                   ? { tone: 'info', title: 'Unsaved view changes', description: 'The current FAR layout differs from the active saved view.' }
+                   : undefined,
+           })}
+-          onFirstDataRendered={(event: any) => {
+-            if (firstDataColumnLayoutAppliedRef.current) return
+-            firstDataColumnLayoutAppliedRef.current = true
+-            applyInitialColumnLayout(event.api)
+-          }}
+           onSelectionChanged={(event) => setSelectedIds(event?.api?.getSelectedNodes().map((node: any) => Number(node.data?.id)).filter(Boolean) || [])}
+           suppressRowClickSelection={false}
+         />

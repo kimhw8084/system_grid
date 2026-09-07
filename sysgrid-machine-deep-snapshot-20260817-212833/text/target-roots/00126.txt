@@ -1,0 +1,49 @@
+ORIGINAL_PATH: /Users/haewonkim/.local/share/sysgrid-runner/backups/20260731T194319Z-pre-launcher-v104-repair/lib/1.0.4/trusted_recipes.v1.json
+ORIGINAL_SHA256: fa6723810e7bd19246fd253459d74d91722a39b4194afbe58ed8d0c2c12e6d10
+================================================================================
+{
+  "schema_version": "1.0",
+  "engine_version": "1.0.3",
+  "recipes": [
+    {
+      "id": "shell-syntax",
+      "purpose": "Validate scripts/start-local.sh with Bash syntax parser",
+      "default_timeout_seconds": 60
+    },
+    {
+      "id": "runtime-origin-tests",
+      "purpose": "Run focused runtime-origin and backend-main pytest proof",
+      "default_timeout_seconds": 900
+    },
+    {
+      "id": "forwarded-config-proof",
+      "purpose": "Resolve forwarded Host/CORS configuration without starting services",
+      "default_timeout_seconds": 120
+    },
+    {
+      "id": "frontend-test-linter",
+      "purpose": "Run the canonical frontend anti-fragile test architecture linter before expensive suites",
+      "default_timeout_seconds": 300
+    },
+    {
+      "id": "frontend-typecheck",
+      "purpose": "Run frontend typecheck",
+      "default_timeout_seconds": 900
+    },
+    {
+      "id": "frontend-diagnostics",
+      "purpose": "Run focused API/bootstrap diagnostics Vitest proof",
+      "default_timeout_seconds": 900
+    },
+    {
+      "id": "frontend-build",
+      "purpose": "Run production frontend build",
+      "default_timeout_seconds": 1200
+    },
+    {
+      "id": "full-app-gate",
+      "purpose": "Run repository canonical full application verification",
+      "default_timeout_seconds": 1800
+    }
+  ]
+}

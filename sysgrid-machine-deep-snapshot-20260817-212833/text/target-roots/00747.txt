@@ -1,0 +1,185 @@
+ORIGINAL_PATH: /Users/haewonkim/.local/state/sysgrid-supervisor/runs/20260801T234921Z-24504-103000/patch.diff
+ORIGINAL_SHA256: efc3b90d177f7bdab7ca190cc3b030f57c7b935723c63ae0d3581a7538fa8077
+================================================================================
+diff --git a/frontend/src/components/far/FARGoldenWorkspace.tsx b/frontend/src/components/far/FARGoldenWorkspace.tsx
+--- a/frontend/src/components/far/FARGoldenWorkspace.tsx
++++ b/frontend/src/components/far/FARGoldenWorkspace.tsx
+@@ -196,7 +196,7 @@
+   const [density, setDensity] = useState<'comfortable' | 'compact'>('comfortable')
+   const [showFilterBar, setShowFilterBar] = useState(true)
+   const [showDisplayControls, setShowDisplayControls] = useState(false)
+-  const [showInsights, setShowInsights] = useState(true)
++  const [showInsights, setShowInsights] = useState(false)
+   const [loadState, setLoadState] = useState<'loading' | 'ready' | 'error'>('loading')
+   const [syncState, setSyncState] = useState<'synced' | 'saving' | 'offline' | 'error'>('synced')
+   const [errorMessage, setErrorMessage] = useState('')
+@@ -458,6 +458,14 @@
+               {savedViews.map((view) => <option key={view.id} value={`saved:${view.id}`}>{view.name}</option>)}
+             </optgroup>
+           ) : null}
++        </select>
++        <select
++          aria-label="FAR analytical mode"
++          value={filters.mode}
++          onChange={(event) => setFilters((current) => ({ ...current, mode: event.target.value as FARWorkspaceMode }))}
++          className="h-10 min-w-[150px] rounded-lg border border-white/10 bg-[#0b1220] px-3 text-xs font-medium text-slate-200 outline-none focus:border-indigo-400/50"
++        >
++          {experience.modes.map((mode) => <option key={mode.key} value={mode.key}>{mode.label}</option>)}
+         </select>
+       </>
+     ),
+@@ -541,32 +549,6 @@
+       <PageHeader {...header} />
+       <WorkspaceCommandBar {...commandBar} />
+ 
+-      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4" data-far-summary="true">
+-        <MetricCard label="Failure modes" value={records.length} detail="Tenant-scoped register" icon={<BarChart3 size={17} />} />
+-        <MetricCard label="High risk" value={highRiskCount} detail="RPN 200 or greater" icon={<ShieldAlert size={17} />} />
+-        <MetricCard label="Overdue" value={overdueCount} detail="Open for 30+ days" icon={<Clock3 size={17} />} />
+-        <MetricCard label="Unassigned" value={unassignedCount} detail="Owner action required" icon={<UserRoundX size={17} />} />
+-      </div>
+-
+-      <div className="flex flex-wrap items-center gap-2 rounded-lg border border-white/5 bg-white/[0.02] p-2" role="tablist" aria-label="FAR analytical mode">
+-        {experience.modes.map((mode) => (
+-          <button
+-            key={mode.key}
+-            type="button"
+-            role="tab"
+-            aria-selected={filters.mode === mode.key}
+-            onClick={() => setFilters((current) => ({ ...current, mode: mode.key }))}
+-            className={join(
+-              'rounded-md px-3 py-2 text-[10px] font-semibold transition',
+-              filters.mode === mode.key ? 'bg-indigo-500/20 text-indigo-100 ring-1 ring-indigo-400/25' : 'text-slate-400 hover:bg-white/[0.05] hover:text-slate-200',
+-            )}
+-          >
+-            {mode.label}
+-          </button>
+-        ))}
+-        <span className="ml-auto hidden text-[10px] text-slate-500 md:inline">{experience.modes.find((mode) => mode.key === filters.mode)?.description}</span>
+-      </div>
+-
+       <div
+         className={join(gridClassName, 'rounded-lg')}
+         style={{ minHeight: '350px' }}
+@@ -577,8 +559,8 @@
+         data-far-grid="true"
+       >
+         <div className={gridContentClassName} data-golden-grid-content="true">
+-          <div className={join('grid h-full min-h-0 w-full grid-cols-1', (showInsights || selectedRecord) && 'xl:grid-cols-[minmax(0,1fr)_360px]')}>
+-            <div className="relative min-h-0 min-w-0 border-white/5 xl:border-r">
++          <div className="relative grid h-full min-h-0 w-full grid-cols-1">
++            <div className="relative min-h-0 min-w-0">
+               {loadState === 'loading' ? (
+                 <div className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-3 bg-[#020617]/80 text-slate-300 backdrop-blur-sm" data-far-loading="true">
+                   <RefreshCcw size={22} className="animate-spin text-indigo-300" />
+@@ -624,7 +606,7 @@
+             </div>
+ 
+             {showInsights || selectedRecord ? (
+-            <aside className="min-h-0 overflow-y-auto bg-black/15 p-4 custom-scrollbar" aria-label="FAR record detail" data-far-detail-panel="true">
++            <aside className="absolute inset-y-0 right-0 z-20 w-[min(360px,100%)] overflow-y-auto border-l border-white/10 bg-[#07101d]/95 p-4 shadow-2xl backdrop-blur custom-scrollbar" aria-label="FAR record detail" data-far-detail-panel="true">
+               {selectedRecord ? (
+                 <div className="space-y-5" data-far-detail-record={selectedRecord.id}>
+                   <div className="flex items-start justify-between gap-3">
+@@ -665,11 +647,27 @@
+                   <button type="button" onClick={() => void copyLink()} className="inline-flex w-full items-center justify-center gap-2 rounded-lg border border-indigo-400/20 bg-indigo-500/10 px-3 py-2.5 text-xs font-semibold text-indigo-100 hover:bg-indigo-500/15"><Link2 size={14} /> Copy dossier link</button>
+                 </div>
+               ) : (
+-                <div className="flex h-full min-h-[260px] flex-col items-center justify-center gap-4 text-center" data-far-insights="true">
+-                  <div className="rounded-xl border border-indigo-400/15 bg-indigo-500/10 p-3 text-indigo-200"><BarChart3 size={24} /></div>
+-                  <div>
+-                    <h3 className="text-sm font-semibold text-slate-200">Risk posture</h3>
+-                    <p className="mt-1 text-xs leading-5 text-slate-500">Select a failure mode to open its operational dossier, causes, controls, and linked evidence.</p>
++                <div className="space-y-4" data-far-insights="true">
++                  <div className="flex items-start justify-between gap-3">
++                    <div>
++                      <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-500">FAR insights</p>
++                      <h3 className="mt-1 text-sm font-semibold text-slate-200">Risk posture</h3>
++                      <p className="mt-1 text-xs leading-5 text-slate-500">The golden grid remains fixed while this contextual panel opens above it.</p>
++                    </div>
++                    <button type="button" onClick={() => setShowInsights(false)} aria-label="Close FAR insights" className="rounded-md border border-white/10 p-2 text-slate-400 hover:bg-white/[0.05] hover:text-white"><X size={14} /></button>
++                  </div>
++                  <div className="grid grid-cols-2 gap-2" data-far-summary="true">
++                    {[
++                      ['Failure modes', records.length],
++                      ['High risk', highRiskCount],
++                      ['Overdue', overdueCount],
++                      ['Unassigned', unassignedCount],
++                    ].map(([label, value]) => (
++                      <div key={String(label)} className="rounded-lg border border-white/5 bg-black/20 p-3">
++                        <p className="text-[9px] font-semibold uppercase tracking-[0.12em] text-slate-500">{label}</p>
++                        <p className="mt-1 text-lg font-semibold text-slate-100">{value}</p>
++                      </div>
++                    ))}
+                   </div>
+                   <div className="w-full space-y-2 text-left">
+                     {experience.presets.slice(1).map((preset) => {
+diff --git a/frontend/tests/far-golden-workspace.spec.ts b/frontend/tests/far-golden-workspace.spec.ts
+--- a/frontend/tests/far-golden-workspace.spec.ts
++++ b/frontend/tests/far-golden-workspace.spec.ts
+@@ -17,20 +17,15 @@
+ 
+     const workspace = page.locator('[data-far-golden-workspace="true"]')
+     await expect(workspace.locator('[data-golden-command-bar="true"]')).toBeVisible()
+-    await expect(workspace.locator('[data-far-summary="true"]')).toBeVisible()
+-    const totalMetric = workspace.locator('[data-far-metric="failure-modes"]')
+-    await expect(totalMetric).toBeVisible()
+-    await expect.poll(async () => Number((await totalMetric.locator('p').nth(1).textContent()) || 0)).toBeGreaterThan(0)
+-
+     const grid = workspace.locator('[data-far-grid="true"]')
+     await expect(grid).toBeVisible()
+     for (const label of ['Failure mode', 'Risk', 'Status', 'Owner', 'System', 'Type']) {
+       await expect(grid.locator('.ag-header-cell').filter({ hasText: label }).first(), `Missing FAR header ${label}`).toBeVisible()
+     }
+ 
+-    await page.locator('[role="tab"]').filter({ hasText: /^Causes$/ }).click()
++    await page.getByLabel('FAR analytical mode').selectOption('causes')
+     await expect(grid.locator('.ag-header-cell').filter({ hasText: 'Causes' }).first()).toBeVisible()
+-    await page.locator('[role="tab"]').filter({ hasText: /^Failure modes$/ }).click()
++    await page.getByLabel('FAR analytical mode').selectOption('failure_modes')
+     await expect(grid.locator('.ag-header-cell').filter({ hasText: 'Risk' }).first()).toBeVisible()
+ 
+     await page.locator('button').filter({ hasText: /^Display$/ }).click()
+@@ -114,10 +109,41 @@
+     await expect(page.getByLabel('Search FAR failure modes')).toBeVisible()
+     await expect(page.getByLabel('FAR saved view')).toBeVisible()
+     await expect(page.getByLabel('Filter FAR risk')).toBeVisible()
+-    await expect(workspace.locator('[data-far-metric="high-risk"]')).toBeVisible()
++    await page.getByRole('button', { name: 'Insights' }).click()
++    await expect(workspace.locator('[data-far-summary="true"]')).toBeVisible()
+     await expect(workspace.locator('.ag-header-cell').filter({ hasText: 'Failure mode' }).first()).toBeVisible()
+ 
+     await page.screenshot({ path: testInfo.outputPath('far-whole-view-golden-narrow.png'), fullPage: false, animations: 'disabled' })
++  })
++
++  test('is coordinate-identical to Monitoring for the immutable golden shell', async ({ page }) => {
++    await resetBrowserState(page)
++    await page.setViewportSize({ width: 1440, height: 1000 })
++
++    const measure = async (route: string, workspaceSelector: string) => {
++      await page.goto(route)
++      await waitForAppIdle(page)
++      const workspace = page.locator(workspaceSelector)
++      await expect(workspace).toBeVisible()
++      const command = workspace.locator('[data-golden-command-bar="true"]')
++      const grid = workspace.locator('[data-golden-grid-surface="true"]')
++      await expect(command).toBeVisible()
++      await expect(grid).toBeVisible()
++      return { workspace: await workspace.boundingBox(), command: await command.boundingBox(), grid: await grid.boundingBox() }
++    }
++
++    const monitoring = await measure('/monitoring', '[data-golden-workspace="monitoring"]')
++    const far = await measure('/far', '[data-far-golden-workspace="true"]')
++    for (const key of ['workspace', 'command', 'grid'] as const) {
++      expect(monitoring[key]).not.toBeNull()
++      expect(far[key]).not.toBeNull()
++      if (monitoring[key] && far[key]) {
++        expect(Math.abs(monitoring[key]!.x - far[key]!.x), `${key} x drift`).toBeLessThanOrEqual(2)
++        expect(Math.abs(monitoring[key]!.width - far[key]!.width), `${key} width drift`).toBeLessThanOrEqual(2)
++      }
++    }
++    expect(far.grid!.y).toBeLessThanOrEqual(monitoring.grid!.y + 2)
++    await expect(page.locator('[data-far-summary="true"]')).toHaveCount(0)
+   })
+ 
+   test('renders evidence-backed empty and recovery states instead of a blank grid', async ({ page }, testInfo) => {

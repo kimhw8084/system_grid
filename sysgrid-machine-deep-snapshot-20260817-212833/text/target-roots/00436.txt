@@ -1,0 +1,13 @@
+ORIGINAL_PATH: /Users/haewonkim/.local/share/sysgrid-campaign-platform/v1.1.0/templates/CHANGE_SPEC.template.json
+ORIGINAL_SHA256: 6e1103e2180e2adfa98ea7d9a8b073ff8532ae6711708da269bd30264c4e1d17
+================================================================================
+{
+  "schema_version": "1.0",
+  "campaign_id": "SYSGRID-CAMPAIGN-XXXX",
+  "classification": "product_attempt",
+  "approved_behavior_ids": [],
+  "source_owners": {},
+  "protected_invariants": [],
+  "no_go_changes": [],
+  "rollback": {}
+}

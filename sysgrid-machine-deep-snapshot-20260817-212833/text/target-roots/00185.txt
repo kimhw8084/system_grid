@@ -1,0 +1,21 @@
+ORIGINAL_PATH: /Users/haewonkim/.local/share/sysgrid-supervisor/v2.1.5/CHANGELOG.md
+ORIGINAL_SHA256: f5842355ec7ba632fff52285ef8cfa7d8f63eb5e75b10f4a18e8f10092c63f0c
+================================================================================
+# Changelog
+
+## v2.1.5 — exact untracked-directory state repair
+
+- Expands Git-collapsed embedded untracked directories into exact file-level state paths so immutable hash ledgers remain satisfiable.
+- Excludes nested `.git` metadata, refuses symlinked or non-regular untracked content, and enforces a bounded file-count ceiling.
+- Preserves the campaign/promotion verification architecture and every prior exact-engine, evidence, recovery, notification, and delivery guarantee.
+
+- Adds `development_campaign` and `promotion_qualification` execution profiles while preserving one-command operator use.
+- Development campaigns require declarative changed-path/test/view scope, retain cumulative uncommitted state, and cannot claim acceptance or commit/push.
+- Promotion qualification remains the only profile permitted to perform the complete release gate, commit/push, remote equality, and acceptance.
+- Preserves every artifact under a run-identified, content-addressed Outbox history.
+- Keeps the canonical product-review ZIP unchanged when a preflight or duplicate-run diagnostic is published.
+- Adds a separate `UPLOAD_DIAGNOSTIC_TO_CHATGPT.zip` alias and `sg recover-artifact <run-id>` without product replay.
+- Recognizes exact mutation post-state as an already-applied capsule and blocks duplicate execution before the engine starts.
+- Reduces Telegram to at most three summary messages: start with full attempt detail, one high-level verification update, and final completion/failure.
+- Retains all registered progress events, process metrics, and heartbeat telemetry locally for `sgs` and immutable evidence.
+- Existing exact-engine, cross-ledger, recovery, no-replay, atomic publication, resource, and evidence guarantees remain unchanged.

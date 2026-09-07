@@ -1,0 +1,55 @@
+ORIGINAL_PATH: /Users/haewonkim/.local/share/sysgrid-runner/continuity-v1.0.6/active_law/00_ACTIVE_LAW_MANIFEST_v1.1.yaml
+ORIGINAL_SHA256: 7879311228e1da1896e355461c337d8e33cce55c46d57c15d5f4da19fc2b33be
+================================================================================
+schema_version: "1.1"
+status: DRAFT_PENDING_EXPLICIT_ACTIVATION
+kit_name: AI Controlled Delivery Law Kit
+kit_version: "1.1"
+proposed_effective_date: "2026-07-28"
+entry_point: "00_ACTIVE_LAW_MANIFEST_v1.1.yaml"
+
+authority_order:
+  - "Current explicit user instruction for the named task or cycle"
+  - "01_AI_Controlled_Delivery_Constitution_v1.1.md"
+  - "02_SysGrid_Project_Overlay_v1.1.md"
+  - "03_Stable_Engine_Control_Cycle_Execution_Review_Law_v1.1.md"
+  - "04_Chat_Bootstrap_Continuity_and_Law_Change_v1.1.md"
+
+active_files_after_activation:
+  - "00_ACTIVE_LAW_MANIFEST_v1.1.yaml"
+  - "01_AI_Controlled_Delivery_Constitution_v1.1.md"
+  - "02_SysGrid_Project_Overlay_v1.1.md"
+  - "03_Stable_Engine_Control_Cycle_Execution_Review_Law_v1.1.md"
+  - "04_Chat_Bootstrap_Continuity_and_Law_Change_v1.1.md"
+
+supersedes_after_activation:
+  - "00_ACTIVE_LAW_MANIFEST_v1.0.yaml"
+  - "01_AI_Controlled_Delivery_Constitution_v1.0.md"
+  - "02_SysGrid_Project_Overlay_v1.0.md"
+  - "03_Control_Cycle_Prompt_Patch_Execution_Review_Law_v1.0.md"
+  - "04_Chat_Bootstrap_Continuity_and_Law_Change_v1.0.md"
+
+project_identity:
+  name: "SysGrid"
+  linear_project: "SysGrid"
+  master_issue: "Read from Linear in the current conversation; do not rely on memory."
+  active_issue: "Read from Linear in the current conversation; do not rely on memory."
+
+operator_contract:
+  source_author: "ChatGPT control room"
+  execution_platform: "one versioned, qualified SysGrid stable engine"
+  run_input: "one declarative immutable capsule"
+  run_specific_executable_logic: false
+  terminal_generative_coding: false
+  canonical_review_output: "UPLOAD_THIS_TO_CHATGPT.zip"
+  successful_mutation_delivery: "commit and push only after all declared gates pass and remote equality is verified"
+
+activation_requirements:
+  - "Keep the current v1.0 law set as rollback material."
+  - "Upload all v1.1 active files."
+  - "Replace project instructions so they point only to 00_ACTIVE_LAW_MANIFEST_v1.1.yaml."
+  - "Run the v1.1 first-use tests."
+  - "Explicitly approve activation."
+  - "Qualify the stable engine before any product capsule executes."
+
+recommended_activation_phrase: "Approve and activate AI Controlled Delivery Law Kit v1.1 for SysGrid."

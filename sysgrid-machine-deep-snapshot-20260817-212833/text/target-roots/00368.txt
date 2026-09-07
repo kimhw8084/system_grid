@@ -1,0 +1,80 @@
+ORIGINAL_PATH: /Users/haewonkim/.local/share/sysgrid-campaign-platform/v1.1.1/tests/test_source_authority.py
+ORIGINAL_SHA256: c1a7767f23ffd609b74c62512b4c29ce0029eedfccd54843fcc8df931eafdca8
+================================================================================
+from __future__ import annotations
+
+import json
+import subprocess
+import tempfile
+import unittest
+import zipfile
+from pathlib import Path
+
+import sysgrid_source_authority as source_authority
+
+
+class SourceAuthorityTests(unittest.TestCase):
+    def test_complete_safe_capture_and_non_mutation(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            repo = Path(tmp) / "sysgrid"
+            repo.mkdir()
+            subprocess.run(["git", "init", "-q", str(repo)], check=True)
+            subprocess.run(["git", "-C", str(repo), "config", "user.email", "test@example.com"], check=True)
+            subprocess.run(["git", "-C", str(repo), "config", "user.name", "Test"], check=True)
+            (repo / "frontend/src/components/far").mkdir(parents=True)
+            (repo / "frontend/src/App.tsx").write_text("export const App=()=>null;\n", encoding="utf-8")
+            (repo / "frontend/package.json").write_text('{"scripts":{"test":"vitest"}}\n', encoding="utf-8")
+            (repo / "backend/tests").mkdir(parents=True)
+            (repo / "backend/tests/test_api.py").write_text("def test_api(): assert True\n", encoding="utf-8")
+            (repo / ".env").write_text("SECRET=nope\n", encoding="utf-8")
+            subprocess.run(["git", "-C", str(repo), "add", "frontend", "backend"], check=True)
+            subprocess.run(["git", "-C", str(repo), "commit", "-qm", "init"], check=True)
+            (repo / "frontend/src/components/far/New FAR.tsx").write_text("export const FAR=()=>null;\n", encoding="utf-8")
+            before = subprocess.run(["git", "-C", str(repo), "status", "--porcelain=v1", "--untracked-files=all"], check=True, text=True, stdout=subprocess.PIPE).stdout
+            output = Path(tmp) / "authority.zip"
+            activation = output.parent / source_authority.ACTIVATION_ARTIFACT
+            activation.write_bytes(b"qualified-activation-evidence")
+            report = source_authority.capture(repo, output)
+            after = subprocess.run(["git", "-C", str(repo), "status", "--porcelain=v1", "--untracked-files=all"], check=True, text=True, stdout=subprocess.PIPE).stdout
+            self.assertEqual(before, after)
+            self.assertEqual(report["result"], "PASS")
+            with zipfile.ZipFile(output) as archive:
+                names = set(archive.namelist())
+                self.assertIn("SOURCE_AUTHORITY/files/frontend/src/App.tsx", names)
+                self.assertIn("SOURCE_AUTHORITY/files/frontend/src/components/far/New FAR.tsx", names)
+                self.assertIn("SOURCE_AUTHORITY/files/backend/tests/test_api.py", names)
+                self.assertNotIn("SOURCE_AUTHORITY/files/.env", names)
+                self.assertIn("SOURCE_AUTHORITY/ROUTE_API_TEST_MAP.json", names)
+                self.assertIn("SOURCE_AUTHORITY/DEPENDENCY_GRAPH.json", names)
+                self.assertIn("GIT_STATE/working.patch", names)
+                self.assertIn(f"PLATFORM_ACTIVATION/{source_authority.ACTIVATION_ARTIFACT}", names)
+                activation_identity = json.loads(archive.read("PLATFORM_ACTIVATION_IDENTITY.json"))
+                self.assertTrue(activation_identity["included"])
+                proof = json.loads(archive.read("NON_MUTATION_PROOF.json"))
+                self.assertEqual(proof["result"], "PASS")
+                self.assertEqual(proof["source_fingerprint_before"], proof["source_fingerprint_after"])
+
+    def test_secret_and_generated_paths_are_excluded(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            repo = Path(tmp) / "sysgrid"
+            repo.mkdir()
+            subprocess.run(["git", "init", "-q", str(repo)], check=True)
+            subprocess.run(["git", "-C", str(repo), "config", "user.email", "test@example.com"], check=True)
+            subprocess.run(["git", "-C", str(repo), "config", "user.name", "Test"], check=True)
+            (repo / "main.py").write_text("print('ok')\n", encoding="utf-8")
+            subprocess.run(["git", "-C", str(repo), "add", "main.py"], check=True)
+            subprocess.run(["git", "-C", str(repo), "commit", "-qm", "init"], check=True)
+            (repo / ".env.local").write_text("TOKEN=secret\n", encoding="utf-8")
+            (repo / "node_modules/pkg").mkdir(parents=True)
+            (repo / "node_modules/pkg/index.js").write_text("bad\n", encoding="utf-8")
+            output = Path(tmp) / "authority.zip"
+            source_authority.capture(repo, output)
+            with zipfile.ZipFile(output) as archive:
+                index = json.loads(archive.read("SOURCE_AUTHORITY/FILE_INDEX.json"))
+                excluded = {row["path"]: row["reason"] for row in index["excluded"]}
+                self.assertEqual(excluded[".env.local"], "secret_basename")
+                self.assertNotIn("node_modules/pkg/index.js", archive.namelist())
+
+
+if __name__ == "__main__":
+    unittest.main()

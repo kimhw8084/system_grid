@@ -1,0 +1,10 @@
+ORIGINAL_PATH: /Users/haewonkim/.local/share/sysgrid-campaign-platform/v1.0.0/ROLLBACK.command
+ORIGINAL_SHA256: 555d648314580997f7c84460d78647cbcdc7fd1fd49414811fbc6b13eeaba1c5
+================================================================================
+#!/usr/bin/env bash
+set -euo pipefail
+BACKUPS="$HOME/.local/share/sysgrid-campaign-platform/backups"
+LATEST="$(ls -1t "$BACKUPS"/sg.* 2>/dev/null | head -n 1 || true)"
+if [[ -z "$LATEST" ]]; then echo "No prior sg backup found." >&2; exit 1; fi
+install -m 0755 "$LATEST" "$HOME/.local/bin/sg"
+echo "Restored: $LATEST"

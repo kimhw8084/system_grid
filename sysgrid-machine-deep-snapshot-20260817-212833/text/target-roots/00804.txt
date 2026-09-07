@@ -1,0 +1,118 @@
+ORIGINAL_PATH: /Users/haewonkim/.local/state/sysgrid-supervisor/runs/20260803T194207Z-19900-122000/patch.diff
+ORIGINAL_SHA256: bafc96656ec7f08833bcb627cb8f6afb12a8c15b7d8b5113ca803a0e1c06f4f3
+================================================================================
+diff --git a/frontend/src/components/FAR.tsx b/frontend/src/components/FAR.tsx
+index 8a5da4796e09f0e960fbe2512ba0e77fd9f5f07f..e9e2a7133798a138dd2ce9a8dc78b5214b6d8b6f 100644
+--- a/frontend/src/components/FAR.tsx
++++ b/frontend/src/components/FAR.tsx
+@@ -24,6 +24,7 @@ import { RootCauseFormModal, MitigationFormModal, PreventionFormModal, Resolutio
+ import { EnhancedRcaDetails } from './Research'
+ import { OperationalSavedViewsPanel, OperationalWorkspaceShell } from './shared/OperationalWorkspaceShells'
+ import { OperationalDataGrid } from './shared/OperationalDataGrid'
++import { isOperationalAutoResizeSource } from './shared/OperationalGridSizing'
+ import { OperationalBulkPreviewModal } from './shared/OperationalBulkPreviewModal'
+ import { useOperationalBulkWorkflow } from './shared/useOperationalBulkWorkflow'
+ import { ToolbarButton, ToolbarGroup, ToolbarIconButton, ToolbarSearch } from './shared/LayoutPrimitives'
+@@ -252,6 +253,8 @@ export default function FAR() {
+   const requestedViewBaselineRef = useRef(0)
+   const requestedViewAppliedRef = useRef<string | null>(null)
+   const pendingColumnStateRef = useRef<FARSavedViewDefinition['columnLayoutState'] | null>(null)
++  const suppressColumnCaptureRef = useRef(false)
++  const firstDataColumnLayoutAppliedRef = useRef(false)
+   const retirementPreviewRef = useRef<any>(null)
+ 
+   const [showWizard, setShowWizard] = useState(false)
+@@ -510,26 +513,12 @@ export default function FAR() {
+   }
+ 
+   const captureColumnState = useCallback((event: any) => {
++    if (suppressColumnCaptureRef.current || isOperationalAutoResizeSource(String(event?.source || ''))) return
+     const state = event?.api?.getColumnState?.()
+     if (!Array.isArray(state)) return
+     setColumnLayoutState(sanitizeFARSavedViewDefinition({ columnLayoutState: state }).columnLayoutState)
+   }, [])
+ 
+-  const farGridRuntime = useMemo(() => ({
+-    preserveExplicitColumnWidths: true,
+-    handleGridReady: (event: any) => {
+-      const pending = pendingColumnStateRef.current
+-      if (pending?.length) event.api.applyColumnState({ state: pending, applyOrder: true })
+-      captureColumnState(event)
+-    },
+-    handleColumnResized: captureColumnState,
+-    handleColumnMoved: captureColumnState,
+-    handleDragStopped: captureColumnState,
+-    handleColumnPinned: captureColumnState,
+-    handleColumnVisible: captureColumnState,
+-    handleSortChanged: captureColumnState,
+-  }), [captureColumnState])
+-
+ 
+   const {
+     bulkMutation,
+@@ -946,6 +935,44 @@ export default function FAR() {
+     }
+   ], [fontSize, hiddenColumns, mutationBlocked, workspaceMode]) as any
+ 
++  const canonicalColumnLayoutState = useMemo(() => columnDefs.map((column: any, index: number) => {
++    const state: Record<string, any> = {
++      colId: String(column.colId || column.field || index),
++      pinned: column.pinned ?? null,
++      hide: Boolean(column.hide),
++    }
++    if (typeof column.flex === 'number') state.flex = column.flex
++    else if (typeof column.width === 'number') state.width = column.width
++    return state
++  }), [columnDefs])
++
++  const applyInitialColumnLayout = useCallback((api: any) => {
++    const pending = pendingColumnStateRef.current
++    const state = pending?.length ? pending : canonicalColumnLayoutState
++    if (!api?.applyColumnState || !state.length) return
++    suppressColumnCaptureRef.current = true
++    api.applyColumnState({ state, applyOrder: true })
++    requestAnimationFrame(() => {
++      api.applyColumnState({ state, applyOrder: true })
++      window.setTimeout(() => {
++        suppressColumnCaptureRef.current = false
++      }, 0)
++    })
++  }, [canonicalColumnLayoutState])
++
++  const farGridRuntime = useMemo(() => ({
++    preserveExplicitColumnWidths: true,
++    handleGridReady: (event: any) => {
++      applyInitialColumnLayout(event.api)
++    },
++    handleColumnResized: captureColumnState,
++    handleColumnMoved: captureColumnState,
++    handleDragStopped: captureColumnState,
++    handleColumnPinned: captureColumnState,
++    handleColumnVisible: captureColumnState,
++    handleSortChanged: captureColumnState,
++  }), [applyInitialColumnLayout, captureColumnState])
++
+   // Advanced Metrics Calculation
+   const metrics = useMemo(() => {
+     const activeModes = filteredModes || []
+@@ -1211,7 +1238,7 @@ export default function FAR() {
+ 
+       <AnimatePresence>
+         {showInsights && (
+-          <motion.div data-far-insights="true" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 20 }} role="dialog" aria-modal="false" aria-label="FAR reliability insights" className="fixed inset-x-3 bottom-3 z-[109] max-h-[75vh] overflow-auto md:inset-x-auto md:bottom-auto md:right-4 md:top-36 md:w-[720px]">
++          <motion.div data-far-insights="true" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 20 }} role="dialog" aria-modal="false" aria-label="FAR reliability insights" className="fixed inset-x-3 bottom-3 z-[109] max-h-[75vh] overflow-auto md:inset-x-auto md:bottom-auto md:right-4 md:top-[26rem] md:max-h-[calc(100vh-27rem)] md:w-[720px]">
+             <div className="glass-panel rounded-lg border border-white/10 bg-slate-950/95 p-4 space-y-4 shadow-2xl backdrop-blur-xl">
+               <div className="flex items-center justify-between">
+                 <h2 className="text-[10px] font-bold uppercase tracking-widest text-white">Reliability insights</h2>
+@@ -1333,6 +1360,11 @@ export default function FAR() {
+                   ? { tone: 'info', title: 'Unsaved view changes', description: 'The current FAR layout differs from the active saved view.' }
+                   : undefined,
+           })}
++          onFirstDataRendered={(event: any) => {
++            if (firstDataColumnLayoutAppliedRef.current) return
++            firstDataColumnLayoutAppliedRef.current = true
++            applyInitialColumnLayout(event.api)
++          }}
+           onSelectionChanged={(event) => setSelectedIds(event?.api?.getSelectedNodes().map((node: any) => Number(node.data?.id)).filter(Boolean) || [])}
+           suppressRowClickSelection={false}
+         />

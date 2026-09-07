@@ -1,0 +1,1 @@
+-rwxr-xr-x  1 haewonkim  staff  147 Aug  8 11:24 /Users/haewonkim/.local/bin/sg

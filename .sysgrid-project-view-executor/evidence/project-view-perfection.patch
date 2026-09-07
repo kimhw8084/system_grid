@@ -1,0 +1,182 @@
+--- a/frontend/src/components/ProjectsModernGantt.tsx
++++ b/frontend/src/components/ProjectsModernGantt.tsx
+@@ -158,7 +158,7 @@
+     focusAfterSave.current = null
+     requestAnimationFrame(() => {
+       const escaped = typeof CSS !== 'undefined' && CSS.escape ? CSS.escape(target) : target
+-      document.querySelector<HTMLButtonElement>(`[data-project-timeline-row="true"][data-task-id="${escaped}"] button[data-project-timeline-dependency-keyboard="true"]`)?.focus({ preventScroll: true })
++      document.querySelector<HTMLElement>(`[data-project-semantic-id="${escaped}"]`)?.focus({ preventScroll: true })
+     })
+   }, [project])
+ 
+@@ -167,12 +167,12 @@
+     const next = new URLSearchParams(searchParams); next.set('task', taskId); next.set('view', 'timeline'); setSearchParams(next, { replace: true })
+   }
+ 
+-  const persist = async (nextProject: any, label: string, successMessage?: string, focusTaskId?: string) => {
++  const persist = async (nextProject: any, label: string, successMessage?: string, focusSemanticId?: string) => {
+     if (nextProject === project || savingRef.current || isSaving) return null
+     savingRef.current = true
+     const before = structuredClone(project.tasks || [])
+     if (successMessage) setLive(`${successMessage}…`)
+-    if (focusTaskId) focusAfterSave.current = focusTaskId
++    if (focusSemanticId) focusAfterSave.current = focusSemanticId
+     try {
+       const saved = await Promise.resolve(onPersist(nextProject, label, project))
+       setHistory(current => [...current, before].slice(-30)); setRedo([])
+@@ -202,7 +202,7 @@
+     if (changed === project) { setLive('Dependency was not changed. Check for a duplicate or cycle.'); setDependencySource(null); return }
+     const next = appendProjectAudit(changed, 'Timeline dependency added', `${source.task.name} → ${target.task.name}`)
+     setDependencySource(null)
+-    await persist(next, 'Timeline dependency added', `Dependency added: ${source.task.name} → ${target.task.name}`, targetId)
++    await persist(next, 'Timeline dependency added', `Dependency added: ${source.task.name} → ${target.task.name}`, `dependency-source-${targetId}`)
+   }
+ 
+   const removeDependency = async (sourceId: string, targetId: string, type: ProjectDependencyType, lag: number) => {
+@@ -211,7 +211,7 @@
+     const changed = setTypedProjectDependency(project, targetId, sourceId, type, lag, false)
+     if (changed === project) return
+     const next = appendProjectAudit(changed, 'Timeline dependency removed', `${source.task.name} → ${target.task.name}`)
+-    await persist(next, 'Timeline dependency removed', `Dependency removed: ${source.task.name} → ${target.task.name}`, targetId)
++    await persist(next, 'Timeline dependency removed', `Dependency removed: ${source.task.name} → ${target.task.name}`, `dependency-source-${targetId}`)
+   }
+ 
+   const keyboardDependency = (row: any) => {
+@@ -363,12 +363,26 @@
+   const todayX = xFor(range.todayOrdinal)
+   const shownFirst = Math.min(visibleRows.length, Math.floor(scroll.top / GANTT_ROW_HEIGHT) + 1)
+   const shownLast = Math.min(visibleRows.length, Math.ceil((scroll.top + Math.max(0, scroll.height - AXIS_HEIGHT)) / GANTT_ROW_HEIGHT))
++  const keyboardSchedule = (row: any, mode: 'move' | 'start' | 'end', delta: number) => {
++    if (!row || !delta || isSaving || savingRef.current) return
++    const next = mode === 'move'
++      ? shiftProjectTaskSchedules(project, [row.id], delta)
++      : resizeProjectTaskSchedule(project, row.id, mode, delta)
++    const changed = next.tasks?.find((task: any) => String(task.id) === String(row.id))
++    if (!changed || (changed.start_date === row.task.start_date && changed.end_date === row.task.end_date)) {
++      setLive(`${row.task.name} schedule unchanged`)
++      return
++    }
++    const action = mode === 'move' ? 'Timeline schedule moved' : 'Timeline task resized'
++    const detail = mode === 'move'
++      ? `${row.task.name} shifted ${delta > 0 ? '+' : ''}${delta}d`
++      : `${row.task.name}: ${mode} ${delta > 0 ? '+' : ''}${delta}d`
++    const message = `${row.task.name} ${mode === 'move' ? 'moved' : 'resized'} ${delta > 0 ? '+' : ''}${delta} day`
++    const focusSemanticId = mode === 'move' ? `task-bar-${row.id}` : `resize-${mode}-${row.id}`
++    void persist(appendProjectAudit(next, action, detail), action, message, focusSemanticId)
++  }
+   const editDay = (edge: 'start' | 'end', delta: number) => {
+-    if (!selectedRow) return
+-    const next = resizeProjectTaskSchedule(project, selectedRow.id, edge, delta)
+-    const changed = next.tasks?.find((task: any) => String(task.id) === String(selectedRow.id))
+-    if (!changed || (changed.start_date === selectedRow.task.start_date && changed.end_date === selectedRow.task.end_date)) return
+-    if (next !== project) void persist(appendProjectAudit(next, 'Timeline task resized', `${selectedRow.task.name}: ${edge} ${delta}d`), 'Timeline task resized', `${selectedRow.task.name} resized`)
++    if (selectedRow) keyboardSchedule(selectedRow, edge, delta)
+   }
+   const inspect = (link: any) => { setRelation(link); setLive(`Dependency ${link.source.task.name} to ${link.target.task.name}`) }
+   const relationDialog = useRef<HTMLDivElement | null>(null)
+@@ -422,7 +436,7 @@
+             <span className="sg-today-axis" style={{ left: todayX }} aria-label="Today"/>
+           </div>
+         </div>
+-        <div className="sg-gantt-body" style={{ height: Math.max(totalHeight, 100) }}>
++        <div className="sg-gantt-body" role="treegrid" aria-label="Project WBS timeline tasks" aria-rowcount={visibleRows.length} aria-colcount={2} style={{ height: Math.max(totalHeight, 100) }}>
+           <div className="sg-time-grid" style={{ left: railWidth, width: timelineWidth }} aria-hidden="true">
+             {ticks.map(t => <span key={t.start} data-project-timeline-grid="true" style={{ left: xFor(t.start) }}/>) }
+             <span className="sg-today-line" style={{ left: todayX }}/>
+@@ -450,20 +464,20 @@
+             const baselineTask: any = baselineById.get(String(row.id))
+             const parseDate = (v: string | null) => v ? Math.floor(Date.parse(v.slice(0,10) + 'T00:00:00Z') / 86400000) : null
+             const baselineStart = parseDate(baselineTask?.start_date) ?? row.baselineStartOrdinal, baselineEnd = parseDate(baselineTask?.end_date) ?? row.baselineEndOrdinal
+-            return <div key={String(row.id)} className={`sg-task-row ${selected ? 'selected' : ''}`} style={{ top: index * GANTT_ROW_HEIGHT, height: GANTT_ROW_HEIGHT, width: railWidth + timelineWidth }} data-project-timeline-row="true" data-task-id={String(row.id)} data-critical={String(critical)} data-milestone={String(row.milestone)}>
+-              <div className="sg-rail sg-task-rail" style={{ width: railWidth }}>
++            return <div key={String(row.id)} role="row" aria-rowindex={index + 1} aria-level={row.depth + 1} aria-selected={selected} aria-expanded={row.hasChildren ? !collapsed.has(String(row.id)) : undefined} className={`sg-task-row ${selected ? 'selected' : ''}`} style={{ top: index * GANTT_ROW_HEIGHT, height: GANTT_ROW_HEIGHT, width: railWidth + timelineWidth }} data-project-timeline-row="true" data-task-id={String(row.id)} data-critical={String(critical)} data-milestone={String(row.milestone)}>
++              <div className="sg-rail sg-task-rail" role="rowheader" style={{ width: railWidth }}>
+                 <button className="sg-task-link" data-project-timeline-dependency-keyboard="true" data-project-semantic-id={`dependency-source-${row.id}`} aria-pressed={dependencySource?.id === String(row.id)} aria-label={!dependencySource ? `Start dependency from ${row.task.name}` : dependencySource.id === String(row.id) ? `Cancel dependency from ${row.task.name}` : `Add dependency from ${dependencySource.name} to ${row.task.name}`} onClick={() => keyboardDependency(row)}><GitBranch size={15}/></button>
+                 {row.hasChildren && <button className="sg-collapse" aria-label={`${collapsed.has(String(row.id)) ? 'Expand' : 'Collapse'} ${row.task.name}`} onClick={() => setCollapsed(s => { const next = new Set(s); next.has(String(row.id)) ? next.delete(String(row.id)) : next.add(String(row.id)); return next })}>{collapsed.has(String(row.id)) ? <ChevronRight size={14}/> : <ChevronDown size={14}/>}</button>}
+                 <button className="sg-task-name" title={`${row.task.name} · ${getTaskOwnerLabel(row.task)}`} style={{ paddingLeft: Math.min(row.depth, 4) * 8 }} onClick={() => setSelectedId(String(row.id))} onDoubleClick={() => openTask(String(row.id))}><span>{row.task.name}</span><small>{getTaskOwnerLabel(row.task)}</small></button>
+                 {violation && <span title={violation} aria-label={violation}>!</span>}
+               </div>
+-              <div className="sg-row-time" style={{ width: timelineWidth }}>
++              <div className="sg-row-time" role="gridcell" aria-label={`${row.task.name} schedule`} style={{ width: timelineWidth }}>
+                 {baselineStart != null && baselineEnd != null && <span className="sg-baseline" title="Baseline" style={{ left: xFor(baselineStart), width: widthFor(baselineStart, baselineEnd) }}/>} 
+                 {row.forecastStartOrdinal != null && row.forecastEndOrdinal != null && <span className="sg-forecast" title="Forecast" style={{ left: xFor(row.forecastStartOrdinal), width: widthFor(row.forecastStartOrdinal, row.forecastEndOrdinal) }}/>} 
+                 {!scheduled ? <button className="sg-unscheduled" style={{ left: Math.max(8, scroll.left) }} disabled={isSaving} onClick={() => void persist(appendProjectAudit(scheduleProjectTask(project,row.id,projectOrdinalToDate(range.todayOrdinal) || '',1),'Timeline task scheduled',row.task.name),'Timeline task scheduled')}>Schedule today</button> : <>
+-                  <div data-project-timeline-bar="true" data-task-id={String(row.id)} data-project-semantic-id={`task-bar-${row.id}`} data-move-surface="true" role="button" tabIndex={0} aria-label={`Open ${row.task.name} timeline task`} title={`${row.task.name}\n${readableProjectDate(row.task.start_date)} – ${readableProjectDate(row.task.end_date)}\n${canonicalTaskStatus(row.task.status)} · ${row.progress}%`} className={`sg-task-bar ${row.milestone ? 'milestone' : ''} ${row.blocked ? 'blocked' : ''} ${critical ? 'critical' : ''}`} style={{ left: geom.left, width: geom.width }} onPointerDown={e => { e.stopPropagation(); beginDrag(e,String(row.id),'move') }} onPointerMove={e => moveDrag(e,String(row.id),'move')} onPointerUp={endDrag} onMouseDown={e => beginMouseFallback(e,String(row.id),'move')} onClick={() => { if (!suppressClick.current) setSelectedId(String(row.id)); suppressClick.current = false }} onDoubleClick={() => openTask(String(row.id))} onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openTask(String(row.id)) } }}>
++                  <div data-project-timeline-bar="true" data-task-id={String(row.id)} data-project-semantic-id={`task-bar-${row.id}`} data-move-surface="true" role="button" tabIndex={0} aria-keyshortcuts="ArrowLeft ArrowRight Enter Space" aria-label={`${row.task.name} timeline task. Left or Right moves one day. Enter opens details.`} title={`${row.task.name}\n${readableProjectDate(row.task.start_date)} – ${readableProjectDate(row.task.end_date)}\n${canonicalTaskStatus(row.task.status)} · ${row.progress}%`} className={`sg-task-bar ${row.milestone ? 'milestone' : ''} ${row.blocked ? 'blocked' : ''} ${critical ? 'critical' : ''}`} style={{ left: row.milestone ? geom.left - 10 : geom.left, width: row.milestone ? 40 : geom.width }} onPointerDown={e => { e.stopPropagation(); beginDrag(e,String(row.id),'move') }} onPointerMove={e => moveDrag(e,String(row.id),'move')} onPointerUp={endDrag} onMouseDown={e => beginMouseFallback(e,String(row.id),'move')} onClick={() => { if (!suppressClick.current) setSelectedId(String(row.id)); suppressClick.current = false }} onDoubleClick={() => openTask(String(row.id))} onKeyDown={e => { if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') { e.preventDefault(); e.stopPropagation(); keyboardSchedule(row,'move',e.key === 'ArrowLeft' ? -1 : 1) } else if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openTask(String(row.id)) } }}>
+                     {row.milestone ? <span className="sg-milestone-glyph"/> : <><span className="sg-progress" style={{ width: `${row.progress}%` }}/>{geom.width >= 96 && <span className="sg-bar-label">{row.task.name}</span>}</>}
+-                    {!row.milestone && geom.width >= 96 && (['start','end'] as const).map(edge => <button type="button" key={edge} data-project-resize-edge={edge} aria-label={`Resize ${edge} ${row.task.name}`} className={`sg-resize ${edge}`} onClick={e => e.stopPropagation()} onPointerDown={e => { e.stopPropagation(); beginDrag(e,String(row.id),edge) }} onPointerMove={e => moveDrag(e,String(row.id),edge)} onPointerUp={endDrag} onMouseDown={e => { e.stopPropagation(); beginMouseFallback(e,String(row.id),edge) }}/>) }
++                    {!row.milestone && geom.width >= 96 && (['start','end'] as const).map(edge => <button type="button" key={edge} data-project-resize-edge={edge} data-project-semantic-id={`resize-${edge}-${row.id}`} aria-keyshortcuts="ArrowLeft ArrowRight" aria-label={`Resize ${edge} ${row.task.name}. Left or Right adjusts one day; activate to extend one day ${edge === 'start' ? 'earlier' : 'later'}.`} className={`sg-resize ${edge}`} onClick={e => { e.stopPropagation(); if (e.detail === 0) keyboardSchedule(row,edge,edge === 'start' ? -1 : 1) }} onKeyDown={e => { if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') { e.preventDefault(); e.stopPropagation(); keyboardSchedule(row,edge,e.key === 'ArrowLeft' ? -1 : 1) } }} onPointerDown={e => { e.stopPropagation(); beginDrag(e,String(row.id),edge) }} onPointerMove={e => moveDrag(e,String(row.id),edge)} onPointerUp={endDrag} onMouseDown={e => { e.stopPropagation(); beginMouseFallback(e,String(row.id),edge) }}/>) }
+                   </div>
+                   {(['start','finish'] as GanttEdge[]).map(edge => <span key={edge} className="sg-port" data-project-dependency-port="true" data-edge={edge} aria-hidden="true" style={{ left: geom[edge] }}/>) }
+                 </>}
+@@ -474,7 +488,7 @@
+         </div>
+       </div>
+     </div>
+-    {selectedRow && <div className="sg-selection" aria-label="Selected task actions"><strong title={selectedRow.task.name}>{selectedRow.task.name}</strong><button onClick={() => openTask(String(selectedRow.id))}>Details</button>{!selectedRow.milestone && <><button aria-label={`Move start earlier ${selectedRow.task.name}`} disabled={isSaving} onClick={() => editDay('start',-1)}>Start −1d</button><button aria-label={`Move start later ${selectedRow.task.name}`} disabled={isSaving} onClick={() => editDay('start',1)}>Start +1d</button><button aria-label={`Move finish earlier ${selectedRow.task.name}`} disabled={isSaving} onClick={() => editDay('end',-1)}>Finish −1d</button><button aria-label={`Move finish later ${selectedRow.task.name}`} disabled={isSaving} onClick={() => editDay('end',1)}>Finish +1d</button></>}<button onClick={() => setSelectedId(null)} aria-label="Clear task selection">×</button></div>}
++    {selectedRow && <div className="sg-selection" aria-label="Selected task actions"><strong title={selectedRow.task.name}>{selectedRow.task.name}</strong><button onClick={() => openTask(String(selectedRow.id))}>Details</button><button aria-label={`Move task earlier ${selectedRow.task.name}`} disabled={isSaving} onClick={() => keyboardSchedule(selectedRow,'move',-1)}>Move −1d</button><button aria-label={`Move task later ${selectedRow.task.name}`} disabled={isSaving} onClick={() => keyboardSchedule(selectedRow,'move',1)}>Move +1d</button>{!selectedRow.milestone && <><button aria-label={`Move start earlier ${selectedRow.task.name}`} disabled={isSaving} onClick={() => editDay('start',-1)}>Start −1d</button><button aria-label={`Move start later ${selectedRow.task.name}`} disabled={isSaving} onClick={() => editDay('start',1)}>Start +1d</button><button aria-label={`Move finish earlier ${selectedRow.task.name}`} disabled={isSaving} onClick={() => editDay('end',-1)}>Finish −1d</button><button aria-label={`Move finish later ${selectedRow.task.name}`} disabled={isSaving} onClick={() => editDay('end',1)}>Finish +1d</button></>}<button onClick={() => setSelectedId(null)} aria-label="Clear task selection">×</button></div>}
+     <footer className="sg-gantt-footer"><span>Rows {shownFirst}–{shownLast} of {visibleRows.length}{visibleRows.length !== rows.length ? ` / ${rows.length} total` : ''}</span><span><i className="sg-legend baseline"/>Baseline <i className="sg-legend forecast"/>Forecast {analysis.cycle ? ' · Cycle detected' : ''}</span></footer>
+     {relation && createPortal(<div className="sg-dialog-shade" onClick={() => setRelation(null)}><div ref={relationDialog} className="sg-relation-dialog" role="dialog" aria-modal="true" aria-label="Dependency details" onKeyDown={dialogKeys} onClick={e => e.stopPropagation()}><header><h3>Dependency details</h3><button aria-label="Close dependency details" onClick={() => setRelation(null)}>×</button></header><p><b>{relation.source.task.name}</b> → <b>{relation.target.task.name}</b></p><dl><dt>Relationship</dt><dd>{relation.dependency.type}</dd><dt>Lead / lag</dt><dd>{labelLag(relation.dependency.lag_days)}</dd></dl><p>Selecting a connector does not change the schedule.</p><button className="sg-danger" disabled={isSaving} onClick={async () => { await removeDependency(String(relation.source.id),String(relation.target.id),relation.dependency.type,relation.dependency.lag_days); setRelation(null) }}>Remove dependency</button></div></div>, document.body)}
+   </section>
+--- a/frontend/src/components/ProjectsVisualRepair.css
++++ b/frontend/src/components/ProjectsVisualRepair.css
+@@ -28,12 +28,12 @@
+ .sg-task-rail { display:flex; align-items:center; gap:2px; padding:0 5px }.sg-task-row.selected .sg-task-rail { background:color-mix(in srgb,var(--sg-accent) 12%,var(--sg-raised)) }
+ .sg-gantt .sg-task-link,.sg-gantt .sg-collapse { display:flex; align-items:center; justify-content:center; padding:0; width:40px; border-color:transparent; background:transparent; flex:none; color:var(--sg-accent) }.sg-gantt .sg-collapse { width:24px; min-width:24px }
+ .sg-gantt .sg-task-name { border:0; background:transparent; padding:2px 4px; min-width:0; flex:1; display:flex; flex-direction:column; align-items:stretch; text-align:left; overflow:hidden; justify-content:center }.sg-task-name span,.sg-task-name small { display:block; white-space:nowrap; overflow:hidden; text-overflow:ellipsis }.sg-task-name small { font-size:12px; color:var(--sg-muted) }
+-.sg-row-time { position:relative; flex:none }.sg-task-bar { position:absolute; top:13px; height:22px; z-index:15; border:1px solid #93c5fd; border-radius:5px; background:#2563eb; color:#fff; touch-action:none; user-select:none; cursor:grab; overflow:visible; padding:0; min-width:0!important; min-height:0!important; pointer-events:auto }
+-.sg-task-bar.blocked { background:#be3655; border-color:#fda4af }.sg-task-bar.critical { box-shadow:0 0 0 1px #fda4af }.sg-task-bar:active { cursor:grabbing }.sg-progress { position:absolute; top:0; bottom:0; left:0; background:rgba(255,255,255,.19); pointer-events:none; border-radius:4px }.sg-bar-label { position:absolute; inset:0; white-space:nowrap; text-overflow:ellipsis; overflow:hidden; padding:1px 8px; font-size:12px; pointer-events:none }
+-.sg-task-bar.milestone { background:transparent; border:0; box-shadow:none; height:20px; top:14px }.sg-milestone-glyph { width:14px; height:14px; position:absolute; top:3px; left:3px; transform:rotate(45deg); border:1px solid #ddd6fe; background:#8b5cf6; pointer-events:none }
+-.sg-gantt .sg-resize { position:absolute; top:-9px; padding:0; height:40px; width:12px; min-width:12px; border:0; background:transparent; cursor:ew-resize; touch-action:none }.sg-resize.start { left:-6px }.sg-resize.end { right:-6px }.sg-resize:hover { background:rgba(255,255,255,.18)!important }
++.sg-row-time { position:relative; flex:none }.sg-task-bar { position:absolute; top:4px; height:40px; z-index:15; border:0; border-radius:5px; background:transparent; color:#fff; touch-action:none; user-select:none; cursor:grab; overflow:visible; padding:0; min-width:0!important; min-height:40px!important; pointer-events:auto }
++.sg-task-bar::before { content:""; position:absolute; left:0; right:0; top:9px; height:22px; border:1px solid #93c5fd; border-radius:5px; background:#2563eb; pointer-events:none }.sg-task-bar.blocked::before { background:#be3655; border-color:#fda4af }.sg-task-bar.critical::before { box-shadow:0 0 0 1px #fda4af }.sg-task-bar:active { cursor:grabbing }.sg-progress { position:absolute; top:10px; height:20px; left:1px; background:rgba(255,255,255,.19); pointer-events:none; border-radius:4px }.sg-bar-label { position:absolute; top:9px; left:0; right:0; height:22px; white-space:nowrap; text-overflow:ellipsis; overflow:hidden; padding:1px 8px; font-size:12px; pointer-events:none }
++.sg-task-bar.milestone { background:transparent; border:0; box-shadow:none; height:40px; top:4px; min-width:40px!important }.sg-task-bar.milestone::before { display:none }.sg-milestone-glyph { width:14px; height:14px; position:absolute; top:13px; left:13px; transform:rotate(45deg); border:1px solid #ddd6fe; background:#8b5cf6; pointer-events:none }
++.sg-gantt .sg-resize { position:absolute; top:0; padding:0; height:40px; width:40px; min-width:40px; border:0; background:transparent; cursor:ew-resize; touch-action:none }.sg-gantt .sg-resize::after { content:""; position:absolute; top:9px; left:18px; width:4px; height:22px; border-radius:2px; background:rgba(255,255,255,.58); pointer-events:none }.sg-resize.start { left:-20px }.sg-resize.end { right:-20px }.sg-resize:hover,.sg-resize:focus-visible { background:transparent!important }.sg-resize:hover::after,.sg-resize:focus-visible::after { background:#fff }
+ .sg-port { position:absolute; top:24px; width:5px; height:5px; border-radius:50%; transform:translate(-50%,-50%); background:#93c5fd; z-index:16; pointer-events:none }.sg-baseline { position:absolute; top:40px; height:3px; background:#a78bfa; opacity:.7; border-radius:2px; pointer-events:none }.sg-forecast { position:absolute; top:8px; height:32px; border:1px dashed #d9ac65; background:rgba(217,172,101,.05); opacity:.4; border-radius:5px; pointer-events:none }
+-.sg-dependencies { position:absolute; top:0; z-index:10; overflow:visible; pointer-events:none; color:#71829b }.sg-link-line { fill:none; stroke:currentColor; stroke-width:1.5; pointer-events:none }.sg-link-hit { fill:none; stroke:transparent; stroke-width:12; pointer-events:stroke; cursor:pointer }.sg-link circle { fill:currentColor; pointer-events:none }.sg-link.traced { color:#93c5fd }.sg-link.traced .sg-link-line { stroke-width:2 }.sg-link:has(:focus-visible),.sg-link:hover { color:#f8fafc }.sg-link-hit:focus-visible { outline:none; stroke:rgba(96,165,250,.28) }
++.sg-dependencies { position:absolute; top:0; z-index:10; overflow:visible; pointer-events:none; color:#71829b }.sg-link-line { fill:none; stroke:currentColor; stroke-width:1.5; pointer-events:none }.sg-link-hit { fill:none; stroke:transparent; stroke-width:40; pointer-events:stroke; cursor:pointer }.sg-link circle { fill:currentColor; pointer-events:none }.sg-link.traced { color:#93c5fd }.sg-link.traced .sg-link-line { stroke-width:2 }.sg-link:has(:focus-visible),.sg-link:hover { color:#f8fafc }.sg-link-hit:focus-visible { outline:none; stroke:rgba(96,165,250,.28) }
+ .sg-selection { display:flex; gap:6px; align-items:center; overflow-x:auto; padding:6px 10px; flex:none; border-top:1px solid var(--sg-line) }.sg-selection strong { max-width:220px; min-width:80px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; margin-right:auto }.sg-selection button { white-space:nowrap; flex:none }
+ .sg-gantt-footer { display:flex; flex-wrap:wrap; justify-content:space-between; gap:6px; padding:7px 12px; border-top:1px solid var(--sg-line); color:var(--sg-muted); font-size:12px; flex:none }.sg-gantt-footer span { display:flex; gap:6px; align-items:center }.sg-legend { width:14px; height:3px; display:inline-block }.sg-legend.baseline { background:#a78bfa }.sg-legend.forecast { background:#d9ac65 }
+ .sg-empty { position:absolute; top:20px; padding:12px; color:var(--sg-muted) }.sg-sr { position:absolute!important; width:1px!important; height:1px!important; overflow:hidden!important; clip-path:inset(50%); white-space:nowrap!important }
+--- a/frontend/tests/projects-visual-repair.spec.ts
++++ b/frontend/tests/projects-visual-repair.spec.ts
+@@ -1,5 +1,6 @@
+ import { test, expect, Page } from '@playwright/test'
+ const sizes=[[390,844],[430,932],[768,1024],[1024,768],[1280,720],[1440,900],[1920,1080],[2560,1440]]
++const INTERACTION_BUDGET_MS=1200
+ function fixture() {
+  const day=86400000,base=Math.floor(Date.now()/day)-14,iso=(n:number)=>new Date(n*day).toISOString().slice(0,10)
+  const tasks=Array.from({length:120},(_,i)=>({id:1001+i,name:`Visual task ${i+1}`,status:i%5===4?'Done':'In Progress',progress:20,priority:'Medium',owner:'Planner',start_date:iso(base+i*2),end_date:iso(base+i*2+(i===1?7:2)),order_index:(i+1)*10,dependencies_json:i?[{id:String(1000+i),type:['FS','SS','FF','SF'][i%4],lag_days:0}]:[],metadata_json:i===0?{milestone:true}:i===2?{wbs_parent_id:1002}:{}}))
+@@ -65,7 +66,7 @@
+  const s=await setup(page);await page.getByLabel('Timeline zoom',{exact:true}).selectOption('day')
+  const appSidebar=page.locator('[data-sg-app-sidebar]');const sidebarWidth0=await appSidebar.evaluate((e:HTMLElement)=>e.getBoundingClientRect().width);await page.waitForTimeout(80);const sidebarWidth1=await appSidebar.evaluate((e:HTMLElement)=>e.getBoundingClientRect().width);expect(Math.abs(sidebarWidth1-sidebarWidth0),'Projects app sidebar must be stable before canvas gestures').toBeLessThan(0.5)
+  const scroll=page.locator('[data-project-timeline-scrollport]');await scroll.evaluate(e=>{e.scrollLeft=0})
+- const edge=page.locator('[data-project-timeline-bar][data-task-id="1002"] [data-project-resize-edge="end"]');const p=await target(edge)
++ const edge=page.locator('[data-project-timeline-bar][data-task-id="1002"] [data-project-resize-edge="end"]');const p=await target(edge);expect(p.width).toBeGreaterThanOrEqual(40);expect(p.height).toBeGreaterThanOrEqual(40)
+  await page.mouse.move(p.x,p.y);await page.mouse.down();await page.mouse.move(p.x+28,p.y,{steps:6});await page.mouse.up();await expect.poll(()=>s.puts.length).toBe(1)
+  await scroll.evaluate(e=>{e.scrollTop=4000;e.scrollLeft=1200});await page.waitForTimeout(100)
+  expect(await page.locator('[data-project-timeline-row]').count()).toBeLessThanOrEqual(40)
+@@ -73,6 +74,23 @@
+  expect(await page.locator('[data-project-timeline-tick],[data-project-timeline-grid]').count()).toBeLessThanOrEqual(64)
+  expect(s.puts).toHaveLength(1);expect(s.errors).toEqual([])
+ })
++
++test('virtual WBS semantics and keyboard schedule parity stay bounded',async({page},info)=>{
++ const s=await setup(page)
++ const tree=page.getByRole('treegrid',{name:'Project WBS timeline tasks',exact:true});await expect(tree).toHaveAttribute('aria-rowcount','120')
++ const parent=page.locator('[data-project-timeline-row][data-task-id="1002"]');await expect(parent).toHaveAttribute('role','row');await expect(parent).toHaveAttribute('aria-level','1');await expect(parent).toHaveAttribute('aria-rowindex','2');await expect(parent).toHaveAttribute('aria-expanded','true')
++ const child=page.locator('[data-project-timeline-row][data-task-id="1003"]');await expect(child).toHaveAttribute('aria-level','2')
++ await parent.getByRole('button',{name:'Collapse Visual task 2',exact:true}).click();await expect(parent).toHaveAttribute('aria-expanded','false');await expect(child).toHaveCount(0)
++ await parent.getByRole('button',{name:'Expand Visual task 2',exact:true}).click();await expect(parent).toHaveAttribute('aria-expanded','true')
++ const bar=page.locator('[data-project-timeline-bar][data-task-id="1002"]');const before=s.getProject().tasks.find((t:any)=>t.id===1002);const start0=before.start_date,end0=before.end_date
++ await bar.focus();const moveStarted=Date.now();await page.keyboard.press('ArrowRight');await expect.poll(()=>s.puts.length).toBe(1);const moveMs=Date.now()-moveStarted
++ expect(moveMs).toBeLessThan(INTERACTION_BUDGET_MS);const moved=s.getProject().tasks.find((t:any)=>t.id===1002);expect(moved.start_date).not.toBe(start0);expect(moved.end_date).not.toBe(end0);await expect(bar).toBeFocused();await expect(page.locator('[data-project-timeline-live-status]')).toContainText('moved +1 day')
++ const edge=bar.locator('[data-project-resize-edge="end"]');await edge.focus();const resizedBefore=s.getProject().tasks.find((t:any)=>t.id===1002).end_date;const resizeStarted=Date.now();await page.keyboard.press('ArrowRight');await expect.poll(()=>s.puts.length).toBe(2);const resizeMs=Date.now()-resizeStarted
++ expect(resizeMs).toBeLessThan(INTERACTION_BUDGET_MS);expect(s.getProject().tasks.find((t:any)=>t.id===1002).end_date).not.toBe(resizedBefore);await expect(edge).toBeFocused();await expect(page.locator('[data-project-timeline-live-status]')).toContainText('resized +1 day')
++ const link=page.locator('[data-project-timeline-dependency-connector]').first();expect(await link.evaluate((e:SVGPathElement)=>parseFloat(getComputedStyle(e).strokeWidth))).toBeGreaterThanOrEqual(40)
++ await info.attach('keyboard-performance',{body:JSON.stringify({budgetMs:INTERACTION_BUDGET_MS,moveMs,resizeMs,puts:s.puts.length},null,2),contentType:'application/json'})
++ expect(await page.locator('[data-project-timeline-row]').count()).toBeLessThanOrEqual(40);expect(s.errors).toEqual([])
++})
+ test('Board and task drawer preserve Done meaning and working space',async({page},info)=>{
+  const state=await setup(page);await page.goto('/projects?id=901&view=board')
+  await expect(page.locator('[data-project-execution-hub]')).toBeVisible();await expect(page.locator('[data-project-pulse]')).toHaveCount(0)

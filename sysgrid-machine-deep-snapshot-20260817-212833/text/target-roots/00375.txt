@@ -1,0 +1,188 @@
+ORIGINAL_PATH: /Users/haewonkim/.local/share/sysgrid-campaign-platform/v1.1.1/payload/sysgrid_relay_finalize.py
+ORIGINAL_SHA256: fe06c2ba9074fc0d3604cca1a8d7c81111982f46d2ca60db731ff55b589de167
+================================================================================
+#!/usr/bin/env python3
+from __future__ import annotations
+
+import argparse
+import json
+import subprocess
+import sys
+import time
+from pathlib import Path
+from typing import Any
+
+from sysgrid_relay_common import (
+    atomic_json,
+    dispatch_lock,
+    find_history_for_state,
+    ledger_pointer,
+    load_json,
+    now_utc,
+    relay_environment,
+    relay_paths,
+    send_telegram,
+    workflow_state,
+)
+
+TERMINAL_STATES = {"SUCCEEDED", "FAILED_REVIEW_READY"}
+
+
+def classification_word(state: dict[str, Any]) -> str:
+    return str(state.get("classification") or "UNKNOWN")
+
+
+def run_watcher() -> None:
+    paths = relay_paths()
+    result = subprocess.run([sys.executable, str(paths["watcher"]), str(paths["config"])], text=True, capture_output=True)
+    if result.returncode:
+        raise RuntimeError(
+            f"watcher failed ({result.returncode})\nstdout={result.stdout[-4000:]}\nstderr={result.stderr[-4000:]}"
+        )
+
+
+def entry_for_payload(payload_sha: str) -> dict[str, Any]:
+    path = relay_paths()["watcher_state"]
+    if not path.is_file():
+        return {}
+    state = load_json(path)
+    entries = state.get("entries")
+    if not isinstance(entries, dict):
+        return {}
+    value = entries.get(payload_sha)
+    return value if isinstance(value, dict) else {}
+
+
+def final_message(state: dict[str, Any], relay: str, pointer: dict[str, Any] | None, detail: str | None = None) -> str:
+    product = "PASS" if state.get("state") == "SUCCEEDED" else "FAIL"
+    lines = [
+        f"SysGrid {state.get('issue') or 'run'} — evidence {relay.lower()}",
+        f"Product: {product}",
+        f"Classification: {classification_word(state)}",
+        f"Run: {state.get('run_id')}",
+        f"Evidence relay: {relay}",
+    ]
+    if pointer:
+        lines.extend([
+            f"GitHub workflow: {pointer.get('workflow_run_id')}",
+            f"Artifact: {pointer.get('artifact_id')}",
+        ])
+    if detail:
+        lines.append(f"Relay detail: {detail[:500]}")
+    lines.append("ChatGPT retrieval: READY" if relay == "READY" else "ChatGPT retrieval: NOT READY")
+    return "\n".join(lines)
+
+
+def finalize(timeout_seconds: int, *, notify: bool) -> int:
+    paths = relay_paths()
+    state = load_json(paths["supervisor_state"])
+    if state.get("state") not in TERMINAL_STATES:
+        raise RuntimeError(f"supervisor has no terminal product-review state: {state.get('state')}")
+    archive, sidecar, payload_sha, payload_size = find_history_for_state(state)
+    config = load_json(paths["config"])
+    env = relay_environment(config)
+    deadline = time.monotonic() + timeout_seconds
+    last_detail = "not dispatched"
+    pointer: dict[str, Any] | None = None
+
+    with dispatch_lock(blocking=True) as acquired:
+        if not acquired:
+            raise RuntimeError("could not acquire relay dispatch lock")
+        while time.monotonic() < deadline:
+            pointer = ledger_pointer(config, env)
+            if pointer and pointer.get("payload_sha256") == payload_sha:
+                break
+            run_watcher()
+            entry = entry_for_payload(payload_sha)
+            run_id = entry.get("workflow_run_id")
+            if isinstance(run_id, int):
+                wf = workflow_state(config, run_id, env)
+                if wf:
+                    last_detail = f"workflow {run_id}: {wf.get('status')}/{wf.get('conclusion')}"
+            else:
+                last_detail = f"watcher state: {entry.get('state', 'UNKNOWN')} attempts={entry.get('attempts', 0)}"
+            time.sleep(3)
+        else:
+            pointer = None
+
+    if pointer and pointer.get("payload_sha256") == payload_sha:
+        attestation = {
+            "schema_version": "1.0.0",
+            "classification": "SYNCHRONOUS_SUPERVISOR_RELAY_FINALIZATION",
+            "created_at": now_utc(),
+            "run_id": state.get("run_id"),
+            "issue": state.get("issue"),
+            "product_state": state.get("state"),
+            "product_classification": classification_word(state),
+            "history_path": str(archive),
+            "history_sidecar": str(sidecar),
+            "payload_sha256": payload_sha,
+            "payload_size": payload_size,
+            "workflow_run_id": pointer.get("workflow_run_id"),
+            "artifact_id": pointer.get("artifact_id"),
+            "artifact_digest": pointer.get("artifact_digest"),
+            "relay_state": "READY",
+            "product_rerun": False,
+        }
+        stamp = now_utc().replace("-", "").replace(":", "")
+        target = paths["attestations"] / f"{stamp}__SYNCHRONOUS_RELAY_FINALIZATION.json"
+        atomic_json(target, attestation, mode=0o644)
+        if notify:
+            send_telegram(final_message(state, "READY", pointer))
+        print(json.dumps(attestation, indent=2, sort_keys=True))
+        print("SYSGRID SYNCHRONOUS RELAY FINALIZATION — PASS")
+        return 0
+
+    detail = last_detail
+    failure = {
+        "schema_version": "1.0.0",
+        "classification": "SYNCHRONOUS_RELAY_FINALIZATION_FAILURE",
+        "created_at": now_utc(),
+        "run_id": state.get("run_id"),
+        "issue": state.get("issue"),
+        "product_state": state.get("state"),
+        "product_classification": classification_word(state),
+        "payload_sha256": payload_sha,
+        "payload_size": payload_size,
+        "relay_state": "FAILED",
+        "detail": detail,
+        "product_rerun": False,
+    }
+    stamp = now_utc().replace("-", "").replace(":", "")
+    target = paths["attestations"] / f"{stamp}__SYNCHRONOUS_RELAY_FAILURE.json"
+    atomic_json(target, failure, mode=0o644)
+    if notify:
+        send_telegram(final_message(state, "FAILED", None, detail))
+    print(json.dumps(failure, indent=2, sort_keys=True), file=sys.stderr)
+    print("SYSGRID SYNCHRONOUS RELAY FINALIZATION — FAIL", file=sys.stderr)
+    return 78
+
+
+def self_test() -> int:
+    # Static contract test: the executable imports, parser works, and all critical helpers exist.
+    required = [dispatch_lock, find_history_for_state, ledger_pointer, relay_environment, send_telegram, workflow_state]
+    if not all(callable(item) for item in required):
+        raise RuntimeError("relay finalizer helper contract incomplete")
+    print("SYSGRID_SYNCHRONOUS_RELAY_FINALIZER_SELF_TEST_PASS")
+    return 0
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--timeout-seconds", type=int, default=720)
+    parser.add_argument("--no-telegram", action="store_true")
+    parser.add_argument("--self-test", action="store_true")
+    args = parser.parse_args()
+    if args.self_test:
+        return self_test()
+    if not 60 <= args.timeout_seconds <= 1800:
+        raise SystemExit("timeout must be between 60 and 1800 seconds")
+    return finalize(args.timeout_seconds, notify=not args.no_telegram)
+
+
+if __name__ == "__main__":
+    try:
+        raise SystemExit(main())
+    except Exception as exc:
+        print(f"SYSGRID_SYNCHRONOUS_RELAY_ERROR: {type(exc).__name__}: {exc}", file=sys.stderr)
+        raise SystemExit(78)

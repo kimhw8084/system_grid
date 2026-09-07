@@ -1,0 +1,413 @@
+ORIGINAL_PATH: /Users/haewonkim/.local/share/sysgrid-runner/continuity-v1.0.7/continuity_watcher.py
+ORIGINAL_SHA256: bec806a08636f8ea6681b8a4c356f7a7a07007f0ea62471fef5336f599281f2f
+================================================================================
+#!/usr/bin/env python3
+from __future__ import annotations
+
+import argparse
+import hashlib
+import json
+import os
+import pathlib
+import signal
+import shutil
+import subprocess
+import sys
+import time
+import zipfile
+
+
+def detach_process_session() -> None:
+    try:
+        os.setsid()
+    except (OSError, AttributeError):
+        pass
+    for sig in (signal.SIGHUP, signal.SIGINT, signal.SIGTERM):
+        try:
+            signal.signal(sig, signal.SIG_DFL)
+        except (OSError, ValueError):
+            pass
+
+
+def sha256_file(path: pathlib.Path) -> str:
+    h = hashlib.sha256()
+    with path.open("rb") as handle:
+        for chunk in iter(lambda: handle.read(1024 * 1024), b""):
+            h.update(chunk)
+    return h.hexdigest()
+
+
+def newest_engine_zip(
+    outbox: pathlib.Path,
+    started_epoch: float,
+    baseline_sha256: str,
+) -> pathlib.Path | None:
+    candidate = outbox / "UPLOAD_THIS_TO_CHATGPT.zip"
+    if not candidate.is_file() or candidate.stat().st_mtime < started_epoch - 2:
+        return None
+    current_sha = sha256_file(candidate)
+    if baseline_sha256 not in {"", "missing", "unknown"} and current_sha == baseline_sha256:
+        return None
+    return candidate
+
+
+def inspect_engine_zip_finality(
+    path: pathlib.Path,
+    expected_capsule_name: str,
+    expected_capsule_sha256: str,
+    expected_capsule_size: int,
+) -> tuple[bool, str, str]:
+    """Require final engine evidence for the exact capsule that launched this watcher."""
+    try:
+        digest = sha256_file(path)
+        with zipfile.ZipFile(path, "r") as z:
+            if z.testzip() is not None:
+                return False, "crc-failure", digest
+            names = set(z.namelist())
+            if "RESULT.json" not in names or "MANIFEST.sha256" not in names:
+                return False, "missing-required-members", digest
+            result = json.loads(z.read("RESULT.json").decode("utf-8"))
+            review = z.read("REVIEW_ME_FIRST.md").decode("utf-8", "replace") if "REVIEW_ME_FIRST.md" in names else ""
+    except (OSError, ValueError, json.JSONDecodeError, zipfile.BadZipFile, KeyError) as exc:
+        return False, f"unreadable:{type(exc).__name__}", ""
+
+    result_capsule_name = pathlib.Path(str(result.get("capsule_file") or "")).name
+    result_capsule_sha = str(result.get("capsule_sha256") or "")
+    if result_capsule_name != expected_capsule_name:
+        return False, "capsule-file-mismatch", digest
+    if result_capsule_sha != expected_capsule_sha256:
+        return False, "capsule-sha256-mismatch", digest
+    if str(result.get("project") or "") != "SysGrid":
+        return False, "project-mismatch", digest
+
+    if "capsule archive: pending" in review.lower():
+        return False, "capsule-archive-pending", digest
+
+    archive_raw = result.get("capsule_archive")
+    if not isinstance(archive_raw, str) or not archive_raw.strip():
+        return False, "capsule-archive-missing", digest
+    archive = pathlib.Path(archive_raw).expanduser()
+    if not archive.is_file():
+        return False, "capsule-archive-not-found", digest
+    if archive.name != expected_capsule_name:
+        return False, "capsule-archive-name-mismatch", digest
+    if archive.stat().st_size != expected_capsule_size:
+        return False, "capsule-archive-size-mismatch", digest
+    if sha256_file(archive) != expected_capsule_sha256:
+        return False, "capsule-archive-hash-mismatch", digest
+
+    notification_status = str(result.get("notification_status") or "")
+    summary = result.get("notification_summary")
+    events = summary.get("events") if isinstance(summary, dict) else None
+    if notification_status == "READY" and not events:
+        return False, "notification-evidence-pending", digest
+
+    return True, "finalized-exact-capsule", digest
+
+
+def process_alive(pid: int) -> bool:
+    if pid <= 0:
+        return False
+    try:
+        os.kill(pid, 0)
+        return True
+    except ProcessLookupError:
+        return False
+    except PermissionError:
+        return True
+
+
+def terminate_process_group(proc: subprocess.Popen, log) -> None:
+    if proc.poll() is not None:
+        return
+    try:
+        os.killpg(proc.pid, signal.SIGTERM)
+    except (ProcessLookupError, PermissionError, OSError):
+        try:
+            proc.terminate()
+        except OSError:
+            return
+    deadline = time.time() + 5
+    while proc.poll() is None and time.time() < deadline:
+        time.sleep(0.1)
+    if proc.poll() is None:
+        try:
+            os.killpg(proc.pid, signal.SIGKILL)
+        except (ProcessLookupError, PermissionError, OSError):
+            try:
+                proc.kill()
+            except OSError:
+                pass
+    log.write(f"core_sgwatch_terminated_exit={proc.poll()}\n")
+
+
+def notify(message: str) -> None:
+    notifier = pathlib.Path.home() / ".local" / "bin" / "sgnotify"
+    if notifier.is_file() and os.access(notifier, os.X_OK):
+        subprocess.run(
+            [str(notifier), message],
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+            timeout=10,
+            check=False,
+        )
+
+
+def initialize_launch(args: argparse.Namespace, launch_path: pathlib.Path) -> dict:
+    required = {
+        "launch_id": args.launch_id,
+        "repo": args.repo,
+        "pre_head": args.pre_head,
+        "started_epoch": args.started_epoch,
+        "control_root": args.control_root,
+        "core_sgwatch": args.core_sgwatch,
+        "packager": args.packager,
+        "payload_dir": args.payload_dir,
+        "outbox_pre_sha256": args.outbox_pre_sha256,
+        "lock_dir": args.lock_dir,
+        "wrapper_pid": args.wrapper_pid,
+        "core_exit_json": args.core_exit_json,
+        "expected_capsule_path": args.expected_capsule_path,
+        "expected_capsule_name": args.expected_capsule_name,
+        "expected_capsule_sha256": args.expected_capsule_sha256,
+        "expected_capsule_size": args.expected_capsule_size,
+    }
+    missing = [name for name, value in required.items() if value is None]
+    if missing:
+        raise ValueError(f"missing initialization fields: {', '.join(missing)}")
+    launch = {
+        "schema_version": "1.1",
+        "continuity_version": "1.0.7",
+        "launch_id": args.launch_id,
+        "repo": args.repo,
+        "pre_head": args.pre_head,
+        "started_epoch": float(args.started_epoch),
+        "control_root": args.control_root,
+        "core_sgwatch": args.core_sgwatch,
+        "packager": args.packager,
+        "watcher": str(pathlib.Path(__file__).resolve()),
+        "payload_dir": args.payload_dir,
+        "foreground": args.foreground == "1",
+        "argument_count": int(args.argument_count or 0),
+        "watcher_start_policy": "prelaunch-independent-session",
+        "outbox_pre_sha256": args.outbox_pre_sha256 or "missing",
+        "lock_dir": args.lock_dir,
+        "wrapper_pid": int(args.wrapper_pid),
+        "core_exit_json": args.core_exit_json,
+        "watcher_pid": os.getpid(),
+        "expected_capsule_path": args.expected_capsule_path,
+        "expected_capsule_name": args.expected_capsule_name,
+        "expected_capsule_sha256": args.expected_capsule_sha256,
+        "expected_capsule_size": int(args.expected_capsule_size),
+        "correlation_policy": "exact-capsule-name-sha256-size-and-archive",
+    }
+    launch_path.parent.mkdir(parents=True, exist_ok=True)
+    temporary = launch_path.with_suffix(launch_path.suffix + f".{os.getpid()}.tmp")
+    temporary.write_text(json.dumps(launch, indent=2) + "\n", encoding="utf-8")
+    os.replace(temporary, launch_path)
+    return launch
+
+
+def main() -> int:
+    detach_process_session()
+    parser = argparse.ArgumentParser()
+    parser.add_argument("launch_json")
+    parser.add_argument("--initialize", action="store_true")
+    parser.add_argument("--launch-id")
+    parser.add_argument("--repo")
+    parser.add_argument("--pre-head")
+    parser.add_argument("--started-epoch")
+    parser.add_argument("--control-root")
+    parser.add_argument("--core-sgwatch")
+    parser.add_argument("--packager")
+    parser.add_argument("--payload-dir")
+    parser.add_argument("--foreground")
+    parser.add_argument("--argument-count")
+    parser.add_argument("--outbox-pre-sha256")
+    parser.add_argument("--lock-dir")
+    parser.add_argument("--wrapper-pid")
+    parser.add_argument("--core-exit-json")
+    parser.add_argument("--expected-capsule-path")
+    parser.add_argument("--expected-capsule-name")
+    parser.add_argument("--expected-capsule-sha256")
+    parser.add_argument("--expected-capsule-size")
+    parser.add_argument("--already-finished", action="store_true")
+    parser.add_argument("--launch-reason", default="normal")
+    args = parser.parse_args()
+
+    launch_path = pathlib.Path(args.launch_json)
+    if args.initialize:
+        launch = initialize_launch(args, launch_path)
+    else:
+        launch = json.loads(launch_path.read_text(encoding="utf-8"))
+
+    core_sgwatch = pathlib.Path(launch["core_sgwatch"])
+    control_root = pathlib.Path(launch["control_root"])
+    outbox = control_root / "Outbox"
+    outbox.mkdir(parents=True, exist_ok=True)
+    log_path = control_root / "State" / f"continuity-watcher-{launch['launch_id']}.log"
+    log_path.parent.mkdir(parents=True, exist_ok=True)
+
+    lock_dir = pathlib.Path(launch["lock_dir"]) if launch.get("lock_dir") else None
+    raw_wait_seconds = int(os.environ.get("SYSGRID_CONTINUITY_RAW_WAIT_SECONDS", "14400"))
+    raw_wait_seconds = max(1, min(raw_wait_seconds, 14400))
+    try:
+        with log_path.open("a", encoding="utf-8") as log:
+            log.write(f"watcher_start={time.time()}\n")
+            log.write(f"launch_reason={args.launch_reason}\n")
+            log.write(f"raw_wait_seconds={raw_wait_seconds}\n")
+            foreground = bool(launch.get("foreground"))
+            wrapper_pid = int(launch.get("wrapper_pid") or 0)
+            core_exit_json = pathlib.Path(str(launch.get("core_exit_json") or ""))
+            foreground_grace_seconds = int(os.environ.get("SYSGRID_CONTINUITY_FOREGROUND_GRACE_SECONDS", "30"))
+            foreground_grace_seconds = max(1, min(foreground_grace_seconds, 300))
+            post_core_grace_seconds = int(os.environ.get("SYSGRID_CONTINUITY_POST_CORE_GRACE_SECONDS", "120"))
+            post_core_grace_seconds = max(5, min(post_core_grace_seconds, 600))
+            expected_capsule_name = str(launch["expected_capsule_name"])
+            expected_capsule_sha256 = str(launch["expected_capsule_sha256"])
+            expected_capsule_size = int(launch["expected_capsule_size"])
+            log.write(f"foreground_grace_seconds={foreground_grace_seconds}\n")
+            log.write(f"post_core_grace_seconds={post_core_grace_seconds}\n")
+            log.write(f"expected_capsule_name={expected_capsule_name}\n")
+            log.write(f"expected_capsule_sha256={expected_capsule_sha256}\n")
+            log.write(f"expected_capsule_size={expected_capsule_size}\n")
+
+            raw = None
+            raw_digest = ""
+            terminal_seen_at = None
+            overall_deadline = time.time() + raw_wait_seconds
+            watch_proc = None
+            core_watch_terminal = bool(args.already_finished)
+            final_stability_seconds = float(os.environ.get("SYSGRID_CONTINUITY_FINAL_STABILITY_SECONDS", "2"))
+            final_stability_seconds = max(0.1, min(final_stability_seconds, 30.0))
+            stable_digest = ""
+            stable_since = None
+            last_rejection = ""
+            log.write(f"final_stability_seconds={final_stability_seconds}\n")
+            if not args.already_finished:
+                time.sleep(1.0)
+                watch_proc = subprocess.Popen(
+                    [str(core_sgwatch)],
+                    stdout=log,
+                    stderr=log,
+                    start_new_session=True,
+                )
+                log.write(f"core_sgwatch_pid={watch_proc.pid}\n")
+
+            while time.time() < overall_deadline:
+                if watch_proc is not None and watch_proc.poll() is not None:
+                    log.write(f"core_sgwatch_exit={watch_proc.returncode}\n")
+                    core_watch_terminal = True
+                    watch_proc = None
+
+                candidate = newest_engine_zip(
+                    outbox,
+                    float(launch["started_epoch"]),
+                    str(launch.get("outbox_pre_sha256") or "missing"),
+                )
+                if candidate:
+                    finalized, reason, digest = inspect_engine_zip_finality(
+                        candidate,
+                        expected_capsule_name,
+                        expected_capsule_sha256,
+                        expected_capsule_size,
+                    )
+                    if not core_watch_terminal:
+                        reason = "core-sgwatch-still-active"
+                        finalized = False
+                    if finalized:
+                        if digest != stable_digest:
+                            stable_digest = digest
+                            stable_since = time.time()
+                            log.write(f"raw_engine_zip_stability_started={digest}\n")
+                        elif stable_since is not None and time.time() - stable_since >= final_stability_seconds:
+                            # Re-read after the stability interval so a last-moment overwrite cannot slip through.
+                            finalized_again, reason_again, digest_again = inspect_engine_zip_finality(
+                                candidate,
+                                expected_capsule_name,
+                                expected_capsule_sha256,
+                                expected_capsule_size,
+                            )
+                            if finalized_again and digest_again == stable_digest:
+                                raw = candidate
+                                raw_digest = digest_again
+                                log.write(f"raw_engine_zip_finalized={raw_digest}\n")
+                                break
+                            stable_digest = ""
+                            stable_since = None
+                            reason = reason_again
+                    else:
+                        stable_digest = ""
+                        stable_since = None
+                        if reason != last_rejection:
+                            log.write(f"raw_engine_zip_waiting={reason}\n")
+                            last_rejection = reason
+
+                terminal_source = ""
+                if core_exit_json.is_file():
+                    terminal_source = "core-exit-marker"
+                elif foreground and wrapper_pid and not process_alive(wrapper_pid):
+                    terminal_source = "wrapper-process-gone"
+                if terminal_source and terminal_seen_at is None:
+                    terminal_seen_at = time.time()
+                    log.write(f"terminal_source={terminal_source}\n")
+                if terminal_seen_at is not None:
+                    grace = foreground_grace_seconds if foreground else post_core_grace_seconds
+                    if time.time() - terminal_seen_at >= grace:
+                        log.write(f"matching_capsule_grace_expired={grace}\n")
+                        break
+
+                time.sleep(0.25)
+
+            if watch_proc is not None and watch_proc.poll() is None:
+                terminate_process_group(watch_proc, log)
+            elif watch_proc is not None:
+                log.write(f"core_sgwatch_exit={watch_proc.returncode}\n")
+
+            if raw:
+                raw_copy = control_root / "State" / f"engine-review-{launch['launch_id']}.zip"
+                raw_copy.write_bytes(raw.read_bytes())
+                if sha256_file(raw_copy) != raw_digest:
+                    raise RuntimeError("raw engine ZIP changed during continuity copy")
+                raw_arg = str(raw_copy)
+            else:
+                raw_arg = ""
+                log.write("raw_engine_zip_missing=true\n")
+
+            cmd = [
+                sys.executable,
+                launch["packager"],
+                "--repo", launch["repo"],
+                "--control-root", launch["control_root"],
+                "--pre-head", launch.get("pre_head", "unknown"),
+                "--launch-json", str(launch_path),
+                "--payload-dir", launch["payload_dir"],
+            ]
+            if raw_arg:
+                cmd += ["--raw-zip", raw_arg]
+            cp = subprocess.run(cmd, stdout=log, stderr=log, check=False)
+            log.write(f"packager_exit={cp.returncode}\n")
+            if cp.returncode == 0:
+                notify(
+                    "✅ SysGrid continuity bundle ready\n"
+                    "Outbox: UPLOAD_THIS_TO_CHATGPT.zip\n"
+                    "Current handoff: SysGrid-Control/Continuity/Current"
+                )
+            else:
+                notify(
+                    "❌ SysGrid continuity packaging failed\n"
+                    "Check SysGrid-Control/State continuity watcher log"
+                )
+            return cp.returncode
+    finally:
+        if lock_dir and lock_dir.is_dir():
+            try:
+                owner = (lock_dir / "launch_id").read_text(encoding="utf-8").strip()
+            except OSError:
+                owner = ""
+            if owner in {"", str(launch.get("launch_id", ""))}:
+                shutil.rmtree(lock_dir, ignore_errors=True)
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

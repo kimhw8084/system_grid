@@ -1,0 +1,4 @@
+ORIGINAL_PATH: /Users/haewonkim/.local/share/sysgrid-campaign-platform/v1.1.0/templates/NEXT_PERMITTED_ACTION.template.json
+ORIGINAL_SHA256: 5c2dcb094f40125d0b720d8b997b70a80e3d0b62c748c630bd698e060d6c5c5e
+================================================================================
+{"schema_version":"1.0","campaign_id":"<campaign-id>","action":"SHADOW_QUALIFICATION_THEN_CONTROLLED_APPLY"}

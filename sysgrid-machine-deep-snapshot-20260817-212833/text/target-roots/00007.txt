@@ -1,0 +1,96 @@
+ORIGINAL_PATH: /Users/haewonkim/.local/share/sysgrid-delivery-v1.3.0/sg_runner.py
+ORIGINAL_SHA256: 747af261f46101bc5d7b602eba33db2d36b7279f04cd167aaa29b7e26762842c
+================================================================================
+from __future__ import annotations
+
+import hashlib
+import importlib.util
+import json
+import sys
+from importlib.machinery import SourceFileLoader
+from pathlib import Path
+
+from command_enumeration_core import resolve_unique_active_commands
+
+RUNNER_VERSION = "fresh-text-1.0.1-command-enumeration"
+REV2_BACKUP_NAME = "sg_runner.py.fresh-rev2.rollback"
+REV2_RUNNER_SHA256 = "0cf92efcb19a4c4534855da43d2923fae4b8e6829eb04379bc335ed7a0e31198"
+
+
+def _load_rev2():
+    backup = Path(__file__).with_name(REV2_BACKUP_NAME)
+    if not backup.is_file():
+        raise RuntimeError("qualified fresh rev2 runner backup missing")
+    if hashlib.sha256(backup.read_bytes()).hexdigest() != REV2_RUNNER_SHA256:
+        raise RuntimeError("qualified fresh rev2 runner backup identity mismatch")
+    name = "sysgrid_fresh_rev2_runner_base"
+    loader = SourceFileLoader(name, str(backup))
+    spec = importlib.util.spec_from_loader(name, loader)
+    if spec is None or spec.loader is None:
+        raise RuntimeError("cannot load qualified fresh rev2 runner backup")
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[name] = module
+    spec.loader.exec_module(module)
+    return module
+
+
+_base = _load_rev2()
+
+# Re-export the exact qualified rev2 implementation, except the two deliberately changed
+# command-enumeration/identity seams below.
+for _name in dir(_base):
+    if _name.startswith("__") or _name in {"resolve_single_active_command", "identity", "RUNNER_VERSION"}:
+        continue
+    globals()[_name] = getattr(_base, _name)
+
+COMMAND_START = _base.COMMAND_START
+COMMAND_END = _base.COMMAND_END
+WIRE_VERSION = _base.WIRE_VERSION
+
+
+def active_command_identities(comments):
+    _active, identities = resolve_unique_active_commands(
+        comments,
+        command_start=COMMAND_START,
+        command_end=COMMAND_END,
+        wire_version=WIRE_VERSION,
+        extract_json=_base._extract_json,
+        parse_active_command=_base.parse_active_command,
+        authority_error=_base.AuthorityError,
+        schema_error=_base.SchemaError,
+    )
+    return identities
+
+
+def resolve_single_active_command(comments):
+    active, _identities = resolve_unique_active_commands(
+        comments,
+        command_start=COMMAND_START,
+        command_end=COMMAND_END,
+        wire_version=WIRE_VERSION,
+        extract_json=_base._extract_json,
+        parse_active_command=_base.parse_active_command,
+        authority_error=_base.AuthorityError,
+        schema_error=_base.SchemaError,
+    )
+    if len(active) != 1:
+        raise _base.AuthorityError(f"expected exactly one ACTIVE command, found {len(active)}")
+    return active[0]
+
+
+# Every rev2 execution path resolves command authority through its module global. Patch only
+# that global; transport, replay, capsule, verification, publication, result and consumption
+# code remain the exact hash-verified rev2 implementation.
+_base.resolve_single_active_command = resolve_single_active_command
+
+
+def identity() -> dict:
+    out = dict(_base.identity())
+    out["runner_version"] = RUNNER_VERSION
+    out["runner_sha256"] = hashlib.sha256(Path(__file__).read_bytes()).hexdigest()
+    out["base_runner_sha256"] = REV2_RUNNER_SHA256
+    return out
+
+
+if __name__ == "__main__":
+    print(json.dumps(identity(), sort_keys=True))

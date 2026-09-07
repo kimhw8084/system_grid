@@ -1,0 +1,75 @@
+ORIGINAL_PATH: /Users/haewonkim/.local/state/sysgrid-supervisor/runs/20260803T122742Z-56326-232000/diagnostic/SUPERVISOR_STATE.json
+ORIGINAL_SHA256: 56aee7944f8db177441b6ddea75ac6607c8b2790799ae63799a7593634630048
+================================================================================
+{
+  "classification": "CAPSULE_SELECTION_FAILURE",
+  "event_timeline": [
+    {
+      "details": {},
+      "elapsed_seconds": 0.019,
+      "event_id": "capsule_selected",
+      "message": "Selecting the one immutable capsule and converging only byte-identical Inbox duplicates.",
+      "notification": {
+        "event_id": "capsule_selected",
+        "presentation_mode": "summary",
+        "required": false,
+        "status": "local_only",
+        "updated_utc": "2026-08-03T12:27:42Z"
+      },
+      "status": "started",
+      "utc": "2026-08-03T12:27:42Z"
+    }
+  ],
+  "exit_code": 66,
+  "last_progress_event": "capsule_selected",
+  "last_progress_message": "Selecting the one immutable capsule and converging only byte-identical Inbox duplicates.",
+  "last_progress_status": "started",
+  "last_progress_utc": "2026-08-03T12:27:42Z",
+  "message": "Inbox must contain one capsule; found 0",
+  "monotonic_started": 4035289.442709125,
+  "notification_events": {
+    "capsule_selected": {
+      "event_id": "capsule_selected",
+      "presentation_mode": "summary",
+      "required": false,
+      "status": "local_only",
+      "updated_utc": "2026-08-03T12:27:42Z"
+    }
+  },
+  "notification_policy": {
+    "delivery_semantics": "durably-deduplicated-at-least-once",
+    "engine_heartbeat_seconds": 300,
+    "max_messages_per_run": 3,
+    "presentation_mode": "summary",
+    "registered_events": 21,
+    "required_before_engine": false,
+    "telegram_heartbeats": false
+  },
+  "pid": 56326,
+  "resource_plan": {
+    "backend_workers": 5,
+    "cpu_count": 12,
+    "e2e_workers": 2,
+    "frontend_workers": 5,
+    "memory_bytes": 19327352832,
+    "preflight_workers": 24,
+    "reserve_memory_bytes": 2147483648,
+    "test_cpu_budget": 11,
+    "usable_memory_bytes": 17179869184
+  },
+  "run_id": "20260803T122742Z-56326-232000",
+  "safe_cleanup": {
+    "inspected": 0,
+    "removed": 0
+  },
+  "safe_retry_count": 0,
+  "stage": "capsule-selection",
+  "started_utc": "2026-08-03T12:27:42Z",
+  "state": "FAILED_NO_ARTIFACT",
+  "telegram": {
+    "chat_id_suffix": "1055",
+    "configured": true,
+    "source": "/Users/haewonkim/.config/sysgrid-supervisor/telegram.json"
+  },
+  "work_dir": "/Users/haewonkim/.local/state/sysgrid-supervisor/runs/20260803T122742Z-56326-232000"
+}

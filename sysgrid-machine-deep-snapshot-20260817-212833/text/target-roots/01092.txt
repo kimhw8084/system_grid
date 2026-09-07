@@ -1,0 +1,15 @@
+ORIGINAL_PATH: /Users/haewonkim/.local/state/sysgrid-supervisor/runs/20260801T211433Z-43998-647000/patch.diff
+ORIGINAL_SHA256: 26000a9222a2eae1feef828765a2155273fad41bd6f1b6a9f89af616c4c9ce51
+================================================================================
+diff --git a/frontend/src/components/shared/OperationalWorkspaceShells.tsx b/frontend/src/components/shared/OperationalWorkspaceShells.tsx
+--- a/frontend/src/components/shared/OperationalWorkspaceShells.tsx
++++ b/frontend/src/components/shared/OperationalWorkspaceShells.tsx
+@@ -19,7 +19,7 @@
+   'attached-panel': 'rounded-t-none border-x border-b border-white/5',
+ } as const
+ 
+-export const GOLDEN_GRID_CONTENT_CLASS = 'relative box-border flex min-h-0 min-w-0 w-full max-w-full flex-1 overflow-hidden [&>*]:!min-h-0 [&>*]:!min-w-0 [&>*]:!w-full [&>*]:!max-w-full [&>*]:flex-1'
++export const GOLDEN_GRID_CONTENT_CLASS = 'relative box-border flex min-h-0 min-w-0 w-full max-w-full flex-1 overflow-hidden [contain:inline-size] [&>*]:!min-h-0 [&>*]:!min-w-0 [&>*]:!w-full [&>*]:!max-w-full [&>*]:flex-1'
+ 
+ export const getOperationalGridSurfaceStyle = (
+   fontSize: number,

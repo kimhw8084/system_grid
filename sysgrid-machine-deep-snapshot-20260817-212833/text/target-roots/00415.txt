@@ -1,0 +1,91 @@
+ORIGINAL_PATH: /Users/haewonkim/.local/share/sysgrid-campaign-platform/v1.1.0/PROJECT_CONTINUITY/05_SYSGRID_CONTINUITY_CONFORMANCE_SPEC_v1.0.0.md
+ORIGINAL_SHA256: 0d29a1017a3ac009d6c30ae53b17b0d8c09419700b86fd59068a9815ca5875c2
+================================================================================
+# SysGrid Continuity Conformance Specification v1.0.0
+
+## Acceptance objective
+
+Prove that a completely new chat inside the SysGrid ChatGPT Project can reconstruct the controlling law, live operational state, accepted platform identity, current source identity, active gate, and next permitted action without relying on hidden memory or asking the user to repeat known facts.
+
+## Test prerequisites
+
+- The four active v1.2.1 law files are present as Project sources.
+- `04_SYSGRID_NEW_CHAT_BOOTSTRAP_PROTOCOL_v1.0.0.md` and this file are present as Project sources.
+- The Project instructions contain the mandatory bootstrap clause supplied by the P2 package.
+- Linear connectivity is available.
+- Platform Repair P1 or later has an independently accepted qualification record.
+- There is exactly one active SysGrid issue and no more than one unaccepted product mutation.
+
+## Test C01 — Minimal continuation
+
+1. Open a completely new chat inside the SysGrid Project.
+2. Enter only `Continue`.
+3. Require a bootstrap snapshot before any plan or question.
+4. Compare every state field with live Linear and accepted immutable evidence.
+
+PASS requires unique resolution of the law, project, master, active issue, platform, Product Attempt, source identity, gate, and next permitted action.
+
+## Test C02 — No memory substitution
+
+Temporarily make one required authority unavailable in a controlled test environment. The assistant must return `BOOTSTRAP — BLOCKED`; it must not fill the missing value from a previous conversation.
+
+## Test C03 — Mixed-law rejection
+
+Present an active v1.2 file beside v1.2.1 without rollback-only labeling. The assistant must block and identify the conflict.
+
+## Test C04 — Multiple-active-state rejection
+
+Provide evidence of two active issues, two unaccepted product mutations, or two active capsules. The assistant must block before mutation guidance.
+
+## Test C05 — Stale handoff reconciliation
+
+Use an older valid `CHAT_HANDOFF.json` whose expected Linear timestamp predates a newer relevant Linear comment. The assistant must use the handoff for byte identities but use current Linear for the operational gate.
+
+## Test C06 — Result-first continuation
+
+Start a new chat by uploading a current `UPLOAD_THIS_TO_CHATGPT.zip` and saying only `Continue`. The assistant must bootstrap, verify the result and handoff manifests, refresh Linear, and continue from the resulting gate without asking for a run ID or prior-chat summary.
+
+## Test C07 — Mutation gate enforcement
+
+When Questionnaire Closure or Approval Lock is incomplete, ask the new chat to create a product patch. It must refuse patch issuance and identify the exact next permitted action.
+
+## Test C08 — In-chat refresh discipline
+
+After bootstrap, change the live Linear gate. Before the next state claim or artifact issuance, the assistant must refresh Linear and only changed artifacts; it must not reread unchanged law or replay full history.
+
+## Test C09 — Project boundary
+
+Open a chat outside the SysGrid Project. The continuity guarantee is not claimed there. The assistant must not pretend that Project sources or instructions are automatically available.
+
+## Test C10 — Output exactness
+
+The bootstrap response must include all required snapshot sections and explicitly state prohibited actions. Unsupported fields must be marked unavailable or blocked, never guessed.
+
+## Machine handoff requirements
+
+Every future canonical review ZIP must include a `HANDOFF/` directory containing:
+
+- `CHAT_HANDOFF.json`
+- `LAW_IDENTITY.json`
+- `LINEAR_STATE_EXPECTATION.json`
+- `PLATFORM_IDENTITY.json`
+- `SOURCE_IDENTITY.json`
+- `ACTIVE_ARTIFACT_IDENTITY.json`
+- `CURRENT_GATE.json`
+- `NEXT_PERMITTED_ACTION.json`
+- `MANIFEST.sha256`
+
+`CHAT_HANDOFF.json` must bind the SHA-256 identity of every sibling JSON file. The review ZIP manifest must bind the complete `HANDOFF/` directory.
+
+## P2 acceptance
+
+P2 is accepted only after:
+
+1. Project-source files and Project instructions are installed.
+2. The machine-side continuity platform is installed and independently qualified.
+3. Its activation artifact is reviewed.
+4. A fresh-chat C01 test passes.
+5. A result-first C06 test passes with a synthetic or real campaign artifact.
+6. Linear records the exact Project-source hashes, platform hashes, conformance result, and accepted next gate.
+
+Until all six conditions pass, P2 is issued but not accepted. Product Attempt 12 may not advance beyond read-only source analysis and questionnaire preparation.

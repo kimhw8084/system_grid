@@ -1,0 +1,27 @@
+ORIGINAL_PATH: /Users/haewonkim/.local/state/sysgrid-workstation/profiles/work/runs/20260809T025036Z/resolved-profile.txt
+ORIGINAL_SHA256: 52a9aff8e9590dad2b7531f61220c600cd30b22b88ff79ec2f63a94c0a5c76cf
+================================================================================
+
+SYSGRID WORKSTATION/UAT PROFILE
+-------------------------------
+Profile:                     work
+Profile file:                /Users/haewonkim/.config/sysgrid/workstations/work.env
+Repository:                  /Users/haewonkim/home/development/sysgrid
+Browser API origin:          http://127.0.0.1:8000
+Browser frontend origin:     http://127.0.0.1:5173
+Local backend bind:          127.0.0.1:8000
+Local frontend bind:         127.0.0.1:5173
+Identity variable:           AccessKey
+Effective UAT identity:      haewon.kim
+Primary seeded admin:        haewon.kim
+Automatic admins:            haewon.kim
+Admin full name:             Haewon Kim
+Admin email:                 haewon.kim@sysgrid.local
+Admin department:            Infrastructure
+Buganizer URL:               <not configured>
+Selected data mode:          fresh-full
+Saved default data mode:     fresh-full
+Public frontend proof:       warn
+Synchronize origin/main:     true
+Install changed dependencies: true
+Strict startup checks:       true

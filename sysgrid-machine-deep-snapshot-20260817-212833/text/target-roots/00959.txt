@@ -1,0 +1,28 @@
+ORIGINAL_PATH: /Users/haewonkim/.local/state/sysgrid-supervisor/runs/20260803T210459Z-89376-290000/patch.diff
+ORIGINAL_SHA256: f6374a9a6b8e4a77d4753d3bd7ab061ce50e75b215a627191892acb1d108ddb4
+================================================================================
+diff --git a/frontend/tests/far-workflows.spec.ts b/frontend/tests/far-workflows.spec.ts
+index 174478665713446d0834461e9331c5072bc958d8..cf4548d3019f52950ee5bc3ff80a2dbcaa231293 100644
+--- a/frontend/tests/far-workflows.spec.ts
++++ b/frontend/tests/far-workflows.spec.ts
+@@ -61,7 +61,7 @@ test.describe('FAR workflows', () => {
+     await expect(workspace.getByText('Failure Inventory Maturity Profile')).toBeVisible()
+     await workspace.getByRole('button', { name: /Insights/i }).click()
+     await expect(workspace.getByText('Failure Inventory Maturity Profile')).not.toBeVisible()
+-    await page.getByPlaceholder(/scan risk vectors/i).fill(far.title)
++    await page.getByPlaceholder('Search FAR failure modes').fill(far.title)
+     const centerRow = workspace.locator('.ag-center-cols-container .ag-row').filter({ hasText: far.title })
+     await expect(centerRow).toBeVisible()
+     const rowIndex = await centerRow.getAttribute('row-index')
+diff --git a/frontend/tests/golden-eight-seeded-visual-matrix.spec.ts b/frontend/tests/golden-eight-seeded-visual-matrix.spec.ts
+index e31b833112b6f1cdd42887c460c03b92e756f591..570ea785840e638ea08df00b614291e08830a15c 100644
+--- a/frontend/tests/golden-eight-seeded-visual-matrix.spec.ts
++++ b/frontend/tests/golden-eight-seeded-visual-matrix.spec.ts
+@@ -192,6 +192,7 @@ test.describe.parallel('Golden Eight non-short-circuit populated validation matr
+         if (JSON.stringify([...routeTenantIds]) !== JSON.stringify([testTenantId])) failures.push(`response tenants: ${JSON.stringify([...routeTenantIds])}`)
+         if (!(await workspace.isVisible().catch(() => false))) failures.push('workspace not visible')
+         if (!(await grid.isVisible().catch(() => false))) failures.push('shared grid surface not visible')
++        await expect(grid.locator('.ag-center-cols-container .ag-row').first()).toBeVisible({ timeout: 30_000 })
+ 
+         const shellBox = await workspace.boundingBox()
+         const gridBox = await grid.boundingBox()

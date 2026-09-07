@@ -1,0 +1,66 @@
+ORIGINAL_PATH: /Users/haewonkim/.local/state/sysgrid-supervisor/runs/20260731T234843Z-74618-073000/diagnostic/SUPERVISOR_STATE.json
+ORIGINAL_SHA256: a95877d2559227b62cc5b1fc29027acc68a155089ef13e8fffad2019622576d7
+================================================================================
+{
+  "attempt": 1,
+  "capsule_file": "20260731T184025Z__6503857d5ffa__OUT-31_Golden-Eight_Iteration-36-Attempt-01_Full-Matrix-Physical-Closure.sgcap",
+  "capsule_sha256": "6503857d5ffa5fcdd6d9a32afd39fd5cf4649d78748b140177b8e78b0b9a2538",
+  "capsule_size": 17213,
+  "classification": "PREFLIGHT_AGGREGATE_FAILURE",
+  "exit_code": 70,
+  "issue": "OUT-31",
+  "iteration": 36,
+  "message": "patch: PATCH_STATE_FAILURE: mutation patch is not uniquely forward-applicable; repository: CAPSULE_STATE_FAILURE: invalid state JSON: STATE/pre_expected_dirty_paths.txt",
+  "original_capsule": "/Users/haewonkim/Library/Mobile Documents/com~apple~CloudDocs/SysGrid-Control/Inbox/20260731T184025Z__6503857d5ffa__OUT-31_Golden-Eight_Iteration-36-Attempt-01_Full-Matrix-Physical-Closure.sgcap",
+  "pid": 74618,
+  "preflight": {
+    "failures": {
+      "patch": {
+        "classification": "PATCH_STATE_FAILURE",
+        "exit_code": 69,
+        "message": "mutation patch is not uniquely forward-applicable"
+      },
+      "repository": {
+        "classification": "CAPSULE_STATE_FAILURE",
+        "exit_code": 65,
+        "message": "invalid state JSON: STATE/pre_expected_dirty_paths.txt"
+      }
+    },
+    "results": {
+      "engine": {
+        "path": "/Users/haewonkim/.local/lib/sysgrid-runner/1.0.4/sysgrid_runner.py",
+        "self_test": {
+          "engine_version": "1.0.4",
+          "result": "PASS",
+          "tests": [
+            "safe-path",
+            "manifest",
+            "corruption"
+          ]
+        }
+      },
+      "storage": {
+        "control_free": 57943568384,
+        "local_free": 57943568384,
+        "required": 536870912
+      }
+    }
+  },
+  "resource_plan": {
+    "cpu_count": 12,
+    "memory_bytes": 19327352832,
+    "preflight_workers": 24,
+    "recommended_test_workers": 12
+  },
+  "run_id": "20260731T234843Z-74618-073000",
+  "safe_cleanup": {
+    "inspected": 0,
+    "removed": 0
+  },
+  "safe_retry_count": 0,
+  "stage": "preflight",
+  "staged_capsule": "/Users/haewonkim/.local/state/sysgrid-supervisor/runs/20260731T234843Z-74618-073000/input/20260731T184025Z__6503857d5ffa__OUT-31_Golden-Eight_Iteration-36-Attempt-01_Full-Matrix-Physical-Closure.sgcap",
+  "started_utc": "2026-07-31T23:48:43Z",
+  "state": "FAILED_NO_ARTIFACT",
+  "work_dir": "/Users/haewonkim/.local/state/sysgrid-supervisor/runs/20260731T234843Z-74618-073000"
+}

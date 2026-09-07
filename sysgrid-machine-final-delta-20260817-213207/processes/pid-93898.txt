@@ -1,0 +1,8 @@
+PID=93898
+93898     1   501 haewonkim 27Jul26  11:24.92 S    /bin/bash /var/folders/nz/6q2p_ldx3txdbw_gttbpnwjr0000gn/T//OUT-31_Stage-1_Iteration-09_Attempt-02.WAeOR4/CONTROL_PLANE_V2_SELFTEST/home/.local/state/sysgrid-phone/worker-legacy-selftest.sh
+
+COMMAND   PID      USER   FD   TYPE DEVICE SIZE/OFF                NODE NAME
+bash    93898 haewonkim  cwd    DIR   1,14     2400            70339124 /Users/haewonkim/home/development/sysgrid
+bash    93898 haewonkim  txt    REG   1,14  1310224 1152921500312522656 /bin/bash
+bash    93898 haewonkim  txt    REG   1,14    81288 1152921500312536081 /usr/share/locale/en_US.UTF-8/LC_COLLATE
+bash    93898 haewonkim  txt    REG   1,14  2289328 1152921500312524539 /usr/lib/dyld

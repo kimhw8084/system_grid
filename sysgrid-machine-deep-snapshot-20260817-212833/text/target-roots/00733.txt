@@ -1,0 +1,13 @@
+ORIGINAL_PATH: /Users/haewonkim/.local/state/sysgrid-supervisor/runs/20260801T165116Z-41268-284000/launch.json
+ORIGINAL_SHA256: 09aadca4b7473968f50f72da5b59564c0ee0bae1884a96eb183549e0d687787c
+================================================================================
+{
+  "capsule_path": "/Users/haewonkim/.local/state/sysgrid-supervisor/runs/20260801T165116Z-41268-284000/input/OUT-31_Golden-Eight_Iteration-36-Attempt-04_Verification-Repair-R1_Exact-Local-Playwright-Contract-Alignment.sgcap",
+  "capsule_sha256": "03b63f6031eba28d6ed4a96c11ffd7ed1f9f59b9f1808c4567ab7c0b0c544c7b",
+  "command_sha256": "9dd659aabf4557047015b1e5c6ebe82726d562285f6ae8bc420691b7d4cf1448",
+  "engine_path": "/Users/haewonkim/.local/lib/sysgrid-runner/1.0.4/sysgrid_runner.py",
+  "engine_sha256": "ab63bb20c0de32771e20b0159475205f685f28910a0956c217fb3693c02f96e1",
+  "launched_utc": "2026-08-01T16:51:17Z",
+  "repo": "/Users/haewonkim/home/development/sysgrid",
+  "run_id": "20260801T165116Z-41268-284000"
+}

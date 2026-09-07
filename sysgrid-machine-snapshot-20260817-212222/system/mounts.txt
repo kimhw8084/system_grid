@@ -1,0 +1,18 @@
+$ mount
+
+/dev/disk3s1s1 on / (apfs, sealed, local, read-only, journaled)
+devfs on /dev (devfs, local, nobrowse)
+/dev/disk3s6 on /System/Volumes/VM (apfs, local, noexec, journaled, noatime, nobrowse)
+/dev/disk3s2 on /System/Volumes/Preboot (apfs, local, journaled, nobrowse)
+/dev/disk3s4 on /System/Volumes/Update (apfs, local, journaled, nobrowse)
+/dev/disk1s2 on /System/Volumes/xarts (apfs, local, noexec, journaled, noatime, nobrowse)
+/dev/disk1s1 on /System/Volumes/iSCPreboot (apfs, local, journaled, nobrowse)
+/dev/disk1s3 on /System/Volumes/Hardware (apfs, local, journaled, nobrowse)
+/dev/disk3s5 on /System/Volumes/Data (apfs, local, journaled, nobrowse, protect, root data)
+map auto_home on /System/Volumes/Data/home (autofs, automounted, nobrowse)
+/dev/disk3s7 on /nix (apfs, local, nosuid, journaled, noatime, nobrowse, protect)
+/dev/disk3s1 on /System/Volumes/Update/mnt1 (apfs, sealed, local, journaled, nobrowse)
+/Applications/Photomator!.app/Wrapper on /private/var/folders/nz/6q2p_ldx3txdbw_gttbpnwjr0000gn/X/90300F93-DB09-5C6C-9A17-CD26BA97F600 (nullfs, local, nodev, nosuid, read-only, nobrowse, mounted by haewonkim)
+/dev/disk5s1 on /Library/Developer/CoreSimulator/Volumes/iOS_23C54 (apfs, sealed, local, nodev, nosuid, read-only, journaled, noatime, nobrowse)
+/Applications/Externals/Visual Studio Code.app on /private/var/folders/nz/6q2p_ldx3txdbw_gttbpnwjr0000gn/T/AppTranslocation/618D9B85-A49C-41D0-8F7C-108970F3EB61 (nullfs, local, nodev, nosuid, read-only, nobrowse, mounted by haewonkim)
+/dev/disk6s1 on /Volumes/VS Code (hfs, local, nodev, nosuid, read-only, noowners, quarantine, mounted by haewonkim)

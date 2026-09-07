@@ -1,0 +1,13 @@
+ORIGINAL_PATH: /Users/haewonkim/.local/state/sysgrid-supervisor/runs/20260801T071440Z-85703-360000/launch.json
+ORIGINAL_SHA256: 6943121a6e2eeac789d5cbf5a676e52d8a4026fccc5033c279d150701dab9d5e
+================================================================================
+{
+  "capsule_path": "/Users/haewonkim/.local/state/sysgrid-supervisor/runs/20260801T071440Z-85703-360000/input/OUT-31_Golden-Eight_Iteration-36-Attempt-04_Exact-Local-Playwright-Identity-and-No-Network-Runner.sgcap",
+  "capsule_sha256": "3799484163d11675fe39af32395876fbee0fb2a5495e340ffe5081f62bdb6c05",
+  "command_sha256": "ab65c38106c5677c6e59139575e9bc651fbb4490caf8f42e3ca4bdc60fffd8dc",
+  "engine_path": "/Users/haewonkim/.local/lib/sysgrid-runner/1.0.4/sysgrid_runner.py",
+  "engine_sha256": "ab63bb20c0de32771e20b0159475205f685f28910a0956c217fb3693c02f96e1",
+  "launched_utc": "2026-08-01T07:14:43Z",
+  "repo": "/Users/haewonkim/home/development/sysgrid",
+  "run_id": "20260801T071440Z-85703-360000"
+}

@@ -1,0 +1,23 @@
+{
+  "schema": "SYSGRID_PROJECT_VIEW_REPAIR_EVIDENCE_V1",
+  "repair_iteration": 2,
+  "parent_result_sha256": "6e6b6bc6cae8b75e6a0c3e0df2757be6e7b1cf03d8578d068d8f34decd769a38",
+  "parent_status": "FAIL",
+  "parent_passed_stages": [
+    "repair-ancestry-preflight",
+    "isolated-candidate-construction"
+  ],
+  "parent_failed_stage": "out40-slice-h-regression",
+  "parent_failure_count": 5,
+  "failure_layers": [
+    "legacy sentinel fixed by Repair 1",
+    "connector semantic id still expected pre-R4 lowercase-hyphen form",
+    "dependency removal still expected direct connector removal instead of R4 inspect dialog",
+    "zoom still expected Week/Month buttons instead of Timeline zoom select",
+    "filter input still assumed always visible instead of R4 Filters panel",
+    "resize test used a two-day bar whose pointer resize affordance is intentionally not rendered under the width threshold",
+    "narrow target test treated R4 noninteractive visual port dots as primary 40px controls"
+  ],
+  "product_evidence": "Parent initial RESULT recorded production build + 12 model/geometry tests + 15 real-app visual tests PASS; Repair 2 still reruns the complete visual suite after Slice H.",
+  "repair_scope": "test harness only; no product-source semantic change"
+}

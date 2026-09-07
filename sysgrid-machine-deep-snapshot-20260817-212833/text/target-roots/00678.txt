@@ -1,0 +1,34 @@
+ORIGINAL_PATH: /Users/haewonkim/.local/state/sysgrid-supervisor/runs/20260807T133122Z-29060-374000/preflight.json
+ORIGINAL_SHA256: 9752b4af1aa4f7c6ea1f97b6e2147c75c128cac45cab30eb27a69897f0db89a0
+================================================================================
+{
+  "declared_state": {
+    "dirty_path_count": 3,
+    "pre_hash_count": 3,
+    "protected_hash_count": 2
+  },
+  "engine_self_test": {
+    "engine_version": "1.1.1",
+    "result": "PASS",
+    "tests": [
+      "safe-path",
+      "manifest",
+      "corruption",
+      "canonical-dirty-paths",
+      "aggregate-recipes"
+    ]
+  },
+  "patch": {
+    "applicable": true,
+    "forward_diagnostic": "Checking patch frontend/tests/shell-and-search.spec.ts...",
+    "forward_exit_code": 0,
+    "reverse_applicable": false,
+    "reverse_diagnostic": "Checking patch frontend/tests/shell-and-search.spec.ts...\nerror: while searching for:\n    }\n  })\n  test('keeps desktop shell, command bar, and grid alignment invariant on every golden route', async ({ page }, testInfo) => {\n    test.setTimeout(180_000)\n    await resetBrowserState(page)\n    await page.setViewportSize({ width: 1440, height: 1000 })\n\n\nerror: patch failed: frontend/tests/shell-and-search.spec.ts:239\nerror: frontend/tests/shell-and-search.spec.ts: patch does not apply",
+    "reverse_exit_code": 1
+  },
+  "storage": {
+    "control_free": 32499818496,
+    "local_free": 32499818496,
+    "required": 3221225472
+  }
+}

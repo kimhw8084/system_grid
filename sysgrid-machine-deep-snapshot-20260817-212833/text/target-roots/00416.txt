@@ -1,0 +1,17 @@
+ORIGINAL_PATH: /Users/haewonkim/.local/share/sysgrid-campaign-platform/v1.1.0/PROJECT_CONTINUITY/INSTALL_IN_CHATGPT_PROJECT.md
+ORIGINAL_SHA256: e3e8773d83d4f45702f4e6d498673d6c060d5de46302e0fc3cecd145de093379
+================================================================================
+# Install P2 in the SysGrid ChatGPT Project
+
+After the machine installer passes:
+
+1. Open the SysGrid Project.
+2. Add these two files as Project sources:
+   - `04_SYSGRID_NEW_CHAT_BOOTSTRAP_PROTOCOL_v1.0.0.md`
+   - `05_SYSGRID_CONTINUITY_CONFORMANCE_SPEC_v1.0.0.md`
+3. Open the Project menu, choose Project settings, and replace the Project instructions with the complete contents of `PROJECT_INSTRUCTIONS_REPLACEMENT_v1.0.0.md`.
+4. Keep the four v1.2.1 law files. Do not add a mutable current-state file.
+5. Open a new chat inside the Project and enter only `Continue`.
+6. Upload the resulting bootstrap response or save it to the Project for conformance review.
+
+The two new active Project files bring the intended active file count to six.

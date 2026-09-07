@@ -1,0 +1,38 @@
+ORIGINAL_PATH: /Users/haewonkim/.local/share/sysgrid-runner/backups/20260728-145934/sgs
+ORIGINAL_SHA256: e50a20c9478186c474f5baac39d356de4ee8d252f020859fc2d7fdd87dce9d96
+================================================================================
+#!/usr/bin/env bash
+set -euo pipefail
+STATE="$HOME/.local/state/sysgrid-phone"
+CONFIG="$STATE/config"
+[[ -f "$CONFIG" ]] || { echo "Phone workflow is not installed." >&2; exit 1; }
+# shellcheck disable=SC1090
+source "$CONFIG"
+status="$ICLOUD_ROOT/Outbox/latest-status.txt"
+log="$ICLOUD_ROOT/Outbox/latest-terminal.txt"
+pidfile="$STATE/run.pid"
+active=0
+
+if [[ -f "$pidfile" ]]; then
+  pid="$(cat "$pidfile" 2>/dev/null || true)"
+  if [[ -n "$pid" ]] && kill -0 "$pid" 2>/dev/null; then
+    echo "RUNNING (PID $pid)"
+    active=1
+  fi
+fi
+
+if [[ "$active" -eq 0 ]]; then
+  rc="$(awk -F': ' '/^Exit code:/ {print $2; exit}' "$status" 2>/dev/null || true)"
+  if [[ "$rc" == "0" ]]; then
+    echo "FINISHED: SUCCESS"
+  elif [[ -n "$rc" ]]; then
+    echo "FINISHED: FAILED (exit code $rc)"
+  elif [[ -f "$status" ]] && grep -q '^RUNNING$' "$status"; then
+    echo "STATUS UNCERTAIN: worker PID is not active but status still says RUNNING"
+  else
+    echo "NO COMPLETED RUN STATUS FOUND"
+  fi
+fi
+
+[[ -f "$status" ]] && { echo '--- status ---'; cat "$status"; }
+[[ -f "$log" ]] && { echo '--- last 60 lines ---'; tail -n 60 "$log"; }

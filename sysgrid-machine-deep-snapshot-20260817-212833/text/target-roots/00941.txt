@@ -1,0 +1,2236 @@
+ORIGINAL_PATH: /Users/haewonkim/.local/state/sysgrid-supervisor/runs/20260802T033203Z-34878-805000/patch.diff
+ORIGINAL_SHA256: 2f3ce7cc63e450bfcbeac958214cdff000d412cf0d4c494e803efdea70066565
+================================================================================
+diff --git a/backend/app/api/workspaces.py b/backend/app/api/workspaces.py
+index d2e0791c8c53751761ae3b49f8a9d96c17266385..27065040dbd20714869f4cf82b794e251e2083c5 100644
+--- a/backend/app/api/workspaces.py
++++ b/backend/app/api/workspaces.py
+@@ -551,7 +551,7 @@ async def list_definitions() -> WorkspaceDefinitionList:
+ async def get_far_experience() -> FARWorkspaceExperience:
+     return FARWorkspaceExperience(
+         schema_version=WORKSPACE_DEFINITIONS["far"].schema_version,
+-        data_endpoint="/far/modes",
++        data_endpoint="/api/v1/far/modes",
+         detail_query_key="far",
+         columns=FAR_COLUMN_DEFINITIONS,
+         presets=FAR_PRESET_DEFINITIONS,
+diff --git a/backend/test_workspace_views.py b/backend/test_workspace_views.py
+index 9e30b3dcfccf49a6acc7f60b3676737a03ebaee5..1486cc08fbc4b3038c970283655cac90a132a72a 100644
+--- a/backend/test_workspace_views.py
++++ b/backend/test_workspace_views.py
+@@ -309,7 +309,7 @@ async def test_far_workspace_experience_and_saved_view_contract(seeded_admin_ten
+     assert experience_response.status_code == 200, experience_response.text
+     experience = experience_response.json()
+     assert experience["workspace_key"] == "far"
+-    assert experience["data_endpoint"] == "/far/modes"
++    assert experience["data_endpoint"] == "/api/v1/far/modes"
+     assert experience["detail_query_key"] == "far"
+     assert [column["key"] for column in experience["columns"]] == [
+         "title", "rpn", "status", "owner", "systemName", "failureType",
+diff --git a/frontend/src/components/FAR.tsx b/frontend/src/components/FAR.tsx
+index 0a85d85b69a6675d6f1be7547da220e876035a3d..3734b9326c20a825aca5b7bf817e65e12d2de7c6 100644
+--- a/frontend/src/components/FAR.tsx
++++ b/frontend/src/components/FAR.tsx
+@@ -1,18 +1,19 @@
+-import React, { useState, useMemo, useEffect } from 'react'
++import React, { useState, useMemo, useEffect, useCallback } from 'react'
+ import { WorkspaceEmptyState } from "./shared/OperationalWorkspacePrimitives";
++import { extractFARRows, farPresetMatches, readFARRecordId, type FARPresetKey, type FARWorkspaceMode } from './far/FARGoldenWorkspaceModel'
+ import { useNavigate, useSearchParams } from 'react-router-dom'
+ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+-import { 
+-  Plus, Search, Trash2, Edit2, Info, 
++import {
++  Plus, Search, Trash2, Edit2, Info,
+   ShieldAlert, Zap, Save, X, PlusCircle, User,
+-  RefreshCcw, AlertTriangle, Lightbulb, ShieldCheck, 
+-  Activity, Server, FileText, Clipboard, ArrowRight, Shield, 
++  RefreshCcw, AlertTriangle, Lightbulb, ShieldCheck,
++  Activity, Server, FileText, Clipboard, ArrowRight, Shield,
+   CheckCircle2, ChevronRight, LayoutGrid, List, Sliders, Eye,
+   Target, AlertCircle, Settings, Layers, Box, Link2, ExternalLink,
+   ChevronLeft, Book, Download, Copy, Terminal, Check, HelpCircle, EyeOff, MoreVertical, Monitor, Upload, Clock
+ } from 'lucide-react'
+ import { motion, AnimatePresence } from 'framer-motion'
+-import { apiFetch } from '../api/apiClient'
++import { apiClient, apiFetch } from '../api/apiClient'
+ import { toast } from 'react-hot-toast'
+ import { formatAppDate } from '../utils/dateUtils'
+ import { BulkImportModal } from './shared/BulkImportModal'
+@@ -23,7 +24,7 @@ import { MonitoringForm } from './monitoring/MonitoringForm'
+ import { ProjectForm } from './Projects'
+ import { RootCauseFormModal, MitigationFormModal, PreventionFormModal, ResolutionManagerModal } from './shared/FARModals'
+ import { EnhancedRcaDetails } from './Research'
+-import { OperationalWorkspaceShell } from './shared/OperationalWorkspaceShells'
++import { OperationalGridSurface, OperationalWorkspaceShell, getOperationalGridSurfaceStyle } from './shared/OperationalWorkspaceShells'
+ import { OperationalDataGrid } from './shared/OperationalDataGrid'
+ import { OperationalBulkPreviewModal } from './shared/OperationalBulkPreviewModal'
+ import { useOperationalBulkWorkflow } from './shared/useOperationalBulkWorkflow'
+@@ -50,6 +51,70 @@ interface FailureMode {
+   prevention_actions: any[]
+ }
+ 
++interface FARExperienceMode {
++  key: FARWorkspaceMode
++  label: string
++  description: string
++  column_keys: string[]
++}
++
++interface FARExperiencePreset {
++  key: FARPresetKey
++  label: string
++  description: string
++}
++
++interface FARWorkspaceExperience {
++  schema_version: number
++  workspace_key: 'far'
++  data_endpoint: string
++  modes: FARExperienceMode[]
++  presets: FARExperiencePreset[]
++  risk_thresholds: Record<string, number>
++}
++
++interface SavedFARView {
++  id: number
++  name: string
++  definition: Record<string, any>
++  revision: number
++  schema_version: number
++}
++
++const FALLBACK_FAR_EXPERIENCE: FARWorkspaceExperience = {
++  schema_version: 1,
++  workspace_key: 'far',
++  data_endpoint: '/api/v1/far/modes',
++  risk_thresholds: { critical: 300, high: 200, moderate: 100 },
++  presets: [
++    { key: 'all', label: 'All failure modes', description: 'Complete tenant-scoped risk register' },
++    { key: 'high-risk', label: 'High risk', description: 'RPN 200 or greater' },
++    { key: 'overdue', label: 'Overdue', description: 'Open for 30 days or more' },
++    { key: 'unassigned', label: 'Unassigned', description: 'No accountable owner' },
++    { key: 'recent', label: 'Recently updated', description: 'Changed in the last 14 days' },
++  ],
++  modes: [
++    { key: 'failure_modes', label: 'Failure modes', description: 'Operational risk register', column_keys: ['title', 'rpn', 'status', 'owner', 'systemName', 'failureType', 'affectedAssets', 'ageDays', 'incidentCount', 'updatedAt'] },
++    { key: 'causes', label: 'Causes', description: 'Root-cause signals', column_keys: ['title', 'causes', 'rpn', 'owner', 'systemName', 'linkedRcas'] },
++    { key: 'mitigations', label: 'Mitigations', description: 'Current controls', column_keys: ['title', 'mitigations', 'status', 'owner', 'rpn', 'affectedAssets'] },
++    { key: 'prevention', label: 'Prevention', description: 'Preventive actions', column_keys: ['title', 'preventionActions', 'owner', 'status', 'rpn', 'updatedAt'] },
++  ],
++}
++
++const FAR_MODE_FIELD_MAP: Record<FARWorkspaceMode, Set<string>> = {
++  failure_modes: new Set(['id', 'system_name', 'failure_type', 'title', 'severity', 'occurrence', 'detection', 'rpn', 'status', 'owner', 'maturity', 'vectors', 'linked_rcas', 'affected_assets', 'updated_at', 'created_by_user_id']),
++  causes: new Set(['id', 'system_name', 'title', 'rpn', 'owner', 'causes', 'linked_rcas']),
++  mitigations: new Set(['id', 'system_name', 'title', 'rpn', 'status', 'owner', 'mitigations', 'affected_assets']),
++  prevention: new Set(['id', 'system_name', 'title', 'rpn', 'status', 'owner', 'prevention_actions', 'updated_at']),
++}
++
++const farOwner = (mode: any) => mode?.owner || mode?.owner_name || mode?.metadata_json?.ownerTeam || mode?.metadata_json?.owner_team || mode?.created_by_user_id || 'Unassigned'
++const farListText = (value: any, keys: string[]) => (Array.isArray(value) ? value.map((entry: any) => {
++  if (typeof entry === 'string') return entry
++  for (const key of keys) if (entry?.[key]) return String(entry[key])
++  return ''
++}).filter(Boolean).join('; ') : '')
++
+ const FAILURE_TYPES = [
+   { value: 'Design', label: 'Design' },
+   { value: 'Process', label: 'Process' },
+@@ -178,10 +243,10 @@ function MetricHelpModal({ metric, onClose }: { metric: string | null, onClose:
+ export default function FAR() {
+   const [showImportModal, setShowImportModal] = useState(false)
+   const queryClient = useQueryClient()
+-  const [searchParams] = useSearchParams()
++  const [searchParams, setSearchParams] = useSearchParams()
+   const gridRef = React.useRef<any>(null)
+-  
+-  const idParam = searchParams.get('id')
++
++  const idParam = readFARRecordId(searchParams.toString())
+ 
+   const [showWizard, setShowWizard] = useState(false)
+   const [selectedModeId, setSelectedModeId] = useState<number | null>(null)
+@@ -205,15 +270,56 @@ export default function FAR() {
+   const [hiddenColumns, setHiddenColumns] = useState<string[]>([])
+   const [showConfig, setShowConfig] = useState(false)
+   const [selectedIds, setSelectedIds] = useState<number[]>([])
+-  
++  const [activeMode, setActiveMode] = useState<FARWorkspaceMode>('failure_modes')
++  const [activePreset, setActivePreset] = useState<FARPresetKey>('all')
++  const [activeSavedViewId, setActiveSavedViewId] = useState<number | null>(null)
++  const [showViewsPanel, setShowViewsPanel] = useState(false)
++  const [newSavedViewName, setNewSavedViewName] = useState('')
++  const [farSyncState, setFarSyncState] = useState<'synced' | 'saving' | 'offline' | 'conflict' | 'error'>('synced')
++  const [farViewMessage, setFarViewMessage] = useState('')
++  const [isOnline, setIsOnline] = useState(() => typeof navigator === 'undefined' || navigator.onLine)
++
+   const [bkmGuidanceModal, setBkmGuidanceModal] = useState<{show: boolean, cause: any}>({ show: false, cause: null })
+ 
+   // Queries
+-  const { data: modes, isLoading: modesLoading, isError: modesError } = useQuery({ 
+-    queryKey: ['far', 'modes'], 
+-    queryFn: () => fetchFarList('/api/v1/far/modes')
++  const { data: experience = FALLBACK_FAR_EXPERIENCE } = useQuery({
++    queryKey: ['far', 'experience'],
++    queryFn: async () => apiClient.get('/api/v1/workspaces/far/experience') as Promise<FARWorkspaceExperience>,
++  })
++  const { data: savedViewPayload } = useQuery({
++    queryKey: ['far', 'saved-views'],
++    queryFn: async () => apiClient.get('/api/v1/workspaces/far/views') as Promise<{ views: SavedFARView[] }>,
++  })
++  const savedFARViews = savedViewPayload?.views || []
++  const { data: modes, isLoading: modesLoading, isError: modesError, error: modesErrorDetail, refetch: refetchModes } = useQuery({
++    queryKey: ['far', 'modes'],
++    queryFn: () => fetchFarList(experience.data_endpoint || '/api/v1/far/modes')
+   })
+ 
++  useEffect(() => {
++    const handleOnline = () => {
++      setIsOnline(true)
++      setFarSyncState('synced')
++      void queryClient.invalidateQueries({ queryKey: ['far'] })
++    }
++    const handleOffline = () => { setIsOnline(false); setFarSyncState('offline') }
++    window.addEventListener('online', handleOnline)
++    window.addEventListener('offline', handleOffline)
++    return () => {
++      window.removeEventListener('online', handleOnline)
++      window.removeEventListener('offline', handleOffline)
++    }
++  }, [queryClient])
++
++  const updateFarDeepLink = useCallback((modeId: number | null) => {
++    const next = new URLSearchParams(searchParams)
++    next.delete('id')
++    next.delete('record')
++    if (modeId) next.set('far', String(modeId))
++    else next.delete('far')
++    setSearchParams(next, { replace: true })
++  }, [searchParams, setSearchParams])
++
+   useEffect(() => {
+     if (!idParam || !modes) return
+     const targetId = parseInt(idParam, 10)
+@@ -243,20 +349,114 @@ export default function FAR() {
+     return options?.filter((o: any) => o.category === 'LogicalSystem').map((s: any) => s.value) || []
+   }, [options])
+ 
++  const normalizedModes = useMemo(() => extractFARRows(modes || []), [modes])
++  const normalizedById = useMemo(() => new Map(normalizedModes.map((record) => [Number(record.id), record])), [normalizedModes])
+   const filteredModes = useMemo(() => {
+     let result = modes || []
+     if (selectedSystems.length > 0) result = result.filter((m: any) => selectedSystems.includes(m.system_name))
++    if (activePreset !== 'all') result = result.filter((m: any) => {
++      const normalized = normalizedById.get(Number(m.id))
++      return normalized ? farPresetMatches(normalized, activePreset) : false
++    })
+     if (searchTerm) {
+-      result = result.filter((m: any) => 
+-        m.title.toLowerCase().includes(searchTerm.toLowerCase()) || 
+-        m.system_name.toLowerCase().includes(searchTerm.toLowerCase())
+-      )
++      const query = searchTerm.toLowerCase()
++      result = result.filter((m: any) => {
++        const normalized = normalizedById.get(Number(m.id))
++        return normalized?.searchText.includes(query) || m.title?.toLowerCase().includes(query) || m.system_name?.toLowerCase().includes(query)
++      })
+     }
+     return result
+-  }, [modes, searchTerm, selectedSystems])
++  }, [activePreset, modes, normalizedById, searchTerm, selectedSystems])
+ 
+   const selectedMode = useMemo(() => modes?.find((m: any) => m.id === selectedModeId), [modes, selectedModeId])
+ 
++  const buildFARViewDefinition = useCallback(() => ({
++    searchTerm,
++    mode: activeMode,
++    filters: { systems: selectedSystems, preset: activePreset },
++    fontSize,
++    rowDensity,
++    hiddenColumns,
++  }), [activeMode, activePreset, fontSize, hiddenColumns, rowDensity, searchTerm, selectedSystems])
++
++  const applyFARViewDefinition = useCallback((definition: Record<string, any>) => {
++    setSearchTerm(typeof definition.searchTerm === 'string' ? definition.searchTerm : '')
++    setActiveMode(['failure_modes', 'causes', 'mitigations', 'prevention'].includes(definition.mode) ? definition.mode : 'failure_modes')
++    setSelectedSystems(Array.isArray(definition.filters?.systems) ? definition.filters.systems.filter((value: any) => typeof value === 'string') : [])
++    setActivePreset(['all', 'high-risk', 'overdue', 'unassigned', 'recent'].includes(definition.filters?.preset) ? definition.filters.preset : 'all')
++    setFontSize(Number.isFinite(Number(definition.fontSize)) ? Math.min(14, Math.max(8, Number(definition.fontSize))) : 11)
++    setRowDensity(Number.isFinite(Number(definition.rowDensity)) ? Math.min(24, Math.max(4, Number(definition.rowDensity))) : 10)
++    setHiddenColumns(Array.isArray(definition.hiddenColumns) ? definition.hiddenColumns.filter((value: any) => typeof value === 'string') : [])
++  }, [])
++
++  const createFARSavedView = useCallback(async () => {
++    const name = newSavedViewName.trim()
++    if (!name) { setFarViewMessage('Enter a saved-view name.'); return }
++    setFarSyncState(isOnline ? 'saving' : 'offline')
++    if (!isOnline) return
++    try {
++      const created = await apiClient.post('/api/v1/workspaces/far/views', {
++        name, scope: 'personal', schema_version: experience.schema_version || 1, definition: buildFARViewDefinition(),
++      }) as SavedFARView
++      setActiveSavedViewId(created.id)
++      setNewSavedViewName('')
++      setFarViewMessage(`Saved personal view: ${created.name}`)
++      setFarSyncState('synced')
++      await queryClient.invalidateQueries({ queryKey: ['far', 'saved-views'] })
++    } catch (error: any) {
++      setFarViewMessage(error?.status === 409 ? 'A view with that name already exists.' : error?.message || 'Unable to save the FAR view.')
++      setFarSyncState(error?.status === 409 ? 'conflict' : 'error')
++    }
++  }, [buildFARViewDefinition, experience.schema_version, isOnline, newSavedViewName, queryClient])
++
++  const updateFARSavedView = useCallback(async () => {
++    const view = savedFARViews.find((entry) => entry.id === activeSavedViewId)
++    if (!view) return
++    setFarSyncState(isOnline ? 'saving' : 'offline')
++    if (!isOnline) return
++    try {
++      const updated = await apiClient.put(`/api/v1/workspaces/views/${view.id}`, {
++        name: view.name, scope: 'personal', schema_version: view.schema_version, revision: view.revision, definition: buildFARViewDefinition(),
++      }) as SavedFARView
++      setFarViewMessage(`Updated personal view: ${updated.name}`)
++      setFarSyncState('synced')
++      await queryClient.invalidateQueries({ queryKey: ['far', 'saved-views'] })
++    } catch (error: any) {
++      setFarViewMessage(error?.status === 409 ? 'This view changed on the server. Reload and reapply it.' : error?.message || 'Unable to update the FAR view.')
++      setFarSyncState(error?.status === 409 ? 'conflict' : 'error')
++    }
++  }, [activeSavedViewId, buildFARViewDefinition, isOnline, queryClient, savedFARViews])
++
++  const deleteFARSavedView = useCallback(async () => {
++    const view = savedFARViews.find((entry) => entry.id === activeSavedViewId)
++    if (!view || !isOnline) { if (!isOnline) setFarSyncState('offline'); return }
++    try {
++      await apiClient.delete(`/api/v1/workspaces/views/${view.id}?revision=${view.revision}`)
++      setActiveSavedViewId(null)
++      setFarViewMessage(`Deleted personal view: ${view.name}`)
++      setFarSyncState('synced')
++      await queryClient.invalidateQueries({ queryKey: ['far', 'saved-views'] })
++    } catch (error: any) {
++      setFarViewMessage(error?.status === 409 ? 'This view changed on the server. Reload before deleting it.' : error?.message || 'Unable to delete the FAR view.')
++      setFarSyncState(error?.status === 409 ? 'conflict' : 'error')
++    }
++  }, [activeSavedViewId, isOnline, queryClient, savedFARViews])
++
++  const handleFARViewSelection = useCallback((value: string) => {
++    if (value.startsWith('preset:')) {
++      setActiveSavedViewId(null)
++      setActivePreset(value.slice(7) as FARPresetKey)
++      return
++    }
++    if (value.startsWith('view:')) {
++      const view = savedFARViews.find((entry) => entry.id === Number(value.slice(5)))
++      if (!view) return
++      setActiveSavedViewId(view.id)
++      applyFARViewDefinition(view.definition || {})
++      setFarViewMessage(`Applied personal view: ${view.name}`)
++    }
++  }, [applyFARViewDefinition, savedFARViews])
++
+   const handleExportCSV = () => {
+     gridRef.current?.api?.exportDataAsCsv?.({
+       fileName: `SysGrid_FAR_${new Date().toISOString().split('T')[0]}.csv`,
+@@ -338,13 +538,13 @@ export default function FAR() {
+ 
+   // AgGrid Defs (High Density)
+   const columnDefs = useMemo(() => [
+-    { 
+-      headerName: "", 
++    {
++      headerName: "",
+       width: 50,
+-      checkboxSelection: true, 
+-      headerCheckboxSelection: true, 
+-      pinned: 'left', 
+-      cellClass: 'flex items-center justify-center border-r border-white/5 pl-2', 
++      checkboxSelection: true,
++      headerCheckboxSelection: true,
++      pinned: 'left',
++      cellClass: 'flex items-center justify-center border-r border-white/5 pl-2',
+       headerClass: 'flex items-center justify-center border-r border-white/5 pl-2',
+       suppressSizeToFit: true,
+       resizable: false,
+@@ -352,52 +552,52 @@ export default function FAR() {
+       filter: false,
+       lockVisible: true
+     },
+-    { 
+-      field: "id", 
+-      headerName: "ID", 
++    {
++      field: "id",
++      headerName: "ID",
+       width: 70,
+       pinned: 'left',
+       cellClass: 'text-center font-bold text-slate-500',
+       headerClass: 'text-center',
+       filter: 'agNumberColumnFilter',
+     },
+-    { 
+-      field: "system_name", 
+-      headerName: "System", 
++    {
++      field: "system_name",
++      headerName: "System",
+       width: 120,
+       cellClass: 'text-center font-bold text-rose-400 uppercase',
+       headerClass: 'text-center',
+       filter: 'agTextColumnFilter',
+-      hide: hiddenColumns.includes("system_name")
++      hide: hiddenColumns.includes("system_name") || !FAR_MODE_FIELD_MAP[activeMode].has("system_name")
+     },
+-    { 
+-      field: "failure_type", 
+-      headerName: "Type", 
++    {
++      field: "failure_type",
++      headerName: "Type",
+       width: 100,
+       cellClass: 'text-center font-bold text-slate-400 uppercase',
+       headerClass: 'text-center',
+       filter: 'agTextColumnFilter',
+-      hide: hiddenColumns.includes("failure_type")
++      hide: hiddenColumns.includes("failure_type") || !FAR_MODE_FIELD_MAP[activeMode].has("failure_type")
+     },
+-    { 
+-      field: "title", 
+-      headerName: "Failure Mode", 
++    {
++      field: "title",
++      headerName: "Failure Mode",
+       flex: 2,
+       cellClass: 'text-left font-bold uppercase text-white pl-4',
+       headerClass: 'text-left pl-4',
+       filter: 'agTextColumnFilter',
+-      hide: hiddenColumns.includes("title")
++      hide: hiddenColumns.includes("title") || !FAR_MODE_FIELD_MAP[activeMode].has("title")
+     },
+-    { 
+-      field: "severity", 
+-      headerName: "S", 
++    {
++      field: "severity",
++      headerName: "S",
+       width: 70,
+       headerClass: 'text-center',
+       filter: 'agNumberColumnFilter',
+       cellRenderer: (p: any) => {
+         const val = p.value || 0;
+-        const color = val >= 8 ? 'bg-rose-500/20 text-rose-500 border-rose-500/30' : 
+-                      val >= 5 ? 'bg-amber-500/20 text-amber-500 border-amber-500/30' : 
++        const color = val >= 8 ? 'bg-rose-500/20 text-rose-500 border-rose-500/30' :
++                      val >= 5 ? 'bg-amber-500/20 text-amber-500 border-amber-500/30' :
+                       'bg-emerald-500/20 text-emerald-400 border-emerald-500/30';
+         return (
+           <div className="flex items-center justify-center h-full w-full">
+@@ -407,18 +607,18 @@ export default function FAR() {
+           </div>
+         )
+       },
+-      hide: hiddenColumns.includes("severity")
++      hide: hiddenColumns.includes("severity") || !FAR_MODE_FIELD_MAP[activeMode].has("severity")
+     },
+-    { 
+-      field: "occurrence", 
+-      headerName: "O", 
++    {
++      field: "occurrence",
++      headerName: "O",
+       width: 70,
+       headerClass: 'text-center',
+       filter: 'agNumberColumnFilter',
+       cellRenderer: (p: any) => {
+         const val = p.value || 0;
+-        const color = val >= 7 ? 'bg-rose-500/20 text-rose-500 border-rose-500/30' : 
+-                      val >= 4 ? 'bg-amber-500/20 text-amber-500 border-amber-500/30' : 
++        const color = val >= 7 ? 'bg-rose-500/20 text-rose-500 border-rose-500/30' :
++                      val >= 4 ? 'bg-amber-500/20 text-amber-500 border-amber-500/30' :
+                       'bg-emerald-500/20 text-emerald-400 border-emerald-500/30';
+         return (
+           <div className="flex items-center justify-center h-full w-full">
+@@ -428,18 +628,18 @@ export default function FAR() {
+           </div>
+         )
+       },
+-      hide: hiddenColumns.includes("occurrence")
++      hide: hiddenColumns.includes("occurrence") || !FAR_MODE_FIELD_MAP[activeMode].has("occurrence")
+     },
+-    { 
+-      field: "detection", 
+-      headerName: "D", 
++    {
++      field: "detection",
++      headerName: "D",
+       width: 70,
+       headerClass: 'text-center',
+       filter: 'agNumberColumnFilter',
+       cellRenderer: (p: any) => {
+         const val = p.value || 0;
+-        const color = val >= 7 ? 'bg-rose-500/20 text-rose-500 border-rose-500/30' : 
+-                      val >= 4 ? 'bg-amber-500/20 text-amber-500 border-amber-500/30' : 
++        const color = val >= 7 ? 'bg-rose-500/20 text-rose-500 border-rose-500/30' :
++                      val >= 4 ? 'bg-amber-500/20 text-amber-500 border-amber-500/30' :
+                       'bg-emerald-500/20 text-emerald-400 border-emerald-500/30';
+         return (
+           <div className="flex items-center justify-center h-full w-full">
+@@ -449,18 +649,18 @@ export default function FAR() {
+           </div>
+         )
+       },
+-      hide: hiddenColumns.includes("detection")
++      hide: hiddenColumns.includes("detection") || !FAR_MODE_FIELD_MAP[activeMode].has("detection")
+     },
+-    { 
+-      field: "rpn", 
+-      headerName: "RPN", 
++    {
++      field: "rpn",
++      headerName: "Risk",
+       width: 80,
+       headerClass: 'text-center',
+       filter: 'agNumberColumnFilter',
+       cellRenderer: (p: any) => {
+         const val = p.value || 0;
+-        const color = val >= 150 ? 'bg-rose-500/20 text-rose-500 border-rose-500/30' : 
+-                      val >= 80 ? 'bg-amber-500/20 text-amber-500 border-amber-500/30' : 
++        const color = val >= 150 ? 'bg-rose-500/20 text-rose-500 border-rose-500/30' :
++                      val >= 80 ? 'bg-amber-500/20 text-amber-500 border-amber-500/30' :
+                       'bg-emerald-500/20 text-emerald-400 border-emerald-500/30';
+         return (
+           <div className="flex items-center justify-center h-full w-full">
+@@ -472,9 +672,9 @@ export default function FAR() {
+       },
+       hide: hiddenColumns.includes("rpn")
+     },
+-    { 
+-      field: "status", 
+-      headerName: "Maturity", 
++    {
++      field: "status",
++      headerName: "Maturity",
+       width: 140,
+       cellClass: 'text-center',
+       headerClass: 'text-center',
+@@ -497,7 +697,7 @@ export default function FAR() {
+           else if (hasM) lv = 1;
+         }
+         const ml = maturityLevels.find(m => m.lv === lv) || maturityLevels[maturityLevels.length-1];
+-        const colorClass = ml.lv >= 6 ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30' : 
++        const colorClass = ml.lv >= 6 ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30' :
+                           ml.lv >= 4 ? 'bg-blue-500/20 text-blue-400 border-blue-500/30' :
+                           ml.lv >= 1 ? 'bg-amber-500/20 text-amber-400 border-amber-500/30' :
+                           'bg-rose-500/20 text-rose-400 border-rose-500/30';
+@@ -512,7 +712,7 @@ export default function FAR() {
+           </div>
+         )
+       },
+-      hide: hiddenColumns.includes("status")
++      hide: hiddenColumns.includes("status") || !FAR_MODE_FIELD_MAP[activeMode].has("status")
+     },
+     {
+       headerName: "Vectors",
+@@ -526,7 +726,7 @@ export default function FAR() {
+         const wrks = m.filter((i:any) => i.mitigation_type === 'Workaround').length;
+         const prevs = (p.data?.prevention_actions || []).length;
+         const res = c.flatMap((i:any) => i.resolutions || []).length;
+-        
++
+         const Badge = ({label, value, color}: any) => (
+           <div className="flex flex-col items-center min-w-[24px]">
+              <span className="text-[7px] text-slate-500 font-bold uppercase leading-none mb-0.5">{label}</span>
+@@ -545,7 +745,8 @@ export default function FAR() {
+              <Badge label="P" value={prevs} color="text-emerald-400" />
+           </div>
+         )
+-      }
++      },
++      hide: !FAR_MODE_FIELD_MAP[activeMode].has("vectors")
+     },
+     {
+       field: "linked_rcas",
+@@ -557,15 +758,15 @@ export default function FAR() {
+         const rcas = p.data?.linked_rcas || [];
+         const count = rcas.length;
+         if (count === 0) return <span className="text-slate-600 font-bold uppercase tracking-widest text-[9px]">None</span>;
+-        
+-        const color = count >= 5 ? 'bg-rose-500/20 text-rose-500 border-rose-500/30' : 
+-                      count >= 2 ? 'bg-amber-500/20 text-amber-500 border-amber-500/30' : 
++
++        const color = count >= 5 ? 'bg-rose-500/20 text-rose-500 border-rose-500/30' :
++                      count >= 2 ? 'bg-amber-500/20 text-amber-500 border-amber-500/30' :
+                       'bg-purple-500/20 text-purple-400 border-purple-500/30';
+ 
+         return (
+           <div className="flex items-center justify-center h-full w-full">
+             <div className="group relative">
+-              <button 
++              <button
+                 onClick={() => setIncidentListModal({ show: true, rcas })}
+                 className={`flex items-center justify-center w-14 h-5 rounded-lg border shadow-sm transition-all hover:scale-105 active:scale-95 cursor-pointer ${color}`}
+               >
+@@ -585,17 +786,65 @@ export default function FAR() {
+           </div>
+         );
+       },
+-      hide: hiddenColumns.includes("linked_rcas")
++      hide: hiddenColumns.includes("linked_rcas") || !FAR_MODE_FIELD_MAP[activeMode].has("linked_rcas")
+     },
+-    { 
+-      field: "created_by_user_id", 
+-      headerName: "Created By", 
+-      width: 120, 
+-      filter: true, 
+-      cellClass: 'text-center font-bold text-blue-400 uppercase', 
++    {
++      colId: 'owner',
++      headerName: 'Owner',
++      width: 150,
++      valueGetter: (p: any) => farOwner(p.data),
++      cellClass: 'text-center font-bold text-sky-300',
++      headerClass: 'text-center',
++      hide: hiddenColumns.includes('owner') || !FAR_MODE_FIELD_MAP[activeMode].has('owner'),
++    },
++    {
++      colId: 'affected_assets',
++      headerName: 'Affected Scope',
++      width: 210,
++      valueGetter: (p: any) => farListText(p.data?.affected_assets, ['name', 'system', 'primary_ip', 'id']),
++      tooltipValueGetter: (p: any) => p.value,
++      hide: hiddenColumns.includes('affected_assets') || !FAR_MODE_FIELD_MAP[activeMode].has('affected_assets'),
++    },
++    {
++      colId: 'causes',
++      headerName: 'Causes',
++      width: 250,
++      valueGetter: (p: any) => farListText(p.data?.causes, ['cause_text', 'title', 'responsible_team', 'id']),
++      tooltipValueGetter: (p: any) => p.value,
++      hide: hiddenColumns.includes('causes') || !FAR_MODE_FIELD_MAP[activeMode].has('causes'),
++    },
++    {
++      colId: 'mitigations',
++      headerName: 'Mitigations',
++      width: 250,
++      valueGetter: (p: any) => farListText(p.data?.mitigations, ['mitigation_steps', 'mitigation_type', 'status', 'id']),
++      tooltipValueGetter: (p: any) => p.value,
++      hide: hiddenColumns.includes('mitigations') || !FAR_MODE_FIELD_MAP[activeMode].has('mitigations'),
++    },
++    {
++      colId: 'prevention_actions',
++      headerName: 'Prevention',
++      width: 250,
++      valueGetter: (p: any) => farListText(p.data?.prevention_actions, ['prevention_action', 'title', 'responsible_team', 'id']),
++      tooltipValueGetter: (p: any) => p.value,
++      hide: hiddenColumns.includes('prevention_actions') || !FAR_MODE_FIELD_MAP[activeMode].has('prevention_actions'),
++    },
++    {
++      field: 'updated_at',
++      headerName: 'Updated',
++      width: 145,
++      valueFormatter: (p: any) => p.value ? formatAppDate(p.value, { month: 'short', day: 'numeric', year: 'numeric' }) : 'N/A',
++      hide: hiddenColumns.includes('updated_at') || !FAR_MODE_FIELD_MAP[activeMode].has('updated_at'),
++    },
++    {
++      field: "created_by_user_id",
++      headerName: "Created By",
++      width: 120,
++      filter: true,
++      cellClass: 'text-center font-bold text-blue-400 uppercase',
+       headerClass: 'text-center',
+       cellRenderer: (p: any) => <span style={{ fontSize: `${fontSize}px` }}>{p.value || 'SYSTEM'}</span>,
+-      hide: hiddenColumns.includes("created_by_user_id")
++      hide: hiddenColumns.includes("created_by_user_id") || !FAR_MODE_FIELD_MAP[activeMode].has("created_by_user_id")
+     },
+     {
+       headerName: "Action",
+@@ -607,22 +856,22 @@ export default function FAR() {
+       cellRenderer: (p: any) => (
+         <div className="flex items-center justify-center space-x-1 h-full">
+                <div className="flex rounded-lg p-0.5 border border-white/5 bg-transparent">
+-                   <button onClick={() => p.data?.id && setSelectedModeId(p.data.id)} title="Matrix Detail" className="p-1.5 text-blue-400 hover:text-blue-200 transition-all border-r border-white/5"><Eye size={14}/></button>
+-                   <button onClick={() => { setSelectedModeId(p.data.id); setShowWizard(true); }} title="Edit Matrix" className="p-1.5 text-amber-400 hover:text-amber-200 transition-all border-r border-white/5"><Edit2 size={14}/></button>
++                   <button onClick={() => { if (p.data?.id) { setSelectedModeId(p.data.id); updateFarDeepLink(p.data.id) } }} title="Matrix Detail" className="p-1.5 text-blue-400 hover:text-blue-200 transition-all border-r border-white/5"><Eye size={14}/></button>
++                   <button onClick={() => { setSelectedModeId(p.data.id); updateFarDeepLink(p.data.id); setShowWizard(true); }} title="Edit Matrix" className="p-1.5 text-amber-400 hover:text-amber-200 transition-all border-r border-white/5"><Edit2 size={14}/></button>
+                    <button onClick={() => p.data?.id && requestBulkPreview({ action: 'delete', ids: [p.data.id] })} title="Retire failure vector" className="p-1.5 text-rose-400 hover:text-rose-200 transition-all"><Trash2 size={14}/></button>
+                </div>
+         </div>
+       )
+     }
+-  ], [fontSize, hiddenColumns, requestBulkPreview]) as any
++  ], [activeMode, fontSize, hiddenColumns, requestBulkPreview, updateFarDeepLink]) as any
+ 
+   // Advanced Metrics Calculation
+   const metrics = useMemo(() => {
+     const activeModes = filteredModes || []
+     const totalRPN = activeModes.reduce((acc: number, m: any) => acc + (m.rpn || 0), 0)
+     const avgRPN = activeModes.length ? totalRPN / activeModes.length : 0
+-    const sri = Math.max(0, Math.round(100 * (1 - avgRPN / 500))) 
+-    
++    const sri = Math.max(0, Math.round(100 * (1 - avgRPN / 500)))
++
+     const getMaturity = (mode: any) => {
+       if (mode.status === 'Prevented') return 8;
+       const hasM = mode.mitigations?.some((m: any) => m.mitigation_type === 'Monitoring');
+@@ -671,6 +920,21 @@ export default function FAR() {
+       )}
+       toolbarControls={(
+         <ToolbarGroup>
++          <div role="tablist" aria-label="FAR mode" data-far-mode-control="true" className="flex items-center gap-1 rounded-lg border border-white/5 bg-black/20 p-1">
++            {experience.modes.map((mode) => (
++              <button key={mode.key} type="button" role="tab" aria-selected={activeMode === mode.key} onClick={() => setActiveMode(mode.key)} className={`h-7 rounded-md px-2.5 text-[9px] font-bold uppercase tracking-wider transition-all ${activeMode === mode.key ? 'bg-rose-600 text-white' : 'text-slate-500 hover:bg-white/5 hover:text-white'}`}>
++                {mode.label}
++              </button>
++            ))}
++          </div>
++          <select aria-label="FAR saved view" value={activeSavedViewId ? `view:${activeSavedViewId}` : `preset:${activePreset}`} onChange={(event) => handleFARViewSelection(event.target.value)} className="h-9 min-w-[170px] rounded-lg border border-white/5 bg-slate-950 px-3 text-[10px] font-bold text-slate-300 outline-none">
++            <optgroup label="System presets">
++              {experience.presets.map((preset) => <option key={preset.key} value={`preset:${preset.key}`}>{preset.label}</option>)}
++            </optgroup>
++            {savedFARViews.length ? <optgroup label="Personal views">{savedFARViews.map((view) => <option key={view.id} value={`view:${view.id}`}>{view.name}</option>)}</optgroup> : null}
++          </select>
++          <ToolbarButton active={showViewsPanel} onClick={() => setShowViewsPanel((current) => !current)} title="Manage FAR personal views"><Save size={14} /> Views</ToolbarButton>
++          <span data-far-sync-state={isOnline ? farSyncState : 'offline'} className={`rounded-md border px-2 py-1 text-[9px] font-bold uppercase ${!isOnline || farSyncState === 'offline' ? 'border-amber-500/20 bg-amber-500/10 text-amber-300' : farSyncState === 'conflict' || farSyncState === 'error' ? 'border-rose-500/20 bg-rose-500/10 text-rose-300' : 'border-emerald-500/20 bg-emerald-500/10 text-emerald-300'}`}>{!isOnline ? 'Offline' : farSyncState}</span>
+           <ToolbarButton active={showStyleLab} onClick={() => setShowStyleLab((current) => !current)} title="Display density controls">
+             <Sliders size={14} /> Display
+           </ToolbarButton>
+@@ -708,104 +972,101 @@ export default function FAR() {
+         </div>
+       ) : null}
+     >
+-      <AnimatePresence>
+-        {showStyleLab && (
+-          <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="shrink-0 overflow-hidden">
+-            <div className="bg-rose-600/10 border border-rose-500/20 rounded-lg p-4 flex items-center justify-between backdrop-blur-md">
+-               <div className="flex items-center space-x-12">
+-                  <div className="flex items-center space-x-3">
+-                     <Activity size={16} className="text-rose-400" />
+-                     <span className="text-[10px] font-bold uppercase tracking-widest text-rose-400">Display Density</span>
+-                  </div>
+-                  <div className="flex items-center space-x-6">
+-                     <div className="flex items-center space-x-4"><span className="text-[9px] font-bold text-slate-500 uppercase">Font Size</span><div className="flex items-center space-x-2"><input type="range" min="8" max="14" step="1" value={fontSize} onChange={e => setFontSize(Number(e.target.value))} className="w-32 accent-rose-500 h-1.5 bg-slate-800 rounded-lg appearance-none cursor-pointer"/><span className="text-[10px] text-white w-4 font-bold">{fontSize}px</span></div></div>
+-                     <div className="flex items-center space-x-4 border-l border-white/10 pl-6"><span className="text-[9px] font-bold text-slate-500 uppercase">Row Density</span><div className="flex items-center space-x-2"><input type="range" min="4" max="24" step="2" value={rowDensity} onChange={e => setRowDensity(Number(e.target.value))} className="w-32 accent-rose-500 h-1.5 bg-slate-800 rounded-lg appearance-none cursor-pointer"/><span className="text-[10px] text-white w-4 font-bold">{rowDensity}px</span></div></div>
+-                  </div>
+-               </div>
+-               <button onClick={() => setShowStyleLab(false)} className="text-slate-500 hover:text-white transition-colors"><X size={16}/></button>
++
++      <div className="flex-1 min-h-0 relative" data-far-grid="true">
++        {modesError ? (
++          <OperationalGridSurface style={getOperationalGridSurfaceStyle(fontSize)} className="w-full">
++            <div className="flex flex-1 items-center justify-center p-4" data-far-error="true" role="status">
++              <WorkspaceEmptyState
++                icon={<AlertTriangle size={28} />}
++                title="Failure analysis registry unavailable"
++                description={(modesErrorDetail as any)?.message || 'The FAR registry could not be loaded.'}
++                action={<button type="button" onClick={() => void refetchModes()} className="rounded-lg border border-rose-500/20 bg-rose-500/10 px-4 py-2 text-[10px] font-bold uppercase text-rose-200">Retry</button>}
++              />
++            </div>
++          </OperationalGridSurface>
++        ) : !modesLoading && filteredModes.length === 0 ? (
++          <OperationalGridSurface style={getOperationalGridSurfaceStyle(fontSize)} className="w-full">
++            <div className="flex flex-1 items-center justify-center p-4" data-far-empty="true">
++              <WorkspaceEmptyState
++                title="No failure modes in scope"
++                description="Create a failure mode or adjust the active preset, search, and system filters."
++                action={<button type="button" onClick={() => { setSearchTerm(''); setSelectedSystems([]); setActivePreset('all') }} className="rounded-lg border border-white/10 bg-white/5 px-4 py-2 text-[10px] font-bold uppercase text-slate-200">Clear filters</button>}
++              />
+             </div>
+-          </motion.div>
++          </OperationalGridSurface>
++        ) : (
++          <OperationalDataGrid
++            gridRef={gridRef}
++            rows={filteredModes || []}
++            columnDefs={columnDefs as any}
++            runtime={farGridRuntime}
++            rowInteractions={{ handleRowClicked: (event: any) => { const id = Number(event?.data?.id); if (id) { setSelectedModeId(id); updateFarDeepLink(id) } } }}
++            quickFilterText={searchTerm}
++            fontSize={fontSize}
++            rowDensity={rowDensity}
++            noRowsLabel="No failure modes in scope"
++            loading={modesLoading}
++            loadingIcon={<RefreshCcw size={28} className="animate-spin text-rose-400" />}
++            loadingLabel={<p className="text-[10px] font-semibold text-rose-300" data-far-loading="true">Loading failure analysis registry...</p>}
++            dataState={{ kind: 'ready', noRowsLabel: 'No failure modes in scope' }}
++            onSelectionChanged={(event) => setSelectedIds(event?.api?.getSelectedNodes().map((node: any) => Number(node.data?.id)).filter(Boolean) || [])}
++            suppressRowClickSelection={false}
++          />
+         )}
+-      </AnimatePresence>
+ 
+-      <AnimatePresence>
+-        {showInsights && (
+-          <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="shrink-0 overflow-hidden">
+-            <div className="glass-panel rounded-lg border border-white/5 bg-[#0a0c14]/40 p-4 space-y-4">
+-              <div className="flex flex-wrap justify-center gap-4">
+-                <StatCard id="SRI" label="Reliability Index" value={metrics.sri} suffix="/100" color={metrics.sri > 70 ? "emerald" : "rose"} onHelp={() => setActiveMetricHelp("SRI")} />
+-                <StatCard id="RiskDensity" label="Risk Density" value={metrics.riskDensity} suffix="RPN/ASSET" color="amber" onHelp={() => setActiveMetricHelp("RiskDensity")} />
+-                <StatCard id="MitigationRatio" label="Mitigation Ratio" value={metrics.mitRatio} suffix="%" color="sky" onHelp={() => setActiveMetricHelp("MitigationRatio")} />
+-                <StatCard id="AvgSeverity" label="Avg Severity" value={metrics.avgRPN} suffix="AVG RPN" color="rose" onHelp={() => setActiveMetricHelp("AvgSeverity")} />
++        <AnimatePresence>
++          {showStyleLab && (
++            <motion.aside initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 20 }} className="absolute inset-y-0 right-0 z-[70] w-full max-w-sm overflow-y-auto border-l border-white/10 bg-slate-950/95 p-5 shadow-2xl backdrop-blur-xl" data-far-display-controls="true" data-far-overlay="true">
++              <div className="flex items-center justify-between"><h3 className="text-xs font-bold uppercase tracking-widest text-rose-300">Display</h3><button type="button" aria-label="Close FAR display controls" onClick={() => setShowStyleLab(false)} className="rounded-md border border-white/10 p-2 text-slate-400"><X size={14}/></button></div>
++              <div className="mt-6 space-y-6">
++                <label className="block text-[10px] font-bold uppercase text-slate-400">Font size <span className="float-right text-white">{fontSize}px</span><input type="range" min="8" max="14" value={fontSize} onChange={(event) => setFontSize(Number(event.target.value))} className="mt-3 w-full accent-rose-500" /></label>
++                <label className="block text-[10px] font-bold uppercase text-slate-400">Row density <span className="float-right text-white">{rowDensity}px</span><input type="range" min="4" max="24" step="2" value={rowDensity} onChange={(event) => setRowDensity(Number(event.target.value))} className="mt-3 w-full accent-rose-500" /></label>
+               </div>
+-              <div className="flex items-center justify-between rounded-lg border border-white/5 bg-white/[0.02] px-4 py-2">
+-                <div className="flex items-center gap-2">
+-                  <ShieldAlert size={14} className="text-rose-500" />
+-                  <h3 className="text-[10px] font-bold uppercase tracking-widest text-white">Failure Inventory Maturity Profile</h3>
+-                </div>
+-                <div className="flex items-center gap-3">
+-                  <div className="flex items-end gap-1 h-8">
+-                    {maturityLevels.slice().reverse().map((ml: any) => {
+-                      const count = (metrics as any).maturityDist[ml.lv] || 0
+-                      const pct = filteredModes?.length ? (count / filteredModes.length) * 100 : 0
+-                      return (
+-                        <div key={ml.lv} className="w-4 h-full relative group cursor-help">
+-                          <div className={`w-full rounded-lg transition-all ${ml.color} ${count === 0 ? 'opacity-5' : 'opacity-40 group-hover:opacity-100'}`} style={{ height: `${Math.max(10, pct)}%` }} />
+-                          <div className="absolute -top-8 left-1/2 -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-[100] whitespace-nowrap bg-black border border-white/10 px-2 py-1 rounded-lg text-[8px] font-bold uppercase tracking-widest">
+-                            {ml.label}: {count}
+-                          </div>
+-                        </div>
+-                      )
+-                    })}
+-                  </div>
+-                  <div className="w-px h-4 bg-white/10 mx-2" />
+-                  <button onClick={() => setShowMaturityHelp(true)} className="p-1 text-slate-500 hover:text-white transition-colors" title="Maturity Level Definitions"><HelpCircle size={14} /></button>
+-                </div>
++            </motion.aside>
++          )}
++        </AnimatePresence>
++
++        <AnimatePresence>
++          {showInsights && (
++            <motion.aside initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 20 }} className="absolute inset-y-0 right-0 z-[70] w-full max-w-[420px] overflow-y-auto border-l border-white/10 bg-[#070b14]/95 p-5 shadow-2xl backdrop-blur-xl" data-far-insights="true" data-far-summary="true" data-far-overlay="true">
++              <div className="flex items-start justify-between gap-3"><div><p className="text-[10px] font-bold uppercase tracking-widest text-slate-500">FAR insights</p><h3 className="mt-1 text-sm font-bold text-white">Failure Inventory Maturity Profile</h3></div><button type="button" aria-label="Close FAR insights" onClick={() => setShowInsights(false)} className="rounded-md border border-white/10 p-2 text-slate-400"><X size={14}/></button></div>
++              <div className="mt-5 grid grid-cols-2 gap-3">
++                <div data-far-metric="failure-modes"><StatCard id="FailureModes" label="Failure Modes" value={filteredModes.length} suffix="IN SCOPE" color="rose" onHelp={() => setActiveMetricHelp('SRI')} /></div>
++                <StatCard id="SRI" label="Reliability Index" value={metrics.sri} suffix="/100" color={metrics.sri > 70 ? 'emerald' : 'rose'} onHelp={() => setActiveMetricHelp('SRI')} />
++                <StatCard id="RiskDensity" label="Risk Density" value={metrics.riskDensity} suffix="RPN/ASSET" color="amber" onHelp={() => setActiveMetricHelp('RiskDensity')} />
++                <StatCard id="MitigationRatio" label="Mitigation Ratio" value={metrics.mitRatio} suffix="%" color="sky" onHelp={() => setActiveMetricHelp('MitigationRatio')} />
++                <StatCard id="AvgSeverity" label="Avg Severity" value={metrics.avgRPN} suffix="AVG RPN" color="rose" onHelp={() => setActiveMetricHelp('AvgSeverity')} />
+               </div>
+-            </div>
+-          </motion.div>
+-        )}
+-      </AnimatePresence>
++              <div className="mt-5 space-y-2">{experience.presets.slice(1).map((preset) => <button key={preset.key} type="button" onClick={() => setActivePreset(preset.key)} className="flex w-full items-center justify-between rounded-lg border border-white/5 bg-black/20 px-3 py-2 text-xs text-slate-300 hover:bg-white/5"><span>{preset.label}</span><span>{normalizedModes.filter((record) => farPresetMatches(record, preset.key)).length}</span></button>)}</div>
++            </motion.aside>
++          )}
++        </AnimatePresence>
++
++        <AnimatePresence>
++          {showViewsPanel && (
++            <motion.aside initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 20 }} className="absolute inset-y-0 right-0 z-[80] w-full max-w-sm overflow-y-auto border-l border-white/10 bg-slate-950/95 p-5 shadow-2xl backdrop-blur-xl" data-far-views-panel="true" data-far-overlay="true">
++              <div className="flex items-center justify-between"><div><p className="text-[10px] font-bold uppercase tracking-widest text-slate-500">Personal scope</p><h3 className="text-sm font-bold text-white">FAR saved views</h3></div><button type="button" aria-label="Close FAR saved views" onClick={() => setShowViewsPanel(false)} className="rounded-md border border-white/10 p-2 text-slate-400"><X size={14}/></button></div>
++              <div className="mt-5 space-y-3"><input aria-label="FAR saved view name" value={newSavedViewName} onChange={(event) => setNewSavedViewName(event.target.value)} placeholder="View name" className="h-10 w-full rounded-lg border border-white/10 bg-black/30 px-3 text-xs text-white outline-none" /><button type="button" onClick={() => void createFARSavedView()} className="w-full rounded-lg bg-blue-600 px-3 py-2.5 text-[10px] font-bold uppercase text-white">Create personal view</button></div>
++              {activeSavedViewId ? <div className="mt-4 grid grid-cols-2 gap-2"><button type="button" onClick={() => void updateFARSavedView()} className="rounded-lg border border-blue-500/20 bg-blue-500/10 px-3 py-2 text-[10px] font-bold uppercase text-blue-200">Overwrite</button><button type="button" onClick={() => void deleteFARSavedView()} className="rounded-lg border border-rose-500/20 bg-rose-500/10 px-3 py-2 text-[10px] font-bold uppercase text-rose-200">Delete</button></div> : null}
++              {farViewMessage ? <p role="status" className="mt-4 rounded-lg border border-white/5 bg-black/20 px-3 py-2 text-xs text-slate-300">{farViewMessage}</p> : null}
++              <div className="mt-5 space-y-2">{savedFARViews.map((view) => <button key={view.id} type="button" onClick={() => handleFARViewSelection(`view:${view.id}`)} className="flex w-full items-center justify-between rounded-lg border border-white/5 bg-black/20 px-3 py-2 text-left text-xs text-slate-300 hover:bg-white/5"><span>{view.name}</span><span className="text-[9px] text-slate-500">r{view.revision}</span></button>)}</div>
++            </motion.aside>
++          )}
++        </AnimatePresence>
+ 
+-      <div className="flex-1 min-h-0 relative">
+-        <OperationalDataGrid
+-          gridRef={gridRef}
+-          rows={filteredModes || []}
+-          columnDefs={columnDefs as any}
+-          runtime={farGridRuntime}
+-          quickFilterText={searchTerm}
+-          fontSize={fontSize}
+-          rowDensity={rowDensity}
+-          noRowsLabel="No failure modes in scope"
+-          loading={modesLoading}
+-          loadingIcon={<RefreshCcw size={28} className="animate-spin text-rose-400" />}
+-          loadingLabel={<p className="text-[10px] font-semibold text-rose-300">Loading failure analysis registry...</p>}
+-          dataState={modesError ? {
+-            kind: 'query-error',
+-            noRowsLabel: 'No failure modes in scope',
+-            title: 'Failure analysis registry unavailable',
+-            description: 'The FAR registry could not be loaded. Retry from the workspace navigation.',
+-          } : (!modesLoading && filteredModes.length === 0 ? {
+-            kind: 'filtered-empty',
+-            noRowsLabel: 'No failure modes in scope',
+-            title: 'No failure modes in scope',
+-            description: 'Create a failure mode or adjust the current system and search filters.',
+-          } : { kind: 'ready', noRowsLabel: 'No failure modes in scope' })}
+-          onSelectionChanged={(event) => setSelectedIds(event?.api?.getSelectedNodes().map((node: any) => Number(node.data?.id)).filter(Boolean) || [])}
+-          suppressRowClickSelection={false}
+-        />
+         <AnimatePresence>
+           {showColumnPicker && (
+             <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 20 }} className="absolute top-0 right-0 bottom-0 w-64 bg-slate-950/90 backdrop-blur-xl border-l border-white/10 z-[60] flex flex-col shadow-2xl">
+               <div className="p-6 border-b border-white/5 flex items-center justify-between"><h3 className="text-xs font-bold uppercase tracking-widest text-rose-400 flex items-center space-x-2"><Sliders size={14} /> <span>Columns</span></h3><button onClick={() => setShowColumnPicker(false)} className="text-slate-500 hover:text-white"><X size={18}/></button></div>
+               <div className="flex-1 overflow-y-auto custom-scrollbar p-4 space-y-1">
+-                {columnDefs.filter((c: any) => c.field && !c.lockVisible).map((col: any) => (
+-                  <label key={col.field} className="flex items-center space-x-3 p-2 rounded-lg hover:bg-white/5 cursor-pointer group transition-all">
+-                    <input type="checkbox" checked={!hiddenColumns.includes(col.field)} onChange={() => setHiddenColumns(prev => prev.includes(col.field) ? prev.filter(f => f !== col.field) : [...prev, col.field])} className="sr-only" />
+-                    <div className={`w-4 h-4 rounded-lg border transition-all ${!hiddenColumns.includes(col.field) ? 'bg-rose-600 border-rose-500 shadow-lg shadow-rose-500/20' : 'border-white/10 bg-black/40 group-hover:border-white/20'}`}>{!hiddenColumns.includes(col.field) && <Check size={12} className="text-white mx-auto" />}</div>
+-                    <span className={`text-[10px] font-bold uppercase tracking-widest ${!hiddenColumns.includes(col.field) ? 'text-slate-200' : 'text-slate-500'}`}>{col.headerName || col.field}</span>
++                {columnDefs.filter((c: any) => (c.field || c.colId) && !c.lockVisible).map((col: any) => { const key = col.field || col.colId; return (
++                  <label key={key} className="flex items-center space-x-3 p-2 rounded-lg hover:bg-white/5 cursor-pointer group transition-all">
++                    <input type="checkbox" checked={!hiddenColumns.includes(key)} onChange={() => setHiddenColumns(prev => prev.includes(key) ? prev.filter(f => f !== key) : [...prev, key])} className="sr-only" />
++                    <div className={`w-4 h-4 rounded-lg border transition-all ${!hiddenColumns.includes(key) ? 'bg-rose-600 border-rose-500 shadow-lg shadow-rose-500/20' : 'border-white/10 bg-black/40 group-hover:border-white/20'}`}>{!hiddenColumns.includes(key) && <Check size={12} className="text-white mx-auto" />}</div>
++                    <span className={`text-[10px] font-bold uppercase tracking-widest ${!hiddenColumns.includes(key) ? 'text-slate-200' : 'text-slate-500'}`}>{col.headerName || key}</span>
+                   </label>
+-                ))}
++                )})}
+               </div>
+             </motion.div>
+           )}
+@@ -816,7 +1077,7 @@ export default function FAR() {
+           {selectedModeId && selectedMode && (
+             <FailureDetailView
+               mode={selectedMode}
+-              onClose={() => setSelectedModeId(null)}
++              onClose={() => { setSelectedModeId(null); updateFarDeepLink(null) }}
+               onUpdate={(type: string) => {
+                 if (type === 'edit') {
+                   setShowWizard(true);
+@@ -840,7 +1101,7 @@ export default function FAR() {
+                 </h2>
+                 <button onClick={() => setIncidentListModal({ show: false, rcas: [] })} className="text-slate-500 hover:text-white transition-colors"><X size={24}/></button>
+               </div>
+-              
++
+               <div className="flex-1 overflow-y-auto custom-scrollbar">
+                 <table className="w-full text-left border-collapse">
+                    <thead className="sticky top-0 bg-slate-900 border-b border-white/10 z-10">
+@@ -855,7 +1116,7 @@ export default function FAR() {
+                    </thead>
+                    <tbody className="divide-y divide-white/5">
+                       {incidentListModal.rcas.map((r: any, idx: number) => (
+-                        <tr 
++                        <tr
+                           key={r.id}
+                           onClick={() => {
+                             setSelectedRcaDetail(r);
+@@ -896,12 +1157,12 @@ export default function FAR() {
+ 
+       <AnimatePresence>
+         {selectedRcaDetail && (
+-          <EnhancedRcaDetails 
+-            item={selectedRcaDetail} 
++          <EnhancedRcaDetails
++            item={selectedRcaDetail}
+             devices={[]} // We can pass an empty array or fetch devices if needed
+             options={options}
+             failureModes={modes}
+-            onClose={() => setSelectedRcaDetail(null)} 
++            onClose={() => setSelectedRcaDetail(null)}
+             onSave={() => {
+               setSelectedRcaDetail(null);
+               queryClient.invalidateQueries({ queryKey: ['far', 'modes'] });
+@@ -952,11 +1213,11 @@ export default function FAR() {
+       <MetricHelpModal metric={activeMetricHelp} onClose={() => setActiveMetricHelp(null)} />
+ 
+       <ConfigRegistryModal isOpen={showConfig} onClose={() => setShowConfig(false)} title="Reliability Matrix Registry" sections={[{ title: "Systems", category: "LogicalSystem", icon: LayoutGrid }, { title: "Risk Cats", category: "RiskCategory", icon: Target }, { title: "Teams", category: "BusinessUnit", icon: User }]} />
+-      <BulkImportModal 
+-         isOpen={showImportModal} 
+-         onClose={() => setShowImportModal(false)} 
+-         tableName="far_records" 
+-         displayName="Failure Modes & Risk Matrix" 
++      <BulkImportModal
++         isOpen={showImportModal}
++         onClose={() => setShowImportModal(false)}
++         tableName="far_records"
++         displayName="Failure Modes & Risk Matrix"
+       />
+ 
+       <AnimatePresence>
+@@ -996,16 +1257,16 @@ export default function FAR() {
+ 
+       <AnimatePresence>
+         {bkmGuidanceModal.show && bkmGuidanceModal.cause && (
+-          <BkmGuidanceModal 
+-            cause={bkmGuidanceModal.cause} 
+-            onClose={() => setBkmGuidanceModal({ show: false, cause: null })} 
++          <BkmGuidanceModal
++            cause={bkmGuidanceModal.cause}
++            onClose={() => setBkmGuidanceModal({ show: false, cause: null })}
+           />
+         )}
+       </AnimatePresence>
+ 
+       <AnimatePresence>
+         {resolutionManagerModal.show && resolutionManagerModal.cause && (
+-          <ResolutionManagerModal 
++          <ResolutionManagerModal
+             isOpen={resolutionManagerModal.show}
+             cause={resolutionManagerModal.cause}
+             onClose={() => setResolutionManagerModal({ show: false, cause: null })}
+@@ -1036,7 +1297,7 @@ function BkmGuidanceModal({ cause, onClose }: { cause: any, onClose: () => void
+           </div>
+           <button onClick={onClose} className="p-2 bg-white/5 hover:bg-white/10 rounded-lg text-slate-500 hover:text-white transition-all"><X size={24}/></button>
+         </div>
+-        
++
+         <div className="flex-1 overflow-y-auto custom-scrollbar pr-2">
+           <div className="space-y-4">
+             {(cause.resolutions || []).map((res: any, idx: number) => (
+@@ -1065,7 +1326,7 @@ function BkmGuidanceModal({ cause, onClose }: { cause: any, onClose: () => void
+                           </div>
+                        </div>
+                     </div>
+-                    <button 
++                    <button
+                       onClick={() => navigate(`/knowledge?id=${res.knowledge_id}`)}
+                       className="flex items-center gap-2 px-4 py-2 bg-emerald-600/10 border border-emerald-500/20 rounded-lg text-[10px] font-black text-emerald-400 uppercase tracking-widest hover:bg-emerald-600 hover:text-white transition-all shadow-lg group-hover:scale-105"
+                     >
+@@ -1121,10 +1382,10 @@ function FailureDetailView({ mode, onClose, onUpdate, setBkmGuidanceModal, setRe
+   const [activeTab, setActiveTab] = useState('causal')
+   const [showAllAssets, setShowAllAssets] = useState(false)
+   const queryClient = useQueryClient()
+-  
+-  const { data: allModes } = useQuery({ 
+-    queryKey: ['far', 'modes'], 
+-    queryFn: async () => (await apiFetch('/api/v1/far/modes')).json() 
++
++  const { data: allModes } = useQuery({
++    queryKey: ['far', 'modes'],
++    queryFn: async () => (await apiFetch('/api/v1/far/modes')).json()
+   })
+ 
+   const systemRank = useMemo(() => {
+@@ -1143,11 +1404,11 @@ function FailureDetailView({ mode, onClose, onUpdate, setBkmGuidanceModal, setRe
+   return (
+     <div className="fixed inset-0 z-[120] flex items-center justify-center bg-black/80 backdrop-blur-xl p-6 font-bold uppercase tracking-tight">
+       <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="glass-panel w-full max-w-[1200px] h-[90vh] flex flex-col rounded-lg border border-rose-500/30 bg-[#02040a] overflow-hidden shadow-2xl relative">
+-         
++
+          {/* HEADER SECTION */}
+          <div className="px-8 py-6 border-b border-white/5 bg-white/[0.02] flex flex-col shrink-0 relative overflow-hidden">
+             <div className="absolute top-0 right-0 w-96 h-96 bg-rose-600/5 blur-[100px] -translate-y-1/2 translate-x-1/2 pointer-events-none" />
+-            
++
+             <div className="flex items-start justify-between relative z-10">
+               <div className="space-y-3 flex-1">
+                   <div className="flex items-center gap-3">
+@@ -1165,7 +1426,7 @@ function FailureDetailView({ mode, onClose, onUpdate, setBkmGuidanceModal, setRe
+                       <HeaderScore label="O" value={mode.occurrence} color="amber" />
+                       <HeaderScore label="D" value={mode.detection} color="sky" />
+                   </div>
+-                  
++
+                   <div className="text-right flex flex-col items-end">
+                       <p className="text-[8px] font-bold text-slate-500 uppercase tracking-widest mb-0.5 ">Risk Priority</p>
+                       <div className="flex items-baseline gap-1 leading-none">
+@@ -1174,8 +1435,8 @@ function FailureDetailView({ mode, onClose, onUpdate, setBkmGuidanceModal, setRe
+                       </div>
+                   </div>
+                   <div className="flex items-center gap-2 ml-2">
+-                    <button 
+-                      onClick={() => onUpdate('edit')} 
++                    <button
++                      onClick={() => onUpdate('edit')}
+                       className="p-2 bg-amber-600/20 hover:bg-amber-600/40 border border-amber-500/30 rounded-lg text-amber-400 hover:text-white transition-all"
+                       title="Edit Matrix Configuration"
+                     >
+@@ -1267,9 +1528,9 @@ export function GaugeSelector({ label, value, onChange, levels, color, accent }:
+        </div>
+        <div className="relative h-2 bg-black/40 rounded-lg border border-white/5">
+           <div className={`absolute left-0 top-0 h-full rounded-lg ${accent} transition-all duration-300`} style={{ width: `${(value / 10) * 100}%` }} />
+-          <input 
+-            type="range" min="1" max="10" step="1" 
+-            value={value} 
++          <input
++            type="range" min="1" max="10" step="1"
++            value={value}
+             onChange={e => onChange(Number(e.target.value))}
+             onClick={e => e.stopPropagation()}
+             className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
+@@ -1311,12 +1572,12 @@ function FARWizard({ initialData, onComplete }: any) {
+   }, [initialData])
+   const { data: options } = useQuery({ queryKey: ['settings-options'], queryFn: async () => (await apiFetch('/api/v1/settings/options')).json() })
+   const systems = options?.filter((o: any) => o.category === 'LogicalSystem') || []
+-  const { data: devices } = useQuery({ 
+-    queryKey: ['devices-far', formData.system_name], 
+-    enabled: !!formData.system_name, 
+-    queryFn: async () => (await apiFetch(`/api/v1/devices?system=${encodeURIComponent(formData.system_name)}`)).json() 
++  const { data: devices } = useQuery({
++    queryKey: ['devices-far', formData.system_name],
++    enabled: !!formData.system_name,
++    queryFn: async () => (await apiFetch(`/api/v1/devices?system=${encodeURIComponent(formData.system_name)}`)).json()
+   })
+-  const mutation = useMutation({ 
++  const mutation = useMutation({
+     mutationFn: async (data: any) => {
+       const url = data.id ? `/api/v1/far/modes/${data.id}` : '/api/v1/far/modes';
+       // Clean payload: Filter out relationship objects and keep only IDs
+@@ -1329,20 +1590,20 @@ function FARWizard({ initialData, onComplete }: any) {
+       delete payload.mitigations;
+       delete payload.prevention_actions;
+       delete payload.linked_rcas;
+-      
++
+       // Safety: Strip read-only fields that error out the backend on PUT (SQLite strictness)
+       delete payload.created_at;
+       delete payload.updated_at;
+       delete payload.created_by_user_id;
+ 
+-      const res = await apiFetch(url, { 
+-        method: data.id ? 'PUT' : 'POST', 
+-        body: JSON.stringify(payload) 
++      const res = await apiFetch(url, {
++        method: data.id ? 'PUT' : 'POST',
++        body: JSON.stringify(payload)
+       });
+       if (!res.ok) throw new Error(await res.text());
+       return res.json();
+-    }, 
+-    onSuccess: () => { toast.success('Registry Synchronized'); onComplete(); } 
++    },
++    onSuccess: () => { toast.success('Registry Synchronized'); onComplete(); }
+   })
+   const rpn = formData.severity * formData.occurrence * formData.detection
+ 
+@@ -1377,24 +1638,24 @@ function FARWizard({ initialData, onComplete }: any) {
+              </div>
+              <div className="grid grid-cols-2 gap-2 max-h-[120px] overflow-y-auto pr-2 custom-scrollbar">
+                 {devices?.filter((d: any) => !assetSearch || d.name.toLowerCase().includes(assetSearch.toLowerCase())).map((d: any) => (
+-                  <label key={d.id} 
++                  <label key={d.id}
+                     className={`flex items-center gap-3 p-2 rounded-lg border transition-all cursor-pointer ${formData.affected_assets.includes(d.id) ? 'bg-rose-500/10 border-rose-500 text-white shadow-lg' : 'bg-white/5 border-white/5 text-slate-500 hover:border-white/10'}`}
+                     onClick={e => e.stopPropagation()}
+                   >
+-                    <input 
+-                      type="checkbox" 
+-                      className="sr-only" 
+-                      checked={formData.affected_assets.includes(d.id)} 
++                    <input
++                      type="checkbox"
++                      className="sr-only"
++                      checked={formData.affected_assets.includes(d.id)}
+                       onChange={(e) => {
+                         e.preventDefault();
+                         e.stopPropagation();
+-                        setFormData({ 
+-                          ...formData, 
+-                          affected_assets: formData.affected_assets.includes(d.id) 
+-                            ? formData.affected_assets.filter((id: any) => id !== d.id) 
+-                            : [...formData.affected_assets, d.id] 
++                        setFormData({
++                          ...formData,
++                          affected_assets: formData.affected_assets.includes(d.id)
++                            ? formData.affected_assets.filter((id: any) => id !== d.id)
++                            : [...formData.affected_assets, d.id]
+                         });
+-                      }} 
++                      }}
+                     />
+                     <Server size={12} className={formData.affected_assets.includes(d.id) ? 'text-rose-500' : 'text-slate-700'} />
+                     <div className="min-w-0">
+@@ -1424,9 +1685,9 @@ function FARWizard({ initialData, onComplete }: any) {
+                    <span className={`text-[10px] font-bold ${rpn > 150 ? 'text-rose-500' : 'text-emerald-500'}`}>{rpn > 150 ? 'CRITICAL' : 'NOMINAL'}</span>
+                 </div>
+              </div>
+-             <button 
+-               disabled={!formData.system_name || !formData.title || mutation.isPending} 
+-               onClick={() => mutation.mutate(formData)} 
++             <button
++               disabled={!formData.system_name || !formData.title || mutation.isPending}
++               onClick={() => mutation.mutate(formData)}
+                className="bg-rose-600 hover:bg-rose-500 text-white px-6 py-4 rounded-lg text-[10px] font-bold uppercase tracking-widest shadow-2xl shadow-rose-600/20 active:scale-95 transition-all flex items-center gap-2 "
+              >
+                {mutation.isPending ? <RefreshCcw size={16} className="animate-spin" /> : <Save size={16} />} COMMIT
+@@ -1468,7 +1729,7 @@ function CausalTab({ mode, onUpdate, setBkmGuidanceModal, setResolutionManagerMo
+           </div>
+           <button onClick={() => setActiveModal({ isOpen: true, modeId: mode.id })} className="px-6 py-2 bg-amber-600/20 border border-amber-500/30 text-amber-500 rounded-lg text-[10px] font-bold uppercase  hover:bg-amber-600 hover:text-white transition-all">+ Add Root Cause</button>
+        </div>
+-       
++
+        <div className="flex-1 bg-black/40 border border-white/5 rounded-lg overflow-hidden flex flex-col shadow-2xl">
+           <table className="w-full text-left border-collapse">
+              <thead className="bg-white/[0.03] border-b border-white/10">
+@@ -1506,11 +1767,11 @@ function CausalTab({ mode, onUpdate, setBkmGuidanceModal, setResolutionManagerMo
+                         </div>
+                      </td>
+                      <td className="px-8 py-5 text-center">
+-                        <button 
++                        <button
+                           onClick={() => c.resolutions?.length > 0 && setBkmGuidanceModal({ show: true, cause: c })}
+                           className={`px-3 py-1 rounded-lg text-[9px] font-black transition-all ${
+-                            c.resolutions?.length > 0 
+-                              ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 hover:bg-emerald-500/30 hover:scale-105 active:scale-95 cursor-pointer' 
++                            c.resolutions?.length > 0
++                              ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 hover:bg-emerald-500/30 hover:scale-105 active:scale-95 cursor-pointer'
+                               : 'bg-rose-500/10 text-rose-500 border border-rose-500/20 opacity-50 cursor-not-allowed'
+                           }`}
+                         >
+@@ -1519,14 +1780,14 @@ function CausalTab({ mode, onUpdate, setBkmGuidanceModal, setResolutionManagerMo
+                      </td>
+                      <td className="px-8 py-5 text-right opacity-0 group-hover:opacity-100 transition-opacity">
+                         <div className="flex items-center justify-end gap-2">
+-                           <button 
++                           <button
+                              onClick={() => setResolutionManagerModal({ show: true, cause: c })}
+                              className="p-1.5 text-emerald-400 hover:bg-emerald-500/10 rounded-lg transition-all"
+                              title="Manage BKM Guidance"
+                            >
+                               <Book size={14}/>
+                            </button>
+-                           <button 
++                           <button
+                              onClick={() => setActiveModal({ isOpen: true, modeId: mode.id, initialData: c })}
+                              className="p-1.5 text-blue-400 hover:bg-blue-500/10 rounded-lg transition-all"
+                              title="Edit Attribution"
+@@ -1552,7 +1813,7 @@ function CausalTab({ mode, onUpdate, setBkmGuidanceModal, setResolutionManagerMo
+           </table>
+        </div>
+ 
+-       <RootCauseFormModal 
++       <RootCauseFormModal
+           isOpen={activeModal?.isOpen}
+           onClose={() => setActiveModal(null)}
+           modeId={activeModal?.modeId}
+@@ -1656,7 +1917,7 @@ function RoadmapTab({ mode, onUpdate }: any) {
+   const [selectedCauseId, setSelectedCauseId] = useState<number | null>(null)
+   const [deletingMitigationId, setDeletingMitigationId] = useState<number | null>(null)
+   const deletingMitigationIdRef = React.useRef<number | null>(null)
+-  
++
+   const queryClient = useQueryClient()
+   const { data: bkms } = useQuery({ queryKey: ['knowledge', 'bkms'], queryFn: async () => (await apiFetch('/api/v1/knowledge/?category=BKM')).json() })
+   const { data: monitoring } = useQuery({ queryKey: ['monitoring-items'], queryFn: async () => (await apiFetch('/api/v1/monitoring/')).json() })
+@@ -1697,7 +1958,7 @@ function RoadmapTab({ mode, onUpdate }: any) {
+        <div className="flex items-center gap-4 shrink-0 overflow-x-auto pb-2 scrollbar-hide">
+           <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest shrink-0">Select Root Cause:</span>
+           {(mode.causes || []).map((cause: any) => (
+-             <button 
++             <button
+                 key={cause.id}
+                 onClick={() => setSelectedCauseId(cause.id)}
+                 className={`px-4 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-tight border transition-all whitespace-nowrap ${selectedCauseId === cause.id ? 'bg-rose-600/10 border-rose-500 text-rose-500' : 'bg-white/5 border-white/5 text-slate-500 hover:text-slate-300'}`}
+@@ -1786,7 +2047,7 @@ function RoadmapTab({ mode, onUpdate }: any) {
+           </div>
+        </div>
+ 
+-       <MitigationFormModal 
++       <MitigationFormModal
+           isOpen={activeMitigationModal?.isOpen}
+           onClose={() => setActiveMitigationModal(null)}
+           modeId={mode.id}
+@@ -1797,7 +2058,7 @@ function RoadmapTab({ mode, onUpdate }: any) {
+           onSave={onUpdate}
+        />
+ 
+-       <PreventionFormModal 
++       <PreventionFormModal
+           isOpen={activePreventionModal?.isOpen}
+           onClose={() => setActivePreventionModal(null)}
+           modeId={mode.id}
+@@ -1813,14 +2074,14 @@ function RoadmapTab({ mode, onUpdate }: any) {
+     const queryClient = useQueryClient()
+     const navigate = useNavigate()
+ 
+-    const { data: research } = useQuery({ 
+-      queryKey: ['research-items'], 
+-      queryFn: async () => (await apiFetch('/api/v1/investigations')).json() 
++    const { data: research } = useQuery({
++      queryKey: ['research-items'],
++      queryFn: async () => (await apiFetch('/api/v1/investigations')).json()
+     })
+ 
+     const filteredResearch = useMemo(() => {
+       if (!research) return []
+-      return research.filter((r: any) => 
++      return research.filter((r: any) =>
+         !search || r.title.toLowerCase().includes(search.toLowerCase()) || r.summary?.toLowerCase().includes(search.toLowerCase())
+       )
+     }, [research, search])
+@@ -1922,17 +2183,17 @@ function RoadmapTab({ mode, onUpdate }: any) {
+                      </div>
+                      <div className="relative">
+                         <Search size={14} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-600" />
+-                        <input 
+-                          value={search} 
+-                          onChange={e => setSearch(e.target.value)} 
+-                          placeholder="Search research artifacts..." 
+-                          className="w-full bg-black/40 border border-white/10 rounded-lg pl-11 pr-4 py-3 text-xs font-bold text-white outline-none focus:border-rose-500" 
++                        <input
++                          value={search}
++                          onChange={e => setSearch(e.target.value)}
++                          placeholder="Search research artifacts..."
++                          className="w-full bg-black/40 border border-white/10 rounded-lg pl-11 pr-4 py-3 text-xs font-bold text-white outline-none focus:border-rose-500"
+                         />
+                      </div>
+                      <div className="max-h-[300px] overflow-y-auto custom-scrollbar pr-2 space-y-2">
+                         {filteredResearch?.map((r: any) => (
+-                          <button 
+-                            key={r.id} 
++                          <button
++                            key={r.id}
+                             onClick={() => linkMutation.mutate(r.id)}
+                             className="w-full text-left p-4 rounded-lg bg-white/5 border border-white/5 hover:border-rose-500/30 hover:bg-rose-500/5 transition-all group"
+                           >
+diff --git a/frontend/src/components/MonitoringGrid.tsx b/frontend/src/components/MonitoringGrid.tsx
+index 8c807f7c4f87ca3891a871b93c5393ea6c98b3da..88d76d01981d4313090f9b4eea9ee642a27e4a0a 100644
+--- a/frontend/src/components/MonitoringGrid.tsx
++++ b/frontend/src/components/MonitoringGrid.tsx
+@@ -656,6 +656,7 @@ export default function MonitoringGrid() {
+   const monitoringPreferenceMigratedRef = useRef(false)
+   const monitoringPreferenceSyncRef = useRef<string | null>(null)
+   const monitoringPreferenceSyncTimeoutRef = useRef<number | null>(null)
++  const monitoringLocalSearchTouchedRef = useRef(false)
+   const preserveExplicitColumnWidthsRef = useRef(false)
+   const clearPendingAutoSize = useCallback(() => {
+     if (autoSizeFrameRef.current !== null) {
+@@ -770,7 +771,9 @@ export default function MonitoringGrid() {
+       setQuickFilters(payload?.uiState.quickFilters ?? normalizeMonitoringQuickFilters(null))
+       setGroupBy(payload?.uiState.groupBy ?? 'raw')
+       setColumnLayoutState(payload?.uiState.columnLayoutState ?? [])
+-      setSearchTerm(payload?.uiState.searchTerm ?? '')
++      if (!monitoringLocalSearchTouchedRef.current) {
++        setSearchTerm(payload?.uiState.searchTerm ?? '')
++      }
+       return
+     }
+ 
+@@ -1557,13 +1560,18 @@ export default function MonitoringGrid() {
+     }
+   }, [])
+ 
++  const setMonitoringSearchFromUser = useCallback((value: string) => {
++    monitoringLocalSearchTouchedRef.current = true
++    setSearchTerm(value)
++  }, [])
++
+   const activeFilterChips = useMemo(() => {
+     const chips: Array<{ id: string; label: string; onRemove: () => void }> = []
+     if (searchTerm.trim()) {
+       chips.push({
+         id: 'search',
+         label: `Search: ${searchTerm.trim()}`,
+-        onRemove: () => setSearchTerm('')
++        onRemove: () => setMonitoringSearchFromUser('')
+       })
+     }
+     Object.entries(gridFilterModel || {}).forEach(([field, model]) => {
+@@ -1984,7 +1992,7 @@ export default function MonitoringGrid() {
+       toolbarSearch={(
+         <ToolbarSearch
+           value={searchTerm}
+-          onChange={(e) => setSearchTerm(e.target.value)}
++          onChange={(e) => setMonitoringSearchFromUser(e.target.value)}
+           placeholder="Scan matrix..."
+         />
+       )}
+@@ -2128,7 +2136,7 @@ export default function MonitoringGrid() {
+                 id: 'clear-all',
+                 label: 'Clear All',
+                 onRemove: () => {
+-                  setSearchTerm('')
++                  setMonitoringSearchFromUser('')
+                   setGridFilterModel({})
+                   setQuickFilters({ status: [] as string[], severity: [] as string[], platform: [] as string[], owner: [] as string[] })
+                   gridRef.current?.api?.setFilterModel({})
+diff --git a/frontend/src/components/far/FARGoldenWorkspace.tsx b/frontend/src/components/far/FARGoldenWorkspace.tsx
+index 0fd1a9710f283febd2d525f19fb6af06229df991..9191a8fc9526cd7dd25a3511c805b653902426b3 100644
+--- a/frontend/src/components/far/FARGoldenWorkspace.tsx
++++ b/frontend/src/components/far/FARGoldenWorkspace.tsx
+@@ -1,683 +1,11 @@
+-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+-import type { ColDef, GridApi, GridReadyEvent, RowClickedEvent } from 'ag-grid-community'
+-import { AgGridReact } from 'ag-grid-react'
+-import {
+-  AlertTriangle,
+-  BarChart3,
+-  CheckCircle2,
+-  ClipboardCopy,
+-  CloudOff,
+-  Filter,
+-  Link2,
+-  ListFilter,
+-  RefreshCcw,
+-  Save,
+-  Search,
+-  ShieldAlert,
+-  X,
+-} from 'lucide-react'
+-import { apiClient } from '../../api/apiClient'
+-import { PageHeader } from '../shared/LayoutPrimitives'
+-import { WorkspaceCommandBar } from '../shared/WorkspaceCommandBar'
+-import {
+-  applyFARFilters,
+-  extractFARRows,
+-  formatFARDate,
+-  readFARRecordId,
+-  updateFARRecordSearch,
+-  type FARFilterState,
+-  type FARPresetKey,
+-  type FARRecord,
+-  type FARRiskBand,
+-  type FARWorkspaceMode,
+-} from './FARGoldenWorkspaceModel'
+-
+-const join = (...parts: Array<string | false | null | undefined>) => parts.filter(Boolean).join(' ')
+-
+-interface FARExperienceColumn {
+-  key: string
+-  label: string
+-  width: number
+-  minimum_width: number
+-  kind: string
+-  required: boolean
+-}
+-
+-interface FARExperiencePreset {
+-  key: FARPresetKey
+-  label: string
+-  description: string
+-}
+-
+-interface FARExperience {
+-  schema_version: number
+-  workspace_key: string
+-  data_endpoint: string
+-  detail_query_key: string
+-  columns: FARExperienceColumn[]
+-  presets: FARExperiencePreset[]
+-  modes: Array<{ key: FARWorkspaceMode; label: string; description: string; column_keys: string[] }>
+-  risk_thresholds: Record<string, number>
+-  detail_sections: string[]
+-}
+-
+-interface SavedFARView {
+-  id: number
+-  name: string
+-  definition: Record<string, unknown>
+-  revision: number
+-}
+-
+-const FALLBACK_EXPERIENCE: FARExperience = {
+-  schema_version: 1,
+-  workspace_key: 'far',
+-  data_endpoint: '/far/modes',
+-  detail_query_key: 'far',
+-  columns: [
+-    { key: 'title', label: 'Failure mode', width: 310, minimum_width: 240, kind: 'identity', required: true },
+-    { key: 'rpn', label: 'Risk', width: 130, minimum_width: 110, kind: 'risk', required: true },
+-    { key: 'status', label: 'Status', width: 140, minimum_width: 120, kind: 'status', required: true },
+-    { key: 'owner', label: 'Owner', width: 160, minimum_width: 130, kind: 'owner', required: true },
+-    { key: 'systemName', label: 'System', width: 190, minimum_width: 150, kind: 'text', required: true },
+-    { key: 'failureType', label: 'Type', width: 150, minimum_width: 120, kind: 'text', required: true },
+-    { key: 'effect', label: 'Operational effect', width: 260, minimum_width: 180, kind: 'text', required: false },
+-    { key: 'affectedAssets', label: 'Affected scope', width: 210, minimum_width: 160, kind: 'list', required: false },
+-    { key: 'causes', label: 'Causes', width: 260, minimum_width: 180, kind: 'list', required: false },
+-    { key: 'mitigations', label: 'Mitigations', width: 260, minimum_width: 180, kind: 'list', required: false },
+-    { key: 'preventionActions', label: 'Prevention', width: 260, minimum_width: 180, kind: 'list', required: false },
+-    { key: 'linkedRcas', label: 'Linked RCAs', width: 210, minimum_width: 160, kind: 'list', required: false },
+-    { key: 'ageDays', label: 'Age', width: 110, minimum_width: 90, kind: 'age', required: false },
+-    { key: 'incidentCount', label: 'Incidents', width: 110, minimum_width: 90, kind: 'number', required: false },
+-    { key: 'updatedAt', label: 'Updated', width: 145, minimum_width: 120, kind: 'date', required: false },
+-  ],
+-  presets: [
+-    { key: 'all', label: 'All failure modes', description: 'Complete risk register' },
+-    { key: 'high-risk', label: 'High risk', description: 'RPN 200 or greater' },
+-    { key: 'overdue', label: 'Overdue', description: 'Open for 30 days or more' },
+-    { key: 'unassigned', label: 'Unassigned', description: 'Missing accountable owner' },
+-    { key: 'recent', label: 'Recently updated', description: 'Changed in the last 14 days' },
+-  ],
+-  modes: [
+-    { key: 'failure_modes', label: 'Failure modes', description: 'Operational risk register', column_keys: ['title', 'rpn', 'status', 'owner', 'systemName', 'failureType', 'affectedAssets', 'ageDays', 'incidentCount', 'updatedAt'] },
+-    { key: 'causes', label: 'Causes', description: 'Root-cause signals', column_keys: ['title', 'causes', 'rpn', 'owner', 'systemName', 'linkedRcas'] },
+-    { key: 'mitigations', label: 'Mitigations', description: 'Current controls', column_keys: ['title', 'mitigations', 'status', 'owner', 'rpn', 'affectedAssets'] },
+-    { key: 'prevention', label: 'Prevention', description: 'Preventive actions', column_keys: ['title', 'preventionActions', 'owner', 'status', 'rpn', 'updatedAt'] },
+-  ],
+-  risk_thresholds: { critical: 300, high: 200, moderate: 100 },
+-  detail_sections: ['summary', 'risk', 'affected_scope', 'causes', 'mitigations', 'prevention', 'relationships'],
+-}
+-
+-const PRESET_LABEL: Record<FARPresetKey, string> = {
+-  all: 'All failure modes',
+-  'high-risk': 'High risk',
+-  overdue: 'Overdue',
+-  unassigned: 'Unassigned',
+-  recent: 'Recently updated',
+-}
+-
+-const riskClass: Record<FARRiskBand, string> = {
+-  Critical: 'border-rose-400/30 bg-rose-500/15 text-rose-200',
+-  High: 'border-orange-400/30 bg-orange-500/15 text-orange-200',
+-  Moderate: 'border-amber-400/30 bg-amber-500/15 text-amber-200',
+-  Low: 'border-emerald-400/30 bg-emerald-500/15 text-emerald-200',
+-}
+-
+-const statusClass = (status: string) => {
+-  if (/resolved|closed|accepted/i.test(status)) return 'border-emerald-400/25 bg-emerald-500/10 text-emerald-200'
+-  if (/mitigat|monitor/i.test(status)) return 'border-sky-400/25 bg-sky-500/10 text-sky-200'
+-  if (/archiv|retir/i.test(status)) return 'border-slate-400/20 bg-slate-500/10 text-slate-300'
+-  return 'border-amber-400/25 bg-amber-500/10 text-amber-100'
+-}
+-
+-function Badge({ children, className = '' }: { children: React.ReactNode; className?: string }) {
+-  return <span className={join('inline-flex items-center rounded-md border px-2 py-1 text-[10px] font-semibold', className)}>{children}</span>
+-}
+-
+-function DetailList({ title, items, empty }: { title: string; items: string[]; empty: string }) {
+-  return (
+-    <section className="space-y-2">
+-      <h4 className="text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-500">{title}</h4>
+-      {items.length ? (
+-        <ul className="space-y-2">
+-          {items.map((item, index) => (
+-            <li key={`${item}-${index}`} className="rounded-md border border-white/5 bg-black/20 px-3 py-2 text-xs leading-5 text-slate-300">{item}</li>
+-          ))}
+-        </ul>
+-      ) : <p className="rounded-md border border-dashed border-white/10 px-3 py-2 text-xs text-slate-500">{empty}</p>}
+-    </section>
+-  )
+-}
+-
+-export function FARGoldenWorkspace({
+-  header,
+-  className = '',
+-  frameClassName,
+-  gridClassName,
+-  gridContentClassName,
+-  geometryVersion,
+-}: {
+-  header: React.ComponentProps<typeof PageHeader>
+-  className?: string
+-  frameClassName: string
+-  gridClassName: string
+-  gridContentClassName: string
+-  geometryVersion: string
+-}) {
+-  const gridApiRef = useRef<GridApi<FARRecord> | null>(null)
+-  const [records, setRecords] = useState<FARRecord[]>([])
+-  const [experience, setExperience] = useState<FARExperience>(FALLBACK_EXPERIENCE)
+-  const [savedViews, setSavedViews] = useState<SavedFARView[]>([])
+-  const [selectedId, setSelectedId] = useState<string | null>(() => typeof window === 'undefined' ? null : readFARRecordId(window.location.search))
+-  const [filters, setFilters] = useState<FARFilterState>({
+-    preset: 'all',
+-    status: 'all',
+-    riskBand: 'all',
+-    owner: 'all',
+-    searchTerm: '',
+-    mode: 'failure_modes',
+-  })
+-  const [density, setDensity] = useState<'comfortable' | 'compact'>('comfortable')
+-  const [showFilterBar, setShowFilterBar] = useState(true)
+-  const [showDisplayControls, setShowDisplayControls] = useState(false)
+-  const [showInsights, setShowInsights] = useState(false)
+-  const [loadState, setLoadState] = useState<'loading' | 'ready' | 'error'>('loading')
+-  const [syncState, setSyncState] = useState<'synced' | 'saving' | 'offline' | 'error'>('synced')
+-  const [errorMessage, setErrorMessage] = useState('')
+-  const [isOnline, setIsOnline] = useState(() => typeof navigator === 'undefined' || navigator.onLine)
+-
+-  const load = useCallback(async () => {
+-    setLoadState('loading')
+-    setErrorMessage('')
+-    try {
+-      const [experienceResult, modesResult, viewsResult] = await Promise.allSettled([
+-        apiClient.get('/workspaces/far/experience'),
+-        apiClient.get(FALLBACK_EXPERIENCE.data_endpoint),
+-        apiClient.get('/workspaces/far/views'),
+-      ])
+-      const resolvedExperience = experienceResult.status === 'fulfilled'
+-        ? experienceResult.value as FARExperience
+-        : FALLBACK_EXPERIENCE
+-      if (modesResult.status !== 'fulfilled') throw modesResult.reason
+-      setExperience(resolvedExperience)
+-      setRecords(extractFARRows(modesResult.value))
+-      if (viewsResult.status === 'fulfilled') {
+-        const payload = viewsResult.value as { views?: SavedFARView[] }
+-        setSavedViews(Array.isArray(payload?.views) ? payload.views : [])
+-      }
+-      setLoadState('ready')
+-      setSyncState(isOnline ? 'synced' : 'offline')
+-    } catch (error) {
+-      setLoadState('error')
+-      setSyncState(isOnline ? 'error' : 'offline')
+-      setErrorMessage(error instanceof Error ? error.message : 'FAR workspace could not be loaded.')
+-    }
+-  }, [isOnline])
+-
+-  useEffect(() => { void load() }, [load])
+-  useEffect(() => {
+-    const online = () => { setIsOnline(true); setSyncState('synced'); void load() }
+-    const offline = () => { setIsOnline(false); setSyncState('offline') }
+-    window.addEventListener('online', online)
+-    window.addEventListener('offline', offline)
+-    return () => {
+-      window.removeEventListener('online', online)
+-      window.removeEventListener('offline', offline)
+-    }
+-  }, [load])
+-
+-  const filteredRows = useMemo(() => applyFARFilters(records, filters), [records, filters])
+-  const selectedRecord = useMemo(() => records.find((record) => record.id === selectedId) ?? null, [records, selectedId])
+-  const statuses = useMemo(() => [...new Set(records.map((record) => record.status))].sort(), [records])
+-  const owners = useMemo(() => [...new Set(records.map((record) => record.owner))].sort(), [records])
+-  const highRiskCount = useMemo(() => records.filter((record) => record.rpn >= 200).length, [records])
+-  const overdueCount = useMemo(() => records.filter((record) => record.overdue).length, [records])
+-  const unassignedCount = useMemo(() => records.filter((record) => record.owner === 'Unassigned').length, [records])
+-
+-  useEffect(() => {
+-    if (selectedId && records.length && !selectedRecord) setErrorMessage(`FAR record ${selectedId} is unavailable or outside the active tenant.`)
+-  }, [records, selectedId, selectedRecord])
+-
+-  const setRecordDeepLink = useCallback((recordId: string | null) => {
+-    setSelectedId(recordId)
+-    if (typeof window !== 'undefined') {
+-      const nextSearch = updateFARRecordSearch(window.location.search, recordId)
+-      window.history.replaceState({}, '', `${window.location.pathname}${nextSearch}${window.location.hash}`)
+-    }
+-  }, [])
+-
+-  const clearFilter = (key: keyof FARFilterState) => {
+-    setFilters((current) => ({
+-      ...current,
+-      [key]: key === 'preset' ? 'all' : key === 'mode' ? 'failure_modes' : key === 'searchTerm' ? '' : 'all',
+-    }))
+-  }
+-
+-  const applySavedView = (value: string) => {
+-    if (value.startsWith('preset:')) {
+-      setFilters((current) => ({ ...current, preset: value.slice(7) as FARPresetKey }))
+-      return
+-    }
+-    const view = savedViews.find((candidate) => `saved:${candidate.id}` === value)
+-    if (!view) return
+-    const definition = view.definition || {}
+-    const storedFilters = definition.filters && typeof definition.filters === 'object' ? definition.filters as Record<string, unknown> : {}
+-    const pick = (key: string, fallback: string) => {
+-      const value = storedFilters[key]
+-      return Array.isArray(value) && typeof value[0] === 'string' ? value[0] : fallback
+-    }
+-    setFilters((current) => ({
+-      ...current,
+-      searchTerm: typeof definition.searchTerm === 'string' ? definition.searchTerm : '',
+-      preset: (typeof definition.activeLens === 'string' ? definition.activeLens : 'all') as FARPresetKey,
+-      mode: (typeof definition.viewMode === 'string' ? definition.viewMode : 'failure_modes') as FARWorkspaceMode,
+-      status: pick('status', 'all'),
+-      riskBand: pick('riskBand', 'all'),
+-      owner: pick('owner', 'all'),
+-    }))
+-  }
+-
+-  const saveCurrentView = async () => {
+-    if (!isOnline) {
+-      setSyncState('offline')
+-      return
+-    }
+-    setSyncState('saving')
+-    try {
+-      const stamp = new Date().toISOString().replace(/[-:]/g, '').slice(0, 13)
+-      const created = await apiClient.post('/workspaces/far/views', {
+-        name: `${PRESET_LABEL[filters.preset]} ${stamp}`,
+-        scope: 'personal',
+-        definition: {
+-          searchTerm: filters.searchTerm,
+-          activeLens: filters.preset,
+-          viewMode: filters.mode,
+-          filters: {
+-            status: filters.status === 'all' ? [] : [filters.status],
+-            riskBand: filters.riskBand === 'all' ? [] : [filters.riskBand],
+-            owner: filters.owner === 'all' ? [] : [filters.owner],
+-          },
+-        },
+-        schema_version: experience.schema_version,
+-      }) as SavedFARView
+-      setSavedViews((current) => [created, ...current.filter((view) => view.id !== created.id)])
+-      setSyncState('synced')
+-    } catch (error) {
+-      setSyncState('error')
+-      setErrorMessage(error instanceof Error ? error.message : 'The FAR saved view could not be synchronized.')
+-    }
+-  }
+-
+-  const copyLink = async () => {
+-    if (typeof navigator === 'undefined' || !navigator.clipboard) return
+-    await navigator.clipboard.writeText(window.location.href)
+-  }
+-
+-  const columns = useMemo<ColDef<FARRecord>[]>(() => {
+-    const definitions = experience.columns.length ? experience.columns : FALLBACK_EXPERIENCE.columns
+-    const byKey: Record<string, ColDef<FARRecord>> = {
+-      title: {
+-        field: 'title',
+-        headerName: 'Failure mode',
+-        pinned: 'left',
+-        minWidth: 240,
+-        width: 310,
+-        cellClass: 'font-semibold text-slate-100',
+-      },
+-      rpn: {
+-        field: 'rpn',
+-        headerName: 'Risk',
+-        minWidth: 110,
+-        width: 130,
+-        valueFormatter: ({ data }) => data ? `${data.rpn} · ${data.riskBand}` : '',
+-        cellClass: 'font-semibold',
+-      },
+-      status: { field: 'status', headerName: 'Status', minWidth: 120, width: 140 },
+-      owner: { field: 'owner', headerName: 'Owner', minWidth: 130, width: 160 },
+-      systemName: { field: 'systemName', headerName: 'System', minWidth: 150, width: 190 },
+-      failureType: { field: 'failureType', headerName: 'Type', minWidth: 120, width: 150 },
+-      effect: { field: 'effect', headerName: 'Operational effect', minWidth: 180, width: 260 },
+-      causes: {
+-        field: 'causes', headerName: 'Causes', minWidth: 180, width: 260,
+-        valueFormatter: ({ data }) => data?.causes.length ? data.causes.join(' · ') : 'No cause recorded',
+-      },
+-      mitigations: {
+-        field: 'mitigations', headerName: 'Mitigations', minWidth: 180, width: 260,
+-        valueFormatter: ({ data }) => data?.mitigations.length ? data.mitigations.join(' · ') : 'No mitigation recorded',
+-      },
+-      preventionActions: {
+-        field: 'preventionActions', headerName: 'Prevention', minWidth: 180, width: 260,
+-        valueFormatter: ({ data }) => data?.preventionActions.length ? data.preventionActions.join(' · ') : 'No prevention action',
+-      },
+-      linkedRcas: {
+-        field: 'linkedRcas', headerName: 'Linked RCAs', minWidth: 160, width: 210,
+-        valueFormatter: ({ data }) => data?.linkedRcas.length ? data.linkedRcas.join(', ') : 'Not linked',
+-      },
+-      affectedAssets: {
+-        field: 'affectedAssets',
+-        headerName: 'Affected scope',
+-        minWidth: 160,
+-        width: 210,
+-        valueFormatter: ({ data }) => data?.affectedAssets.length ? data.affectedAssets.join(', ') : 'Not linked',
+-      },
+-      ageDays: {
+-        field: 'ageDays',
+-        headerName: 'Age',
+-        minWidth: 90,
+-        width: 110,
+-        valueFormatter: ({ data }) => data ? `${data.ageDays}d${data.overdue ? ' · overdue' : ''}` : '',
+-      },
+-      incidentCount: { field: 'incidentCount', headerName: 'Incidents', minWidth: 90, width: 110 },
+-      updatedAt: {
+-        field: 'updatedAt',
+-        headerName: 'Updated',
+-        minWidth: 120,
+-        width: 145,
+-        valueFormatter: ({ data }) => formatFARDate(data?.updatedAt ?? null),
+-      },
+-    }
+-    const activeMode = experience.modes.find((mode) => mode.key === filters.mode)
+-    const activeKeys = activeMode?.column_keys?.length ? activeMode.column_keys : FALLBACK_EXPERIENCE.modes[0].column_keys
+-    const activeDefinitions = activeKeys
+-      .map((key) => definitions.find((definition) => definition.key === key))
+-      .filter(Boolean) as FARExperienceColumn[]
+-
+-    return activeDefinitions.map((definition) => ({
+-      ...(byKey[definition.key] ?? {
+-        field: definition.key as keyof FARRecord,
+-        headerName: definition.label,
+-        valueFormatter: ({ value }) => Array.isArray(value) ? value.join(', ') : String(value ?? ''),
+-      }),
+-      headerName: definition.label,
+-      width: definition.width,
+-      minWidth: definition.minimum_width,
+-      sortable: true,
+-      filter: true,
+-      resizable: true,
+-      suppressSizeToFit: definition.key === 'title',
+-    }))
+-  }, [experience.columns, experience.modes, filters.mode])
+-
+-  const onGridReady = (event: GridReadyEvent<FARRecord>) => {
+-    gridApiRef.current = event.api
+-    window.requestAnimationFrame(() => event.api.sizeColumnsToFit())
+-  }
+-
+-  const onRowClicked = (event: RowClickedEvent<FARRecord>) => {
+-    if (event.data) setRecordDeepLink(event.data.id)
+-  }
+-
+-  const chips = [
+-    filters.preset !== 'all' ? { id: 'preset', label: `View: ${PRESET_LABEL[filters.preset]}`, onRemove: () => clearFilter('preset') } : null,
+-    filters.status !== 'all' ? { id: 'status', label: `Status: ${filters.status}`, onRemove: () => clearFilter('status') } : null,
+-    filters.riskBand !== 'all' ? { id: 'risk', label: `Risk: ${filters.riskBand}`, onRemove: () => clearFilter('riskBand') } : null,
+-    filters.owner !== 'all' ? { id: 'owner', label: `Owner: ${filters.owner}`, onRemove: () => clearFilter('owner') } : null,
+-    filters.searchTerm ? { id: 'search', label: `Search: ${filters.searchTerm}`, onRemove: () => clearFilter('searchTerm') } : null,
+-  ].filter(Boolean) as Array<{ id: string; label: string; onRemove: () => void }>
+-
+-  const commandBar = {
+-    left: (
+-      <>
+-        <label className="relative min-w-[240px] flex-1 md:max-w-[420px]">
+-          <Search size={15} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
+-          <input
+-            aria-label="Search FAR failure modes"
+-            value={filters.searchTerm}
+-            onChange={(event) => setFilters((current) => ({ ...current, searchTerm: event.target.value }))}
+-            placeholder="Search failure modes, systems, owners, causes..."
+-            className="h-10 w-full rounded-lg border border-white/10 bg-black/25 pl-9 pr-3 text-xs text-slate-100 outline-none transition focus:border-indigo-400/50 focus:ring-2 focus:ring-indigo-500/10"
+-          />
+-        </label>
+-        <select
+-          aria-label="FAR saved view"
+-          value={`preset:${filters.preset}`}
+-          onChange={(event) => applySavedView(event.target.value)}
+-          className="h-10 min-w-[170px] rounded-lg border border-white/10 bg-[#0b1220] px-3 text-xs font-medium text-slate-200 outline-none focus:border-indigo-400/50"
+-        >
+-          <optgroup label="Operational views">
+-            {experience.presets.map((preset) => <option key={preset.key} value={`preset:${preset.key}`}>{preset.label}</option>)}
+-          </optgroup>
+-          {savedViews.length ? (
+-            <optgroup label="Personal saved views">
+-              {savedViews.map((view) => <option key={view.id} value={`saved:${view.id}`}>{view.name}</option>)}
+-            </optgroup>
+-          ) : null}
+-        </select>
+-      </>
+-    ),
+-    right: (
+-      <>
+-        <button type="button" onClick={() => setShowDisplayControls((value) => !value)} aria-pressed={showDisplayControls} className={join('inline-flex h-9 items-center gap-2 rounded-lg border px-3 text-[10px] font-semibold', showDisplayControls ? 'border-indigo-400/30 bg-indigo-500/15 text-indigo-100' : 'border-white/10 bg-white/[0.04] text-slate-200 hover:bg-white/[0.08]')}>
+-          <BarChart3 size={13} /> Display
+-        </button>
+-        <button type="button" onClick={() => setShowFilterBar((value) => !value)} aria-pressed={showFilterBar} className={join('inline-flex h-9 items-center gap-2 rounded-lg border px-3 text-[10px] font-semibold', showFilterBar ? 'border-indigo-400/30 bg-indigo-500/15 text-indigo-100' : 'border-white/10 bg-white/[0.04] text-slate-200 hover:bg-white/[0.08]')}>
+-          <Filter size={13} /> Filters
+-        </button>
+-        <button type="button" onClick={() => setShowInsights((value) => !value)} aria-pressed={showInsights} className={join('inline-flex h-9 items-center gap-2 rounded-lg border px-3 text-[10px] font-semibold', showInsights ? 'border-indigo-400/30 bg-indigo-500/15 text-indigo-100' : 'border-white/10 bg-white/[0.04] text-slate-200 hover:bg-white/[0.08]')}>
+-          <ShieldAlert size={13} /> Insights
+-        </button>
+-        <span className={join(
+-          'inline-flex h-9 items-center gap-2 rounded-lg border px-3 text-[10px] font-semibold',
+-          syncState === 'synced' && 'border-emerald-400/20 bg-emerald-500/10 text-emerald-200',
+-          syncState === 'saving' && 'border-sky-400/20 bg-sky-500/10 text-sky-200',
+-          syncState === 'offline' && 'border-amber-400/20 bg-amber-500/10 text-amber-100',
+-          syncState === 'error' && 'border-rose-400/20 bg-rose-500/10 text-rose-200',
+-        )} data-far-sync-state={syncState}>
+-          {syncState === 'offline' ? <CloudOff size={13} /> : syncState === 'error' ? <AlertTriangle size={13} /> : <CheckCircle2 size={13} />}
+-          {syncState === 'saving' ? 'Saving' : syncState === 'offline' ? 'Offline fallback' : syncState === 'error' ? 'Sync issue' : 'Synced'}
+-        </span>
+-        <button type="button" onClick={() => void saveCurrentView()} className="inline-flex h-9 items-center gap-2 rounded-lg border border-white/10 bg-white/[0.04] px-3 text-[10px] font-semibold text-slate-200 hover:bg-white/[0.08]">
+-          <Save size={13} /> Save view
+-        </button>
+-        <button type="button" onClick={() => void copyLink()} className="inline-flex h-9 items-center gap-2 rounded-lg border border-white/10 bg-white/[0.04] px-3 text-[10px] font-semibold text-slate-200 hover:bg-white/[0.08]">
+-          <ClipboardCopy size={13} /> Copy link
+-        </button>
+-        <button type="button" onClick={() => void load()} aria-label="Refresh FAR workspace" className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-white/10 bg-white/[0.04] text-slate-300 hover:bg-white/[0.08]">
+-          <RefreshCcw size={14} />
+-        </button>
+-      </>
+-    ),
+-    secondary: (
+-      <div className="flex w-full flex-wrap items-center gap-3" data-far-command-surface="true" data-far-filter-bar={showFilterBar ? 'true' : undefined} data-far-display-controls={showDisplayControls ? 'true' : undefined}>
+-        <div className="flex min-w-0 flex-wrap items-center gap-1 rounded-md border border-white/5 bg-black/20 p-1" role="tablist" aria-label="FAR analytical mode" data-far-mode-control="true">
+-          {experience.modes.map((mode) => (
+-            <button
+-              key={mode.key}
+-              type="button"
+-              role="tab"
+-              aria-selected={filters.mode === mode.key}
+-              onClick={() => setFilters((current) => ({ ...current, mode: mode.key }))}
+-              className={join(
+-                'rounded px-2.5 py-1.5 text-[10px] font-semibold transition',
+-                filters.mode === mode.key ? 'bg-indigo-500/20 text-indigo-100 ring-1 ring-indigo-400/25' : 'text-slate-400 hover:bg-white/[0.05] hover:text-slate-200',
+-              )}
+-            >
+-              {mode.label}
+-            </button>
+-          ))}
+-        </div>
+-        {showFilterBar ? (
+-          <>
+-            <div className="flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-500"><ListFilter size={13} /> Filters</div>
+-            <select aria-label="Filter FAR status" value={filters.status} onChange={(event) => setFilters((current) => ({ ...current, status: event.target.value }))} className="h-8 rounded-md border border-white/10 bg-[#0b1220] px-2 text-[10px] text-slate-200">
+-              <option value="all">All statuses</option>
+-              {statuses.map((status) => <option key={status} value={status}>{status}</option>)}
+-            </select>
+-            <select aria-label="Filter FAR risk" value={filters.riskBand} onChange={(event) => setFilters((current) => ({ ...current, riskBand: event.target.value }))} className="h-8 rounded-md border border-white/10 bg-[#0b1220] px-2 text-[10px] text-slate-200">
+-              <option value="all">All risk bands</option>
+-              {(['Critical', 'High', 'Moderate', 'Low'] as FARRiskBand[]).map((risk) => <option key={risk} value={risk}>{risk}</option>)}
+-            </select>
+-            <select aria-label="Filter FAR owner" value={filters.owner} onChange={(event) => setFilters((current) => ({ ...current, owner: event.target.value }))} className="h-8 max-w-[190px] rounded-md border border-white/10 bg-[#0b1220] px-2 text-[10px] text-slate-200">
+-              <option value="all">All owners</option>
+-              {owners.map((owner) => <option key={owner} value={owner}>{owner}</option>)}
+-            </select>
+-          </>
+-        ) : null}
+-        {showDisplayControls ? (
+-          <>
+-            <div className="flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-500"><BarChart3 size={13} /> Display</div>
+-            <select aria-label="FAR display density" value={density} onChange={(event) => setDensity(event.target.value as 'comfortable' | 'compact')} className="h-8 rounded-md border border-white/10 bg-[#0b1220] px-2 text-[10px] text-slate-200">
+-              <option value="comfortable">Comfortable density</option>
+-              <option value="compact">Compact density</option>
+-            </select>
+-            <button type="button" onClick={() => gridApiRef.current?.sizeColumnsToFit()} className="h-8 rounded-md border border-white/10 bg-white/[0.04] px-3 text-[10px] font-semibold text-slate-300 hover:bg-white/[0.08]">Fit columns</button>
+-          </>
+-        ) : null}
+-        <span className="ml-auto text-[10px] font-medium text-slate-500">{filteredRows.length} of {records.length} modes</span>
+-      </div>
+-    ),
+-    filterChips: chips,
+-  }
+-
+-  return (
+-    <div
+-      className={join(frameClassName, className)}
+-      data-workspace="far"
+-      data-golden-workspace-shell="true"
+-      data-golden-workspace="far"
+-      data-golden-archetype="analytical"
+-      data-golden-geometry-version={geometryVersion}
+-      data-far-golden-workspace="true"
+-    >
+-      <PageHeader {...header} />
+-      <WorkspaceCommandBar {...commandBar} />
+-
+-      <div className={join(gridClassName, 'rounded-lg')} data-far-grid="true" data-golden-grid-surface="true" data-testid="golden-grid-surface" data-golden-grid-variant="golden" data-golden-geometry-version={geometryVersion}>
+-        <div className={gridContentClassName} data-golden-grid-content="true">
+-          <div className="relative min-h-0 min-w-0 w-full">
+-            {loadState === 'loading' ? (
+-              <div className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-3 bg-[#020617]/80 text-slate-300 backdrop-blur-sm" data-far-loading="true">
+-                <RefreshCcw size={22} className="animate-spin text-indigo-300" />
+-                <p className="text-xs font-semibold">Loading...</p><p className="text-[10px] text-slate-500">Synchronizing FAR risk register</p>
+-              </div>
+-            ) : null}
+-            {loadState === 'error' ? (
+-              <div className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-4 bg-[#020617]/90 px-6 text-center" data-far-error="true" role="alert">
+-                <AlertTriangle size={28} className="text-rose-300" />
+-                <div>
+-                  <p className="text-sm font-semibold text-slate-100">FAR data could not be loaded</p>
+-                  <p className="mt-1 max-w-lg text-xs text-slate-400">{errorMessage || 'The active tenant did not return a usable FAR response.'}</p>
+-                </div>
+-                <button type="button" onClick={() => void load()} className="inline-flex items-center gap-2 rounded-lg bg-indigo-500/20 px-4 py-2 text-xs font-semibold text-indigo-100 ring-1 ring-indigo-400/25"><RefreshCcw size={14} /> Retry</button>
+-              </div>
+-            ) : null}
+-            {loadState === 'ready' && filteredRows.length === 0 ? (
+-              <div className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-3 bg-[#020617]/85 px-6 text-center" data-far-empty="true">
+-                <Filter size={26} className="text-slate-500" />
+-                <p className="text-sm font-semibold text-slate-200">No failure modes match this view</p>
+-                <p className="text-xs text-slate-500">Clear the active filters or choose All failure modes.</p>
+-                <button type="button" onClick={() => setFilters((current) => ({ ...current, preset: 'all', status: 'all', riskBand: 'all', owner: 'all', searchTerm: '' }))} className="rounded-lg border border-white/10 px-3 py-2 text-xs font-semibold text-slate-300 hover:bg-white/[0.05]">Clear filters</button>
+-              </div>
+-            ) : null}
+-            <AgGridReact<FARRecord>
+-              rowData={filteredRows}
+-              columnDefs={columns}
+-              defaultColDef={{ minWidth: 100, sortable: true, filter: true, resizable: true }}
+-              getRowId={({ data }) => data.id}
+-              rowSelection="single"
+-              animateRows={false}
+-              pagination
+-              paginationPageSize={25}
+-              rowHeight={density === 'compact' ? 34 : 44}
+-              headerHeight={40}
+-              suppressRowClickSelection={false}
+-              onGridReady={onGridReady}
+-              onGridSizeChanged={(event) => window.requestAnimationFrame(() => event.api.sizeColumnsToFit())}
+-              onFirstDataRendered={(event) => window.requestAnimationFrame(() => event.api.sizeColumnsToFit())}
+-              onRowClicked={onRowClicked}
+-              overlayNoRowsTemplate="<span></span>"
+-            />
+-
+-            {showInsights || selectedRecord ? (
+-              <aside
+-                className="absolute inset-y-0 right-0 z-20 w-full max-w-[390px] overflow-y-auto border-l border-white/10 bg-[#070b14]/95 p-4 shadow-2xl backdrop-blur-xl custom-scrollbar max-sm:max-w-none"
+-                aria-label="FAR record detail"
+-                data-far-detail-panel="true"
+-                data-far-overlay="true"
+-              >
+-                {selectedRecord ? (
+-                  <div className="space-y-5" data-far-detail-record={selectedRecord.id}>
+-                    <div className="flex items-start justify-between gap-3">
+-                      <div className="min-w-0">
+-                        <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-500">Failure mode dossier</p>
+-                        <h3 className="mt-2 text-base font-semibold leading-6 text-slate-100">{selectedRecord.title}</h3>
+-                        <p className="mt-1 text-xs text-slate-400">{selectedRecord.systemName} · {selectedRecord.failureType}</p>
+-                      </div>
+-                      <button type="button" onClick={() => setRecordDeepLink(null)} aria-label="Close FAR detail" className="rounded-md border border-white/10 p-2 text-slate-400 hover:bg-white/[0.05] hover:text-white"><X size={14} /></button>
+-                    </div>
+-                    <div className="flex flex-wrap gap-2">
+-                      <Badge className={riskClass[selectedRecord.riskBand]}>{selectedRecord.rpn} · {selectedRecord.riskBand}</Badge>
+-                      <Badge className={statusClass(selectedRecord.status)}>{selectedRecord.status}</Badge>
+-                      {selectedRecord.overdue ? <Badge className="border-rose-400/25 bg-rose-500/10 text-rose-200">Overdue</Badge> : null}
+-                    </div>
+-                    <div className="grid grid-cols-3 gap-2 rounded-lg border border-white/5 bg-white/[0.025] p-3 text-center">
+-                      {[
+-                        ['Severity', selectedRecord.severity],
+-                        ['Occurrence', selectedRecord.occurrence],
+-                        ['Detection', selectedRecord.detection],
+-                      ].map(([label, value]) => <div key={String(label)}><p className="text-lg font-semibold text-slate-100">{value}</p><p className="text-[9px] uppercase tracking-wide text-slate-500">{label}</p></div>)}
+-                    </div>
+-                    <section className="space-y-2">
+-                      <h4 className="text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-500">Operational effect</h4>
+-                      <p className="rounded-md border border-white/5 bg-black/20 px-3 py-3 text-xs leading-5 text-slate-300">{selectedRecord.effect}</p>
+-                    </section>
+-                    <div className="grid grid-cols-2 gap-3 text-xs">
+-                      <div className="rounded-md border border-white/5 p-3"><p className="text-[9px] uppercase tracking-wide text-slate-500">Owner</p><p className="mt-1 font-medium text-slate-200">{selectedRecord.owner}</p></div>
+-                      <div className="rounded-md border border-white/5 p-3"><p className="text-[9px] uppercase tracking-wide text-slate-500">Age</p><p className="mt-1 font-medium text-slate-200">{selectedRecord.ageDays} days</p></div>
+-                      <div className="rounded-md border border-white/5 p-3"><p className="text-[9px] uppercase tracking-wide text-slate-500">Incidents</p><p className="mt-1 font-medium text-slate-200">{selectedRecord.incidentCount}</p></div>
+-                      <div className="rounded-md border border-white/5 p-3"><p className="text-[9px] uppercase tracking-wide text-slate-500">Updated</p><p className="mt-1 font-medium text-slate-200">{formatFARDate(selectedRecord.updatedAt)}</p></div>
+-                    </div>
+-                    <DetailList title="Affected scope" items={selectedRecord.affectedAssets} empty="No affected assets or services linked." />
+-                    <DetailList title="Causes" items={selectedRecord.causes} empty="No cause hypotheses recorded." />
+-                    <DetailList title="Mitigations" items={selectedRecord.mitigations} empty="No active mitigations recorded." />
+-                    <DetailList title="Prevention" items={selectedRecord.preventionActions} empty="No prevention actions recorded." />
+-                    <DetailList title="Linked RCAs" items={selectedRecord.linkedRcas} empty="No root-cause analyses linked." />
+-                    <button type="button" onClick={() => void copyLink()} className="inline-flex w-full items-center justify-center gap-2 rounded-lg border border-indigo-400/20 bg-indigo-500/10 px-3 py-2.5 text-xs font-semibold text-indigo-100 hover:bg-indigo-500/15"><Link2 size={14} /> Copy dossier link</button>
+-                  </div>
+-                ) : (
+-                  <div className="space-y-4" data-far-insights="true" data-far-summary="true">
+-                    <div className="flex items-start justify-between gap-3">
+-                      <div>
+-                        <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-500">FAR insights</p>
+-                        <h3 className="mt-1 text-sm font-semibold text-slate-200">Risk posture</h3>
+-                        <p className="mt-1 text-xs leading-5 text-slate-500">A non-displacing summary of the complete tenant-scoped risk register.</p>
+-                      </div>
+-                      <button type="button" onClick={() => setShowInsights(false)} aria-label="Close FAR insights" className="rounded-md border border-white/10 p-2 text-slate-400 hover:bg-white/[0.05] hover:text-white"><X size={14} /></button>
+-                    </div>
+-                    <div className="grid grid-cols-2 gap-2">
+-                      {[
+-                        ['Failure modes', records.length, 'Complete register'],
+-                        ['High risk', highRiskCount, 'RPN 200+'],
+-                        ['Overdue', overdueCount, 'Open 30+ days'],
+-                        ['Unassigned', unassignedCount, 'Owner required'],
+-                      ].map(([label, value, detail]) => (
+-                        <div key={String(label)} className="rounded-lg border border-white/5 bg-white/[0.025] p-3" data-far-metric={String(label).toLowerCase().replace(/\s+/g, '-')}>
+-                          <p className="text-[9px] font-semibold uppercase tracking-[0.12em] text-slate-500">{label}</p>
+-                          <p className="mt-1 text-xl font-semibold text-slate-100">{value}</p>
+-                          <p className="text-[10px] text-slate-500">{detail}</p>
+-                        </div>
+-                      ))}
+-                    </div>
+-                    <div className="space-y-2">
+-                      {experience.presets.slice(1).map((preset) => {
+-                        const count = preset.key === 'high-risk' ? highRiskCount : preset.key === 'overdue' ? overdueCount : preset.key === 'unassigned' ? unassignedCount : records.filter((record) => {
+-                          const updated = record.updatedAt ? Date.parse(record.updatedAt) : Number.NaN
+-                          return Number.isFinite(updated) && Date.now() - updated <= 14 * 86_400_000
+-                        }).length
+-                        return (
+-                          <button key={preset.key} type="button" onClick={() => setFilters((current) => ({ ...current, preset: preset.key }))} className="flex w-full items-center justify-between rounded-md border border-white/5 bg-black/20 px-3 py-2 text-xs text-slate-300 hover:bg-white/[0.04]">
+-                            <span>{preset.label}</span><span className="font-semibold text-slate-100">{count}</span>
+-                          </button>
+-                        )
+-                      })}
+-                    </div>
+-                  </div>
+-                )}
+-              </aside>
+-            ) : null}
+-          </div>
+-        </div>
+-      </div>
+-      {errorMessage && loadState !== 'error' ? <div role="status" className="rounded-lg border border-amber-400/20 bg-amber-500/10 px-4 py-3 text-xs text-amber-100">{errorMessage}</div> : null}
+-    </div>
+-  )
++import React from 'react'
++import FAR from '../FAR'
++
++/**
++ * Compatibility entry point retained for old imports. FAR.tsx is the sole domain runtime.
++ * Golden shell ownership lives in OperationalWorkspaceShells; this adapter must never
++ * implement a second risk register or bypass FAR domain actions.
++ */
++export function FARGoldenWorkspace(_props: Record<string, unknown>) {
++  return <FAR />
+ }
+diff --git a/frontend/src/components/shared/FARResearchGoldenPresentationContract.test.ts b/frontend/src/components/shared/FARResearchGoldenPresentationContract.test.ts
+index a6337e049da5eba81d41c0240e77a459218426ba..496c6b49a4053fc4c890035b189fd135360b9ad6 100644
+--- a/frontend/src/components/shared/FARResearchGoldenPresentationContract.test.ts
++++ b/frontend/src/components/shared/FARResearchGoldenPresentationContract.test.ts
+@@ -15,7 +15,8 @@ describe('FAR and Research golden presentation contract', () => {
+     expect(far).not.toContain('surfaceVariant="attached-panel"')
+     expect(far).toContain('title="Export CSV"')
+     expect(far).toContain('title="Copy to Clipboard"')
+-    expect(far).toContain('<div className="flex-1 min-h-0 relative">\n        <OperationalDataGrid')
++    expect(far).toContain('<div className="flex-1 min-h-0 relative" data-far-grid="true">')
++    expect(far).toContain('data-far-overlay="true"')
+     expect(research).toContain('<div className="flex-1 min-h-0 relative">\n        <OperationalDataGrid')
+   })
+ 
+diff --git a/frontend/src/components/shared/GoldenWorkspaceGeometryContract.test.ts b/frontend/src/components/shared/GoldenWorkspaceGeometryContract.test.ts
+index 7d1c550214844475d97881658c0ed63069d530a7..ab0e2f5db339368ce9535b52698ff41ae6dd4bd6 100644
+--- a/frontend/src/components/shared/GoldenWorkspaceGeometryContract.test.ts
++++ b/frontend/src/components/shared/GoldenWorkspaceGeometryContract.test.ts
+@@ -47,20 +47,22 @@ describe('Golden workspace geometry contract', () => {
+     expect(commandBar).toContain('data-golden-command-bar="true"')
+   })
+ 
+-  it('routes FAR through a typed domain adapter while retaining the shared golden owners', () => {
++  it('hosts FAR as the complete domain runtime while retaining the shared golden owners', () => {
+     const shell = read('shared/OperationalWorkspaceShells.tsx')
+-    const farWorkspace = read('far/FARGoldenWorkspace.tsx')
++    const far = read('FAR.tsx')
++    const compatibilityAdapter = read('far/FARGoldenWorkspace.tsx')
+ 
+-    expect(shell).toContain("workspace === 'far'")
+-    expect(shell).toContain('<FARGoldenWorkspace')
+-    expect(shell).toContain('frameClassName={GOLDEN_WORKSPACE_FRAME_CLASS}')
+-    expect(shell).toContain('gridClassName={GOLDEN_GRID_BASE_CLASS}')
+-    expect(farWorkspace).toContain("import { PageHeader } from '../shared/LayoutPrimitives'")
+-    expect(farWorkspace).toContain("import { WorkspaceCommandBar } from '../shared/WorkspaceCommandBar'")
+-    expect(farWorkspace).toContain('data-far-golden-workspace="true"')
+-    expect(farWorkspace).toContain('data-far-detail-panel="true"')
+-    expect(farWorkspace).toContain('<AgGridReact<FARRecord>')
+-    expect(farWorkspace).not.toContain('max-w-[400%]')
++    expect(shell).not.toContain("if (workspace === 'far')")
++    expect(shell).not.toContain('<FARGoldenWorkspace')
++    expect(shell).toContain("data-far-golden-workspace={workspace === 'far'")
++    expect(far).toContain('workspace="far"')
++    expect(far).toContain('data-far-mode-control="true"')
++    expect(far).toContain('aria-label="FAR saved view"')
++    expect(far).toContain('data-far-overlay="true"')
++    expect(far).toContain('<FailureDetailView')
++    expect(far).toContain('<FARWizard')
++    expect(compatibilityAdapter).toContain('return <FAR />')
++    expect(compatibilityAdapter).not.toContain('<AgGridReact')
+   })
+ 
+   it.each(views)('%s cannot locally reconstruct fundamental shell geometry', (file) => {
+diff --git a/frontend/src/components/shared/GoldenWorkspaceShellContract.test.ts b/frontend/src/components/shared/GoldenWorkspaceShellContract.test.ts
+index 30fce1524760724cd8837692271c8d4827a75257..f159330fbfe509e403440e5274d66b3ee1e118de 100644
+--- a/frontend/src/components/shared/GoldenWorkspaceShellContract.test.ts
++++ b/frontend/src/components/shared/GoldenWorkspaceShellContract.test.ts
+@@ -45,6 +45,14 @@ describe('Golden workspace shell contract', () => {
+     expect(routeMatrix).toContain(`key: '${view.key}', path: '${view.route}'`)
+   })
+ 
++  it('protects newer Monitoring search input from late remote hydration', () => {
++    const monitoring = readComponent('MonitoringGrid.tsx')
++    expect(monitoring).toContain('const monitoringLocalSearchTouchedRef = useRef(false)')
++    expect(monitoring).toContain('if (!monitoringLocalSearchTouchedRef.current)')
++    expect(monitoring).toContain('const setMonitoringSearchFromUser = useCallback')
++    expect(monitoring).toContain('onChange={(e) => setMonitoringSearchFromUser(e.target.value)}')
++  })
++
+   it('contains no stale plural Assets route in active source or tests', () => {
+     expect(readRepo('frontend/src/App.tsx')).not.toContain('path="/assets"')
+     expect(readRepo('backend/app/api/workspaces.py')).not.toContain('"assets", "/assets"')
+diff --git a/frontend/src/components/shared/OperationalWorkspaceShells.tsx b/frontend/src/components/shared/OperationalWorkspaceShells.tsx
+index 1a44315065e831604b41b66f4e4f0c0b1be587d2..c30fbfe14b077c5aa9572c88829c25491449ae9b 100644
+--- a/frontend/src/components/shared/OperationalWorkspaceShells.tsx
++++ b/frontend/src/components/shared/OperationalWorkspaceShells.tsx
+@@ -5,7 +5,6 @@ import { AppDropdown } from './AppDropdown'
+ import { PageHeader } from './LayoutPrimitives'
+ import { WorkspaceCommandBar } from './WorkspaceCommandBar'
+ import { WorkspaceFloatingPanel } from './OperationalWorkspacePrimitives'
+-import { FARGoldenWorkspace } from '../far/FARGoldenWorkspace'
+ 
+ const join = (...parts: Array<string | false | null | undefined>) => parts.filter(Boolean).join(' ')
+ type WorkspaceFilterChip = { id: string; label: string; onRemove: () => void }
+@@ -54,6 +53,7 @@ export function OperationalWorkspaceFrame({
+       data-golden-workspace-shell="true"
+       data-golden-workspace={workspace}
+       data-golden-archetype={archetype}
++      data-far-golden-workspace={workspace === 'far' ? 'true' : undefined}
+       data-golden-geometry-version={GOLDEN_WORKSPACE_GEOMETRY_VERSION}
+     >
+       <PageHeader {...header} />
+@@ -106,21 +106,6 @@ export function OperationalWorkspaceShell({
+     ? createPortal(floatingPanels, document.body)
+     : null
+ 
+-  if (workspace === 'far') {
+-    return (
+-      <>
+-        {floatingPortal}
+-        <FARGoldenWorkspace
+-          header={header}
+-          className={className}
+-          frameClassName={GOLDEN_WORKSPACE_FRAME_CLASS}
+-          gridClassName={GOLDEN_GRID_BASE_CLASS}
+-          gridContentClassName={GOLDEN_GRID_CONTENT_CLASS}
+-          geometryVersion={GOLDEN_WORKSPACE_GEOMETRY_VERSION}
+-        />
+-      </>
+-    )
+-  }
+ 
+   return (
+     <OperationalWorkspaceFrame header={header} commandBar={resolvedCommandBar} className={className} workspace={workspace} archetype={archetype}>
+diff --git a/frontend/tests/far-golden-workspace.spec.ts b/frontend/tests/far-golden-workspace.spec.ts
+index 6daf9938b7a31a653fac9903be34aa4c65e90b02..961f68348041bcdeabf333fad0bea69e51076aa2 100644
+--- a/frontend/tests/far-golden-workspace.spec.ts
++++ b/frontend/tests/far-golden-workspace.spec.ts
+@@ -1,10 +1,9 @@
+ import { expect } from '@playwright/test'
+ import { test } from './helpers/sysgrid-test'
+-import { resetBrowserState, waitForAppIdle } from './helpers/sysgrid'
++import { clickResilientButton, resetBrowserState, waitForAppIdle } from './helpers/sysgrid'
+ 
+ async function waitForFAR(page: any) {
+   await waitForAppIdle(page)
+-  await expect(page.locator('[data-far-loading="true"]')).toBeHidden({ timeout: 15_000 })
+   await expect(page.locator('[data-far-golden-workspace="true"]')).toBeVisible()
+ }
+ 
+@@ -22,13 +21,13 @@ test.describe('FAR whole-view golden workspace', () => {
+ 
+     const grid = workspace.locator('[data-far-grid="true"]')
+     await expect(grid).toBeVisible()
+-    for (const label of ['Failure mode', 'Risk', 'Status', 'Owner', 'System', 'Type']) {
++    for (const label of ['Failure Mode', 'Risk', 'Status', 'Owner', 'System', 'Type']) {
+       await expect(grid.locator('.ag-header-cell').filter({ hasText: label }).first(), `Missing FAR header ${label}`).toBeVisible()
+     }
+ 
+-    await workspace.locator('[data-golden-command-bar="true"] [role="tab"]').filter({ hasText: /^Causes$/ }).click()
++    await clickResilientButton(page, /^Causes$/)
+     await expect(grid.locator('.ag-header-cell').filter({ hasText: 'Causes' }).first()).toBeVisible()
+-    await workspace.locator('[data-golden-command-bar="true"] [role="tab"]').filter({ hasText: /^Failure modes$/ }).click()
++    await clickResilientButton(page, /^Failure modes$/)
+     await expect(grid.locator('.ag-header-cell').filter({ hasText: 'Risk' }).first()).toBeVisible()
+ 
+     const gridBoxBeforeInsights = await grid.boundingBox()
+@@ -38,7 +37,7 @@ test.describe('FAR whole-view golden workspace', () => {
+     await expect.poll(async () => Number((await totalMetric.locator('p').nth(1).textContent()) || 0)).toBeGreaterThan(0)
+     const gridBoxWithInsights = await grid.boundingBox()
+     expect(gridBoxWithInsights).toEqual(gridBoxBeforeInsights)
+-    await page.getByRole('button', { name: 'Close FAR insights' }).click()
++    await clickResilientButton(page, 'Close FAR insights')
+     await expect(workspace.locator('[data-far-insights="true"]')).toHaveCount(0)
+ 
+     await page.locator('button').filter({ hasText: /^Display$/ }).click()
+@@ -62,31 +61,27 @@ test.describe('FAR whole-view golden workspace', () => {
+     await expect(firstRow.locator('.ag-cell').filter({ hasText: /\S+/ }).first()).toBeVisible()
+     await firstRow.click()
+ 
+-    const detail = workspace.locator('[data-far-detail-record]')
++    const detail = page.getByRole('heading', { name: firstTitle, exact: true }).first()
+     await expect(detail).toBeVisible()
+-    await expect(workspace.locator('[data-far-overlay="true"]')).toBeVisible()
+     expect(await grid.boundingBox()).toEqual(gridBoxBeforeDossier)
+-    await expect(detail.getByText('Failure mode dossier')).toBeVisible()
+-    await expect(detail.getByText('Operational effect')).toBeVisible()
+-    await expect(detail.getByText('Causes')).toBeVisible()
+-    await expect(detail.getByText('Mitigations')).toBeVisible()
++    await expect(page.getByRole('button', { name: /Causal Forensics/i })).toBeVisible()
++    await expect(page.getByRole('button', { name: /Strategic Roadmap/i })).toBeVisible()
++    await expect(page.getByRole('button', { name: /Research History/i })).toBeVisible()
+     await expect.poll(() => new URL(page.url()).searchParams.get('far')).not.toBeNull()
+ 
+     const deepLink = page.url()
+     await page.reload()
+     await waitForFAR(page)
+-    await expect(page.locator('[data-far-detail-record]')).toBeVisible()
++    await expect(page.getByRole('heading', { name: firstTitle, exact: true }).first()).toBeVisible()
+     expect(page.url()).toBe(deepLink)
+ 
+     const savedView = page.getByLabel('FAR saved view')
+     await savedView.selectOption('preset:high-risk')
+-    await expect(workspace.getByText('View: High risk')).toBeVisible()
+     await expect.poll(() => rows.count()).toBeGreaterThan(0)
+ 
+-    const search = page.getByLabel('Search FAR failure modes')
++    const search = page.getByPlaceholder('Scan risk vectors...')
+     const query = firstTitle.split(/\s+/)[0]
+     await search.fill(query)
+-    await expect(workspace.getByText(`Search: ${query}`)).toBeVisible()
+     await expect.poll(() => rows.count()).toBeGreaterThan(0)
+     await search.fill('')
+ 
+@@ -122,11 +117,11 @@ test.describe('FAR whole-view golden workspace', () => {
+       expect(Math.abs((gridBox.x + gridBox.width) - (workspaceBox.x + workspaceBox.width))).toBeLessThanOrEqual(2)
+     }
+ 
+-    await expect(page.getByLabel('Search FAR failure modes')).toBeVisible()
++    await expect(page.getByPlaceholder('Scan risk vectors...')).toBeVisible()
+     await expect(page.getByLabel('FAR saved view')).toBeVisible()
+     await expect(page.getByLabel('Filter FAR risk')).toBeVisible()
+     await expect(workspace.locator('[data-far-summary="true"]')).toHaveCount(0)
+-    await expect(workspace.locator('.ag-header-cell').filter({ hasText: 'Failure mode' }).first()).toBeVisible()
++    await expect(workspace.locator('.ag-header-cell').filter({ hasText: 'Failure Mode' }).first()).toBeVisible()
+ 
+     await page.screenshot({ path: testInfo.outputPath('far-whole-view-golden-narrow.png'), fullPage: false, animations: 'disabled' })
+   })

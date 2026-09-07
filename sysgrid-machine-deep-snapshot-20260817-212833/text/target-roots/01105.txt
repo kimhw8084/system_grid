@@ -1,0 +1,254 @@
+ORIGINAL_PATH: /Users/haewonkim/.local/state/sysgrid-supervisor/runs/20260804T172401Z-66168-326000/patch.diff
+ORIGINAL_SHA256: 515b493729f692fab2fe76fd090499c4042b5d13ea8f0ce1be9c7567fcf7c3c4
+================================================================================
+diff --git a/frontend/src/components/FAR.tsx b/frontend/src/components/FAR.tsx
+index 7e78794..8af3597 100644
+--- a/frontend/src/components/FAR.tsx
++++ b/frontend/src/components/FAR.tsx
+@@ -26,6 +26,7 @@ import { OperationalSavedViewsPanel, OperationalWorkspaceShell } from './shared/
+ import { OperationalDataGrid } from './shared/OperationalDataGrid'
+ import { isOperationalAutoResizeSource } from './shared/OperationalGridSizing'
+ import { OperationalBulkPreviewModal } from './shared/OperationalBulkPreviewModal'
++import { WorkspaceModal } from './shared/WorkspaceModal'
+ import { useOperationalBulkWorkflow } from './shared/useOperationalBulkWorkflow'
+ import { ToolbarButton, ToolbarGroup, ToolbarIconButton, ToolbarSearch } from './shared/LayoutPrimitives'
+ import {
+@@ -270,6 +271,7 @@ export default function FAR() {
+   const [riskBandFilter, setRiskBandFilter] = useState('all')
+   const [ownerFilter, setOwnerFilter] = useState('all')
+   const [retirementReason, setRetirementReason] = useState('')
++  const [retirementPreflight, setRetirementPreflight] = useState<{ id: number; title: string } | null>(null)
+   const [showMaturityHelp, setShowMaturityHelp] = useState(false)
+   const [showRpnHelp, setShowRpnHelp] = useState(false)
+   const [activeMetricHelp, setActiveMetricHelp] = useState<string | null>(null)
+@@ -593,6 +595,15 @@ export default function FAR() {
+   // AgGrid Defs (High Density)
+   const mutationBlocked = !isOnline || Boolean(modesError)
+ 
++  const openRetirementPreflight = useCallback((mode: any, node: any) => {
++    if (mutationBlocked || !mode?.id) return
++    const id = Number(mode.id)
++    node?.setSelected?.(true)
++    setRetirementReason('')
++    setRetirementPreflight({ id, title: String(mode.title || `Failure mode ${id}`) })
++    toast('Review the selected failure vector and enter a retirement reason before preview.')
++  }, [mutationBlocked])
++
+   const columnDefs = useMemo(() => [
+     { 
+       colId: "selection",
+@@ -931,7 +942,7 @@ export default function FAR() {
+                <div className="flex rounded-lg p-0.5 border border-white/5 bg-transparent">
+                    <button onClick={() => p.data?.id && selectMode(Number(p.data.id))} title="Matrix Detail" className="p-1.5 text-blue-400 hover:text-blue-200 transition-all border-r border-white/5"><Eye size={14}/></button>
+                    <button disabled={mutationBlocked} onClick={() => { if (mutationBlocked) return; selectMode(Number(p.data.id)); setShowWizard(true); }} title={mutationBlocked ? "Read-only offline/degraded mode" : "Edit Matrix"} className="p-1.5 text-amber-400 hover:text-amber-200 transition-all border-r border-white/5"><Edit2 size={14}/></button>
+-                   <button disabled={mutationBlocked} onClick={() => { if (mutationBlocked || !p.data?.id) return; p.node?.setSelected?.(true); setRetirementReason(''); toast('Enter a retirement reason, then preview the selected record.') }} title={mutationBlocked ? "Read-only offline/degraded mode" : "Select for evidence-preserving retirement"} className="p-1.5 text-rose-400 hover:text-rose-200 transition-all"><Trash2 size={14}/></button>
++                   <button disabled={mutationBlocked} onClick={() => openRetirementPreflight(p.data, p.node)} title={mutationBlocked ? "Read-only offline/degraded mode" : "Select for evidence-preserving retirement"} className="p-1.5 text-rose-400 hover:text-rose-200 transition-all"><Trash2 size={14}/></button>
+                </div>
+         </div>
+       )
+@@ -972,7 +983,7 @@ export default function FAR() {
+       cellDataType: false,
+       suppressAutoSize: true,
+     }
+-  }), [fontSize, hiddenColumns, mutationBlocked, workspaceMode]) as any
++  }), [fontSize, hiddenColumns, mutationBlocked, openRetirementPreflight, workspaceMode]) as any
+ 
+   const canonicalColumnLayoutState = useMemo(() => columnDefs.map((column: any, index: number) => {
+     const state: Record<string, any> = {
+@@ -1015,6 +1026,25 @@ export default function FAR() {
+     handleSortChanged: captureColumnState,
+   }), [applyInitialColumnLayout, captureColumnState])
+ 
++  useEffect(() => {
++    if (workspaceMode === 'failure_modes') return
++    let cancelled = false
++    const revealAnalyticalFocus = () => {
++      if (cancelled) return
++      const api = gridRef.current?.api
++      if (!api?.ensureColumnVisible) return
++      api.ensureColumnVisible('analytical_focus', 'end')
++      api.refreshHeader?.()
++    }
++    const frame = window.requestAnimationFrame(() => window.requestAnimationFrame(revealAnalyticalFocus))
++    const fallback = window.setTimeout(revealAnalyticalFocus, 120)
++    return () => {
++      cancelled = true
++      window.cancelAnimationFrame(frame)
++      window.clearTimeout(fallback)
++    }
++  }, [columnDefs, workspaceMode])
++
+   // Advanced Metrics Calculation
+   const metrics = useMemo(() => {
+     const activeModes = filteredModes || []
+@@ -1125,8 +1155,8 @@ export default function FAR() {
+           <ToolbarButton
+             active={showInsights}
+             onClick={() => toggleContextPanel('insights')}
+-            title="Reliability insights"
+-            ariaLabel={showInsights ? 'Close reliability insights' : 'Open reliability insights'}
++            title={showInsights ? 'Close reliability insights' : 'Open reliability insights'}
++            ariaLabel="Insights"
+             className={showInsights ? 'relative z-[120]' : ''}
+           >
+             <Activity size={14} /> Insights
+@@ -1594,6 +1624,65 @@ export default function FAR() {
+         )}
+       </AnimatePresence>
+ 
++      <WorkspaceModal
++        isOpen={Boolean(retirementPreflight)}
++        onClose={() => setRetirementPreflight(null)}
++        size="standard"
++        icon={<ShieldAlert size={17} className="text-rose-300" />}
++        title="FAR bulk preview"
++        subtitle="Prepare an evidence-preserving retirement preview before anything changes."
++        hideFooterClose
++        footerLeft={(
++          <div className="flex items-center gap-2 text-[11px] text-slate-400">
++            <ShieldCheck size={14} className="text-emerald-300" />
++            Selection is staged only; no record changes until the server preview is confirmed.
++          </div>
++        )}
++        footerRight={(
++          <>
++            <ToolbarButton onClick={() => setRetirementPreflight(null)}>Cancel</ToolbarButton>
++            <ToolbarButton
++              variant="danger"
++              disabled={!retirementPreflight || retirementReason.trim().length < 3}
++              ariaLabel="Prepare retirement preview"
++              onClick={() => {
++                if (!retirementPreflight) return
++                requestBulkPreview({
++                  action: 'delete',
++                  ids: [retirementPreflight.id],
++                  payload: { reason: retirementReason.trim() },
++                })
++                setRetirementPreflight(null)
++              }}
++            >
++              <Eye size={14} /> Prepare preview
++            </ToolbarButton>
++          </>
++        )}
++      >
++        <div className="space-y-5 pt-2">
++          <div className="rounded-xl border border-white/10 bg-slate-950/70 px-5 py-4">
++            <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-slate-500">Requested action</p>
++            <p className="mt-2 text-sm font-semibold text-slate-100">Retire failure vectors</p>
++            <p className="pt-1 text-xs text-slate-400">{retirementPreflight?.title || 'Selected failure vector'}</p>
++          </div>
++          <label htmlFor="far-retirement-preflight-reason" className="block space-y-2">
++            <span className="text-[10px] font-bold uppercase tracking-[0.16em] text-slate-500">Retirement reason</span>
++            <textarea
++              id="far-retirement-preflight-reason"
++              data-far-retirement-reason="true"
++              value={retirementReason}
++              onChange={(event) => setRetirementReason(event.target.value)}
++              placeholder="Required before preview"
++              className="min-h-[110px] w-full rounded-xl border border-white/10 bg-black/30 p-4 text-sm text-slate-100 outline-none transition-colors focus:border-rose-500/40"
++            />
++          </label>
++          <div className="rounded-xl border border-amber-500/20 bg-amber-500/10 px-4 py-3 text-xs text-amber-100">
++            The preview remains blocked until the reason contains at least three characters.
++          </div>
++        </div>
++      </WorkspaceModal>
++
+       <OperationalBulkPreviewModal
+         isOpen={Boolean(bulkOperationPreview)}
+         workspaceLabel="FAR"
+diff --git a/frontend/tests/far-golden-workspace.spec.ts b/frontend/tests/far-golden-workspace.spec.ts
+index 5a5b08e..da9e5de 100644
+--- a/frontend/tests/far-golden-workspace.spec.ts
++++ b/frontend/tests/far-golden-workspace.spec.ts
+@@ -41,40 +41,24 @@ async function collectReachableHeaders(page: any, grid: any, required: string[])
+       metrics.maxScrollLeft,
+       `FAR center-column viewport must overflow when required headers are virtualized. Initially missing: ${initiallyMissing.join(', ')}`,
+     ).toBeGreaterThan(0)
+-  }
+-
+-  const step = Math.max(80, Math.floor(metrics.clientWidth * 0.7))
+-  const positions = Array.from(
+-    new Set([
+-      0,
+-      ...Array.from({ length: Math.ceil(metrics.maxScrollLeft / step) }, (_, index) => Math.min(metrics.maxScrollLeft, (index + 1) * step)),
+-      metrics.maxScrollLeft,
+-    ]),
+-  ).sort((a, b) => a - b)
+-  const observedScrollPositions: number[] = []
+-
+-  for (const left of positions) {
+-    await centerViewport.evaluate((element: HTMLElement, nextLeft: number) => {
+-      element.scrollLeft = nextLeft
+-    }, left)
+-    await expect.poll(async () => {
+-      const actual = await centerViewport.evaluate((element: HTMLElement) => element.scrollLeft)
+-      return Math.abs(Math.round(actual) - Math.round(left))
+-    }).toBeLessThanOrEqual(2)
+-    const actual = await centerViewport.evaluate((element: HTMLElement) => element.scrollLeft)
+-    observedScrollPositions.push(actual)
+-    await page.evaluate(() => new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve()))))
+-    await collectInstantiatedHeaders()
+-  }
+ 
+-  if (metrics.maxScrollLeft > 0) {
++    const firstCell = grid.locator('.ag-center-cols-container .ag-row .ag-cell').first()
++    await expect(firstCell).toBeVisible()
++    await firstCell.click()
++    await page.keyboard.press('Home')
++    const observedScrollPositions: number[] = []
++    for (let index = 0; index < 32; index += 1) {
++      await page.evaluate(() => new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve()))))
++      await collectInstantiatedHeaders()
++      observedScrollPositions.push(await centerViewport.evaluate((element: HTMLElement) => element.scrollLeft))
++      if (findMissingHeaders([...headers], required).length === 0 && Math.max(...observedScrollPositions) >= metrics.maxScrollLeft - 2) break
++      await page.keyboard.press('ArrowRight')
++    }
+     expect(Math.max(...observedScrollPositions)).toBeGreaterThanOrEqual(metrics.maxScrollLeft - 2)
++    await page.keyboard.press('Home')
++    await expect.poll(async () => Math.round(await centerViewport.evaluate((element: HTMLElement) => element.scrollLeft))).toBeLessThanOrEqual(2)
+   }
+-  await centerViewport.evaluate((element: HTMLElement) => {
+-    element.scrollLeft = 0
+-  })
+-  await expect.poll(async () => Math.round(await centerViewport.evaluate((element: HTMLElement) => element.scrollLeft))).toBeLessThanOrEqual(2)
+-  await page.evaluate(() => new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve()))))
++
+   return [...headers]
+ }
+ 
+@@ -103,6 +87,7 @@ test.describe('FAR whole-view golden workspace', () => {
+     expect(findMissingHeaders(failureModeHeaders, canonicalHeaders)).toEqual([])
+ 
+     await workspace.getByRole('tab', { name: 'Causes' }).click()
++    await expect(grid.locator('.ag-header-cell').filter({ hasText: /^Causes$/ }).first()).toBeVisible()
+     await expectReachableHeaders(page, grid, [...canonicalHeaders, 'Causes'])
+     await workspace.getByRole('tab', { name: 'Mitigations' }).click()
+     await expectReachableHeaders(page, grid, [...canonicalHeaders, 'Mitigations'])
+@@ -205,7 +190,9 @@ test.describe('FAR whole-view golden workspace', () => {
+     await page.keyboard.press('ArrowRight')
+     await expect(workspace.getByRole('tab', { name: 'Causes' })).toHaveAttribute('aria-selected', 'true')
+     await expect(workspace.locator('[data-far-summary="true"]')).toHaveCount(0)
+-    await expectReachableHeaders(page, workspace.locator('[data-far-grid="true"]'), ['Failure Mode', 'Causes'])
++    const narrowGrid = workspace.locator('[data-far-grid="true"]')
++    await expect(narrowGrid.locator('.ag-header-cell').filter({ hasText: /^Causes$/ }).first()).toBeVisible()
++    await expectReachableHeaders(page, narrowGrid, ['Failure Mode', 'Causes'])
+ 
+     await page.screenshot({ path: testInfo.outputPath('far-whole-view-golden-narrow.png'), fullPage: false, animations: 'disabled' })
+   })
+diff --git a/frontend/tests/far-workflows.spec.ts b/frontend/tests/far-workflows.spec.ts
+index 3c2e27c..05f508a 100644
+--- a/frontend/tests/far-workflows.spec.ts
++++ b/frontend/tests/far-workflows.spec.ts
+@@ -75,6 +75,10 @@ test.describe('FAR workflows', () => {
+     await expect(retirementAction).toBeEnabled()
+     await retirementAction.click()
+ 
++    await expect(page.getByRole('heading', { name: 'FAR bulk preview' })).toBeVisible()
++    await expect(page.getByText('Retire failure vectors', { exact: true })).toBeVisible()
++    await page.getByRole('textbox', { name: 'Retirement reason' }).fill('Superseded failure vector retained for audit evidence')
++    await clickResilientButton(page, 'Prepare retirement preview')
+     await expect(page.getByRole('heading', { name: 'FAR bulk preview' })).toBeVisible()
+     await expect(page.getByText('Retire failure vectors', { exact: true })).toBeVisible()
+     await clickResilientButton(page, 'Cancel')

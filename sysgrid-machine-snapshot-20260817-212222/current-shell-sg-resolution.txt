@@ -1,0 +1,153 @@
+=== CURRENT SHELL ===
+SHELL=/bin/zsh
+PWD=/Users/haewonkim/home/development/sysgrid
+
+=== type -a sg ===
+sg is a shell function from /Users/haewonkim/.config/sysgrid/sg-visible-runtime.zsh
+sg is /Users/haewonkim/.local/bin/sg
+sg is /Users/haewonkim/.local/bin/sg
+sg is /Users/haewonkim/.local/bin/sg
+sg is /Users/haewonkim/.local/bin/sg
+sg is /Users/haewonkim/.local/bin/sg
+sg is /Users/haewonkim/.local/bin/sg
+
+=== command -V sg ===
+sg is a shell function from /Users/haewonkim/.config/sysgrid/sg-visible-runtime.zsh
+
+=== command -v sg ===
+sg
+
+=== which -a sg ===
+sg () {
+	setopt localoptions noerrexit nopipefail
+	local tmp rc result remote repo sha ref short wt log deps cand cand_front ready
+	tmp="$(mktemp -t sysgrid-sg)" 
+	repo="$HOME/.local/share/sysgrid-delivery-v1.3.0/repository" 
+	"$SYSGRID_REAL_SG" "$@" 2>&1 | tee "$tmp"
+	rc=${pipestatus[1]} 
+	if (( rc != 0 ))
+	then
+		rm -f "$tmp"
+		return "$rc"
+	fi
+	result="$(awk '/^Result:/ {print $2}' "$tmp" | tail -1)" 
+	remote="$(awk '/^Remote:/ {print $2}' "$tmp" | tail -1)" 
+	rm -f "$tmp"
+	if [[ "$result" != "TARGETED_PASS" && "$result" != "PROMOTION_PASS" ]]
+	then
+		return 0
+	fi
+	if [[ ! -d "$repo/.git" ]]
+	then
+		echo "ERROR: SysGrid authoritative runner repository not found: $repo"
+		return 70
+	fi
+	sha="" 
+	if printf '%s\n' "$remote" | grep -Eq '^[0-9a-f]{12,40}$'
+	then
+		sha="$(git -C "$repo" rev-parse "${remote}^{commit}" 2>/dev/null || true)" 
+	fi
+	if [[ -z "$sha" ]]
+	then
+		for ref in "refs/heads/sysgrid/out-31/pa18" "refs/remotes/origin/sysgrid/out-31/pa18"
+		do
+			sha="$(git -C "$repo" rev-parse "${ref}^{commit}" 2>/dev/null || true)" 
+			[[ -n "$sha" ]] && break
+		done
+	fi
+	if ! printf '%s\n' "$sha" | grep -Eq '^[0-9a-f]{40}$'
+	then
+		echo "ERROR: verified PA18 SHA could not be resolved; existing :5173 runtime left unchanged"
+		return 71
+	fi
+	if ! git -C "$repo" cat-file -e "${sha}^{commit}" 2> /dev/null
+	then
+		echo "ERROR: verified SHA is not present in runner repository; existing runtime left unchanged"
+		return 72
+	fi
+	short="$(printf '%s' "$sha" | cut -c1-12)" 
+	wt="$HOME/Library/Caches/SysGrid/operator-$short" 
+	log="$wt/frontend-vite.log" 
+	mkdir -p "$HOME/Library/Caches/SysGrid"
+	if [[ -e "$wt/.git" ]]
+	then
+		if [[ "$(git -C "$wt" rev-parse HEAD 2>/dev/null)" != "$sha" ]]
+		then
+			echo "ERROR: operator worktree SHA mismatch"
+			return 73
+		fi
+	else
+		[[ -e "$wt" ]] && rm -rf "$wt"
+		git -C "$repo" worktree add --detach "$wt" "$sha"
+	fi
+	if [[ ! -e "$wt/frontend/node_modules" ]]
+	then
+		deps="" 
+		for cand in "$HOME"/Library/Caches/SysGrid/operator-*/frontend/node_modules(N)
+		do
+			cand_front="${cand:h}" 
+			if [[ "$cand" != "$wt/frontend/node_modules" ]] && [[ -f "$cand_front/package-lock.json" ]] && cmp -s "$wt/frontend/package-lock.json" "$cand_front/package-lock.json"
+			then
+				deps="$cand" 
+				break
+			fi
+		done
+		if [[ -n "$deps" ]]
+		then
+			ln -s "$deps" "$wt/frontend/node_modules"
+		else
+			(
+				cd "$wt/frontend"
+				npm ci --prefer-offline --no-audit --no-fund
+			)
+		fi
+	fi
+	lsof -tiTCP:5173 -sTCP:LISTEN 2> /dev/null | xargs kill 2> /dev/null || true
+	for i in {1..20}
+	do
+		lsof -tiTCP:5173 -sTCP:LISTEN > /dev/null 2>&1 || break
+		sleep 0.25
+	done
+	if lsof -tiTCP:5173 -sTCP:LISTEN > /dev/null 2>&1
+	then
+		lsof -tiTCP:5173 -sTCP:LISTEN 2> /dev/null | xargs kill -9 2> /dev/null || true
+	fi
+	(
+		cd "$wt/frontend"
+		nohup npm run dev -- --host 127.0.0.1 --port 5173 > "$log" 2>&1 < /dev/null &
+	)
+	ready=0 
+	for i in {1..60}
+	do
+		if curl -fsS http://127.0.0.1:5173/far > /dev/null 2>&1 && curl -fsS http://127.0.0.1:5173/api/v1/far/modes > /dev/null 2>&1
+		then
+			ready=1 
+			break
+		fi
+		sleep 1
+	done
+	if (( ready != 1 ))
+	then
+		echo "ERROR: verified PA18 frontend did not become healthy on :5173"
+		tail -100 "$log" 2> /dev/null || true
+		return 74
+	fi
+	if [[ "$(git -C "$wt" rev-parse HEAD)" != "$sha" ]]
+	then
+		echo "ERROR: visible operator SHA verification failed"
+		return 75
+	fi
+	echo
+	echo "=== SYSGRID OPERATOR READY ==="
+	echo "FAR:   http://127.0.0.1:5173/far"
+	echo "SHA:   $sha"
+	echo "State: VERIFIED PA18 candidate is now the visible operator runtime"
+	echo "=============================="
+	/usr/bin/open "http://127.0.0.1:5173/far"
+}
+/Users/haewonkim/.local/bin/sg
+/Users/haewonkim/.local/bin/sg
+/Users/haewonkim/.local/bin/sg
+/Users/haewonkim/.local/bin/sg
+/Users/haewonkim/.local/bin/sg
+/Users/haewonkim/.local/bin/sg

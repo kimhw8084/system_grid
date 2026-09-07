@@ -1,0 +1,192 @@
+ORIGINAL_PATH: /Users/haewonkim/.local/share/sysgrid-supervisor/v2.1.2/RELEASE_SOURCE.json
+ORIGINAL_SHA256: 8abf20157090229b6cd890299ae8f10c9597ee635a8d52a2802d6b362592d94b
+================================================================================
+{
+  "engine": {
+    "sha256": "ab63bb20c0de32771e20b0159475205f685f28910a0956c217fb3693c02f96e1",
+    "version": "1.0.4"
+  },
+  "execution_profiles": {
+    "default": "promotion_qualification",
+    "development_campaign": {
+      "acceptance_claim": false,
+      "commit_push_required": false,
+      "purpose": "Fast cumulative product development with risk-targeted verification and retained uncommitted state.",
+      "required_recipe_id": "full-app-gate",
+      "requires_target_scope": true
+    },
+    "promotion_qualification": {
+      "acceptance_claim": true,
+      "commit_push_required": true,
+      "purpose": "Complete release-grade application verification, immutable evidence, commit/push, and remote equality.",
+      "required_recipe_id": "full-app-gate",
+      "requires_target_scope": false
+    }
+  },
+  "notification": {
+    "heartbeat_seconds": 120,
+    "max_messages_per_run": 3,
+    "postlaunch_retries": 3,
+    "prelaunch_retries": 4,
+    "presentation_mode": "summary",
+    "retry_base_seconds": 0.5,
+    "summary_progress_event": "playwright_started",
+    "telegram_heartbeats": false
+  },
+  "package": {
+    "canonical_artifact": "UPLOAD_THIS_TO_CHATGPT.zip",
+    "deterministic_timestamp": "2026-08-01T00:00:00Z",
+    "diagnostic_artifact": "UPLOAD_DIAGNOSTIC_TO_CHATGPT.zip",
+    "name": "SYSGRID_EXECUTION_SUPERVISOR"
+  },
+  "progress_events": [
+    {
+      "id": "capsule_selected",
+      "phase": "platform",
+      "required_before_launch": true
+    },
+    {
+      "id": "capsule_verified",
+      "phase": "platform",
+      "required_before_launch": true
+    },
+    {
+      "id": "preflight_started",
+      "phase": "platform",
+      "required_before_launch": true
+    },
+    {
+      "id": "preflight_completed",
+      "phase": "platform",
+      "required_before_launch": true
+    },
+    {
+      "id": "engine_launch",
+      "phase": "platform",
+      "required_before_launch": true
+    },
+    {
+      "id": "static_started",
+      "phase": "product",
+      "required_before_launch": false
+    },
+    {
+      "id": "backend_started",
+      "phase": "product",
+      "required_before_launch": false
+    },
+    {
+      "id": "frontend_started",
+      "phase": "product",
+      "required_before_launch": false
+    },
+    {
+      "id": "static_completed",
+      "phase": "product",
+      "required_before_launch": false
+    },
+    {
+      "id": "backend_completed",
+      "phase": "product",
+      "required_before_launch": false
+    },
+    {
+      "id": "frontend_completed",
+      "phase": "product",
+      "required_before_launch": false
+    },
+    {
+      "id": "build_completed",
+      "phase": "product",
+      "required_before_launch": false
+    },
+    {
+      "id": "runtime_ready",
+      "phase": "product",
+      "required_before_launch": false
+    },
+    {
+      "id": "playwright_started",
+      "phase": "product",
+      "required_before_launch": false
+    },
+    {
+      "id": "playwright_completed",
+      "phase": "product",
+      "required_before_launch": false
+    },
+    {
+      "id": "delivery_completed",
+      "phase": "product",
+      "required_before_launch": false
+    },
+    {
+      "id": "recovery_reattached",
+      "phase": "platform",
+      "required_before_launch": false
+    },
+    {
+      "id": "recovery_evidence_recovered",
+      "phase": "platform",
+      "required_before_launch": false
+    },
+    {
+      "id": "recovery_retry_authorized",
+      "phase": "platform",
+      "required_before_launch": false
+    },
+    {
+      "id": "engine_completed",
+      "phase": "platform",
+      "required_before_launch": false
+    },
+    {
+      "id": "evidence_verified",
+      "phase": "platform",
+      "required_before_launch": false
+    },
+    {
+      "id": "publication_started",
+      "phase": "platform",
+      "required_before_launch": false
+    },
+    {
+      "id": "publication_completed",
+      "phase": "platform",
+      "required_before_launch": false
+    },
+    {
+      "id": "run_failed",
+      "phase": "platform",
+      "required_before_launch": false
+    }
+  ],
+  "qualification_contract": [
+    "complete deterministic package identity",
+    "exact Stable Engine identity and self-test",
+    "capsule cross-ledger consistency before mutation",
+    "exact repository state and patch-state proof",
+    "duplicate mutation replay refusal with exact post-state classification",
+    "immutable per-run artifact history and canonical-review preservation",
+    "one authorized engine invocation with replay refusal",
+    "three-message Telegram summary policy with full local event telemetry",
+    "machine-readable resource and runtime telemetry",
+    "verified evidence publication, artifact recovery, and deterministic rebuild",
+    "development-campaign and promotion-qualification profile separation",
+    "campaign delivery cannot commit or claim product acceptance",
+    "promotion requires complete final gate, commit/push, and remote equality",
+    "validated targeted scope exported declaratively to trusted recipes"
+  ],
+  "resource_policy": {
+    "backend_worker_cap": 4,
+    "e2e_worker_cap": 2,
+    "frontend_worker_cap": 4,
+    "memory_per_backend_worker_bytes": 1073741824,
+    "memory_per_e2e_worker_bytes": 1610612736,
+    "memory_per_frontend_worker_bytes": 805306368,
+    "preflight_worker_cap": 32,
+    "reserve_memory_bytes": 2147483648
+  },
+  "schema_version": "2.1",
+  "supervisor_version": "2.1.2"
+}

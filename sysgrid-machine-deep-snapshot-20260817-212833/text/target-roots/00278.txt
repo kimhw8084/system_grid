@@ -1,0 +1,68 @@
+ORIGINAL_PATH: /Users/haewonkim/.local/share/sysgrid-supervisor/v1.2.0/README.md
+ORIGINAL_SHA256: f8a42067800e1c2fb3954e5eaf1e536e985e46e5fc32a0e60e26ae2511a7a29e
+================================================================================
+# SysGrid Execution Supervisor v1.2.0
+
+This package is a platform-lane replacement for the earlier asynchronous continuity/watcher chain. It preserves the independently accepted **SysGrid Stable Engine v1.0.4** and invokes only the exact engine bytes with SHA-256:
+
+`ab63bb20c0de32771e20b0159475205f685f28910a0956c217fb3693c02f96e1`
+
+It does not edit product source, generate per-run code, or commit/push outside the engine's authorized capsule contract.
+
+## Enable with one terminal command
+
+Run this from the folder containing the downloaded ZIP:
+
+```bash
+rm -rf SYSGRID_EXECUTION_SUPERVISOR_v1.2.0 && unzip -q SYSGRID_EXECUTION_SUPERVISOR_v1.2.0.zip && cd SYSGRID_EXECUTION_SUPERVISOR_v1.2.0 && ./INSTALL_AND_QUALIFY.command
+```
+
+The installer verifies its own immutable manifest, runs the released-byte suite before installation, locates and self-tests the exact accepted engine, installs versioned bytes and atomic command wrappers, reruns qualification, and creates:
+
+`~/Library/Mobile Documents/com~apple~CloudDocs/SysGrid-Control/Outbox/UPLOAD_THIS_TO_CHATGPT.zip`
+
+Upload that qualification ZIP for independent review. The installer does **not** start a product run.
+
+## After qualification is accepted
+
+Run a capsule from any folder:
+
+```bash
+sg run /absolute/path/to/capsule.sgcap
+```
+
+Or put exactly one `.sgcap` in `SysGrid-Control/Inbox` and run:
+
+```bash
+sg
+```
+
+Status and live view:
+
+```bash
+sgs
+sgwatch
+```
+
+## What is reinforced
+
+- One non-blocking kernel lock; overlapping launches cannot cross-attach.
+- Exact engine selection by immutable digest plus engine self-test.
+- Local exact-byte staging that preserves the original capsule filename.
+- ZIP traversal, duplicate, symlink, special-file, executable, encryption, CRC, size, member-count, decompression-volume, and compression-ratio defenses.
+- Complete manifest coverage and digest verification before any product action.
+- Capsule project/schema/engine/patch identity verification.
+- Parallel non-short-circuit preflight for repository identity, exact declared dirty paths, pre/protected hashes, patch state, storage, and engine health.
+- Direct synchronous `execute` invocation with an argument vector; no shell interpretation, detached watcher, polling correlation, or stale shared Outbox dependency.
+- A private per-run local Outbox, exact RESULT/capsule/engine/exit-code correlation, then content-addressed and atomic publication.
+- No blind retry after the engine starts. This prevents a platform recovery path from replaying a mutation whose state may already have changed.
+- Review-ready diagnostic evidence is attempted for every platform-side failure.
+- Versioned installation, pre-change backups, and automatic wrapper rollback if post-install verification fails.
+
+## Performance model
+
+The supervisor avoids full duplicated application testing. Independent, read-only preflight checks run concurrently, while the stable engine remains the sole executor of trusted recipes and delivery. Expensive engine discovery is persisted after installation; ordinary runs use the exact recorded path and digest first.
+
+## Honest boundary
+
+No software can guarantee that hardware loss, filesystem failure, operating-system termination, unavailable credentials, network failure, or a broken external service will never interrupt a run. This package is designed to prevent or convert those conditions into precise, review-ready platform classifications. A valid application recipe failure remains untouched and is not mislabeled as platform success.

@@ -1,0 +1,11 @@
+ORIGINAL_PATH: /Users/haewonkim/.local/state/sysgrid-supervisor/runs/20260731T234843Z-74618-073000/diagnostic/REVIEW_ME_FIRST.md
+ORIGINAL_SHA256: c8a567c83b50e74a206f5d2e56018ff0750b3157aace77aa16a9fff46cb59ca1
+================================================================================
+# SysGrid Supervisor Diagnostic
+
+- Result: failure
+- Classification: PREFLIGHT_AGGREGATE_FAILURE
+- Message: patch: PATCH_STATE_FAILURE: mutation patch is not uniquely forward-applicable; repository: CAPSULE_STATE_FAILURE: invalid state JSON: STATE/pre_expected_dirty_paths.txt
+- Product mutation authority: none added by this diagnostic
+
+Review RESULT.json, SUPERVISOR_STATE.json, TRACEBACK.txt, and MANIFEST.sha256.

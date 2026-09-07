@@ -1,0 +1,14 @@
+ORIGINAL_PATH: /Users/haewonkim/.local/share/sysgrid-supervisor/v1.2.0/CHANGELOG.md
+ORIGINAL_SHA256: 19ce4169526ce1db858eab547964e5bfa6a058220c98bdb483e729d42872fe58
+================================================================================
+# Changelog
+
+## v1.2.0 — 2026-07-31
+
+- Replaced detached watcher/output-correlation topology with one synchronous supervisor and one exact engine child.
+- Added exact v1.0.4 engine SHA-256 binding and self-test.
+- Added complete capsule/archive safety and manifest verification.
+- Added parallel aggregate preflight, exact declared Git state and hash ledger checks, patch-state check, and storage checks.
+- Added local per-run Outbox, exact output correlation, content-addressed storage, fsynced atomic aliasing, and diagnostic packaging.
+- Added versioned atomic installation, backups, rollback, and one-command qualification.
+- Added 37 released-byte tests, including success and application-failure end-to-end paths.

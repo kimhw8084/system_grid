@@ -1,0 +1,75 @@
+ORIGINAL_PATH: /Users/haewonkim/.local/state/sysgrid-supervisor/runs/20260802T034709Z-47369-145000/diagnostic/SUPERVISOR_STATE.json
+ORIGINAL_SHA256: f65807292e477381b370995ea2576dc43eaea9f2ff026d36271847b523139df8
+================================================================================
+{
+  "classification": "CAPSULE_CROSS_LEDGER_FAILURE",
+  "event_timeline": [
+    {
+      "details": {},
+      "elapsed_seconds": 0.012,
+      "event_id": "capsule_selected",
+      "message": "Selecting the one immutable capsule and converging only byte-identical Inbox duplicates.",
+      "notification": {
+        "event_id": "capsule_selected",
+        "presentation_mode": "summary",
+        "required": false,
+        "status": "local_only",
+        "updated_utc": "2026-08-02T03:47:09Z"
+      },
+      "status": "started",
+      "utc": "2026-08-02T03:47:09Z"
+    }
+  ],
+  "exit_code": 65,
+  "last_progress_event": "capsule_selected",
+  "last_progress_message": "Selecting the one immutable capsule and converging only byte-identical Inbox duplicates.",
+  "last_progress_status": "started",
+  "last_progress_utc": "2026-08-02T03:47:09Z",
+  "message": "pre dirty paths/hash keys differ: paths_only=['frontend/src/components/far', 'patches'] hashes_only=['frontend/src/components/far/FARGoldenWorkspace.tsx', 'frontend/src/components/far/FARGoldenWorkspaceModel.test.ts', 'frontend/src/components/far/FARGoldenWorkspaceModel.ts', 'patches/FAR_DIRECT_APPLY_FULL_GOLDEN_RECOVERY/APPLY_FAR_RECOVERY.command', 'patches/FAR_DIRECT_APPLY_FULL_GOLDEN_RECOVERY/FAR_FULL_GOLDEN_RECOVERY.patch', 'patches/FAR_DIRECT_APPLY_FULL_GOLDEN_RECOVERY/README.md', 'patches/FAR_DIRECT_APPLY_FULL_GOLDEN_RECOVERY/ROLLBACK_FAR_FULL_GOLDEN_RECOVERY.patch']",
+  "monotonic_started": 3918979.047036583,
+  "notification_events": {
+    "capsule_selected": {
+      "event_id": "capsule_selected",
+      "presentation_mode": "summary",
+      "required": false,
+      "status": "local_only",
+      "updated_utc": "2026-08-02T03:47:09Z"
+    }
+  },
+  "notification_policy": {
+    "delivery_semantics": "durably-deduplicated-at-least-once",
+    "engine_heartbeat_seconds": 120,
+    "max_messages_per_run": 3,
+    "presentation_mode": "summary",
+    "registered_events": 24,
+    "required_before_engine": true,
+    "telegram_heartbeats": false
+  },
+  "pid": 47369,
+  "resource_plan": {
+    "backend_workers": 4,
+    "cpu_count": 12,
+    "e2e_workers": 2,
+    "frontend_workers": 4,
+    "memory_bytes": 19327352832,
+    "preflight_workers": 24,
+    "reserve_memory_bytes": 2147483648,
+    "test_cpu_budget": 11,
+    "usable_memory_bytes": 17179869184
+  },
+  "run_id": "20260802T034709Z-47369-145000",
+  "safe_cleanup": {
+    "inspected": 0,
+    "removed": 0
+  },
+  "safe_retry_count": 0,
+  "stage": "capsule-selection",
+  "started_utc": "2026-08-02T03:47:09Z",
+  "state": "FAILED_NO_ARTIFACT",
+  "telegram": {
+    "chat_id_suffix": "1055",
+    "configured": true,
+    "source": "/Users/haewonkim/.config/sysgrid-supervisor/telegram.json"
+  },
+  "work_dir": "/Users/haewonkim/.local/state/sysgrid-supervisor/runs/20260802T034709Z-47369-145000"
+}

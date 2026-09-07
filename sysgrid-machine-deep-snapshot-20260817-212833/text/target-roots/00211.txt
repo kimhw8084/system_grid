@@ -1,0 +1,14 @@
+ORIGINAL_PATH: /Users/haewonkim/.local/share/sysgrid-supervisor/v2.0.1/CHANGELOG.md
+ORIGINAL_SHA256: 853942251bdd36917aa529091d4b9cfc08bd0cb0611fed0285118a6a4a7957e2
+================================================================================
+# Changelog
+
+## v2.0.1 — consolidated hardened delivery platform
+
+- Single generated release descriptor eliminates stale version, test-count, event-count, and qualification literals.
+- Capsule cross-ledger proof rejects changed/protected overlap, unexplained patch paths, inconsistent dirty/hash sets, invalid recipe contracts, and branch/upstream delivery contradictions before engine launch.
+- Durable Telegram event outbox, registered progress events, validated product-subgate JSONL, two-minute heartbeat, process-tree CPU/RSS telemetry, and stall diagnosis.
+- Memory-aware worker budgets exported to trusted recipes without changing recipe authority.
+- Deterministic final-byte package verification, byte-identical rebuild, exact package ZIP/tree reconciliation, and staged/installed identity proof.
+- File-type-aware deterministic evidence packaging and enriched runtime history.
+- Existing exact-engine, recovery, no-replay, atomic publication, and complete diagnostic behavior retained.

@@ -1,0 +1,31 @@
+ORIGINAL_PATH: /Users/haewonkim/.local/state/sysgrid-supervisor/runs/20260802T032313Z-27523-292000/preflight.json
+ORIGINAL_SHA256: 6853eb2309c49cc5507e47e6ece880ce8b68ec9caf93e1f7b3e3e635faeddf67
+================================================================================
+{
+  "failures": {
+    "repository": {
+      "classification": "REPOSITORY_DIRTY_STATE_FAILURE",
+      "exit_code": 69,
+      "message": "dirty paths mismatch missing=[] extra=['patches/FAR_DIRECT_APPLY_FULL_GOLDEN_RECOVERY/APPLY_FAR_RECOVERY.command', 'patches/FAR_DIRECT_APPLY_FULL_GOLDEN_RECOVERY/FAR_FULL_GOLDEN_RECOVERY.patch', 'patches/FAR_DIRECT_APPLY_FULL_GOLDEN_RECOVERY/README.md', 'patches/FAR_DIRECT_APPLY_FULL_GOLDEN_RECOVERY/ROLLBACK_FAR_FULL_GOLDEN_RECOVERY.patch']"
+    }
+  },
+  "results": {
+    "engine": {
+      "path": "/Users/haewonkim/.local/lib/sysgrid-runner/1.0.4/sysgrid_runner.py",
+      "self_test": {
+        "engine_version": "1.0.4",
+        "result": "PASS",
+        "tests": [
+          "safe-path",
+          "manifest",
+          "corruption"
+        ]
+      }
+    },
+    "storage": {
+      "control_free": 57469214720,
+      "local_free": 57469214720,
+      "required": 536870912
+    }
+  }
+}

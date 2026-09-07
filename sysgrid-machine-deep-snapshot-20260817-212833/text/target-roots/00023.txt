@@ -1,0 +1,139 @@
+ORIGINAL_PATH: /Users/haewonkim/.local/share/sysgrid-runner/continuity-v1.0.4/active_law/04_Chat_Bootstrap_Continuity_and_Law_Change_v1.1.md
+ORIGINAL_SHA256: 68dcd82fa73112def32495aa55fa6d481a2ef145eb2cdcb9495758cb72b8f90e
+================================================================================
+# Chat Bootstrap, Continuity, and Law-Change Law v1.1
+
+**Status:** Draft pending explicit activation  
+**Proposed effective date:** 2026-07-28  
+**Supersedes after activation:** Chat Bootstrap, Continuity, and Law-Change Law v1.0
+
+## 1. Continuity sources
+
+```text
+active manifest
++ current Linear ledger
++ latest canonical review artifact
++ stable-engine qualification record
+```
+
+Chat memory is context, not authority.
+
+## 2. New-chat bootstrap
+
+Before substantive SysGrid work:
+
+1. read the active manifest and all active files in order;
+2. run the project scope gate;
+3. read current project, master context, sole active issue, status, and relations;
+4. fetch the latest relevant comments;
+5. identify latest reviewed stage/iteration/attempt, verdict/score, accepted baseline, engine qualification identity, and current gate;
+6. report the control snapshot;
+7. state the safe next action.
+
+Required snapshot:
+
+```text
+Project:
+Master context:
+Sole active issue:
+Current stage:
+Latest reviewed iteration/attempt:
+Latest verdict and score:
+Accepted source baseline:
+Qualified engine version/digest:
+Current gate or blocker:
+Safe next action:
+State read timestamp/source:
+```
+
+Unknowns are labeled unknown.
+
+## 3. Artifact handling
+
+For every uploaded capsule or review ZIP:
+
+- compute exact digest and size;
+- reject unsafe paths, symlinks, duplicates, and manifest mismatch;
+- read internal identity rather than trusting the filename;
+- compare project, issue, cycle, engine, capsule, and baseline with Linear;
+- stop on stale or cross-issue mismatch.
+
+## 4. Context economy
+
+Keep only the active law set, current engine qualification record, and current issue/capsule context active. Archive superseded laws, old runners, old questionnaires, historical ZIPs, and duplicate reports.
+
+## 5. Law-change trigger
+
+A versioned revision is justified by a repeated executor/evidence failure, a violated boundary, conflicting or wasteful rules, a changed execution platform, invalidated research assumptions, or explicit user direction.
+
+## 6. Law-change package
+
+Every revision includes:
+
+- complete new versioned active files;
+- updated manifest;
+- superseded-file list;
+- old-to-new crosswalk;
+- installation and rollback steps;
+- first-use tests;
+- research/incident rationale;
+- engine migration impact when applicable.
+
+No stacked permanent amendments.
+
+## 7. Activation
+
+Generated law files are not active.
+
+Activation requires:
+
+1. retain the prior full law set for rollback;
+2. upload all new active files;
+3. archive/remove superseded active files;
+4. update project instructions to point only to the new manifest;
+5. run first-use bootstrap, boundary, capsule, and failure-routing tests;
+6. explicitly approve activation.
+
+Recommended phrase:
+
+```text
+Approve and activate AI Controlled Delivery Law Kit v1.1 for SysGrid.
+```
+
+Until then, v1.0 remains controlling.
+
+## 8. Engine activation
+
+Law activation does not automatically qualify the engine.
+
+The first execution after law activation must be the execution-platform qualification artifact. It may install only the stable engine and wrappers, must preserve rollback copies, must run nominal and injected-failure tests, and must produce one canonical review ZIP.
+
+Product capsules remain blocked until that ZIP receives PASS.
+
+## 9. First-use tests
+
+### A — Bootstrap
+
+Read current Linear state and report the required snapshot without a write.
+
+### B — Boundary
+
+Answer that the control room authors source, capsules are declarative, the stable engine verifies/applies/tests/packages, and terminal generative coding is prohibited.
+
+### C — Capsule safety
+
+Reject a capsule containing an executable file, arbitrary command, path traversal, symlink, or manifest mismatch.
+
+### D — Failure routing
+
+A browser 404 while source tests prove the route exists triggers runtime-provenance investigation before product classification. No terminal auto-fix.
+
+### E — Stop-the-line
+
+An operator-visible executor defect freezes product issuance until an engine regression and requalification pass.
+
+## 10. Rollback
+
+Rollback restores the complete prior law set and prior qualified control plane. Never mix versions.
+
+Rollback is allowed when first-use tests reveal authority conflict, missing overlay behavior, bootstrap ambiguity, normal-work blocking, or engine qualification failure.

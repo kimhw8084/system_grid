@@ -1,0 +1,11 @@
+ORIGINAL_PATH: /Users/haewonkim/.local/share/sysgrid-supervisor/v1.2.0/MANIFEST.sha256
+ORIGINAL_SHA256: 7e554eb59c7508310eab5daa5c157626ea6e2f8d9f0208cb39c1e7a8bc7389a0
+================================================================================
+19ce4169526ce1db858eab547964e5bfa6a058220c98bdb483e729d42872fe58  CHANGELOG.md
+e1233eb236eeead06ad11924eec7bc6b515d8162fc28f0717a5bea78ba0691c0  INSTALL_AND_QUALIFY.command
+bf21ad51b1f0a129874d90f525060a7bb04d5e685b07a75ab6574b4bd3b9d05f  INSTALL_AND_QUALIFY.py
+f8a42067800e1c2fb3954e5eaf1e536e985e46e5fc32a0e60e26ae2511a7a29e  README.md
+ee5ef45d7b3e30e12b5103359ac83f4846ef6e5728be02321612a6a86e469e23  RELEASE_TEST_REPORT.json
+53d7102590af8cbc1d7f4477c131e1b19c2c81948feb7e8f8461ac38f318f642  RESEARCH_AND_DESIGN.md
+aaab95b75aafbb831db64732c5ce2571eeb18f7abec8de2538b4d360550afc93  payload/sysgrid_supervisor.py
+6e8d2a37ac7f228164548ec560af2f8cd9e58be6079404549d5d9026fd4a2a0a  payload/test_sysgrid_supervisor.py

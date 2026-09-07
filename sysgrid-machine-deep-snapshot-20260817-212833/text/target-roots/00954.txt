@@ -1,0 +1,34 @@
+ORIGINAL_PATH: /Users/haewonkim/.local/state/sysgrid-supervisor/runs/20260803T122744Z-56357-407000/preflight.json
+ORIGINAL_SHA256: fdca28af291eb1ceac3f8e6abb11c1e71f5d562655d08cc0b1165cb6209a5c70
+================================================================================
+{
+  "declared_state": {
+    "dirty_path_count": 93,
+    "pre_hash_count": 93,
+    "protected_hash_count": 20
+  },
+  "engine_self_test": {
+    "engine_version": "1.1.1",
+    "result": "PASS",
+    "tests": [
+      "safe-path",
+      "manifest",
+      "corruption",
+      "canonical-dirty-paths",
+      "aggregate-recipes"
+    ]
+  },
+  "patch": {
+    "applicable": true,
+    "forward_diagnostic": "Checking patch backend/test_dashboard_metrics.py...\nChecking patch backend/test_devices_api_edges.py...\nChecking patch frontend/tests/far-golden-workspace.spec.ts...",
+    "forward_exit_code": 0,
+    "reverse_applicable": false,
+    "reverse_diagnostic": "Checking patch frontend/tests/far-golden-workspace.spec.ts...\nerror: while searching for:\nimport { expect } from '@playwright/test'\nimport { test } from './helpers/sysgrid-test'\nimport { clickResilientButton, resetBrowserState, waitForAppIdle } from './helpers/sysgrid'\n\nasync function waitForFAR(page: any) {\n  await waitForAppIdle(page)\n\nerror: patch failed: frontend/tests/far-golden-workspace.spec.ts:1\nerror: frontend/tests/far-golden-workspace.spec.ts: patch does not apply\nChecking patch backend/test_devices_api_edges.py...\nerror: while searching for:\n            \"occurrence\": 3,\n            \"detection\": 2,\n            \"affected_assets\": [device[\"id\"]],\n            \"idempotency_key\": \"devices-bulk-purge-far-create\",\n        },\n        headers=headers,\n    )\n\nerror: patch failed: backend/test_devices_api_edges.py:381\nerror: backend/test_devices_api_edges.py: patch does not apply\nChecking patch backend/test_dashboard_metrics.py...\nerror: while searching for:\n            \"occurrence\": 4,\n            \"detection\": 3,\n            \"affected_assets\": [device[\"id\"]],\n            \"idempotency_key\": \"dashboard-metrics-far-create\",\n        },\n        headers=headers,\n    )\n\nerror: patch failed: backend/test_dashboard_metrics.py:169\nerror: backend/test_dashboard_metrics.py: patch does not apply",
+    "reverse_exit_code": 1
+  },
+  "storage": {
+    "control_free": 57160540160,
+    "local_free": 57160540160,
+    "required": 3221225472
+  }
+}

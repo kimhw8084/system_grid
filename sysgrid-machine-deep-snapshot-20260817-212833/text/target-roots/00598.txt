@@ -1,0 +1,34 @@
+ORIGINAL_PATH: /Users/haewonkim/.local/state/sysgrid-supervisor/runs/20260805T021717Z-26018-073000/preflight.json
+ORIGINAL_SHA256: f16ffe0d5c1b6a690bf4b8e91760b77acc0bc3691149cd096b779eca785fed30
+================================================================================
+{
+  "declared_state": {
+    "dirty_path_count": 96,
+    "pre_hash_count": 96,
+    "protected_hash_count": 721
+  },
+  "engine_self_test": {
+    "engine_version": "1.1.1",
+    "result": "PASS",
+    "tests": [
+      "safe-path",
+      "manifest",
+      "corruption",
+      "canonical-dirty-paths",
+      "aggregate-recipes"
+    ]
+  },
+  "patch": {
+    "applicable": true,
+    "forward_diagnostic": "Checking patch frontend/src/components/shared/CanonicalVerificationContract.test.ts...",
+    "forward_exit_code": 0,
+    "reverse_applicable": false,
+    "reverse_diagnostic": "Checking patch frontend/src/components/shared/CanonicalVerificationContract.test.ts...\nerror: while searching for:\n    expect(script).toContain('\"${PLAYWRIGHT_ENV_COMMAND[@]}\" \"$FRONTEND_DIR/node_modules/.bin/playwright\" test \"${PLAYWRIGHT_SPECS[@]}\"')\n    expect(script).not.toContain('npx playwright')\n    expect(script).toContain('run_validation_lanes')\n    expect(script).toContain('local vite_bin=\"$FRONTEND_DIR/node_modules/.bin/vite\"')\n    expect(script).toContain('\"$vite_bin\" preview --host \"$FRONTEND_HOST\" --port \"$FRONTEND_PORT\" --strictPort')\n    expect(script).toContain('wait_for_listener \"$FRONTEND_PORT\" \"isolated production frontend\"')\n    expect(script).toContain('wait_for_http \"$FRONTEND_URL\" \"isolated production frontend\"')\n    expect(script).toContain(`curl --noproxy '*' --connect-timeout 1 --max-time 3 -fsS \"$url\"`)\n    expect(script).toContain('readiness_diagnostics')\n    expect(script).toContain('launch_frontend_with_readiness')\n    expect(script).not.toContain('npm run preview --')\n    expect(script).toContain('VITE_API_BASE_URL=\"$BACKEND_ORIGIN\" VITE_FRONTEND_ORIGIN=\"$FRONTEND_ORIGIN\" npm run build')\n    expect(script).not.toMatch(/^\\s*npm run check:shell-contracts\\s*$/m)\n    expect(script).not.toContain('npm run dev --')\n\nerror: patch failed: frontend/src/components/shared/CanonicalVerificationContract.test.ts:15\nerror: frontend/src/components/shared/CanonicalVerificationContract.test.ts: patch does not apply",
+    "reverse_exit_code": 1
+  },
+  "storage": {
+    "control_free": 55375114240,
+    "local_free": 55375114240,
+    "required": 3221225472
+  }
+}

@@ -1,0 +1,4 @@
+ORIGINAL_PATH: /Users/haewonkim/.local/state/sysgrid-supervisor/run.lock
+ORIGINAL_SHA256: 37813402a1e608aba82ee57acbbee259481d324842653c150a9338232440e1b7
+================================================================================
+{"pid": 11221, "started_utc": "2026-08-08T02:07:03Z"}

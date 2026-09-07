@@ -1,0 +1,1567 @@
+ORIGINAL_PATH: /Users/haewonkim/.local/state/sysgrid-supervisor/runs/20260801T220823Z-5958-440000/patch.diff
+ORIGINAL_SHA256: 88275c201b42cebc9bcae5b1502c271244c0be0413763231dbe8a9d72091d41b
+================================================================================
+diff --git a/backend/app/api/workspaces.py b/backend/app/api/workspaces.py
+index bad7aab..d2e0791 100644
+--- a/backend/app/api/workspaces.py
++++ b/backend/app/api/workspaces.py
+@@ -49,6 +49,40 @@ class WorkspaceDefinitionList(BaseModel):
+     definitions: list[WorkspaceDefinition]
+ 
+ 
++class FARColumnDefinition(BaseModel):
++    key: str
++    label: str
++    width: int = Field(ge=80, le=640)
++    minimum_width: int = Field(ge=60, le=480)
++    kind: Literal["identity", "risk", "status", "owner", "text", "list", "age", "number", "date"]
++    required: bool = False
++
++
++class FARPresetDefinition(BaseModel):
++    key: Literal["all", "high-risk", "overdue", "unassigned", "recent"]
++    label: str
++    description: str
++
++
++class FARModeDefinition(BaseModel):
++    key: Literal["failure_modes", "causes", "mitigations", "prevention"]
++    label: str
++    description: str
++    column_keys: list[str]
++
++
++class FARWorkspaceExperience(BaseModel):
++    schema_version: int = Field(ge=1)
++    workspace_key: Literal["far"] = "far"
++    data_endpoint: str
++    detail_query_key: str
++    columns: list[FARColumnDefinition]
++    presets: list[FARPresetDefinition]
++    modes: list[FARModeDefinition]
++    risk_thresholds: dict[str, int]
++    detail_sections: list[str]
++
++
+ class SavedViewBase(BaseModel):
+     model_config = ConfigDict(extra="forbid")
+ 
+@@ -129,6 +163,53 @@ VENDOR_COLUMNS = [
+     "contract_count", "earliest_expiry_date", "personnel_count", "created_at",
+     "updated_at", "row_actions",
+ ]
++FAR_COLUMNS = [
++    "title", "rpn", "status", "owner", "systemName", "failureType",
++    "effect", "affectedAssets", "causes", "mitigations", "preventionActions",
++    "linkedRcas", "ageDays", "incidentCount", "updatedAt",
++]
++FAR_COLUMN_DEFINITIONS = [
++    FARColumnDefinition(key="title", label="Failure mode", width=310, minimum_width=240, kind="identity", required=True),
++    FARColumnDefinition(key="rpn", label="Risk", width=130, minimum_width=110, kind="risk", required=True),
++    FARColumnDefinition(key="status", label="Status", width=140, minimum_width=120, kind="status", required=True),
++    FARColumnDefinition(key="owner", label="Owner", width=160, minimum_width=130, kind="owner", required=True),
++    FARColumnDefinition(key="systemName", label="System", width=190, minimum_width=150, kind="text", required=True),
++    FARColumnDefinition(key="failureType", label="Type", width=150, minimum_width=120, kind="text", required=True),
++    FARColumnDefinition(key="effect", label="Operational effect", width=260, minimum_width=180, kind="text"),
++    FARColumnDefinition(key="affectedAssets", label="Affected scope", width=210, minimum_width=160, kind="list"),
++    FARColumnDefinition(key="causes", label="Causes", width=260, minimum_width=180, kind="list"),
++    FARColumnDefinition(key="mitigations", label="Mitigations", width=260, minimum_width=180, kind="list"),
++    FARColumnDefinition(key="preventionActions", label="Prevention", width=260, minimum_width=180, kind="list"),
++    FARColumnDefinition(key="linkedRcas", label="Linked RCAs", width=210, minimum_width=160, kind="list"),
++    FARColumnDefinition(key="ageDays", label="Age", width=110, minimum_width=90, kind="age"),
++    FARColumnDefinition(key="incidentCount", label="Incidents", width=110, minimum_width=90, kind="number"),
++    FARColumnDefinition(key="updatedAt", label="Updated", width=145, minimum_width=120, kind="date"),
++]
++FAR_PRESET_DEFINITIONS = [
++    FARPresetDefinition(key="all", label="All failure modes", description="Complete tenant-scoped risk register"),
++    FARPresetDefinition(key="high-risk", label="High risk", description="RPN 200 or greater"),
++    FARPresetDefinition(key="overdue", label="Overdue", description="Open for 30 days or more"),
++    FARPresetDefinition(key="unassigned", label="Unassigned", description="No accountable owner"),
++    FARPresetDefinition(key="recent", label="Recently updated", description="Changed in the last 14 days"),
++]
++FAR_MODE_DEFINITIONS = [
++    FARModeDefinition(
++        key="failure_modes", label="Failure modes", description="Operational risk register",
++        column_keys=["title", "rpn", "status", "owner", "systemName", "failureType", "affectedAssets", "ageDays", "incidentCount", "updatedAt"],
++    ),
++    FARModeDefinition(
++        key="causes", label="Causes", description="Root-cause signals",
++        column_keys=["title", "causes", "rpn", "owner", "systemName", "linkedRcas"],
++    ),
++    FARModeDefinition(
++        key="mitigations", label="Mitigations", description="Current controls",
++        column_keys=["title", "mitigations", "status", "owner", "rpn", "affectedAssets"],
++    ),
++    FARModeDefinition(
++        key="prevention", label="Prevention", description="Preventive actions",
++        column_keys=["title", "preventionActions", "owner", "status", "rpn", "updatedAt"],
++    ),
++]
+ 
+ TABLE_STATE_KEYS = [
+     "fontSize", "rowDensity", "hiddenColumns", "groupBy", "showFilterBar",
+@@ -145,6 +226,11 @@ EXTERNAL_STATE_KEYS = [
+     "showFilterBar", "quickFilters", "columnLayoutState", "filterModel", "sortModel",
+ ]
+ CUSTOM_STATE_KEYS = ["searchTerm", "quickFilter", "filters", "activeTab", "mode", "viewMode", "lens"]
++FAR_STATE_KEYS = [
++    "searchTerm", "quickFilter", "filters", "activeTab", "mode", "viewMode",
++    "activeLens", "fontSize", "rowDensity", "hiddenColumns", "groupBy",
++    "showFilterBar", "columnLayoutState", "filterModel", "sortModel",
++]
+ 
+ 
+ def _definition(
+@@ -231,7 +317,11 @@ WORKSPACE_DEFINITIONS: dict[str, WorkspaceDefinition] = {
+     ),
+     "far": _definition(
+         "far", "/far", "investigation",
+-        ["saved_views", "search", "filters", "details", "deep_links", "lifecycle", "history", "compare", "relationships", "investigation", "custom_body"],
++        ["saved_views", "search", "filters", "column_state", "display_controls", "selection", "details", "deep_links", "lifecycle", "history", "compare", "relationships", "investigation", "custom_body"],
++        columns=FAR_COLUMNS,
++        allowed_keys=FAR_STATE_KEYS,
++        quick_filter_keys=["status", "riskBand", "owner", "systemName", "failureType"],
++        group_by=["raw", "status", "riskBand", "owner", "systemName", "failureType"],
+         active_tabs=["active", "deleted"],
+         modes=["failure_modes", "causes", "mitigations", "prevention"],
+         lifecycle_actions=["archive", "restore"],
+@@ -457,6 +547,23 @@ async def list_definitions() -> WorkspaceDefinitionList:
+     return WorkspaceDefinitionList(definitions=list(WORKSPACE_DEFINITIONS.values()))
+ 
+ 
++@router.get("/far/experience", response_model=FARWorkspaceExperience)
++async def get_far_experience() -> FARWorkspaceExperience:
++    return FARWorkspaceExperience(
++        schema_version=WORKSPACE_DEFINITIONS["far"].schema_version,
++        data_endpoint="/far/modes",
++        detail_query_key="far",
++        columns=FAR_COLUMN_DEFINITIONS,
++        presets=FAR_PRESET_DEFINITIONS,
++        modes=FAR_MODE_DEFINITIONS,
++        risk_thresholds={"critical": 300, "high": 200, "moderate": 100},
++        detail_sections=[
++            "summary", "risk", "affected_scope", "causes", "mitigations",
++            "prevention", "relationships",
++        ],
++    )
++
++
+ @router.get("/{workspace_key}/views", response_model=SavedViewListResponse)
+ async def list_views(
+     workspace_key: str,
+diff --git a/backend/test_workspace_views.py b/backend/test_workspace_views.py
+index adcf867..9e30b3d 100644
+--- a/backend/test_workspace_views.py
++++ b/backend/test_workspace_views.py
+@@ -81,6 +81,15 @@ async def test_workspace_definition_registry_is_complete_and_typed(seeded_admin_
+     assert by_key["assets"]["state_schema"]["quick_filter_keys"] == ["status", "system", "type", "owner"]
+     assert "primary_personnel_email" in by_key["vendors"]["state_schema"]["column_ids"]
+     assert by_key["vendors"]["state_schema"]["group_by"] == ["raw", "country"]
++    assert by_key["far"]["state_schema"]["column_ids"] == [
++        "title", "rpn", "status", "owner", "systemName", "failureType",
++        "effect", "affectedAssets", "causes", "mitigations", "preventionActions",
++        "linkedRcas", "ageDays", "incidentCount", "updatedAt",
++    ]
++    assert by_key["far"]["state_schema"]["quick_filter_keys"] == [
++        "status", "riskBand", "owner", "systemName", "failureType",
++    ]
++    assert "display_controls" in by_key["far"]["capabilities"]
+ 
+ 
+ @pytest.mark.anyio
+@@ -288,3 +297,78 @@ async def test_atomic_revision_allows_only_one_writer(seeded_admin_tenant):
+ 
+     first, second = await asyncio.gather(writer("Concurrent A"), writer("Concurrent B"))
+     assert sorted([first.status_code, second.status_code]) == [200, 409], (first.text, second.text)
++
++
++@pytest.mark.anyio
++async def test_far_workspace_experience_and_saved_view_contract(seeded_admin_tenant):
++    client = seeded_admin_tenant["client"]
++    tenant_id = seeded_admin_tenant["tenant_id"]
++    request_headers = headers("admin_root", tenant_id)
++
++    experience_response = await client.get("/api/v1/workspaces/far/experience", headers=request_headers)
++    assert experience_response.status_code == 200, experience_response.text
++    experience = experience_response.json()
++    assert experience["workspace_key"] == "far"
++    assert experience["data_endpoint"] == "/far/modes"
++    assert experience["detail_query_key"] == "far"
++    assert [column["key"] for column in experience["columns"]] == [
++        "title", "rpn", "status", "owner", "systemName", "failureType",
++        "effect", "affectedAssets", "causes", "mitigations", "preventionActions",
++        "linkedRcas", "ageDays", "incidentCount", "updatedAt",
++    ]
++    assert [column["label"] for column in experience["columns"][:4]] == [
++        "Failure mode", "Risk", "Status", "Owner",
++    ]
++    assert {preset["key"] for preset in experience["presets"]} == {
++        "all", "high-risk", "overdue", "unassigned", "recent",
++    }
++    assert experience["risk_thresholds"] == {"critical": 300, "high": 200, "moderate": 100}
++    assert next(mode for mode in experience["modes"] if mode["key"] == "causes")["column_keys"] == [
++        "title", "causes", "rpn", "owner", "systemName", "linkedRcas",
++    ]
++
++    create_response = await client.post(
++        "/api/v1/workspaces/far/views",
++        json={
++            "name": "High risk reliability",
++            "scope": "personal",
++            "schema_version": 1,
++            "definition": {
++                "searchTerm": "  pressure loss  ",
++                "activeLens": "high-risk",
++                "viewMode": "causes",
++                "fontSize": 99,
++                "rowDensity": -10,
++                "hiddenColumns": ["updatedAt", "anonymous", "updatedAt"],
++                "groupBy": "owner",
++                "filters": {
++                    "status": ["Open", "Open"],
++                    "riskBand": ["Critical", "High"],
++                    "owner": ["Reliability"],
++                    "unknown": ["drop"],
++                },
++                "sortModel": [
++                    {"colId": "rpn", "sort": "desc"},
++                    {"colId": "3", "sort": "asc"},
++                ],
++                "unknownTopLevel": True,
++            },
++        },
++        headers=request_headers,
++    )
++    assert create_response.status_code == 201, create_response.text
++    definition = create_response.json()["definition"]
++    assert definition["searchTerm"] == "pressure loss"
++    assert definition["activeLens"] == "high-risk"
++    assert definition["viewMode"] == "causes"
++    assert definition["fontSize"] == 18
++    assert definition["rowDensity"] == 0
++    assert definition["hiddenColumns"] == ["updatedAt"]
++    assert definition["groupBy"] == "owner"
++    assert definition["filters"] == {
++        "status": ["Open"],
++        "riskBand": ["Critical", "High"],
++        "owner": ["Reliability"],
++    }
++    assert definition["sortModel"] == [{"colId": "rpn", "sort": "desc"}]
++    assert "unknownTopLevel" not in definition
+diff --git a/frontend/src/components/far/FARGoldenWorkspace.tsx b/frontend/src/components/far/FARGoldenWorkspace.tsx
+new file mode 100644
+index 0000000..c20a605
+--- /dev/null
++++ b/frontend/src/components/far/FARGoldenWorkspace.tsx
+@@ -0,0 +1,697 @@
++import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
++import type { ColDef, GridApi, GridReadyEvent, RowClickedEvent } from 'ag-grid-community'
++import { AgGridReact } from 'ag-grid-react'
++import {
++  AlertTriangle,
++  BarChart3,
++  CheckCircle2,
++  ClipboardCopy,
++  Clock3,
++  CloudOff,
++  Filter,
++  Link2,
++  ListFilter,
++  RefreshCcw,
++  Save,
++  Search,
++  ShieldAlert,
++  UserRoundX,
++  X,
++} from 'lucide-react'
++import { apiClient } from '../../api/apiClient'
++import { PageHeader } from '../shared/LayoutPrimitives'
++import { WorkspaceCommandBar } from '../shared/WorkspaceCommandBar'
++import {
++  applyFARFilters,
++  extractFARRows,
++  formatFARDate,
++  readFARRecordId,
++  updateFARRecordSearch,
++  type FARFilterState,
++  type FARPresetKey,
++  type FARRecord,
++  type FARRiskBand,
++  type FARWorkspaceMode,
++} from './FARGoldenWorkspaceModel'
++
++const join = (...parts: Array<string | false | null | undefined>) => parts.filter(Boolean).join(' ')
++
++interface FARExperienceColumn {
++  key: string
++  label: string
++  width: number
++  minimum_width: number
++  kind: string
++  required: boolean
++}
++
++interface FARExperiencePreset {
++  key: FARPresetKey
++  label: string
++  description: string
++}
++
++interface FARExperience {
++  schema_version: number
++  workspace_key: string
++  data_endpoint: string
++  detail_query_key: string
++  columns: FARExperienceColumn[]
++  presets: FARExperiencePreset[]
++  modes: Array<{ key: FARWorkspaceMode; label: string; description: string; column_keys: string[] }>
++  risk_thresholds: Record<string, number>
++  detail_sections: string[]
++}
++
++interface SavedFARView {
++  id: number
++  name: string
++  definition: Record<string, unknown>
++  revision: number
++}
++
++const FALLBACK_EXPERIENCE: FARExperience = {
++  schema_version: 1,
++  workspace_key: 'far',
++  data_endpoint: '/far/modes',
++  detail_query_key: 'far',
++  columns: [
++    { key: 'title', label: 'Failure mode', width: 310, minimum_width: 240, kind: 'identity', required: true },
++    { key: 'rpn', label: 'Risk', width: 130, minimum_width: 110, kind: 'risk', required: true },
++    { key: 'status', label: 'Status', width: 140, minimum_width: 120, kind: 'status', required: true },
++    { key: 'owner', label: 'Owner', width: 160, minimum_width: 130, kind: 'owner', required: true },
++    { key: 'systemName', label: 'System', width: 190, minimum_width: 150, kind: 'text', required: true },
++    { key: 'failureType', label: 'Type', width: 150, minimum_width: 120, kind: 'text', required: true },
++    { key: 'effect', label: 'Operational effect', width: 260, minimum_width: 180, kind: 'text', required: false },
++    { key: 'affectedAssets', label: 'Affected scope', width: 210, minimum_width: 160, kind: 'list', required: false },
++    { key: 'causes', label: 'Causes', width: 260, minimum_width: 180, kind: 'list', required: false },
++    { key: 'mitigations', label: 'Mitigations', width: 260, minimum_width: 180, kind: 'list', required: false },
++    { key: 'preventionActions', label: 'Prevention', width: 260, minimum_width: 180, kind: 'list', required: false },
++    { key: 'linkedRcas', label: 'Linked RCAs', width: 210, minimum_width: 160, kind: 'list', required: false },
++    { key: 'ageDays', label: 'Age', width: 110, minimum_width: 90, kind: 'age', required: false },
++    { key: 'incidentCount', label: 'Incidents', width: 110, minimum_width: 90, kind: 'number', required: false },
++    { key: 'updatedAt', label: 'Updated', width: 145, minimum_width: 120, kind: 'date', required: false },
++  ],
++  presets: [
++    { key: 'all', label: 'All failure modes', description: 'Complete risk register' },
++    { key: 'high-risk', label: 'High risk', description: 'RPN 200 or greater' },
++    { key: 'overdue', label: 'Overdue', description: 'Open for 30 days or more' },
++    { key: 'unassigned', label: 'Unassigned', description: 'Missing accountable owner' },
++    { key: 'recent', label: 'Recently updated', description: 'Changed in the last 14 days' },
++  ],
++  modes: [
++    { key: 'failure_modes', label: 'Failure modes', description: 'Operational risk register', column_keys: ['title', 'rpn', 'status', 'owner', 'systemName', 'failureType', 'affectedAssets', 'ageDays', 'incidentCount', 'updatedAt'] },
++    { key: 'causes', label: 'Causes', description: 'Root-cause signals', column_keys: ['title', 'causes', 'rpn', 'owner', 'systemName', 'linkedRcas'] },
++    { key: 'mitigations', label: 'Mitigations', description: 'Current controls', column_keys: ['title', 'mitigations', 'status', 'owner', 'rpn', 'affectedAssets'] },
++    { key: 'prevention', label: 'Prevention', description: 'Preventive actions', column_keys: ['title', 'preventionActions', 'owner', 'status', 'rpn', 'updatedAt'] },
++  ],
++  risk_thresholds: { critical: 300, high: 200, moderate: 100 },
++  detail_sections: ['summary', 'risk', 'affected_scope', 'causes', 'mitigations', 'prevention', 'relationships'],
++}
++
++const PRESET_LABEL: Record<FARPresetKey, string> = {
++  all: 'All failure modes',
++  'high-risk': 'High risk',
++  overdue: 'Overdue',
++  unassigned: 'Unassigned',
++  recent: 'Recently updated',
++}
++
++const riskClass: Record<FARRiskBand, string> = {
++  Critical: 'border-rose-400/30 bg-rose-500/15 text-rose-200',
++  High: 'border-orange-400/30 bg-orange-500/15 text-orange-200',
++  Moderate: 'border-amber-400/30 bg-amber-500/15 text-amber-200',
++  Low: 'border-emerald-400/30 bg-emerald-500/15 text-emerald-200',
++}
++
++const statusClass = (status: string) => {
++  if (/resolved|closed|accepted/i.test(status)) return 'border-emerald-400/25 bg-emerald-500/10 text-emerald-200'
++  if (/mitigat|monitor/i.test(status)) return 'border-sky-400/25 bg-sky-500/10 text-sky-200'
++  if (/archiv|retir/i.test(status)) return 'border-slate-400/20 bg-slate-500/10 text-slate-300'
++  return 'border-amber-400/25 bg-amber-500/10 text-amber-100'
++}
++
++function Badge({ children, className = '' }: { children: React.ReactNode; className?: string }) {
++  return <span className={join('inline-flex items-center rounded-md border px-2 py-1 text-[10px] font-semibold', className)}>{children}</span>
++}
++
++function MetricCard({ label, value, detail, icon }: { label: string; value: number; detail: string; icon: React.ReactNode }) {
++  return (
++    <div className="rounded-lg border border-white/5 bg-white/[0.025] p-4 shadow-sm" data-far-metric={label.toLowerCase().replace(/\s+/g, '-') }>
++      <div className="flex items-start justify-between gap-4">
++        <div>
++          <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-500">{label}</p>
++          <p className="mt-2 text-2xl font-semibold text-slate-100">{value}</p>
++          <p className="mt-1 text-[11px] text-slate-400">{detail}</p>
++        </div>
++        <div className="rounded-lg border border-white/5 bg-black/20 p-2.5 text-slate-400">{icon}</div>
++      </div>
++    </div>
++  )
++}
++
++function DetailList({ title, items, empty }: { title: string; items: string[]; empty: string }) {
++  return (
++    <section className="space-y-2">
++      <h4 className="text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-500">{title}</h4>
++      {items.length ? (
++        <ul className="space-y-2">
++          {items.map((item, index) => (
++            <li key={`${item}-${index}`} className="rounded-md border border-white/5 bg-black/20 px-3 py-2 text-xs leading-5 text-slate-300">{item}</li>
++          ))}
++        </ul>
++      ) : <p className="rounded-md border border-dashed border-white/10 px-3 py-2 text-xs text-slate-500">{empty}</p>}
++    </section>
++  )
++}
++
++export function FARGoldenWorkspace({
++  header,
++  className = '',
++  frameClassName,
++  gridClassName,
++  gridContentClassName,
++  geometryVersion,
++}: {
++  header: React.ComponentProps<typeof PageHeader>
++  className?: string
++  frameClassName: string
++  gridClassName: string
++  gridContentClassName: string
++  geometryVersion: string
++}) {
++  const gridApiRef = useRef<GridApi<FARRecord> | null>(null)
++  const [records, setRecords] = useState<FARRecord[]>([])
++  const [experience, setExperience] = useState<FARExperience>(FALLBACK_EXPERIENCE)
++  const [savedViews, setSavedViews] = useState<SavedFARView[]>([])
++  const [selectedId, setSelectedId] = useState<string | null>(() => typeof window === 'undefined' ? null : readFARRecordId(window.location.search))
++  const [filters, setFilters] = useState<FARFilterState>({
++    preset: 'all',
++    status: 'all',
++    riskBand: 'all',
++    owner: 'all',
++    searchTerm: '',
++    mode: 'failure_modes',
++  })
++  const [density, setDensity] = useState<'comfortable' | 'compact'>('comfortable')
++  const [showFilterBar, setShowFilterBar] = useState(true)
++  const [showDisplayControls, setShowDisplayControls] = useState(false)
++  const [showInsights, setShowInsights] = useState(true)
++  const [loadState, setLoadState] = useState<'loading' | 'ready' | 'error'>('loading')
++  const [syncState, setSyncState] = useState<'synced' | 'saving' | 'offline' | 'error'>('synced')
++  const [errorMessage, setErrorMessage] = useState('')
++  const [isOnline, setIsOnline] = useState(() => typeof navigator === 'undefined' || navigator.onLine)
++
++  const load = useCallback(async () => {
++    setLoadState('loading')
++    setErrorMessage('')
++    try {
++      const [experienceResult, modesResult, viewsResult] = await Promise.allSettled([
++        apiClient.get('/workspaces/far/experience'),
++        apiClient.get(FALLBACK_EXPERIENCE.data_endpoint),
++        apiClient.get('/workspaces/far/views'),
++      ])
++      const resolvedExperience = experienceResult.status === 'fulfilled'
++        ? experienceResult.value as FARExperience
++        : FALLBACK_EXPERIENCE
++      if (modesResult.status !== 'fulfilled') throw modesResult.reason
++      setExperience(resolvedExperience)
++      setRecords(extractFARRows(modesResult.value))
++      if (viewsResult.status === 'fulfilled') {
++        const payload = viewsResult.value as { views?: SavedFARView[] }
++        setSavedViews(Array.isArray(payload?.views) ? payload.views : [])
++      }
++      setLoadState('ready')
++      setSyncState(isOnline ? 'synced' : 'offline')
++    } catch (error) {
++      setLoadState('error')
++      setSyncState(isOnline ? 'error' : 'offline')
++      setErrorMessage(error instanceof Error ? error.message : 'FAR workspace could not be loaded.')
++    }
++  }, [isOnline])
++
++  useEffect(() => { void load() }, [load])
++  useEffect(() => {
++    const online = () => { setIsOnline(true); setSyncState('synced'); void load() }
++    const offline = () => { setIsOnline(false); setSyncState('offline') }
++    window.addEventListener('online', online)
++    window.addEventListener('offline', offline)
++    return () => {
++      window.removeEventListener('online', online)
++      window.removeEventListener('offline', offline)
++    }
++  }, [load])
++
++  const filteredRows = useMemo(() => applyFARFilters(records, filters), [records, filters])
++  const selectedRecord = useMemo(() => records.find((record) => record.id === selectedId) ?? null, [records, selectedId])
++  const statuses = useMemo(() => [...new Set(records.map((record) => record.status))].sort(), [records])
++  const owners = useMemo(() => [...new Set(records.map((record) => record.owner))].sort(), [records])
++  const highRiskCount = useMemo(() => records.filter((record) => record.rpn >= 200).length, [records])
++  const overdueCount = useMemo(() => records.filter((record) => record.overdue).length, [records])
++  const unassignedCount = useMemo(() => records.filter((record) => record.owner === 'Unassigned').length, [records])
++
++  useEffect(() => {
++    if (selectedId && records.length && !selectedRecord) setErrorMessage(`FAR record ${selectedId} is unavailable or outside the active tenant.`)
++  }, [records, selectedId, selectedRecord])
++
++  const setRecordDeepLink = useCallback((recordId: string | null) => {
++    setSelectedId(recordId)
++    if (typeof window !== 'undefined') {
++      const nextSearch = updateFARRecordSearch(window.location.search, recordId)
++      window.history.replaceState({}, '', `${window.location.pathname}${nextSearch}${window.location.hash}`)
++    }
++  }, [])
++
++  const clearFilter = (key: keyof FARFilterState) => {
++    setFilters((current) => ({
++      ...current,
++      [key]: key === 'preset' ? 'all' : key === 'mode' ? 'failure_modes' : key === 'searchTerm' ? '' : 'all',
++    }))
++  }
++
++  const applySavedView = (value: string) => {
++    if (value.startsWith('preset:')) {
++      setFilters((current) => ({ ...current, preset: value.slice(7) as FARPresetKey }))
++      return
++    }
++    const view = savedViews.find((candidate) => `saved:${candidate.id}` === value)
++    if (!view) return
++    const definition = view.definition || {}
++    const storedFilters = definition.filters && typeof definition.filters === 'object' ? definition.filters as Record<string, unknown> : {}
++    const pick = (key: string, fallback: string) => {
++      const value = storedFilters[key]
++      return Array.isArray(value) && typeof value[0] === 'string' ? value[0] : fallback
++    }
++    setFilters((current) => ({
++      ...current,
++      searchTerm: typeof definition.searchTerm === 'string' ? definition.searchTerm : '',
++      preset: (typeof definition.activeLens === 'string' ? definition.activeLens : 'all') as FARPresetKey,
++      mode: (typeof definition.viewMode === 'string' ? definition.viewMode : 'failure_modes') as FARWorkspaceMode,
++      status: pick('status', 'all'),
++      riskBand: pick('riskBand', 'all'),
++      owner: pick('owner', 'all'),
++    }))
++  }
++
++  const saveCurrentView = async () => {
++    if (!isOnline) {
++      setSyncState('offline')
++      return
++    }
++    setSyncState('saving')
++    try {
++      const stamp = new Date().toISOString().replace(/[-:]/g, '').slice(0, 13)
++      const created = await apiClient.post('/workspaces/far/views', {
++        name: `${PRESET_LABEL[filters.preset]} ${stamp}`,
++        scope: 'personal',
++        definition: {
++          searchTerm: filters.searchTerm,
++          activeLens: filters.preset,
++          viewMode: filters.mode,
++          filters: {
++            status: filters.status === 'all' ? [] : [filters.status],
++            riskBand: filters.riskBand === 'all' ? [] : [filters.riskBand],
++            owner: filters.owner === 'all' ? [] : [filters.owner],
++          },
++        },
++        schema_version: experience.schema_version,
++      }) as SavedFARView
++      setSavedViews((current) => [created, ...current.filter((view) => view.id !== created.id)])
++      setSyncState('synced')
++    } catch (error) {
++      setSyncState('error')
++      setErrorMessage(error instanceof Error ? error.message : 'The FAR saved view could not be synchronized.')
++    }
++  }
++
++  const copyLink = async () => {
++    if (typeof navigator === 'undefined' || !navigator.clipboard) return
++    await navigator.clipboard.writeText(window.location.href)
++  }
++
++  const columns = useMemo<ColDef<FARRecord>[]>(() => {
++    const definitions = experience.columns.length ? experience.columns : FALLBACK_EXPERIENCE.columns
++    const byKey: Record<string, ColDef<FARRecord>> = {
++      title: {
++        field: 'title',
++        headerName: 'Failure mode',
++        pinned: 'left',
++        minWidth: 240,
++        width: 310,
++        cellClass: 'font-semibold text-slate-100',
++      },
++      rpn: {
++        field: 'rpn',
++        headerName: 'Risk',
++        minWidth: 110,
++        width: 130,
++        valueFormatter: ({ data }) => data ? `${data.rpn} · ${data.riskBand}` : '',
++        cellClass: 'font-semibold',
++      },
++      status: { field: 'status', headerName: 'Status', minWidth: 120, width: 140 },
++      owner: { field: 'owner', headerName: 'Owner', minWidth: 130, width: 160 },
++      systemName: { field: 'systemName', headerName: 'System', minWidth: 150, width: 190 },
++      failureType: { field: 'failureType', headerName: 'Type', minWidth: 120, width: 150 },
++      effect: { field: 'effect', headerName: 'Operational effect', minWidth: 180, width: 260 },
++      causes: {
++        field: 'causes', headerName: 'Causes', minWidth: 180, width: 260,
++        valueFormatter: ({ data }) => data?.causes.length ? data.causes.join(' · ') : 'No cause recorded',
++      },
++      mitigations: {
++        field: 'mitigations', headerName: 'Mitigations', minWidth: 180, width: 260,
++        valueFormatter: ({ data }) => data?.mitigations.length ? data.mitigations.join(' · ') : 'No mitigation recorded',
++      },
++      preventionActions: {
++        field: 'preventionActions', headerName: 'Prevention', minWidth: 180, width: 260,
++        valueFormatter: ({ data }) => data?.preventionActions.length ? data.preventionActions.join(' · ') : 'No prevention action',
++      },
++      linkedRcas: {
++        field: 'linkedRcas', headerName: 'Linked RCAs', minWidth: 160, width: 210,
++        valueFormatter: ({ data }) => data?.linkedRcas.length ? data.linkedRcas.join(', ') : 'Not linked',
++      },
++      affectedAssets: {
++        field: 'affectedAssets',
++        headerName: 'Affected scope',
++        minWidth: 160,
++        width: 210,
++        valueFormatter: ({ data }) => data?.affectedAssets.length ? data.affectedAssets.join(', ') : 'Not linked',
++      },
++      ageDays: {
++        field: 'ageDays',
++        headerName: 'Age',
++        minWidth: 90,
++        width: 110,
++        valueFormatter: ({ data }) => data ? `${data.ageDays}d${data.overdue ? ' · overdue' : ''}` : '',
++      },
++      incidentCount: { field: 'incidentCount', headerName: 'Incidents', minWidth: 90, width: 110 },
++      updatedAt: {
++        field: 'updatedAt',
++        headerName: 'Updated',
++        minWidth: 120,
++        width: 145,
++        valueFormatter: ({ data }) => formatFARDate(data?.updatedAt ?? null),
++      },
++    }
++    const activeMode = experience.modes.find((mode) => mode.key === filters.mode)
++    const activeKeys = activeMode?.column_keys?.length ? activeMode.column_keys : FALLBACK_EXPERIENCE.modes[0].column_keys
++    const activeDefinitions = activeKeys
++      .map((key) => definitions.find((definition) => definition.key === key))
++      .filter(Boolean) as FARExperienceColumn[]
++
++    return activeDefinitions.map((definition) => ({
++      ...(byKey[definition.key] ?? {
++        field: definition.key as keyof FARRecord,
++        headerName: definition.label,
++        valueFormatter: ({ value }) => Array.isArray(value) ? value.join(', ') : String(value ?? ''),
++      }),
++      headerName: definition.label,
++      width: definition.width,
++      minWidth: definition.minimum_width,
++      sortable: true,
++      filter: true,
++      resizable: true,
++      suppressSizeToFit: definition.key === 'title',
++    }))
++  }, [experience.columns, experience.modes, filters.mode])
++
++  const onGridReady = (event: GridReadyEvent<FARRecord>) => {
++    gridApiRef.current = event.api
++    window.requestAnimationFrame(() => event.api.sizeColumnsToFit())
++  }
++
++  const onRowClicked = (event: RowClickedEvent<FARRecord>) => {
++    if (event.data) setRecordDeepLink(event.data.id)
++  }
++
++  const chips = [
++    filters.preset !== 'all' ? { id: 'preset', label: `View: ${PRESET_LABEL[filters.preset]}`, onRemove: () => clearFilter('preset') } : null,
++    filters.status !== 'all' ? { id: 'status', label: `Status: ${filters.status}`, onRemove: () => clearFilter('status') } : null,
++    filters.riskBand !== 'all' ? { id: 'risk', label: `Risk: ${filters.riskBand}`, onRemove: () => clearFilter('riskBand') } : null,
++    filters.owner !== 'all' ? { id: 'owner', label: `Owner: ${filters.owner}`, onRemove: () => clearFilter('owner') } : null,
++    filters.searchTerm ? { id: 'search', label: `Search: ${filters.searchTerm}`, onRemove: () => clearFilter('searchTerm') } : null,
++  ].filter(Boolean) as Array<{ id: string; label: string; onRemove: () => void }>
++
++  const commandBar = {
++    left: (
++      <>
++        <label className="relative min-w-[240px] flex-1 md:max-w-[420px]">
++          <Search size={15} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
++          <input
++            aria-label="Search FAR failure modes"
++            value={filters.searchTerm}
++            onChange={(event) => setFilters((current) => ({ ...current, searchTerm: event.target.value }))}
++            placeholder="Search failure modes, systems, owners, causes..."
++            className="h-10 w-full rounded-lg border border-white/10 bg-black/25 pl-9 pr-3 text-xs text-slate-100 outline-none transition focus:border-indigo-400/50 focus:ring-2 focus:ring-indigo-500/10"
++          />
++        </label>
++        <select
++          aria-label="FAR saved view"
++          value={`preset:${filters.preset}`}
++          onChange={(event) => applySavedView(event.target.value)}
++          className="h-10 min-w-[170px] rounded-lg border border-white/10 bg-[#0b1220] px-3 text-xs font-medium text-slate-200 outline-none focus:border-indigo-400/50"
++        >
++          <optgroup label="Operational views">
++            {experience.presets.map((preset) => <option key={preset.key} value={`preset:${preset.key}`}>{preset.label}</option>)}
++          </optgroup>
++          {savedViews.length ? (
++            <optgroup label="Personal saved views">
++              {savedViews.map((view) => <option key={view.id} value={`saved:${view.id}`}>{view.name}</option>)}
++            </optgroup>
++          ) : null}
++        </select>
++      </>
++    ),
++    right: (
++      <>
++        <button type="button" onClick={() => setShowDisplayControls((value) => !value)} aria-pressed={showDisplayControls} className={join('inline-flex h-9 items-center gap-2 rounded-lg border px-3 text-[10px] font-semibold', showDisplayControls ? 'border-indigo-400/30 bg-indigo-500/15 text-indigo-100' : 'border-white/10 bg-white/[0.04] text-slate-200 hover:bg-white/[0.08]')}>
++          <BarChart3 size={13} /> Display
++        </button>
++        <button type="button" onClick={() => setShowFilterBar((value) => !value)} aria-pressed={showFilterBar} className={join('inline-flex h-9 items-center gap-2 rounded-lg border px-3 text-[10px] font-semibold', showFilterBar ? 'border-indigo-400/30 bg-indigo-500/15 text-indigo-100' : 'border-white/10 bg-white/[0.04] text-slate-200 hover:bg-white/[0.08]')}>
++          <Filter size={13} /> Filters
++        </button>
++        <button type="button" onClick={() => setShowInsights((value) => !value)} aria-pressed={showInsights} className={join('inline-flex h-9 items-center gap-2 rounded-lg border px-3 text-[10px] font-semibold', showInsights ? 'border-indigo-400/30 bg-indigo-500/15 text-indigo-100' : 'border-white/10 bg-white/[0.04] text-slate-200 hover:bg-white/[0.08]')}>
++          <ShieldAlert size={13} /> Insights
++        </button>
++        <span className={join(
++          'inline-flex h-9 items-center gap-2 rounded-lg border px-3 text-[10px] font-semibold',
++          syncState === 'synced' && 'border-emerald-400/20 bg-emerald-500/10 text-emerald-200',
++          syncState === 'saving' && 'border-sky-400/20 bg-sky-500/10 text-sky-200',
++          syncState === 'offline' && 'border-amber-400/20 bg-amber-500/10 text-amber-100',
++          syncState === 'error' && 'border-rose-400/20 bg-rose-500/10 text-rose-200',
++        )} data-far-sync-state={syncState}>
++          {syncState === 'offline' ? <CloudOff size={13} /> : syncState === 'error' ? <AlertTriangle size={13} /> : <CheckCircle2 size={13} />}
++          {syncState === 'saving' ? 'Saving' : syncState === 'offline' ? 'Offline fallback' : syncState === 'error' ? 'Sync issue' : 'Synced'}
++        </span>
++        <button type="button" onClick={() => void saveCurrentView()} className="inline-flex h-9 items-center gap-2 rounded-lg border border-white/10 bg-white/[0.04] px-3 text-[10px] font-semibold text-slate-200 hover:bg-white/[0.08]">
++          <Save size={13} /> Save view
++        </button>
++        <button type="button" onClick={() => void copyLink()} className="inline-flex h-9 items-center gap-2 rounded-lg border border-white/10 bg-white/[0.04] px-3 text-[10px] font-semibold text-slate-200 hover:bg-white/[0.08]">
++          <ClipboardCopy size={13} /> Copy link
++        </button>
++        <button type="button" onClick={() => void load()} aria-label="Refresh FAR workspace" className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-white/10 bg-white/[0.04] text-slate-300 hover:bg-white/[0.08]">
++          <RefreshCcw size={14} />
++        </button>
++      </>
++    ),
++    secondary: showFilterBar || showDisplayControls ? (
++      <div className="flex w-full flex-wrap items-center gap-3" data-far-filter-bar={showFilterBar ? 'true' : undefined} data-far-display-controls={showDisplayControls ? 'true' : undefined}>
++        {showFilterBar ? (
++          <>
++            <div className="flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-500"><ListFilter size={13} /> Filters</div>
++            <select aria-label="Filter FAR status" value={filters.status} onChange={(event) => setFilters((current) => ({ ...current, status: event.target.value }))} className="h-8 rounded-md border border-white/10 bg-[#0b1220] px-2 text-[10px] text-slate-200">
++              <option value="all">All statuses</option>
++              {statuses.map((status) => <option key={status} value={status}>{status}</option>)}
++            </select>
++            <select aria-label="Filter FAR risk" value={filters.riskBand} onChange={(event) => setFilters((current) => ({ ...current, riskBand: event.target.value }))} className="h-8 rounded-md border border-white/10 bg-[#0b1220] px-2 text-[10px] text-slate-200">
++              <option value="all">All risk bands</option>
++              {(['Critical', 'High', 'Moderate', 'Low'] as FARRiskBand[]).map((risk) => <option key={risk} value={risk}>{risk}</option>)}
++            </select>
++            <select aria-label="Filter FAR owner" value={filters.owner} onChange={(event) => setFilters((current) => ({ ...current, owner: event.target.value }))} className="h-8 max-w-[190px] rounded-md border border-white/10 bg-[#0b1220] px-2 text-[10px] text-slate-200">
++              <option value="all">All owners</option>
++              {owners.map((owner) => <option key={owner} value={owner}>{owner}</option>)}
++            </select>
++          </>
++        ) : null}
++        {showDisplayControls ? (
++          <>
++            <div className="flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-500"><BarChart3 size={13} /> Display</div>
++            <select aria-label="FAR display density" value={density} onChange={(event) => setDensity(event.target.value as 'comfortable' | 'compact')} className="h-8 rounded-md border border-white/10 bg-[#0b1220] px-2 text-[10px] text-slate-200">
++              <option value="comfortable">Comfortable density</option>
++              <option value="compact">Compact density</option>
++            </select>
++            <button type="button" onClick={() => gridApiRef.current?.sizeColumnsToFit()} className="h-8 rounded-md border border-white/10 bg-white/[0.04] px-3 text-[10px] font-semibold text-slate-300 hover:bg-white/[0.08]">Fit columns</button>
++          </>
++        ) : null}
++        <span className="ml-auto text-[10px] font-medium text-slate-500">{filteredRows.length} of {records.length} modes</span>
++      </div>
++    ) : undefined,
++    filterChips: chips,
++  }
++
++  return (
++    <div
++      className={join(frameClassName, className)}
++      data-workspace="far"
++      data-golden-workspace-shell="true"
++      data-golden-workspace="far"
++      data-golden-archetype="analytical"
++      data-golden-geometry-version={geometryVersion}
++      data-far-golden-workspace="true"
++    >
++      <PageHeader {...header} />
++      <WorkspaceCommandBar {...commandBar} />
++
++      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4" data-far-summary="true">
++        <MetricCard label="Failure modes" value={records.length} detail="Tenant-scoped register" icon={<BarChart3 size={17} />} />
++        <MetricCard label="High risk" value={highRiskCount} detail="RPN 200 or greater" icon={<ShieldAlert size={17} />} />
++        <MetricCard label="Overdue" value={overdueCount} detail="Open for 30+ days" icon={<Clock3 size={17} />} />
++        <MetricCard label="Unassigned" value={unassignedCount} detail="Owner action required" icon={<UserRoundX size={17} />} />
++      </div>
++
++      <div className="flex flex-wrap items-center gap-2 rounded-lg border border-white/5 bg-white/[0.02] p-2" role="tablist" aria-label="FAR analytical mode">
++        {experience.modes.map((mode) => (
++          <button
++            key={mode.key}
++            type="button"
++            role="tab"
++            aria-selected={filters.mode === mode.key}
++            onClick={() => setFilters((current) => ({ ...current, mode: mode.key }))}
++            className={join(
++              'rounded-md px-3 py-2 text-[10px] font-semibold transition',
++              filters.mode === mode.key ? 'bg-indigo-500/20 text-indigo-100 ring-1 ring-indigo-400/25' : 'text-slate-400 hover:bg-white/[0.05] hover:text-slate-200',
++            )}
++          >
++            {mode.label}
++          </button>
++        ))}
++        <span className="ml-auto hidden text-[10px] text-slate-500 md:inline">{experience.modes.find((mode) => mode.key === filters.mode)?.description}</span>
++      </div>
++
++      <div
++        className={join(gridClassName, 'rounded-lg')}
++        style={{ minHeight: '350px' }}
++        data-golden-grid-surface="true"
++        data-testid="golden-grid-surface"
++        data-golden-grid-variant="golden"
++        data-golden-geometry-version={geometryVersion}
++        data-far-grid="true"
++      >
++        <div className={gridContentClassName} data-golden-grid-content="true">
++          <div className={join('grid h-full min-h-0 w-full grid-cols-1', (showInsights || selectedRecord) && 'xl:grid-cols-[minmax(0,1fr)_360px]')}>
++            <div className="relative min-h-0 min-w-0 border-white/5 xl:border-r">
++              {loadState === 'loading' ? (
++                <div className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-3 bg-[#020617]/80 text-slate-300 backdrop-blur-sm" data-far-loading="true">
++                  <RefreshCcw size={22} className="animate-spin text-indigo-300" />
++                  <p className="text-xs font-semibold">Loading...</p><p className="text-[10px] text-slate-500">Synchronizing FAR risk register</p>
++                </div>
++              ) : null}
++              {loadState === 'error' ? (
++                <div className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-4 bg-[#020617]/90 px-6 text-center" data-far-error="true" role="alert">
++                  <AlertTriangle size={28} className="text-rose-300" />
++                  <div>
++                    <p className="text-sm font-semibold text-slate-100">FAR data could not be loaded</p>
++                    <p className="mt-1 max-w-lg text-xs text-slate-400">{errorMessage || 'The active tenant did not return a usable FAR response.'}</p>
++                  </div>
++                  <button type="button" onClick={() => void load()} className="inline-flex items-center gap-2 rounded-lg bg-indigo-500/20 px-4 py-2 text-xs font-semibold text-indigo-100 ring-1 ring-indigo-400/25"><RefreshCcw size={14} /> Retry</button>
++                </div>
++              ) : null}
++              {loadState === 'ready' && filteredRows.length === 0 ? (
++                <div className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-3 bg-[#020617]/85 px-6 text-center" data-far-empty="true">
++                  <Filter size={26} className="text-slate-500" />
++                  <p className="text-sm font-semibold text-slate-200">No failure modes match this view</p>
++                  <p className="text-xs text-slate-500">Clear the active filters or choose All failure modes.</p>
++                  <button type="button" onClick={() => setFilters((current) => ({ ...current, preset: 'all', status: 'all', riskBand: 'all', owner: 'all', searchTerm: '' }))} className="rounded-lg border border-white/10 px-3 py-2 text-xs font-semibold text-slate-300 hover:bg-white/[0.05]">Clear filters</button>
++                </div>
++              ) : null}
++              <AgGridReact<FARRecord>
++                rowData={filteredRows}
++                columnDefs={columns}
++                defaultColDef={{ minWidth: 100, sortable: true, filter: true, resizable: true }}
++                getRowId={({ data }) => data.id}
++                rowSelection="single"
++                animateRows={false}
++                pagination
++                paginationPageSize={25}
++                rowHeight={density === 'compact' ? 34 : 44}
++                headerHeight={40}
++                suppressRowClickSelection={false}
++                onGridReady={onGridReady}
++                onGridSizeChanged={(event) => window.requestAnimationFrame(() => event.api.sizeColumnsToFit())}
++                onFirstDataRendered={(event) => window.requestAnimationFrame(() => event.api.sizeColumnsToFit())}
++                onRowClicked={onRowClicked}
++                overlayNoRowsTemplate="<span></span>"
++              />
++            </div>
++
++            {showInsights || selectedRecord ? (
++            <aside className="min-h-0 overflow-y-auto bg-black/15 p-4 custom-scrollbar" aria-label="FAR record detail" data-far-detail-panel="true">
++              {selectedRecord ? (
++                <div className="space-y-5" data-far-detail-record={selectedRecord.id}>
++                  <div className="flex items-start justify-between gap-3">
++                    <div className="min-w-0">
++                      <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-500">Failure mode dossier</p>
++                      <h3 className="mt-2 text-base font-semibold leading-6 text-slate-100">{selectedRecord.title}</h3>
++                      <p className="mt-1 text-xs text-slate-400">{selectedRecord.systemName} · {selectedRecord.failureType}</p>
++                    </div>
++                    <button type="button" onClick={() => setRecordDeepLink(null)} aria-label="Close FAR detail" className="rounded-md border border-white/10 p-2 text-slate-400 hover:bg-white/[0.05] hover:text-white"><X size={14} /></button>
++                  </div>
++                  <div className="flex flex-wrap gap-2">
++                    <Badge className={riskClass[selectedRecord.riskBand]}>{selectedRecord.rpn} · {selectedRecord.riskBand}</Badge>
++                    <Badge className={statusClass(selectedRecord.status)}>{selectedRecord.status}</Badge>
++                    {selectedRecord.overdue ? <Badge className="border-rose-400/25 bg-rose-500/10 text-rose-200">Overdue</Badge> : null}
++                  </div>
++                  <div className="grid grid-cols-3 gap-2 rounded-lg border border-white/5 bg-white/[0.025] p-3 text-center">
++                    {[
++                      ['Severity', selectedRecord.severity],
++                      ['Occurrence', selectedRecord.occurrence],
++                      ['Detection', selectedRecord.detection],
++                    ].map(([label, value]) => <div key={String(label)}><p className="text-lg font-semibold text-slate-100">{value}</p><p className="text-[9px] uppercase tracking-wide text-slate-500">{label}</p></div>)}
++                  </div>
++                  <section className="space-y-2">
++                    <h4 className="text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-500">Operational effect</h4>
++                    <p className="rounded-md border border-white/5 bg-black/20 px-3 py-3 text-xs leading-5 text-slate-300">{selectedRecord.effect}</p>
++                  </section>
++                  <div className="grid grid-cols-2 gap-3 text-xs">
++                    <div className="rounded-md border border-white/5 p-3"><p className="text-[9px] uppercase tracking-wide text-slate-500">Owner</p><p className="mt-1 font-medium text-slate-200">{selectedRecord.owner}</p></div>
++                    <div className="rounded-md border border-white/5 p-3"><p className="text-[9px] uppercase tracking-wide text-slate-500">Age</p><p className="mt-1 font-medium text-slate-200">{selectedRecord.ageDays} days</p></div>
++                    <div className="rounded-md border border-white/5 p-3"><p className="text-[9px] uppercase tracking-wide text-slate-500">Incidents</p><p className="mt-1 font-medium text-slate-200">{selectedRecord.incidentCount}</p></div>
++                    <div className="rounded-md border border-white/5 p-3"><p className="text-[9px] uppercase tracking-wide text-slate-500">Updated</p><p className="mt-1 font-medium text-slate-200">{formatFARDate(selectedRecord.updatedAt)}</p></div>
++                  </div>
++                  <DetailList title="Affected scope" items={selectedRecord.affectedAssets} empty="No affected assets or services linked." />
++                  <DetailList title="Causes" items={selectedRecord.causes} empty="No cause hypotheses recorded." />
++                  <DetailList title="Mitigations" items={selectedRecord.mitigations} empty="No active mitigations recorded." />
++                  <DetailList title="Prevention" items={selectedRecord.preventionActions} empty="No prevention actions recorded." />
++                  <DetailList title="Linked RCAs" items={selectedRecord.linkedRcas} empty="No root-cause analyses linked." />
++                  <button type="button" onClick={() => void copyLink()} className="inline-flex w-full items-center justify-center gap-2 rounded-lg border border-indigo-400/20 bg-indigo-500/10 px-3 py-2.5 text-xs font-semibold text-indigo-100 hover:bg-indigo-500/15"><Link2 size={14} /> Copy dossier link</button>
++                </div>
++              ) : (
++                <div className="flex h-full min-h-[260px] flex-col items-center justify-center gap-4 text-center" data-far-insights="true">
++                  <div className="rounded-xl border border-indigo-400/15 bg-indigo-500/10 p-3 text-indigo-200"><BarChart3 size={24} /></div>
++                  <div>
++                    <h3 className="text-sm font-semibold text-slate-200">Risk posture</h3>
++                    <p className="mt-1 text-xs leading-5 text-slate-500">Select a failure mode to open its operational dossier, causes, controls, and linked evidence.</p>
++                  </div>
++                  <div className="w-full space-y-2 text-left">
++                    {experience.presets.slice(1).map((preset) => {
++                      const count = preset.key === 'high-risk' ? highRiskCount : preset.key === 'overdue' ? overdueCount : preset.key === 'unassigned' ? unassignedCount : records.filter((record) => {
++                        const updated = record.updatedAt ? Date.parse(record.updatedAt) : Number.NaN
++                        return Number.isFinite(updated) && Date.now() - updated <= 14 * 86_400_000
++                      }).length
++                      return (
++                        <button key={preset.key} type="button" onClick={() => setFilters((current) => ({ ...current, preset: preset.key }))} className="flex w-full items-center justify-between rounded-md border border-white/5 bg-black/20 px-3 py-2 text-xs text-slate-300 hover:bg-white/[0.04]">
++                          <span>{preset.label}</span><span className="font-semibold text-slate-100">{count}</span>
++                        </button>
++                      )
++                    })}
++                  </div>
++                </div>
++              )}
++            </aside>
++            ) : null}
++          </div>
++        </div>
++      </div>
++      {errorMessage && loadState !== 'error' ? <div role="status" className="rounded-lg border border-amber-400/20 bg-amber-500/10 px-4 py-3 text-xs text-amber-100">{errorMessage}</div> : null}
++    </div>
++  )
++}
+diff --git a/frontend/src/components/far/FARGoldenWorkspaceModel.test.ts b/frontend/src/components/far/FARGoldenWorkspaceModel.test.ts
+new file mode 100644
+index 0000000..280f062
+--- /dev/null
++++ b/frontend/src/components/far/FARGoldenWorkspaceModel.test.ts
+@@ -0,0 +1,90 @@
++import { describe, expect, test } from 'vitest'
++import {
++  applyFARFilters,
++  extractFARRows,
++  farRiskBand,
++  normalizeFARRecord,
++  readFARRecordId,
++  updateFARRecordSearch,
++  type FARFilterState,
++} from './FARGoldenWorkspaceModel'
++
++const now = new Date('2026-08-01T12:00:00Z')
++
++const filters: FARFilterState = {
++  preset: 'all',
++  status: 'all',
++  riskBand: 'all',
++  owner: 'all',
++  searchTerm: '',
++  mode: 'failure_modes',
++}
++
++describe('FAR golden workspace model', () => {
++  test('normalizes the authoritative FAR payload into stable domain fields', () => {
++    const record = normalizeFARRecord({
++      id: 17,
++      title: 'Cooling loop pressure loss',
++      system_name: 'Core Cooling',
++      failure_type: 'Mechanical',
++      effect: 'Reduced heat extraction',
++      severity: 9,
++      occurrence: 6,
++      detection: 5,
++      status: 'Open',
++      metadata_json: { ownerTeam: 'Reliability' },
++      affected_assets: [{ name: 'pump-01' }],
++      causes: [{ cause_text: 'Seal fatigue' }],
++      mitigations: [{ mitigation_steps: 'Pressure alarm' }],
++      prevention_actions: [{ prevention_action: 'Quarterly seal inspection' }],
++      linked_rcas: [{ title: 'RCA-12' }],
++      created_at: '2026-06-01T00:00:00Z',
++    }, 0, now)
++
++    expect(record.id).toBe('17')
++    expect(record.rpn).toBe(270)
++    expect(record.riskBand).toBe('High')
++    expect(record.owner).toBe('Reliability')
++    expect(record.affectedAssets).toEqual(['pump-01'])
++    expect(record.causes).toEqual(['Seal fatigue'])
++    expect(record.mitigations).toEqual(['Pressure alarm'])
++    expect(record.preventionActions).toEqual(['Quarterly seal inspection'])
++    expect(record.linkedRcas).toEqual(['RCA-12'])
++    expect(record.overdue).toBe(true)
++    expect(record.searchText).toContain('seal fatigue')
++  })
++
++  test('handles malformed and null optional fields without anonymous columns', () => {
++    const record = normalizeFARRecord({ id: null, title: null, severity: 'bad', metadata_json: 'bad' }, 2, now)
++    expect(record.id).toBe('far-3')
++    expect(record.title).toBe('Failure mode 3')
++    expect(record.systemName).toBe('Unspecified system')
++    expect(record.owner).toBe('Unassigned')
++    expect(record.rpn).toBe(1)
++    expect(record.causes).toEqual([])
++  })
++
++  test('extracts list envelopes and filters presets, risk, owner, status, and search cumulatively', () => {
++    const rows = extractFARRows({ items: [
++      { id: 1, title: 'Critical power loss', status: 'Open', severity: 10, occurrence: 8, detection: 5, owner: 'SRE', created_at: '2026-05-01T00:00:00Z' },
++      { id: 2, title: 'Minor sensor drift', status: 'Resolved', severity: 2, occurrence: 2, detection: 2, owner: null, created_at: '2026-07-30T00:00:00Z' },
++    ] }, now)
++
++    expect(applyFARFilters(rows, { ...filters, preset: 'high-risk' }, now).map((row) => row.id)).toEqual(['1'])
++    expect(applyFARFilters(rows, { ...filters, preset: 'unassigned' }, now).map((row) => row.id)).toEqual(['2'])
++    expect(applyFARFilters(rows, { ...filters, searchTerm: 'power', owner: 'SRE', status: 'Open' }, now).map((row) => row.id)).toEqual(['1'])
++  })
++
++  test('classifies risk thresholds at exact boundaries', () => {
++    expect(farRiskBand(99)).toBe('Low')
++    expect(farRiskBand(100)).toBe('Moderate')
++    expect(farRiskBand(200)).toBe('High')
++    expect(farRiskBand(300)).toBe('Critical')
++  })
++
++  test('restores and updates stable FAR deep links without dropping unrelated query state', () => {
++    expect(readFARRecordId('?view=12&far=44')).toBe('44')
++    expect(updateFARRecordSearch('?view=12&id=9', '44')).toBe('?view=12&far=44')
++    expect(updateFARRecordSearch('?view=12&far=44', null)).toBe('?view=12')
++  })
++})
+diff --git a/frontend/src/components/far/FARGoldenWorkspaceModel.ts b/frontend/src/components/far/FARGoldenWorkspaceModel.ts
+new file mode 100644
+index 0000000..2e8c9ea
+--- /dev/null
++++ b/frontend/src/components/far/FARGoldenWorkspaceModel.ts
+@@ -0,0 +1,209 @@
++export type FARRiskBand = 'Critical' | 'High' | 'Moderate' | 'Low'
++export type FARPresetKey = 'all' | 'high-risk' | 'overdue' | 'unassigned' | 'recent'
++export type FARWorkspaceMode = 'failure_modes' | 'causes' | 'mitigations' | 'prevention'
++
++export interface FARRawRecord {
++  [key: string]: unknown
++}
++
++export interface FARRecord {
++  id: string
++  title: string
++  systemName: string
++  failureType: string
++  effect: string
++  status: string
++  severity: number
++  occurrence: number
++  detection: number
++  rpn: number
++  riskBand: FARRiskBand
++  owner: string
++  affectedAssets: string[]
++  causes: string[]
++  mitigations: string[]
++  preventionActions: string[]
++  linkedRcas: string[]
++  incidentCount: number
++  hasIncidentHistory: boolean
++  createdAt: string | null
++  updatedAt: string | null
++  ageDays: number
++  overdue: boolean
++  searchText: string
++  raw: FARRawRecord
++}
++
++export interface FARFilterState {
++  preset: FARPresetKey
++  status: string
++  riskBand: string
++  owner: string
++  searchTerm: string
++  mode: FARWorkspaceMode
++}
++
++const text = (value: unknown, fallback = '') => {
++  if (typeof value === 'string') return value.trim() || fallback
++  if (typeof value === 'number' || typeof value === 'boolean') return String(value)
++  return fallback
++}
++
++const number = (value: unknown, fallback = 0) => {
++  const parsed = typeof value === 'number' ? value : Number(value)
++  return Number.isFinite(parsed) ? parsed : fallback
++}
++
++const stringList = (value: unknown, preferredKeys: string[] = []): string[] => {
++  if (Array.isArray(value)) {
++    return value.map((item) => {
++      const direct = text(item)
++      if (direct) return direct
++      const record = object(item)
++      for (const key of preferredKeys) {
++        const candidate = text(record[key])
++        if (candidate) return candidate
++      }
++      return ''
++    }).filter(Boolean)
++  }
++  if (typeof value === 'string') {
++    const trimmed = value.trim()
++    if (!trimmed) return []
++    return trimmed.split(/[,;\n]/).map((item) => item.trim()).filter(Boolean)
++  }
++  return []
++}
++
++const object = (value: unknown): Record<string, unknown> => (
++  value && typeof value === 'object' && !Array.isArray(value) ? value as Record<string, unknown> : {}
++)
++
++const validDate = (value: unknown): string | null => {
++  const candidate = text(value)
++  if (!candidate) return null
++  const timestamp = Date.parse(candidate)
++  return Number.isFinite(timestamp) ? new Date(timestamp).toISOString() : null
++}
++
++export const farRiskBand = (rpn: number): FARRiskBand => {
++  if (rpn >= 300) return 'Critical'
++  if (rpn >= 200) return 'High'
++  if (rpn >= 100) return 'Moderate'
++  return 'Low'
++}
++
++const isClosedStatus = (status: string) => /resolved|closed|retired|archived|accepted/i.test(status)
++
++export function normalizeFARRecord(rawValue: unknown, index = 0, now = new Date()): FARRecord {
++  const raw = object(rawValue)
++  const metadata = object(raw.metadata_json ?? raw.metadata)
++  const title = text(raw.title ?? raw.name ?? raw.failure_mode, `Failure mode ${index + 1}`)
++  const systemName = text(raw.system_name ?? raw.system ?? metadata.system, 'Unspecified system')
++  const failureType = text(raw.failure_type ?? raw.type ?? metadata.failure_type, 'Operational')
++  const status = text(raw.status, 'Open')
++  const severity = Math.max(1, Math.min(10, number(raw.severity, 1)))
++  const occurrence = Math.max(1, Math.min(10, number(raw.occurrence, 1)))
++  const detection = Math.max(1, Math.min(10, number(raw.detection, 1)))
++  const computedRpn = Math.round(severity * occurrence * detection)
++  const rpn = Math.max(0, Math.round(number(raw.rpn, computedRpn)))
++  const owner = text(raw.owner ?? raw.owner_name ?? metadata.ownerTeam ?? metadata.owner_team ?? metadata.owner, 'Unassigned')
++  const affectedAssets = stringList(raw.affected_assets ?? raw.affectedAssets ?? metadata.affected_assets, ['name', 'system', 'primary_ip', 'id'])
++  const causes = stringList(raw.causes ?? metadata.causes, ['cause_text', 'title', 'responsible_team', 'id'])
++  const mitigations = stringList(raw.mitigations ?? metadata.mitigations, ['mitigation_steps', 'mitigation_type', 'status', 'id'])
++  const preventionActions = stringList(raw.prevention_actions ?? raw.preventionActions ?? metadata.prevention_actions, ['prevention_action', 'title', 'responsible_team', 'id'])
++  const linkedRcas = stringList(raw.linked_rcas ?? raw.linkedRcas ?? metadata.linked_rcas, ['title', 'incident_type', 'status', 'id'])
++  const hasIncidentHistory = Boolean(raw.has_incident_history ?? metadata.has_incident_history)
++  const incidentCount = Math.max(0, Math.round(number(raw.incident_count ?? metadata.incident_count, hasIncidentHistory ? 1 : 0)))
++  const createdAt = validDate(raw.created_at ?? raw.createdAt)
++  const updatedAt = validDate(raw.updated_at ?? raw.updatedAt ?? createdAt)
++  const referenceDate = createdAt ? new Date(createdAt) : now
++  const ageDays = Math.max(0, Math.floor((now.getTime() - referenceDate.getTime()) / 86_400_000))
++  const overdue = ageDays >= 30 && !isClosedStatus(status)
++  const id = text(raw.id ?? raw.key ?? raw.uuid, `far-${index + 1}`)
++  const effect = text(raw.effect ?? raw.description ?? metadata.effect, 'No effect summary provided.')
++  const searchable = [
++    id, title, systemName, failureType, effect, status, owner,
++    ...affectedAssets, ...causes, ...mitigations, ...preventionActions, ...linkedRcas,
++  ].join(' ').toLowerCase()
++
++  return {
++    id,
++    title,
++    systemName,
++    failureType,
++    effect,
++    status,
++    severity,
++    occurrence,
++    detection,
++    rpn,
++    riskBand: farRiskBand(rpn),
++    owner,
++    affectedAssets,
++    causes,
++    mitigations,
++    preventionActions,
++    linkedRcas,
++    incidentCount,
++    hasIncidentHistory,
++    createdAt,
++    updatedAt,
++    ageDays,
++    overdue,
++    searchText: searchable,
++    raw,
++  }
++}
++
++export function extractFARRows(payload: unknown, now = new Date()): FARRecord[] {
++  const value = object(payload)
++  const candidates = Array.isArray(payload)
++    ? payload
++    : [value.items, value.modes, value.records, value.data, value.results].find(Array.isArray) ?? []
++  return (candidates as unknown[]).map((row, index) => normalizeFARRecord(row, index, now))
++}
++
++export function farPresetMatches(record: FARRecord, preset: FARPresetKey, now = new Date()): boolean {
++  if (preset === 'high-risk') return record.rpn >= 200
++  if (preset === 'overdue') return record.overdue
++  if (preset === 'unassigned') return record.owner === 'Unassigned'
++  if (preset === 'recent') {
++    const updated = record.updatedAt ? Date.parse(record.updatedAt) : Number.NaN
++    return Number.isFinite(updated) && now.getTime() - updated <= 14 * 86_400_000
++  }
++  return true
++}
++
++export function applyFARFilters(records: FARRecord[], filters: FARFilterState, now = new Date()): FARRecord[] {
++  const query = filters.searchTerm.trim().toLowerCase()
++  return records
++    .filter((record) => farPresetMatches(record, filters.preset, now))
++    .filter((record) => filters.status === 'all' || record.status === filters.status)
++    .filter((record) => filters.riskBand === 'all' || record.riskBand === filters.riskBand)
++    .filter((record) => filters.owner === 'all' || record.owner === filters.owner)
++    .filter((record) => !query || record.searchText.includes(query))
++    .sort((left, right) => right.rpn - left.rpn || right.ageDays - left.ageDays || left.title.localeCompare(right.title))
++}
++
++export function formatFARDate(value: string | null): string {
++  if (!value) return 'Not recorded'
++  const date = new Date(value)
++  if (!Number.isFinite(date.getTime())) return 'Not recorded'
++  return new Intl.DateTimeFormat(undefined, { month: 'short', day: 'numeric', year: 'numeric' }).format(date)
++}
++
++export function readFARRecordId(search = ''): string | null {
++  const params = new URLSearchParams(search)
++  return params.get('far') || params.get('record') || params.get('id')
++}
++
++export function updateFARRecordSearch(search: string, recordId: string | null): string {
++  const params = new URLSearchParams(search)
++  params.delete('record')
++  params.delete('id')
++  if (recordId) params.set('far', recordId)
++  else params.delete('far')
++  const value = params.toString()
++  return value ? `?${value}` : ''
++}
+diff --git a/frontend/src/components/shared/GoldenWorkspaceGeometryContract.test.ts b/frontend/src/components/shared/GoldenWorkspaceGeometryContract.test.ts
+index 23624f8..7d1c550 100644
+--- a/frontend/src/components/shared/GoldenWorkspaceGeometryContract.test.ts
++++ b/frontend/src/components/shared/GoldenWorkspaceGeometryContract.test.ts
+@@ -47,6 +47,22 @@ describe('Golden workspace geometry contract', () => {
+     expect(commandBar).toContain('data-golden-command-bar="true"')
+   })
+ 
++  it('routes FAR through a typed domain adapter while retaining the shared golden owners', () => {
++    const shell = read('shared/OperationalWorkspaceShells.tsx')
++    const farWorkspace = read('far/FARGoldenWorkspace.tsx')
++
++    expect(shell).toContain("workspace === 'far'")
++    expect(shell).toContain('<FARGoldenWorkspace')
++    expect(shell).toContain('frameClassName={GOLDEN_WORKSPACE_FRAME_CLASS}')
++    expect(shell).toContain('gridClassName={GOLDEN_GRID_BASE_CLASS}')
++    expect(farWorkspace).toContain("import { PageHeader } from '../shared/LayoutPrimitives'")
++    expect(farWorkspace).toContain("import { WorkspaceCommandBar } from '../shared/WorkspaceCommandBar'")
++    expect(farWorkspace).toContain('data-far-golden-workspace="true"')
++    expect(farWorkspace).toContain('data-far-detail-panel="true"')
++    expect(farWorkspace).toContain('<AgGridReact<FARRecord>')
++    expect(farWorkspace).not.toContain('max-w-[400%]')
++  })
++
+   it.each(views)('%s cannot locally reconstruct fundamental shell geometry', (file) => {
+     const source = read(file)
+     expect(source).not.toContain('h-full min-h-0 min-w-0 w-full max-w-full box-border flex flex-col items-stretch space-y-4 overflow-hidden')
+diff --git a/frontend/src/components/shared/OperationalWorkspace.ts b/frontend/src/components/shared/OperationalWorkspace.ts
+index bf4e59f..efae3fa 100644
+--- a/frontend/src/components/shared/OperationalWorkspace.ts
++++ b/frontend/src/components/shared/OperationalWorkspace.ts
+@@ -304,7 +304,7 @@ export const OPERATIONAL_WORKSPACE_CAPABILITY_MATRIX: Record<string, Operational
+   },
+   far: {
+     entityLabel: 'Failure mode',
+-    supports: ['savedViews', 'history', 'compare', 'linkedRecords', 'archiveRestore', 'stickyIdentityHeader', 'frontendValidation', 'searchableSelectors'],
++    supports: ['savedViews', 'displayControls', 'history', 'compare', 'linkedRecords', 'archiveRestore', 'stickyIdentityHeader', 'frontendValidation', 'searchableSelectors', 'deepLinkedDetails'],
+     hasAdvancedEditor: true,
+     hasLinkedKnowledge: true,
+     hasVersioning: true,
+diff --git a/frontend/src/components/shared/OperationalWorkspaceCapabilities.test.ts b/frontend/src/components/shared/OperationalWorkspaceCapabilities.test.ts
+index b8941d2..49afa65 100644
+--- a/frontend/src/components/shared/OperationalWorkspaceCapabilities.test.ts
++++ b/frontend/src/components/shared/OperationalWorkspaceCapabilities.test.ts
+@@ -29,6 +29,7 @@ test.describe('Operational Workspace Capabilities', () => {
+   test('keeps FAR and Research capability declarations truthful', () => {
+     expect(OPERATIONAL_WORKSPACE_CAPABILITY_MATRIX.far.supports).toEqual([
+       'savedViews',
++      'displayControls',
+       'history',
+       'compare',
+       'linkedRecords',
+@@ -36,6 +37,7 @@ test.describe('Operational Workspace Capabilities', () => {
+       'stickyIdentityHeader',
+       'frontendValidation',
+       'searchableSelectors',
++      'deepLinkedDetails',
+     ])
+     expect(OPERATIONAL_WORKSPACE_CAPABILITY_MATRIX.research.supports).toEqual([
+       'savedViews',
+@@ -47,7 +49,8 @@ test.describe('Operational Workspace Capabilities', () => {
+       'searchableSelectors',
+     ])
+     expect(OPERATIONAL_WORKSPACE_CAPABILITY_MATRIX.research.supports).not.toContain('bulkActions')
+-    expect(OPERATIONAL_WORKSPACE_CAPABILITY_MATRIX.far.supports).not.toContain('displayControls')
++    expect(OPERATIONAL_WORKSPACE_CAPABILITY_MATRIX.far.supports).toContain('displayControls')
++    expect(OPERATIONAL_WORKSPACE_CAPABILITY_MATRIX.far.supports).toContain('deepLinkedDetails')
+   })
+ 
+ })
+diff --git a/frontend/src/components/shared/OperationalWorkspaceShells.tsx b/frontend/src/components/shared/OperationalWorkspaceShells.tsx
+index 58016b5..1a44315 100644
+--- a/frontend/src/components/shared/OperationalWorkspaceShells.tsx
++++ b/frontend/src/components/shared/OperationalWorkspaceShells.tsx
+@@ -5,6 +5,7 @@ import { AppDropdown } from './AppDropdown'
+ import { PageHeader } from './LayoutPrimitives'
+ import { WorkspaceCommandBar } from './WorkspaceCommandBar'
+ import { WorkspaceFloatingPanel } from './OperationalWorkspacePrimitives'
++import { FARGoldenWorkspace } from '../far/FARGoldenWorkspace'
+ 
+ const join = (...parts: Array<string | false | null | undefined>) => parts.filter(Boolean).join(' ')
+ type WorkspaceFilterChip = { id: string; label: string; onRemove: () => void }
+@@ -101,9 +102,29 @@ export function OperationalWorkspaceShell({
+     filterChips,
+   }
+ 
++  const floatingPortal = typeof document !== 'undefined' && floatingPanels
++    ? createPortal(floatingPanels, document.body)
++    : null
++
++  if (workspace === 'far') {
++    return (
++      <>
++        {floatingPortal}
++        <FARGoldenWorkspace
++          header={header}
++          className={className}
++          frameClassName={GOLDEN_WORKSPACE_FRAME_CLASS}
++          gridClassName={GOLDEN_GRID_BASE_CLASS}
++          gridContentClassName={GOLDEN_GRID_CONTENT_CLASS}
++          geometryVersion={GOLDEN_WORKSPACE_GEOMETRY_VERSION}
++        />
++      </>
++    )
++  }
++
+   return (
+     <OperationalWorkspaceFrame header={header} commandBar={resolvedCommandBar} className={className} workspace={workspace} archetype={archetype}>
+-      {typeof document !== 'undefined' && floatingPanels ? createPortal(floatingPanels, document.body) : null}
++      {floatingPortal}
+       {children}
+     </OperationalWorkspaceFrame>
+   )
+diff --git a/frontend/tests/far-golden-workspace.spec.ts b/frontend/tests/far-golden-workspace.spec.ts
+new file mode 100644
+index 0000000..b92f675
+--- /dev/null
++++ b/frontend/tests/far-golden-workspace.spec.ts
+@@ -0,0 +1,144 @@
++import { expect } from '@playwright/test'
++import { test } from './helpers/sysgrid-test'
++import { resetBrowserState, waitForAppIdle } from './helpers/sysgrid'
++
++async function waitForFAR(page: any) {
++  await waitForAppIdle(page)
++  await expect(page.locator('[data-far-loading="true"]')).toBeHidden({ timeout: 15_000 })
++  await expect(page.locator('[data-far-golden-workspace="true"]')).toBeVisible()
++}
++
++test.describe('FAR whole-view golden workspace', () => {
++  test('renders the complete tenant-scoped risk register, filters, detail dossier, and deep link', async ({ page }, testInfo) => {
++    await resetBrowserState(page)
++    await page.setViewportSize({ width: 1440, height: 1000 })
++    await page.goto('/far')
++    await waitForFAR(page)
++
++    const workspace = page.locator('[data-far-golden-workspace="true"]')
++    await expect(workspace.locator('[data-golden-command-bar="true"]')).toBeVisible()
++    await expect(workspace.locator('[data-far-summary="true"]')).toBeVisible()
++    const totalMetric = workspace.locator('[data-far-metric="failure-modes"]')
++    await expect(totalMetric).toBeVisible()
++    await expect.poll(async () => Number((await totalMetric.locator('p').nth(1).textContent()) || 0)).toBeGreaterThan(0)
++
++    const grid = workspace.locator('[data-far-grid="true"]')
++    await expect(grid).toBeVisible()
++    for (const label of ['Failure mode', 'Risk', 'Status', 'Owner', 'System', 'Type']) {
++      await expect(grid.locator('.ag-header-cell').filter({ hasText: label }).first(), `Missing FAR header ${label}`).toBeVisible()
++    }
++
++    await page.locator('[role="tab"]').filter({ hasText: /^Causes$/ }).click()
++    await expect(grid.locator('.ag-header-cell').filter({ hasText: 'Causes' }).first()).toBeVisible()
++    await page.locator('[role="tab"]').filter({ hasText: /^Failure modes$/ }).click()
++    await expect(grid.locator('.ag-header-cell').filter({ hasText: 'Risk' }).first()).toBeVisible()
++
++    await page.locator('button').filter({ hasText: /^Display$/ }).click()
++    await expect(page.locator('[data-far-display-controls="true"]')).toBeVisible()
++    await page.locator('button').filter({ hasText: /^Display$/ }).click()
++    await page.locator('button').filter({ hasText: /^Filters$/ }).click()
++    await expect(page.locator('[data-far-filter-bar="true"]')).toBeHidden()
++    await page.locator('button').filter({ hasText: /^Filters$/ }).click()
++    await expect(page.locator('[data-far-filter-bar="true"]')).toBeVisible()
++
++    const riskHeader = grid.locator('.ag-header-cell').filter({ hasText: /^Risk$/ }).first()
++    await riskHeader.click()
++    await expect(riskHeader).toHaveAttribute('aria-sort', /ascending|descending/)
++
++    const rows = grid.locator('.ag-center-cols-container .ag-row')
++    await expect.poll(() => rows.count()).toBeGreaterThan(0)
++    const firstRow = rows.first()
++    const firstTitle = ((await firstRow.locator('[col-id="title"]').textContent()) || '').trim()
++    expect(firstTitle.length).toBeGreaterThan(0)
++    await expect(firstRow.locator('.ag-cell').filter({ hasText: /\S+/ }).first()).toBeVisible()
++    await firstRow.click()
++
++    const detail = workspace.locator('[data-far-detail-record]')
++    await expect(detail).toBeVisible()
++    await expect(detail.getByText('Failure mode dossier')).toBeVisible()
++    await expect(detail.getByText('Operational effect')).toBeVisible()
++    await expect(detail.getByText('Causes')).toBeVisible()
++    await expect(detail.getByText('Mitigations')).toBeVisible()
++    await expect.poll(() => new URL(page.url()).searchParams.get('far')).not.toBeNull()
++
++    const deepLink = page.url()
++    await page.reload()
++    await waitForFAR(page)
++    await expect(page.locator('[data-far-detail-record]')).toBeVisible()
++    expect(page.url()).toBe(deepLink)
++
++    const savedView = page.getByLabel('FAR saved view')
++    await savedView.selectOption('preset:high-risk')
++    await expect(workspace.getByText('View: High risk')).toBeVisible()
++    await expect.poll(() => rows.count()).toBeGreaterThan(0)
++
++    const search = page.getByLabel('Search FAR failure modes')
++    const query = firstTitle.split(/\s+/)[0]
++    await search.fill(query)
++    await expect(workspace.getByText(`Search: ${query}`)).toBeVisible()
++    await expect.poll(() => rows.count()).toBeGreaterThan(0)
++    await search.fill('')
++
++    await page.context().setOffline(true)
++    await expect(workspace.locator('[data-far-sync-state="offline"]')).toBeVisible()
++    await page.context().setOffline(false)
++    await expect(workspace.locator('[data-far-sync-state="synced"]')).toBeVisible({ timeout: 15_000 })
++
++    await page.screenshot({ path: testInfo.outputPath('far-whole-view-golden-desktop.png'), fullPage: false, animations: 'disabled' })
++
++    await page.goto('/far?far=999999999')
++    await waitForFAR(page)
++    await expect(page.getByRole('status')).toContainText('unavailable or outside the active tenant')
++  })
++
++  test('preserves the golden hierarchy and usable controls at the narrow breakpoint', async ({ page }, testInfo) => {
++    await resetBrowserState(page)
++    await page.setViewportSize({ width: 390, height: 844 })
++    await page.goto('/far')
++    await waitForFAR(page)
++
++    const workspace = page.locator('[data-far-golden-workspace="true"]')
++    const workspaceBox = await workspace.boundingBox()
++    const commandBox = await workspace.locator('[data-golden-command-bar="true"]').boundingBox()
++    const gridBox = await workspace.locator('[data-far-grid="true"]').boundingBox()
++    expect(workspaceBox).not.toBeNull()
++    expect(commandBox).not.toBeNull()
++    expect(gridBox).not.toBeNull()
++    if (workspaceBox && commandBox && gridBox) {
++      expect(Math.abs(commandBox.x - workspaceBox.x)).toBeLessThanOrEqual(2)
++      expect(Math.abs((commandBox.x + commandBox.width) - (workspaceBox.x + workspaceBox.width))).toBeLessThanOrEqual(2)
++      expect(Math.abs(gridBox.x - workspaceBox.x)).toBeLessThanOrEqual(2)
++      expect(Math.abs((gridBox.x + gridBox.width) - (workspaceBox.x + workspaceBox.width))).toBeLessThanOrEqual(2)
++    }
++
++    await expect(page.getByLabel('Search FAR failure modes')).toBeVisible()
++    await expect(page.getByLabel('FAR saved view')).toBeVisible()
++    await expect(page.getByLabel('Filter FAR risk')).toBeVisible()
++    await expect(workspace.locator('[data-far-metric="high-risk"]')).toBeVisible()
++    await expect(workspace.locator('.ag-header-cell').filter({ hasText: 'Failure mode' }).first()).toBeVisible()
++
++    await page.screenshot({ path: testInfo.outputPath('far-whole-view-golden-narrow.png'), fullPage: false, animations: 'disabled' })
++  })
++
++  test('renders evidence-backed empty and recovery states instead of a blank grid', async ({ page }, testInfo) => {
++    await resetBrowserState(page)
++    await page.route('**/api/v1/far/modes*', async (route) => {
++      await route.fulfill({ status: 200, contentType: 'application/json', body: '[]' })
++    })
++    await page.goto('/far')
++    await waitForFAR(page)
++    await expect(page.locator('[data-far-empty="true"]')).toBeVisible()
++    await expect(page.getByRole('button', { name: 'Clear filters' })).toBeVisible()
++    await page.screenshot({ path: testInfo.outputPath('far-whole-view-empty.png'), fullPage: false, animations: 'disabled' })
++
++    await page.unroute('**/api/v1/far/modes*')
++    await page.route('**/api/v1/far/modes*', async (route) => {
++      await route.fulfill({ status: 503, contentType: 'application/json', body: JSON.stringify({ detail: 'FAR service unavailable' }) })
++    })
++    await page.reload()
++    await expect(page.locator('[data-far-error="true"]')).toBeVisible({ timeout: 15_000 })
++    await expect(page.getByRole('button', { name: 'Retry' })).toBeVisible()
++    await expect(page.locator('[data-far-error="true"]')).toContainText('FAR service unavailable')
++    await page.screenshot({ path: testInfo.outputPath('far-whole-view-error.png'), fullPage: false, animations: 'disabled' })
++  })
++})
+diff --git a/scripts/verify-app.sh b/scripts/verify-app.sh
+index 0713c9b..e8d74b1 100644
+--- a/scripts/verify-app.sh
++++ b/scripts/verify-app.sh
+@@ -415,6 +415,7 @@ configure_campaign_scope() {
+     case "$token" in
+       playwright:golden-seeded) selected+=(tests/golden-eight-seeded-visual-matrix.spec.ts) ;;
+       playwright:shell-geometry) selected+=(tests/shell-and-search.spec.ts) ;;
++      playwright:far-golden) selected+=(tests/far-golden-workspace.spec.ts) ;;
+       playwright:sentinel) selected+=(tests/sentinel_comprehensive.spec.ts) ;;
+       *) echo "Unsupported campaign test token: $token" >&2; exit 65 ;;
+     esac
+@@ -424,16 +425,24 @@ configure_campaign_scope() {
+ }
+ 
+ run_campaign_validation_lanes() {
+-  emit_progress static_started started "Campaign static and changed-area verification started."
++  emit_progress static_started started "Campaign static, backend contract, and changed-area verification started."
++  (
++    cd "$BACKEND_DIR"
++    ./venv/bin/pytest test_workspace_views.py -k "workspace_definition_registry_is_complete_and_typed or far_workspace_experience_and_saved_view_contract"
++  )
++  emit_progress backend_completed passed "Campaign FAR backend definition, saved-view, and experience contracts passed."
+   (
+     cd "$FRONTEND_DIR"
+     npm run check:canonical-verification
+     npm run test:lint
+     npm run typecheck
+-    npm run test:coverage -- --maxWorkers "$FRONTEND_WORKERS" --run src/components/shared/GoldenWorkspaceGeometryContract.test.ts
++    npm run test:coverage -- --maxWorkers "$FRONTEND_WORKERS" --run \
++      src/components/shared/GoldenWorkspaceGeometryContract.test.ts \
++      src/components/shared/OperationalWorkspaceCapabilities.test.ts \
++      src/components/far/FARGoldenWorkspaceModel.test.ts
+     VITE_API_BASE_URL="$BACKEND_ORIGIN" VITE_FRONTEND_ORIGIN="$FRONTEND_ORIGIN" npm run build
+   )
+-  emit_progress frontend_completed passed "Campaign changed-area verification and production build passed."
++  emit_progress frontend_completed passed "Campaign FAR model, golden geometry, capability, and production build verification passed."
+ }
+ 
+ run_static_lane() {

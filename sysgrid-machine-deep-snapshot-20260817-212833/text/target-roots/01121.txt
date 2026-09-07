@@ -1,0 +1,239 @@
+ORIGINAL_PATH: /Users/haewonkim/.local/state/sysgrid-supervisor/notifications/20260801T070156Z-70948-427000.json
+ORIGINAL_SHA256: e954f107722243d5a01d6ae12b2525e2a57e61c7bd106ad5ce5cef632002f013
+================================================================================
+{
+  "events": {
+    "backend_completed": {
+      "attempts": 1,
+      "chat_id_suffix": "1055",
+      "event_id": "backend_completed",
+      "first_attempt_utc": "2026-08-01T07:06:51Z",
+      "message_id": 446,
+      "payload_sha256": "cf1a277b8db0b410ed492d34084aa2de1dc23045ee61b14d1662971c1f7a59fd",
+      "required": false,
+      "status": "delivered",
+      "updated_utc": "2026-08-01T07:06:51Z"
+    },
+    "backend_started": {
+      "attempts": 1,
+      "chat_id_suffix": "1055",
+      "event_id": "backend_started",
+      "first_attempt_utc": "2026-08-01T07:02:03Z",
+      "message_id": 441,
+      "payload_sha256": "c8ed95f678cdd0c6dced8fb6f4dac4e94a2895916bbdc8032159ead3c46c60d9",
+      "required": false,
+      "status": "delivered",
+      "updated_utc": "2026-08-01T07:02:04Z"
+    },
+    "build_completed": {
+      "attempts": 1,
+      "chat_id_suffix": "1055",
+      "event_id": "build_completed",
+      "first_attempt_utc": "2026-08-01T07:06:52Z",
+      "message_id": 448,
+      "payload_sha256": "f16515c9c7d4ffa89e03bdafcc513bcaef4186f019d289de9c5b6e83053e8b4f",
+      "required": false,
+      "status": "delivered",
+      "updated_utc": "2026-08-01T07:06:52Z"
+    },
+    "capsule_selected": {
+      "attempts": 1,
+      "chat_id_suffix": "1055",
+      "event_id": "capsule_selected",
+      "first_attempt_utc": "2026-08-01T07:01:56Z",
+      "message_id": 435,
+      "payload_sha256": "06574636469e1e23239b6dd740bb1bdede9ab2c21b0c92f471c4d5b1325dd358",
+      "required": true,
+      "status": "delivered",
+      "updated_utc": "2026-08-01T07:01:57Z"
+    },
+    "capsule_verified": {
+      "attempts": 1,
+      "chat_id_suffix": "1055",
+      "event_id": "capsule_verified",
+      "first_attempt_utc": "2026-08-01T07:01:57Z",
+      "message_id": 436,
+      "payload_sha256": "136b455a74bc892eed41afc12c36059f0b9ad72cf9393afc6fec6ce4215ec965",
+      "required": true,
+      "status": "delivered",
+      "updated_utc": "2026-08-01T07:01:58Z"
+    },
+    "engine-heartbeat-1": {
+      "attempts": 1,
+      "chat_id_suffix": "1055",
+      "event_id": "engine-heartbeat-1",
+      "first_attempt_utc": "2026-08-01T07:04:01Z",
+      "message_id": 443,
+      "payload_sha256": "9a32cce47cedd5a6867095acde8338cd6bce92b6696e8da05744b9319ef2315e",
+      "required": false,
+      "status": "delivered",
+      "updated_utc": "2026-08-01T07:04:02Z"
+    },
+    "engine-heartbeat-2": {
+      "attempts": 1,
+      "chat_id_suffix": "1055",
+      "event_id": "engine-heartbeat-2",
+      "first_attempt_utc": "2026-08-01T07:06:01Z",
+      "message_id": 444,
+      "payload_sha256": "13ab1bd2f0dd12084d48f2b0a8c4a0600c0c34be3cde44cfeadd186438d83863",
+      "required": false,
+      "status": "delivered",
+      "updated_utc": "2026-08-01T07:06:01Z"
+    },
+    "engine_completed": {
+      "attempts": 1,
+      "chat_id_suffix": "1055",
+      "event_id": "engine_completed",
+      "first_attempt_utc": "2026-08-01T07:07:06Z",
+      "message_id": 452,
+      "payload_sha256": "f4f161ce150aea698a5a2115de111e355ee6aad17cd5ae42318122196c21c888",
+      "required": false,
+      "status": "delivered",
+      "updated_utc": "2026-08-01T07:07:07Z"
+    },
+    "engine_launch": {
+      "attempts": 1,
+      "chat_id_suffix": "1055",
+      "event_id": "engine_launch",
+      "first_attempt_utc": "2026-08-01T07:02:00Z",
+      "message_id": 439,
+      "payload_sha256": "d6f941701b459433cf3eaf902cf9b757d16ef1436113ab2d4a830fd97e538028",
+      "required": true,
+      "status": "delivered",
+      "updated_utc": "2026-08-01T07:02:01Z"
+    },
+    "evidence_verified": {
+      "attempts": 1,
+      "chat_id_suffix": "1055",
+      "event_id": "evidence_verified",
+      "first_attempt_utc": "2026-08-01T07:07:07Z",
+      "message_id": 453,
+      "payload_sha256": "b350064302d4adccb4c16df258be05e8c2baed7c68b16c4c4f9cee88536e9b8d",
+      "required": false,
+      "status": "delivered",
+      "updated_utc": "2026-08-01T07:07:08Z"
+    },
+    "frontend_completed": {
+      "attempts": 1,
+      "chat_id_suffix": "1055",
+      "event_id": "frontend_completed",
+      "first_attempt_utc": "2026-08-01T07:06:51Z",
+      "message_id": 447,
+      "payload_sha256": "8f1a686d35e3a9695c5fa8c2c7778dea8c7f3402cbc853e5393a05e57297a347",
+      "required": false,
+      "status": "delivered",
+      "updated_utc": "2026-08-01T07:06:52Z"
+    },
+    "frontend_started": {
+      "attempts": 1,
+      "chat_id_suffix": "1055",
+      "event_id": "frontend_started",
+      "first_attempt_utc": "2026-08-01T07:02:04Z",
+      "message_id": 442,
+      "payload_sha256": "d6b18de29776cc5731c0b1f2e864c9662e1e3d0332e6c2657a22c8e7782dba80",
+      "required": false,
+      "status": "delivered",
+      "updated_utc": "2026-08-01T07:02:05Z"
+    },
+    "playwright_completed": {
+      "attempts": 1,
+      "chat_id_suffix": "1055",
+      "event_id": "playwright_completed",
+      "first_attempt_utc": "2026-08-01T07:07:05Z",
+      "message_id": 451,
+      "payload_sha256": "a4e607c7957d58ef4fc127e340704d7c6aa28eac0918793ff7d25a4da9f89488",
+      "required": false,
+      "status": "delivered",
+      "updated_utc": "2026-08-01T07:07:06Z"
+    },
+    "playwright_started": {
+      "attempts": 1,
+      "chat_id_suffix": "1055",
+      "event_id": "playwright_started",
+      "first_attempt_utc": "2026-08-01T07:06:59Z",
+      "message_id": 450,
+      "payload_sha256": "391985ff6d3ca0c750ebc9f0323de972fc682309209300b18fbada7a8295899b",
+      "required": false,
+      "status": "delivered",
+      "updated_utc": "2026-08-01T07:07:00Z"
+    },
+    "preflight_completed": {
+      "attempts": 1,
+      "chat_id_suffix": "1055",
+      "event_id": "preflight_completed",
+      "first_attempt_utc": "2026-08-01T07:01:59Z",
+      "message_id": 438,
+      "payload_sha256": "3e6b6940637b854bde855028bfd39f052b2f24393d42197dec480d0f38a2f548",
+      "required": true,
+      "status": "delivered",
+      "updated_utc": "2026-08-01T07:02:00Z"
+    },
+    "preflight_started": {
+      "attempts": 1,
+      "chat_id_suffix": "1055",
+      "event_id": "preflight_started",
+      "first_attempt_utc": "2026-08-01T07:01:58Z",
+      "message_id": 437,
+      "payload_sha256": "8fbd451f78540aebe5eefacd295b3fee808850d81690658c26d23f44ef99a1fd",
+      "required": true,
+      "status": "delivered",
+      "updated_utc": "2026-08-01T07:01:59Z"
+    },
+    "publication_completed": {
+      "attempts": 1,
+      "chat_id_suffix": "1055",
+      "event_id": "publication_completed",
+      "first_attempt_utc": "2026-08-01T07:07:09Z",
+      "message_id": 455,
+      "payload_sha256": "245e467eada624c7bf0234140461927767daadd14ae5e9ee2e49054f8fc47be3",
+      "required": false,
+      "status": "delivered",
+      "updated_utc": "2026-08-01T07:07:09Z"
+    },
+    "publication_started": {
+      "attempts": 1,
+      "chat_id_suffix": "1055",
+      "event_id": "publication_started",
+      "first_attempt_utc": "2026-08-01T07:07:08Z",
+      "message_id": 454,
+      "payload_sha256": "c2b57d590a6d6cdda234ee3002531aedf144c01c19bc425e181a85e1e836225e",
+      "required": false,
+      "status": "delivered",
+      "updated_utc": "2026-08-01T07:07:09Z"
+    },
+    "runtime_ready": {
+      "attempts": 1,
+      "chat_id_suffix": "1055",
+      "event_id": "runtime_ready",
+      "first_attempt_utc": "2026-08-01T07:06:58Z",
+      "message_id": 449,
+      "payload_sha256": "c96c00317006c7981454af5b781c9ab7cbcd88483b99d5e51705ef6aa97e168d",
+      "required": false,
+      "status": "delivered",
+      "updated_utc": "2026-08-01T07:06:59Z"
+    },
+    "static_completed": {
+      "attempts": 1,
+      "chat_id_suffix": "1055",
+      "event_id": "static_completed",
+      "first_attempt_utc": "2026-08-01T07:06:50Z",
+      "message_id": 445,
+      "payload_sha256": "f5279584c5a033bfff8b696e062a47b5ecd31701d5ac7f8a9128f613e65fdbeb",
+      "required": false,
+      "status": "delivered",
+      "updated_utc": "2026-08-01T07:06:51Z"
+    },
+    "static_started": {
+      "attempts": 1,
+      "chat_id_suffix": "1055",
+      "event_id": "static_started",
+      "first_attempt_utc": "2026-08-01T07:02:02Z",
+      "message_id": 440,
+      "payload_sha256": "1280279cb886671ac0a220d95230ed1a8efe55f4638ece68b2e12d42307f63ca",
+      "required": false,
+      "status": "delivered",
+      "updated_utc": "2026-08-01T07:02:03Z"
+    }
+  },
+  "run_id": "20260801T070156Z-70948-427000"
+}

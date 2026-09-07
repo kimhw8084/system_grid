@@ -1,0 +1,32 @@
+ORIGINAL_PATH: /Users/haewonkim/.local/share/sysgrid-runner/backups/20260728-145934/sgwatch
+ORIGINAL_SHA256: 5bf60ed552d1e555de8607736047379abb8aae8751146a9f7c6d4516ed83ecdf
+================================================================================
+#!/usr/bin/env bash
+set -u
+pid="${1:?missing worker pid}"
+status="${2:?missing status path}"
+runner="${3:?missing runner name}"
+notify="$HOME/.local/bin/sgnotify"
+
+while kill -0 "$pid" 2>/dev/null; do
+  sleep 5
+done
+sleep 2
+
+rc="$(awk -F': ' '/^Exit code:/ {print $2; exit}' "$status" 2>/dev/null || true)"
+finished="$(sed -n 's/^Finished: //p' "$status" 2>/dev/null | head -n 1)"
+
+if [[ "$rc" == "0" ]]; then
+  message="✅ SysGrid run finished successfully
+Runner: $runner
+Finished: ${finished:-unknown}
+Result: iCloud Drive/SysGrid-Control/Outbox"
+else
+  message="❌ SysGrid run failed
+Runner: $runner
+Exit code: ${rc:-unknown}
+Finished: ${finished:-unknown}
+Upload: Outbox/latest-terminal.txt"
+fi
+
+"$notify" "$message" || true

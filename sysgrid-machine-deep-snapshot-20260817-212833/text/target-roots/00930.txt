@@ -1,0 +1,13 @@
+ORIGINAL_PATH: /Users/haewonkim/.local/state/sysgrid-supervisor/runs/20260805T104339Z-2079-216000/product-progress.jsonl
+ORIGINAL_SHA256: cdd8ac940cacf0b26cdd0923c280e1b0e1c86756ef3def5a2e1d0108cbf99ac8
+================================================================================
+{"event_id": "static_started", "message": "Canonical static verification started.", "run_id": "20260805T104339Z-2079-216000", "sequence": 1, "status": "started"}
+{"event_id": "backend_started", "message": "Backend coverage lane started.", "run_id": "20260805T104339Z-2079-216000", "sequence": 2, "status": "started"}
+{"event_id": "frontend_started", "message": "Frontend lint, contracts, typecheck, coverage, and production build lane started.", "run_id": "20260805T104339Z-2079-216000", "sequence": 3, "status": "started"}
+{"event_id": "static_completed", "message": "Canonical static verification passed.", "run_id": "20260805T104339Z-2079-216000", "sequence": 4, "status": "passed"}
+{"event_id": "backend_completed", "message": "Backend coverage lane passed.", "run_id": "20260805T104339Z-2079-216000", "sequence": 5, "status": "passed"}
+{"event_id": "frontend_completed", "message": "Frontend verification lane passed.", "run_id": "20260805T104339Z-2079-216000", "sequence": 6, "status": "passed"}
+{"event_id": "build_completed", "message": "Canonical production frontend build completed.", "run_id": "20260805T104339Z-2079-216000", "sequence": 7, "status": "passed"}
+{"event_id": "runtime_ready", "message": "Disposable tenant, backend, and exact production frontend are ready.", "run_id": "20260805T104339Z-2079-216000", "sequence": 8, "status": "passed"}
+{"event_id": "playwright_started", "message": "Canonical Playwright and Golden Eight evidence matrix started.", "run_id": "20260805T104339Z-2079-216000", "sequence": 9, "status": "started"}
+{"event_id": "playwright_completed", "message": "Canonical Playwright matrix failed; complete evidence remains available.", "run_id": "20260805T104339Z-2079-216000", "sequence": 10, "status": "failed"}

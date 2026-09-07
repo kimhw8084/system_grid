@@ -1,0 +1,45 @@
+ORIGINAL_PATH: /Users/haewonkim/.local/share/sysgrid-supervisor/v1.2.0/RESEARCH_AND_DESIGN.md
+ORIGINAL_SHA256: 53d7102590af8cbc1d7f4477c131e1b19c2c81948feb7e8f8461ac38f318f642
+================================================================================
+# Research and Design Record
+
+## Primary-source mechanisms used
+
+- Python `fcntl.flock` with `LOCK_EX | LOCK_NB` for one live supervisor owner.
+- Python `os.replace` plus file and directory `fsync` for durable atomic publication on one filesystem.
+- Python `subprocess` with an argument vector, `shell=False`, closed inherited descriptors, sanitized environment, and synchronous child ownership.
+- Python `concurrent.futures.ThreadPoolExecutor` for independent I/O-bound preflight checks that collect all failures instead of stopping at the first.
+- Explicit ZIP member validation before extraction/read, full manifest path equality, streamed SHA-256, CRC checks, and decompression limits.
+- Git machine-readable/NUL-separated path output for filenames containing spaces or unusual bytes.
+- Git `apply --check` and `apply --check --reverse` to distinguish forward, already-applied, and ambiguous patch states without mutation.
+
+Primary documentation reviewed:
+
+- https://docs.python.org/3/library/fcntl.html
+- https://docs.python.org/3/library/os.html
+- https://docs.python.org/3/library/subprocess.html
+- https://docs.python.org/3/library/concurrent.futures.html
+- https://docs.python.org/3/library/zipfile.html
+- https://git-scm.com/docs/git-status
+- https://git-scm.com/docs/git-ls-files
+- https://git-scm.com/docs/git-apply
+- https://git-scm.com/docs/git-worktree
+
+## Failure-elimination decisions
+
+1. **Remove asynchronous output matching.** The supervisor calls the accepted engine's exact `execute <capsule> --repo <repo> --outbox <outbox>` interface and waits for that child.
+2. **Never share the engine's working Outbox.** Each run receives a private local Outbox. iCloud publication happens only after the child exits and the artifact passes exact correlation.
+3. **Do not retry after mutation may have begun.** A second invocation could convert a useful failure into an ambiguous patch-state failure or duplicate delivery.
+4. **Validate the declared repository ledger before starting the engine.** Expected dirty paths, pre-hashes, and protected hashes are checked from manifest-covered capsule JSON.
+5. **Preserve exact capsule identity.** Local staging retains the original filename and verifies bytes before and after copy.
+6. **Use content-addressed publication.** The immutable artifact is stored under its SHA-256, then an atomic canonical alias is produced.
+7. **Keep the hot path small.** Runtime work is bounded and read-only until the stable engine begins. Full application gates are not duplicated.
+
+## Released-byte verification inventory
+
+The package contains 37 tests, including two end-to-end synthetic-engine tests:
+
+- success invokes the engine once and publishes a correlated artifact;
+- application failure invokes the engine once, remains `FAILED_REVIEW_READY`, and is not retried.
+
+The suite also covers archive safety, exact manifests, engine discovery, locking, atomic writes/copies, capsule schema and patch identity, exact Git baseline, dirty paths, declared hash ledgers, content-addressed publication, and consumed-capsule archival.

@@ -1,0 +1,29 @@
+ORIGINAL_PATH: /Users/haewonkim/.local/share/sysgrid-campaign-platform/v1.0.0/IMPLEMENTATION_REPORT.json
+ORIGINAL_SHA256: 0a1a2999aa460757f5b2d443965e6f6d9186851c5e903ac4b1c258ae0782fb59
+================================================================================
+{
+  "closed_findings": [
+    "engine per-file dirty path identity",
+    "shared supervisor/engine state identity",
+    "non-short-circuit independent recipe collection",
+    "complete safe source authority",
+    "64+ questionnaire closure gate",
+    "approval lock hash binding",
+    "14-category risk matrix closure",
+    "one-command iCloud campaign execution"
+  ],
+  "components": {
+    "campaign_controller": "1.0.0",
+    "engine": "1.1.0",
+    "supervisor": "2.2.0"
+  },
+  "deferred": [
+    "product Attempt 12 resume until installed platform qualification PASS",
+    "live repository browser validation only inside next campaign"
+  ],
+  "product_attempt": 12,
+  "product_value_added": false,
+  "repair": "Platform Repair P1",
+  "schema_version": "1.0",
+  "work_class": "platform_verification_repair"
+}

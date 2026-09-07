@@ -1,0 +1,32 @@
+ORIGINAL_PATH: /Users/haewonkim/.local/state/sysgrid-supervisor/runs/20260801T220823Z-5958-440000/preflight.json
+ORIGINAL_SHA256: a2693d96330daba08c6861f21c3d24ad6c0e7324dd51f15388221796d19bac80
+================================================================================
+{
+  "declared_state": {
+    "dirty_path_count": 57,
+    "pre_hash_count": 57,
+    "protected_hash_count": 19
+  },
+  "engine_self_test": {
+    "engine_version": "1.0.4",
+    "result": "PASS",
+    "tests": [
+      "safe-path",
+      "manifest",
+      "corruption"
+    ]
+  },
+  "patch": {
+    "applicable": true,
+    "forward_diagnostic": "Checking patch backend/app/api/workspaces.py...\nChecking patch backend/test_workspace_views.py...\nChecking patch frontend/src/components/far/FARGoldenWorkspace.tsx...\nChecking patch frontend/src/components/far/FARGoldenWorkspaceModel.test.ts...\nChecking patch frontend/src/components/far/FARGoldenWorkspaceModel.ts...\nChecking patch frontend/src/components/shared/GoldenWorkspaceGeometryContract.test.ts...\nChecking patch frontend/src/components/shared/OperationalWorkspace.ts...\nChecking patch frontend/src/components/shared/OperationalWorkspaceCapabilities.test.ts...\nChecking patch frontend/src/components/shared/OperationalWorkspaceShells.tsx...\nChecking patch frontend/tests/far-golden-workspace.spec.ts...\nChecking patch scripts/verify-app.sh...\nwarning: scripts/verify-app.sh has type 100755, expected 100644",
+    "forward_exit_code": 0,
+    "reverse_applicable": false,
+    "reverse_diagnostic": "Checking patch scripts/verify-app.sh...\nwarning: scripts/verify-app.sh has type 100755, expected 100644\nerror: while searching for:\n    case \"$token\" in\n      playwright:golden-seeded) selected+=(tests/golden-eight-seeded-visual-matrix.spec.ts) ;;\n      playwright:shell-geometry) selected+=(tests/shell-and-search.spec.ts) ;;\n      playwright:far-golden) selected+=(tests/far-golden-workspace.spec.ts) ;;\n      playwright:sentinel) selected+=(tests/sentinel_comprehensive.spec.ts) ;;\n      *) echo \"Unsupported campaign test token: $token\" >&2; exit 65 ;;\n    esac\n\nerror: patch failed: scripts/verify-app.sh:415\nerror: scripts/verify-app.sh: patch does not apply\nChecking patch frontend/tests/far-golden-workspace.spec.ts...\nerror: frontend/tests/far-golden-workspace.spec.ts: No such file or directory\nChecking patch frontend/src/components/shared/OperationalWorkspaceShells.tsx...\nerror: while searching for:\nimport { PageHeader } from './LayoutPrimitives'\nimport { WorkspaceCommandBar } from './WorkspaceCommandBar'\nimport { WorkspaceFloatingPanel } from './OperationalWorkspacePrimitives'\nimport { FARGoldenWorkspace } from '../far/FARGoldenWorkspace'\n\nconst join = (...parts: Array<string | false | null | undefined>) => parts.filter(Boolean).join(' ')\ntype WorkspaceFilterChip = { id: string; label: string; onRemove: () => void }\n\nerror: patch failed: frontend/src/components/shared/OperationalWorkspaceShells.tsx:5\nerror: frontend/src/components/shared/OperationalWorkspaceShells.tsx: patch does not apply\nChecking patch frontend/src/components/shared/OperationalWorkspaceCapabilities.test.ts...\nerror: while searching for:\n  test('keeps FAR and Research capability declarations truthful', () => {\n    expect(OPERATIONAL_WORKSPACE_CAPABILITY_MATRIX.far.supports).toEqual([\n      'savedViews',\n      'displayControls',\n      'history',\n      'compare',\n      'linkedRecords',\n\nerror: patch failed: frontend/src/components/shared/OperationalWorkspaceCapabilities.test.ts:29\nerror: frontend/sr",
+    "reverse_exit_code": 1
+  },
+  "storage": {
+    "control_free": 56841363456,
+    "local_free": 56841363456,
+    "required": 536870912
+  }
+}

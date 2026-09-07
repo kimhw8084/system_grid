@@ -1,0 +1,136 @@
+ORIGINAL_PATH: /Users/haewonkim/.local/share/sysgrid-campaign-platform/v1.1.0/QUALIFICATION_REPORT.json
+ORIGINAL_SHA256: 481168c9ba5e2185799d20fa647aaa2d4b7865784ee98fa122b12761c55223cc
+================================================================================
+{
+  "files": {
+    "INSTALL_AND_QUALIFY.command": {
+      "sha256": "8f5c25893034665c684d5192c78b0c6d8a1a1ef074f65f038962559a33143470",
+      "size": 8945
+    },
+    "PROJECT_CONTINUITY/04_SYSGRID_NEW_CHAT_BOOTSTRAP_PROTOCOL_v1.0.0.md": {
+      "sha256": "95edbc188f26792e7a7a2c844caa7cb68e1fb96acf35fe748f79847ea616654b",
+      "size": 5638
+    },
+    "PROJECT_CONTINUITY/05_SYSGRID_CONTINUITY_CONFORMANCE_SPEC_v1.0.0.md": {
+      "sha256": "0d29a1017a3ac009d6c30ae53b17b0d8c09419700b86fd59068a9815ca5875c2",
+      "size": 4513
+    },
+    "PROJECT_CONTINUITY/PROJECT_INSTRUCTIONS_REPLACEMENT_v1.0.0.md": {
+      "sha256": "821674f6eb6dd1e046cffb73bfc4fdcd26ccef1b74bee84763a6768de1fb473f",
+      "size": 4413
+    },
+    "RELEASE_DESCRIPTOR.json": {
+      "sha256": "01491e69668767f3d0319e5f5327d347b7041f4bd81110b6fadaca6797e10140",
+      "size": 2710
+    },
+    "payload/sg": {
+      "sha256": "baa9b40c2c5b99702806f498f5c806f16b710844989fa977933cf131df2e02f7",
+      "size": 1054
+    },
+    "payload/sysgrid_campaign.py": {
+      "sha256": "28d102080c0086d68b9626ea2c507464f3390c67da3a5a6f1ad5a5233b4f23eb",
+      "size": 22736
+    },
+    "payload/sysgrid_runner.py": {
+      "sha256": "66b082fec1e9f6c49152e5ecb4cbb3f998e60ce27d53a2325e5f658634a8d032",
+      "size": 81458
+    },
+    "payload/sysgrid_state_identity.py": {
+      "sha256": "1a737b2da5749099f73a3ed530a139311fd0a0d45137dd5873524f328b657bcb",
+      "size": 4661
+    },
+    "payload/sysgrid_supervisor.py": {
+      "sha256": "fe14901c1487eaf578b1ec1c24ecf4362e940e104e408926ccfa5d8dfc459d80",
+      "size": 152000
+    }
+  },
+  "invariants_proved": [
+    "qualified active-law identity binding",
+    "mandatory fresh-chat bootstrap protocol",
+    "Project continuity conformance specification",
+    "hash-bound immutable campaign handoff",
+    "pre-execution Linear expectation schema and one-active-state assertion",
+    "source branch/HEAD binding",
+    "platform byte identity verification",
+    "single active artifact and gate validation",
+    "HANDOFF evidence capture in canonical review ZIP",
+    "nested HANDOFF manifest verification",
+    "CHAT_HANDOFF sibling digest binding",
+    "iCloud Project continuity export",
+    "no product repository mutation during P2 qualification"
+  ],
+  "limitations": [
+    "P2 is issued but not accepted until the user installs the exact final ZIP, adds the two Project sources, replaces Project instructions, and the fresh-chat C01/C06 tests pass.",
+    "ChatGPT Project settings require one-time user UI actions; no tool available in this chat can mutate Project sources or Project instructions directly.",
+    "Existing Projects cannot be converted to project-only memory; the continuity protocol therefore does not trust memory as state authority."
+  ],
+  "product_attempt": 12,
+  "product_value_added": false,
+  "repair": "P2",
+  "result": "PASS",
+  "schema_version": "1.0",
+  "tests": {
+    "campaign_controller_self_test": {
+      "result": "PASS",
+      "version": "1.1.0"
+    },
+    "clean_room_directory_installer": {
+      "result": "PASS"
+    },
+    "component_unit_tests": {
+      "count": 8,
+      "result": "PASS"
+    },
+    "deterministic_rebuild": {
+      "byte_identical": true,
+      "result": "PASS"
+    },
+    "engine_self_test": {
+      "result": "PASS",
+      "version": "1.1.1"
+    },
+    "final_zip_installer": {
+      "activation_artifact": "UPLOAD_THIS_TO_CHATGPT_P2_CONTINUITY_ACTIVATION.zip",
+      "result": "PASS"
+    },
+    "fresh_chat_C01": {
+      "result": "PENDING_USER_PROJECT_INSTALL"
+    },
+    "managed_end_to_end_campaign": {
+      "artifact_sha256": "532d166bc81a966d4f4b12aa613561351efd8bf487c8a6a9d25a2046f035fe56",
+      "artifact_size": 52779,
+      "chat_handoff_binding_verified": true,
+      "classification": "PASS",
+      "handoff_files": 9,
+      "handoff_manifest_verified": true,
+      "required_evidence_present": true,
+      "result": "success",
+      "returncode": 0,
+      "test_counts": {
+        "BLOCKED": 0,
+        "FAIL": 0,
+        "PASS": 1,
+        "WARNING": 0
+      },
+      "validation_returncode": 0
+    },
+    "pre_inbox_continuity_validation": {
+      "handoff_identity_files": 8,
+      "question_count": 64,
+      "result": "PASS",
+      "risk_categories": 14
+    },
+    "project_continuity_export": {
+      "active_project_source_count_after_install": 6,
+      "result": "PASS"
+    },
+    "result_first_C06": {
+      "result": "PENDING_FRESH_CHAT_TEST"
+    },
+    "supervisor_self_test": {
+      "result": "PASS",
+      "version": "2.2.1"
+    }
+  },
+  "work_class": "platform_verification_repair"
+}

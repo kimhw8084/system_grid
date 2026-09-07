@@ -1,0 +1,82 @@
+ORIGINAL_PATH: /Users/haewonkim/.local/share/sysgrid-supervisor/v1.3.0/README.md
+ORIGINAL_SHA256: 65d9237eeafa95d6ff672fe2921d837ef56b6f9d2bfdc025331d19f7a5e38e74
+================================================================================
+# SysGrid Execution Supervisor v1.3.0
+
+This is the convergence-first execution platform for SysGrid. It preserves the independently accepted **SysGrid Stable Engine v1.0.4** and invokes only exact engine bytes with SHA-256:
+
+`ab63bb20c0de32771e20b0159475205f685f28910a0956c217fb3693c02f96e1`
+
+The supervisor does not generate product code, weaken tests, improvise commands, or commit/push outside the engine's immutable capsule contract.
+
+## One-command installation and qualification
+
+Run from the directory containing the ZIP:
+
+```bash
+rm -rf SYSGRID_EXECUTION_SUPERVISOR_v1.3.0 && unzip -q SYSGRID_EXECUTION_SUPERVISOR_v1.3.0.zip && cd SYSGRID_EXECUTION_SUPERVISOR_v1.3.0 && ./INSTALL_AND_QUALIFY.command
+```
+
+The installer verifies the complete extracted tree before importing payload code, runs the 51-test released-byte suite, locates and self-tests the exact accepted engine, installs immutable versioned bytes and atomic wrappers, reruns the same suite from staged bytes, verifies the final installed tree, and creates:
+
+`~/Library/Mobile Documents/com~apple~CloudDocs/SysGrid-Control/Outbox/UPLOAD_THIS_TO_CHATGPT.zip`
+
+Upload that qualification ZIP for independent review. Installation never starts a product mutation.
+
+## Normal operation after independent PASS
+
+With one safe capsule in `SysGrid-Control/Inbox`:
+
+```bash
+sg
+```
+
+Or provide the capsule explicitly:
+
+```bash
+sg run /absolute/path/to/capsule.sgcap
+```
+
+Status:
+
+```bash
+sgs
+sgwatch
+```
+
+## What v1.3.0 changes
+
+### Convergence instead of rerun friction
+
+- If a prior supervisor stopped but the exact Stable Engine process is still running, the next `sg` reattaches by PID **and exact command identity**, then waits for that one authorized execution.
+- If the engine already produced a complete local artifact, `sg` verifies and publishes it without repeating product execution.
+- If the engine ended without evidence, one automatic retry is allowed only when the complete capsule-declared pre-state and uniquely forward-applicable patch prove that product mutation never occurred.
+- If post-state or any ambiguity exists, no retry occurs. A canonical diagnostic ZIP is produced instead.
+- Byte-identical duplicate Inbox capsules are archived automatically and treated as one identity. Distinct capsules remain an explicit safety stop.
+
+### Full useful feedback
+
+- Independent preflight checks use available CPU capacity, execute concurrently, preserve partial successes, and aggregate every failure.
+- Diagnostics include structured preflight results, exact mutation-state classification, bounded engine stdout/stderr, launch identity, and one safe next action.
+- Progress is six-step and phone-readable.
+
+### Existing protections retained
+
+- One non-blocking kernel lock.
+- Exact engine SHA-256 and self-test.
+- Exact capsule filename, size, hash, schema, patch, manifest, and project validation.
+- ZIP traversal, duplicate, symlink, special-file, executable, encryption, CRC, decompression, and ratio defenses.
+- Exact repository branch, HEAD, upstream, dirty paths, pre-hashes, and protected hashes.
+- Private local engine Outbox and exact RESULT/capsule/engine/exit-code correlation.
+- Content-addressed, SHA-verified, fsynced, atomic publication.
+- Complete distribution and installed-tree identity with no unlisted bytecode or hidden files.
+
+## Performance boundary
+
+The supervisor maximizes safe platform concurrency and exports detected CPU/memory capacity as resource hints. The immutable capsule and Stable Engine remain authoritative for product-test ordering and parallel test workers. The supervisor cannot safely invent new test commands, skip gates, force-apply an incompatible patch, or replay an ambiguous mutation.
+
+The intended useful outcomes are:
+
+1. **PASS:** all declared product gates complete and delivery succeeds.
+2. **Application findings:** the full trusted test matrix returns review-ready product defects.
+3. **Rare trust stop:** continuing would risk wrong or duplicate product mutation; one diagnostic ZIP is still produced for control-room recovery.

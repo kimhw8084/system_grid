@@ -1,0 +1,238 @@
+ORIGINAL_PATH: /Users/haewonkim/.local/state/sysgrid-supervisor/runs/20260803T224351Z-72434-650000/diagnostic/SUPERVISOR_STATE.json
+ORIGINAL_SHA256: f2a8ac857db982a55459bbd709f50ce0c536368428fc8faad5d3778eb731bc03
+================================================================================
+{
+  "attempt": 13,
+  "capsule_cross_ledger": {
+    "changed_path_count": 2,
+    "execution_profile": "promotion_qualification",
+    "execution_scope": {
+      "changed_paths": [
+        "frontend/tests/golden-eight-seeded-visual-matrix.spec.ts",
+        "frontend/tests/far-workflows.spec.ts"
+      ],
+      "execution_profile": "promotion_qualification",
+      "targeted_tests": [
+        "playwright:golden-eight-seeded-visual-matrix",
+        "playwright:far-workflows",
+        "playwright:far-golden-workspace",
+        "playwright:far-chaos"
+      ],
+      "targeted_views": [
+        "monitoring",
+        "assets",
+        "far"
+      ]
+    },
+    "patch_paths": [
+      "frontend/tests/far-workflows.spec.ts",
+      "frontend/tests/golden-eight-seeded-visual-matrix.spec.ts"
+    ],
+    "post_path_count": 95,
+    "pre_path_count": 95,
+    "protected_path_count": 93,
+    "recipe_ids": [
+      "backend-pytest",
+      "frontend-build",
+      "frontend-typecheck",
+      "frontend-vitest",
+      "full-app-gate"
+    ]
+  },
+  "capsule_file": "SYSGRID_OUT31_PA13_R1_RENDERED_READINESS_AND_FAR_LOCATOR_VERIFICATION_REPAIR_v1.0.0.sgcap",
+  "capsule_sha256": "2973872dd78c8590359f8ca99aa8d4fc8e05934dce2d84350d5e3f6f187b1ec2",
+  "capsule_size": 21686,
+  "capsule_stage": "Product Attempt 13 verification-system repair R1 after formal PA12 supersession",
+  "capsule_title": "Product Attempt 13 Verification Repair R1 \u2014 rendered readiness and authoritative FAR locator",
+  "classification": "DUPLICATE_MUTATION_CAPSULE_POST_STATE",
+  "event_timeline": [
+    {
+      "details": {},
+      "elapsed_seconds": 0.029,
+      "event_id": "capsule_selected",
+      "message": "Selecting the one immutable capsule and converging only byte-identical Inbox duplicates.",
+      "notification": {
+        "event_id": "capsule_selected",
+        "presentation_mode": "summary",
+        "required": false,
+        "status": "local_only",
+        "updated_utc": "2026-08-03T22:43:51Z"
+      },
+      "status": "started",
+      "utc": "2026-08-03T22:43:51Z"
+    },
+    {
+      "details": {
+        "changed_path_count": 2,
+        "execution_profile": "promotion_qualification",
+        "execution_scope": {
+          "changed_paths": [
+            "frontend/tests/golden-eight-seeded-visual-matrix.spec.ts",
+            "frontend/tests/far-workflows.spec.ts"
+          ],
+          "execution_profile": "promotion_qualification",
+          "targeted_tests": [
+            "playwright:golden-eight-seeded-visual-matrix",
+            "playwright:far-workflows",
+            "playwright:far-golden-workspace",
+            "playwright:far-chaos"
+          ],
+          "targeted_views": [
+            "monitoring",
+            "assets",
+            "far"
+          ]
+        },
+        "patch_paths": [
+          "frontend/tests/far-workflows.spec.ts",
+          "frontend/tests/golden-eight-seeded-visual-matrix.spec.ts"
+        ],
+        "post_path_count": 95,
+        "pre_path_count": 95,
+        "protected_path_count": 93,
+        "recipe_ids": [
+          "backend-pytest",
+          "frontend-build",
+          "frontend-typecheck",
+          "frontend-vitest",
+          "full-app-gate"
+        ]
+      },
+      "elapsed_seconds": 0.045,
+      "event_id": "capsule_verified",
+      "message": "Capsule archive, manifest, schema, patch identity, and cross-ledger contract are exact.",
+      "notification": {
+        "attempts": 1,
+        "chat_id_suffix": "1055",
+        "event_id": "run_started",
+        "first_attempt_utc": "2026-08-03T22:43:51Z",
+        "message_id": 583,
+        "payload_sha256": "aadd4690f1a08dff28f0b735edc740ac76bf558f707144894cea761447e0f5a4",
+        "required": false,
+        "status": "delivered",
+        "updated_utc": "2026-08-03T22:43:52Z"
+      },
+      "status": "passed",
+      "utc": "2026-08-03T22:43:52Z"
+    },
+    {
+      "details": {},
+      "elapsed_seconds": 0.767,
+      "event_id": "preflight_started",
+      "message": "Running independent platform checks and exact repository-state proof.",
+      "notification": {
+        "event_id": "preflight_started",
+        "presentation_mode": "summary",
+        "required": false,
+        "status": "local_only",
+        "updated_utc": "2026-08-03T22:43:52Z"
+      },
+      "status": "started",
+      "utc": "2026-08-03T22:43:52Z"
+    }
+  ],
+  "exit_code": 73,
+  "issue": "OUT-31",
+  "iteration": 13,
+  "last_progress_event": "preflight_started",
+  "last_progress_message": "Running independent platform checks and exact repository-state proof.",
+  "last_progress_status": "started",
+  "last_progress_utc": "2026-08-03T22:43:52Z",
+  "message": "repository exactly matches this mutation capsule's declared post-state; the mutation was already applied by an earlier run and replay is prohibited. The prior canonical review ZIP is preserved. Use 'sg recover-artifact <run-id>' to republish an earlier run artifact without executing the product again. No completed product-review artifact exists for this capsule, so there is no run ID to recover. Continue only with a newly issued Verification Repair capsule against the retained post-state.",
+  "monotonic_started": 4072259.008877541,
+  "notification_events": {
+    "capsule_selected": {
+      "event_id": "capsule_selected",
+      "presentation_mode": "summary",
+      "required": false,
+      "status": "local_only",
+      "updated_utc": "2026-08-03T22:43:51Z"
+    },
+    "capsule_verified": {
+      "attempts": 1,
+      "chat_id_suffix": "1055",
+      "event_id": "run_started",
+      "first_attempt_utc": "2026-08-03T22:43:51Z",
+      "message_id": 583,
+      "payload_sha256": "aadd4690f1a08dff28f0b735edc740ac76bf558f707144894cea761447e0f5a4",
+      "required": false,
+      "status": "delivered",
+      "updated_utc": "2026-08-03T22:43:52Z"
+    },
+    "preflight_started": {
+      "event_id": "preflight_started",
+      "presentation_mode": "summary",
+      "required": false,
+      "status": "local_only",
+      "updated_utc": "2026-08-03T22:43:52Z"
+    }
+  },
+  "notification_policy": {
+    "delivery_semantics": "durably-deduplicated-at-least-once",
+    "engine_heartbeat_seconds": 300,
+    "max_messages_per_run": 3,
+    "presentation_mode": "summary",
+    "registered_events": 21,
+    "required_before_engine": false,
+    "telegram_heartbeats": false
+  },
+  "original_capsule": "/Users/haewonkim/Library/Mobile Documents/com~apple~CloudDocs/SysGrid-Control/Inbox/SYSGRID_OUT31_PA13_R1_RENDERED_READINESS_AND_FAR_LOCATOR_VERIFICATION_REPAIR_v1.0.0.sgcap",
+  "pid": 72434,
+  "preflight": {
+    "failures": {
+      "repository": {
+        "classification": "DUPLICATE_MUTATION_CAPSULE_POST_STATE",
+        "exit_code": 73,
+        "message": "repository exactly matches this mutation capsule's declared post-state; the mutation was already applied by an earlier run and replay is prohibited. The prior canonical review ZIP is preserved. Use 'sg recover-artifact <run-id>' to republish an earlier run artifact without executing the product again."
+      }
+    },
+    "results": {
+      "engine": {
+        "path": "/Users/haewonkim/.local/share/sysgrid-runner/engine-v1.1.1/sysgrid_runner.py",
+        "self_test": {
+          "engine_version": "1.1.1",
+          "result": "PASS",
+          "tests": [
+            "safe-path",
+            "manifest",
+            "corruption",
+            "canonical-dirty-paths",
+            "aggregate-recipes"
+          ]
+        }
+      },
+      "storage": {
+        "control_free": 56363708416,
+        "local_free": 56363708416,
+        "required": 3221225472
+      }
+    }
+  },
+  "resource_plan": {
+    "backend_workers": 5,
+    "cpu_count": 12,
+    "e2e_workers": 2,
+    "frontend_workers": 5,
+    "memory_bytes": 19327352832,
+    "preflight_workers": 24,
+    "reserve_memory_bytes": 2147483648,
+    "test_cpu_budget": 11,
+    "usable_memory_bytes": 17179869184
+  },
+  "run_id": "20260803T224351Z-72434-650000",
+  "safe_cleanup": {
+    "inspected": 0,
+    "removed": 0
+  },
+  "safe_retry_count": 0,
+  "stage": "preflight",
+  "staged_capsule": "/Users/haewonkim/.local/state/sysgrid-supervisor/runs/20260803T224351Z-72434-650000/input/SYSGRID_OUT31_PA13_R1_RENDERED_READINESS_AND_FAR_LOCATOR_VERIFICATION_REPAIR_v1.0.0.sgcap",
+  "started_utc": "2026-08-03T22:43:51Z",
+  "state": "FAILED_NO_ARTIFACT",
+  "telegram": {
+    "chat_id_suffix": "1055",
+    "configured": true,
+    "source": "/Users/haewonkim/.config/sysgrid-supervisor/telegram.json"
+  },
+  "work_dir": "/Users/haewonkim/.local/state/sysgrid-supervisor/runs/20260803T224351Z-72434-650000"
+}

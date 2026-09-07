@@ -1,0 +1,37 @@
+ORIGINAL_PATH=/Users/haewonkim/Library/Application Support/SysGridDelivery/migration-qualification.log
+SHA256=8403ea69bb8ccc3eaca28f61c763e6b041279f6cf5b6a0a6ca0485ccffa2b218
+SIZE=1377
+============================================================
+SYSGRID PRODUCT-FIRST DOCTOR
+----------------------------
+CLI: 1.3.0-rc3
+Project: SysGrid / OUT-5 / OUT-31
+Source plane: kimhw8084/system_grid
+Control repository: /Users/haewonkim/.local/share/sysgrid-delivery-v1.3.0/repository
+Dependency source: /Users/haewonkim/sysgrid-actions-runner/_work/system_grid/system_grid
+Control repo: PASS
+Dependency source repo: PASS
+Keychain credential: PASS (48 chars, value hidden)
+GitHub OAuth: PASS (kimhw8084, dedicated Keychain)
+Git interactive prompts: DISABLED
+Activation: checked from Linear at run time
+
+SYSGRID VNEXT LIVE QUALIFICATION
+-------------------------------
+Q1 ordinary-checkout snapshot...
+Q1 ordinary-checkout snapshot: PASS
+Q2 Keychain credential...
+Q2 Keychain credential: PASS (value hidden)
+Q3 Linear native-curl auth/query...
+Q3 Linear native-curl auth/query: PASS (OUT-31)
+Principal author binding: PASS (configured; live command enforcement enabled)
+Q4 GitHub source authority: PASS (3c286ff96da8)
+Q5 Disposable exact-SHA worktree: PASS
+Q6 GitHub dedicated-Keychain publication auth...
+Q6 GitHub dedicated-Keychain publication auth: PASS (kimhw8084; prompts disabled; no remote write)
+Q7 Ordinary checkout preservation: PASS
+Background relay dependency: NONE
+Large review ZIP dependency: NONE
+Q8 Linear compact-result write: PASS
+C01-C16 continuity design suite: PASS (package-qualified)
+RESULT: QUALIFICATION_PASS

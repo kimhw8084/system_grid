@@ -1,0 +1,48 @@
+{
+  "base_commit": "d40c0929ff7a9ec37d9c57bdb7ef0cf2d020c7ee",
+  "base_tree": "0aa53cc6ed9121b178c72c31e2a6b1c04e985f5f",
+  "files": {
+    "README.md": {
+      "bytes": 1212,
+      "sha256": "fba2b8759ad019ff903e931c76851d6e7d733bc5189577f4b56f08a09fc2e6b3"
+    },
+    "apply_and_prove.py": {
+      "bytes": 8422,
+      "sha256": "c2bdee8a89af6fa4a23f1d5be3ece878db3ba86a56b74200d5747e87caed8d0e"
+    },
+    "evidence/postimage-git-blobs.txt": {
+      "bytes": 269,
+      "sha256": "509a63ce7262e4c050a3700d921c2b1491f1946da9b2d335489175d9aeaf5fe5"
+    },
+    "evidence/preimage-git-blobs.txt": {
+      "bytes": 269,
+      "sha256": "b42371f4d57d8324d2cfebbe815edcf2de9cc67cc0f3543288b8cea19da6a819"
+    },
+    "evidence/project-view-perfection.patch": {
+      "bytes": 30181,
+      "sha256": "320009b82fb9f12c363700fee157d2ed7f269fc248173a684ac8e4ba180915ae"
+    },
+    "payload/frontend/src/components/ProjectsModernGantt.tsx": {
+      "bytes": 39999,
+      "sha256": "1aae0654fd4ae1bbd847c7d0908e07ec8d6b04615ec6dd528f319f09f141d825"
+    },
+    "payload/frontend/src/components/ProjectsVisualRepair.css": {
+      "bytes": 20257,
+      "sha256": "e1217e5296571a07bdce0381487fb29b135bec6389b4221baa8e6022fb54a60e"
+    },
+    "payload/frontend/tests/projects-visual-repair.spec.ts": {
+      "bytes": 14903,
+      "sha256": "9824908b1de74acf80add197b5d96c0e69a519e71c7cceae5359bd739acf1e94"
+    },
+    "run_from_repo.sh": {
+      "bytes": 122,
+      "sha256": "cb8dd850f4172dee499313bdbccc21410d001ca9c623ad90008d1836dfa4bf82"
+    }
+  },
+  "gitlink": {
+    "mode": "160000",
+    "oid": "445c225a3dec7c359f8ff0b09934716ee2d91b6e",
+    "path": "SysGrid"
+  },
+  "schema": "SYSGRID_PROJECT_VIEW_EXECUTOR_MANIFEST_V1"
+}

@@ -1,0 +1,11 @@
+ORIGINAL_PATH: /Users/haewonkim/.local/state/sysgrid-supervisor/runs/20260802T032313Z-27523-292000/diagnostic/REVIEW_ME_FIRST.md
+ORIGINAL_SHA256: 64fa5d85b49bdd955d9d40a86686502961e873b4656a18fbd6ba14f1e2f956eb
+================================================================================
+# SysGrid Supervisor Diagnostic
+
+- Result: failure
+- Classification: PREFLIGHT_AGGREGATE_FAILURE
+- Message: repository: REPOSITORY_DIRTY_STATE_FAILURE: dirty paths mismatch missing=[] extra=['patches/FAR_DIRECT_APPLY_FULL_GOLDEN_RECOVERY/APPLY_FAR_RECOVERY.command', 'patches/FAR_DIRECT_APPLY_FULL_GOLDEN_RECOVERY/FAR_FULL_GOLDEN_RECOVERY.patch', 'patches/FAR_DIRECT_APPLY_FULL_GOLDEN_RECOVERY/README.md', 'patches/FAR_DIRECT_APPLY_FULL_GOLDEN_RECOVERY/ROLLBACK_FAR_FULL_GOLDEN_RECOVERY.patch']
+- Product mutation authority: none added by this diagnostic
+
+Review RESULT.json, SUPERVISOR_STATE.json, TRACEBACK.txt, and MANIFEST.sha256.

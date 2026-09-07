@@ -1,0 +1,253 @@
+ORIGINAL_PATH: /Users/haewonkim/.local/share/sysgrid-runner/continuity-v1.0.4/active_law/03_Stable_Engine_Control_Cycle_Execution_Review_Law_v1.1.md
+ORIGINAL_SHA256: dbdc5e349a6bd2f403971f334223d78dbecae492816893e18bfb7e53bd46c38c
+================================================================================
+# Stable Engine Control Cycle, Execution, and Review Law v1.1
+
+**Status:** Draft pending explicit activation  
+**Proposed effective date:** 2026-07-28  
+**Supersedes after activation:** Control Cycle Prompt, Patch, Execution, and Review Law v1.0
+
+## 1. Cycle states
+
+```text
+BOOTSTRAP
+DECIDE
+AUTHOR
+QUALIFY
+ISSUE
+EXECUTE
+REVIEW
+ACCEPT or RECOVER
+```
+
+The control room owns BOOTSTRAP, DECIDE, AUTHOR, ISSUE, REVIEW, and law-compliant recovery design. The stable engine owns deterministic QUALIFY/EXECUTE mechanics on the operator machine.
+
+## 2. Bootstrap gate
+
+Before a state claim, artifact issuance, or Linear write:
+
+1. read the active manifest and active files;
+2. verify project scope;
+3. read the current project and sole active issue;
+4. fetch latest relevant comments;
+5. report project, master, issue, stage, latest reviewed attempt, verdict/score, accepted baseline, gate, and safe next action.
+
+## 3. Decision packet
+
+A mutation decision must state:
+
+- one falsifiable hypothesis;
+- one bounded value slice;
+- authoritative source/behavior;
+- accepted baseline;
+- exact intended paths;
+- protected paths/behavior;
+- primary endpoint;
+- secondary/regression endpoints;
+- relevant off-nominal conditions;
+- commit/push policy;
+- rollback or recovery boundary.
+
+## 4. Lane separation
+
+### Product lane
+
+Application source, product tests, and product documentation.
+
+### Execution-platform lane
+
+Stable engine, trusted recipes, schemas, wrappers, installer, and engine tests.
+
+### Review lane
+
+Independent artifact inspection, verdict, lesson, and state update.
+
+A release may mutate only one lane. Product and execution-platform changes in one capsule are prohibited.
+
+## 5. Immutable capsule
+
+A capsule is a safe ZIP or directory with:
+
+```text
+RUN.json
+MANIFEST.sha256
+PAYLOADS/              optional immutable patch or fixture payloads
+STATE/PRE_HASHES.sha256
+STATE/POST_HASHES.sha256
+STATE/PROTECTED_HASHES.sha256
+STATE/EXPECTED_DIRTY_PATHS.txt
+ACCEPTANCE.json
+```
+
+The capsule contains no executable files, symlinks, absolute paths, parent traversal, arbitrary command strings, shell syntax, code-generation prompt, or terminal agent instruction.
+
+`RUN.json` declares:
+
+- schema and capsule version;
+- project, master, issue, stage, iteration, attempt;
+- lane and mode (`read_only`, `mutation`, `resume_verify`, `qualification`);
+- baseline branch, HEAD, and upstream;
+- immutable patch path/hash when applicable;
+- expected pre/post/protected state files;
+- trusted recipe IDs and bounded parameters;
+- acceptance artifact mapping;
+- evidence policy;
+- commit/push policy;
+- expected engine version range.
+
+## 6. Trusted recipes
+
+Recipes live only in the qualified engine distribution. A capsule selects recipe IDs; it cannot define commands.
+
+Each recipe declares:
+
+- allowed modes and lanes;
+- required relative paths;
+- parameter schema and bounds;
+- command template owned by the engine;
+- timeout bounds;
+- process ownership policy;
+- success evidence;
+- failure evidence;
+- secret-redaction policy.
+
+Recipe changes are execution-platform changes and require engine requalification.
+
+## 7. Exact state machine
+
+Before mutation the engine verifies:
+
+- project/repository identity;
+- exact branch and HEAD;
+- upstream identity;
+- empty staging unless explicitly authorized;
+- exact expected dirty-path set;
+- exact pre-state and protected hashes;
+- capsule manifest and payload digests;
+- engine identity and qualification record.
+
+For `mutation`:
+
+- dry-run the exact patch;
+- reject partial or ambiguous patch state;
+- apply once;
+- verify exact post-state paths/hashes;
+- verify reverse applicability;
+- run proof recipes.
+
+For `resume_verify`:
+
+- prohibit patch application;
+- require exact retained post-state;
+- run only unfinished proof/delivery recipes.
+
+## 8. Proof order
+
+Use economic fail-fast order:
+
+1. capsule/safety/schema;
+2. baseline and hash contract;
+3. patch-state transition;
+4. cheapest focused static/unit proof;
+5. typecheck and focused integration proof;
+6. build;
+7. managed runtime and route/identity/origin preflight;
+8. critical routed user workflow;
+9. bounded adjacent regressions;
+10. exact final state;
+11. commit/push/remote equality when authorized;
+12. canonical packaging.
+
+A browser is not started until runtime identity, routes, Host/CORS, request ID, tenant/profile, and required fixtures are proven when relevant.
+
+## 9. Fault-injection qualification
+
+An engine version cannot be active until qualification proves at least:
+
+- malformed and unknown capsule fields fail closed;
+- unsafe paths and symlinks are rejected;
+- manifest mismatch is detected;
+- wrong branch/HEAD/upstream stops before mutation;
+- unexpected dirty path or hash drift stops before mutation;
+- already-applied, unapplied, and partial patch states are distinguished;
+- missing dependencies are classified; occupied ports are classified whenever a trusted recipe owns port allocation;
+- timeouts terminate the complete owned process group;
+- interrupted evidence and Outbox delivery remain reviewable;
+- ZIP corruption is detected;
+- commit failure, push failure, and remote mismatch cannot report success;
+- redaction removes sensitive environment values, authorization headers, common secret assignments, and sensitive query values before evidence is retained;
+- exact released bytes reproduce the qualification identity.
+
+## 10. Stop-the-line rule
+
+Any operator-visible executor defect freezes product issuance. The engine must gain a regression test reproducing the failure class, pass its full qualification suite, and receive an execution-platform review before product work resumes.
+
+A product failure does not authorize engine redesign. An engine failure does not authorize product reauthoring.
+
+## 11. Evidence and packaging
+
+The engine records atomic stage state and a command ledger. Every command record includes recipe ID, resolved executable, normalized arguments, start/end time, duration, exit code, timeout, and log path.
+
+The canonical ZIP is built locally, path/symlink checked, manifest-generated, independently re-read, copied atomically to Outbox, and hash-verified after copy.
+
+Success without the canonical ZIP is a failure.
+
+## 12. Review
+
+The reviewer independently verifies:
+
+- ZIP safety and manifest;
+- project/issue/cycle identity;
+- engine and capsule identity;
+- baseline and final Git provenance;
+- exact path/hash transition;
+- command ledger and primary endpoint;
+- secondary and off-nominal evidence;
+- commit/push/remote state when applicable;
+- evidence completeness and contradictions.
+
+Verdicts:
+
+- **PASS:** complete accepted slice and delivery state;
+- **PARTIAL:** meaningful correct progress with bounded missing proof/value;
+- **FAIL:** objective not achieved or executor/test/environment defect blocked acceptance;
+- **WORSE:** accepted baseline or trust boundary materially regressed.
+
+## 13. Score
+
+Default weighting:
+
+```text
+user-value behavior                         30
+correctness and data integrity              20
+safety, permissions, isolation, recovery    15
+architecture and reuse                      10
+verification and validation                 15
+provenance and evidence                       5
+operator economy and maintainability          5
+```
+
+Critical caps remain: missing canonical ZIP means no final review; missing critical routed proof caps at 79; unproven tenant/auth/destructive behavior cannot PASS; control-boundary violation is FAIL or WORSE.
+
+## 14. Recovery
+
+Use the narrowest correction matching the proven failure class.
+
+- Runner/engine correction preserves product bytes and stays in the execution-platform lane.
+- Product correction creates a new product iteration and immutable patch.
+- Test-contract correction changes only the stale test/fixture contract and receives focused proof.
+- Environment drift stops before mutation and requires explicit environment resolution.
+- Retained exact state uses `resume_verify`, not patch reapplication.
+
+## 15. Telemetry
+
+Record:
+
+- operator executions per accepted value slice;
+- first-attempt PASS rate;
+- executor, fixture, product, environment, baseline, provenance, and evidence defect counts;
+- median cycle and review time;
+- changed-path count per accepted slice;
+- run-specific executable lines, which must remain zero after qualification;
+- mixed-lane releases, which must remain zero;
+- lessons converted into permanent engine/product tests.

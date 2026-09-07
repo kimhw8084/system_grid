@@ -1,0 +1,32 @@
+ORIGINAL_PATH: /Users/haewonkim/.local/state/sysgrid-supervisor/runs/20260801T195955Z-58073-775000/preflight.json
+ORIGINAL_SHA256: 7b3ba6f7af45beb8987cca0ea6d2d8104cef40f9df072078ff06d124224db8a8
+================================================================================
+{
+  "declared_state": {
+    "dirty_path_count": 57,
+    "pre_hash_count": 57,
+    "protected_hash_count": 19
+  },
+  "engine_self_test": {
+    "engine_version": "1.0.4",
+    "result": "PASS",
+    "tests": [
+      "safe-path",
+      "manifest",
+      "corruption"
+    ]
+  },
+  "patch": {
+    "applicable": true,
+    "forward_diagnostic": "Checking patch frontend/src/components/shared/GoldenWorkspaceGeometryContract.test.ts...\nChecking patch frontend/src/components/shared/OperationalWorkspaceShells.tsx...\nChecking patch frontend/src/components/shared/WorkspaceCommandBar.tsx...\nChecking patch frontend/tests/golden-eight-seeded-visual-matrix.spec.ts...\nChecking patch frontend/tests/shell-and-search.spec.ts...\nChecking patch scripts/verify-app.sh...\nwarning: scripts/verify-app.sh has type 100755, expected 100644",
+    "forward_exit_code": 0,
+    "reverse_applicable": false,
+    "reverse_diagnostic": "Checking patch scripts/verify-app.sh...\nerror: while searching for:\nLANE_DIR=\"$(mktemp -d \"${TMPDIR:-/tmp}/sysgrid-verify-lanes.XXXXXX\")\"\nPROGRESS_SEQUENCE=0\nFRONTEND_WORKERS=\"${SYSGRID_FRONTEND_WORKERS:-4}\"\nEXECUTION_PROFILE=\"${SYSGRID_EXECUTION_PROFILE:-promotion_qualification}\"\n\nGOLDEN_WORKSPACE_KEYS=(monitoring assets services external network far research vendors)\nPLAYWRIGHT_SPECS=(\n\nerror: patch failed: scripts/verify-app.sh:25\nerror: scripts/verify-app.sh: patch does not apply\nChecking patch frontend/tests/shell-and-search.spec.ts...\nerror: while searching for:\nimport { resetBrowserState, seedOperationalScenario, waitForAppIdle } from './helpers/sysgrid'\nimport { goldenWorkspaceRouteMatrix } from './helpers/routeMatrix'\n\n\ntest.describe('App shell and global search', () => {\n  test('loads the dashboard and feature audit HUD', async ({ page }) => {\n    await resetBrowserState(page)\n\nerror: patch failed: frontend/tests/shell-and-search.spec.ts:5\nerror: frontend/tests/shell-and-search.spec.ts: patch does not apply\nChecking patch frontend/tests/golden-eight-seeded-visual-matrix.spec.ts...\nerror: while searching for:\n\nconst apiBase = testApiBase\n\n\nconst campaignTargetViews = (() => {\n  if (process.env.SYSGRID_EXECUTION_PROFILE !== 'development_campaign') return null\n  try {\n    const parsed = JSON.parse(process.env.SYSGRID_TARGETED_VIEWS_JSON || '[]')\n    return new Set(Array.isArray(parsed) ? parsed.map(String) : [])\n  } catch {\n    return new Set<string>()\n  }\n})()\n\nconst activeGoldenRoutes = campaignTargetViews && campaignTargetViews.size\n  ? goldenWorkspaceRouteMatrix.filter((route) => campaignTargetViews.has(route.key))\n  : goldenWorkspaceRouteMatrix\nasync function createVendor(request: APIRequestContext, stamp: string) {\n  const response = await request.post(`${apiBase}/vendors`, {\n    data: { name: `PW-SEED-VENDOR-${stamp}`, country: 'USA' },\n\nerror: patch failed: frontend/tests/golden-eight-seeded-visual-matrix.spec.ts:16\nerror: frontend/tests/golden-eight-",
+    "reverse_exit_code": 1
+  },
+  "storage": {
+    "control_free": 56654491648,
+    "local_free": 56654491648,
+    "required": 536870912
+  }
+}

@@ -1,0 +1,59 @@
+ORIGINAL_PATH: /Users/haewonkim/.local/share/sysgrid-campaign-platform/v1.1.1/IMPLEMENTATION_REPORT.json
+ORIGINAL_SHA256: f94f3333a14e118b0844b50c1e6b11a403e2e023f201f8474bcb73e644b5e876
+================================================================================
+{
+  "canonical_output": "iCloud Drive/SysGrid-Control/Outbox/UPLOAD_THIS_TO_CHATGPT_SOURCE_AUTHORITY.zip",
+  "capture_contents": [
+    "all tracked and valid untracked source/configuration/test files",
+    "per-file SHA-256 manifest and source fingerprint",
+    "branch, HEAD, upstream, canonical dirty paths, working and staged binary diffs",
+    "ownership graph, dependency inventory and graph, route/API/test map",
+    "platform identity and source-tree non-mutation proof",
+    "nested source-authority activation evidence when available, allowing one-upload production bootstrap"
+  ],
+  "classification": "Platform Verification Repair P2-R1",
+  "command": "sg source-authority",
+  "components": {
+    "campaign_controller": {
+      "changed": false,
+      "sha256": "28d102080c0086d68b9626ea2c507464f3390c67da3a5a6f1ad5a5233b4f23eb",
+      "version": "1.1.0"
+    },
+    "dispatcher": {
+      "sha256": "91fb1c967b200090d6760d1d63eed519c0b926244e06d0db031377772388f97d"
+    },
+    "engine": {
+      "changed": false,
+      "sha256": "66b082fec1e9f6c49152e5ecb4cbb3f998e60ce27d53a2325e5f658634a8d032",
+      "version": "1.1.1"
+    },
+    "source_authority": {
+      "sha256": "106a1b16f429ab9893781d037a302184f7c626fb3d4134b9e8f5df315c624158",
+      "version": "1.0.0"
+    },
+    "supervisor": {
+      "changed": false,
+      "sha256": "fe14901c1487eaf578b1ec1c24ecf4362e940e104e408926ccfa5d8dfc459d80",
+      "version": "2.2.1"
+    }
+  },
+  "diagnostic_output": "iCloud Drive/SysGrid-Control/Outbox/UPLOAD_DIAGNOSTIC_TO_CHATGPT_SOURCE_AUTHORITY.zip",
+  "fail_closed": [
+    "repository not found",
+    "Git read failure",
+    "source changes during capture",
+    "repository state changes during capture",
+    "safe source exceeds bounded complete-snapshot limit"
+  ],
+  "platform_version": "1.1.1",
+  "product_attempt": 12,
+  "product_source_mutation": "none",
+  "purpose": "Add one qualified read-only command that emits the complete safe current SysGrid source authority for a fresh production chat.",
+  "schema_version": "1.0",
+  "security": [
+    "secret basenames excluded",
+    "dependency/cache/generated directories excluded",
+    "symlinks not followed",
+    "no product or Git mutation"
+  ]
+}

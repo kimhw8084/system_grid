@@ -1,0 +1,289 @@
+ORIGINAL_PATH: /Users/haewonkim/.local/share/sysgrid-runner/continuity-v1.0.5/continuity_watcher.py
+ORIGINAL_SHA256: 51d3912e64648b9464bc772eb763582e3ef0010380698dbf6f9d1b677472a7c8
+================================================================================
+#!/usr/bin/env python3
+from __future__ import annotations
+
+import argparse
+import hashlib
+import json
+import os
+import pathlib
+import signal
+import shutil
+import subprocess
+import sys
+import time
+
+
+def detach_process_session() -> None:
+    try:
+        os.setsid()
+    except (OSError, AttributeError):
+        pass
+    for sig in (signal.SIGHUP, signal.SIGINT, signal.SIGTERM):
+        try:
+            signal.signal(sig, signal.SIG_DFL)
+        except (OSError, ValueError):
+            pass
+
+
+def sha256_file(path: pathlib.Path) -> str:
+    h = hashlib.sha256()
+    with path.open("rb") as handle:
+        for chunk in iter(lambda: handle.read(1024 * 1024), b""):
+            h.update(chunk)
+    return h.hexdigest()
+
+
+def newest_engine_zip(
+    outbox: pathlib.Path,
+    started_epoch: float,
+    baseline_sha256: str,
+) -> pathlib.Path | None:
+    candidate = outbox / "UPLOAD_THIS_TO_CHATGPT.zip"
+    if not candidate.is_file() or candidate.stat().st_mtime < started_epoch - 2:
+        return None
+    current_sha = sha256_file(candidate)
+    if baseline_sha256 not in {"", "missing", "unknown"} and current_sha == baseline_sha256:
+        return None
+    return candidate
+
+
+def process_alive(pid: int) -> bool:
+    if pid <= 0:
+        return False
+    try:
+        os.kill(pid, 0)
+        return True
+    except ProcessLookupError:
+        return False
+    except PermissionError:
+        return True
+
+
+def terminate_process_group(proc: subprocess.Popen, log) -> None:
+    if proc.poll() is not None:
+        return
+    try:
+        os.killpg(proc.pid, signal.SIGTERM)
+    except (ProcessLookupError, PermissionError, OSError):
+        try:
+            proc.terminate()
+        except OSError:
+            return
+    deadline = time.time() + 5
+    while proc.poll() is None and time.time() < deadline:
+        time.sleep(0.1)
+    if proc.poll() is None:
+        try:
+            os.killpg(proc.pid, signal.SIGKILL)
+        except (ProcessLookupError, PermissionError, OSError):
+            try:
+                proc.kill()
+            except OSError:
+                pass
+    log.write(f"core_sgwatch_terminated_exit={proc.poll()}\n")
+
+
+def notify(message: str) -> None:
+    notifier = pathlib.Path.home() / ".local" / "bin" / "sgnotify"
+    if notifier.is_file() and os.access(notifier, os.X_OK):
+        subprocess.run(
+            [str(notifier), message],
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+            timeout=10,
+            check=False,
+        )
+
+
+def initialize_launch(args: argparse.Namespace, launch_path: pathlib.Path) -> dict:
+    required = {
+        "launch_id": args.launch_id,
+        "repo": args.repo,
+        "pre_head": args.pre_head,
+        "started_epoch": args.started_epoch,
+        "control_root": args.control_root,
+        "core_sgwatch": args.core_sgwatch,
+        "packager": args.packager,
+        "payload_dir": args.payload_dir,
+        "outbox_pre_sha256": args.outbox_pre_sha256,
+        "lock_dir": args.lock_dir,
+        "wrapper_pid": args.wrapper_pid,
+        "core_exit_json": args.core_exit_json,
+    }
+    missing = [name for name, value in required.items() if value is None]
+    if missing:
+        raise ValueError(f"missing initialization fields: {', '.join(missing)}")
+    launch = {
+        "schema_version": "1.1",
+        "continuity_version": "1.0.5",
+        "launch_id": args.launch_id,
+        "repo": args.repo,
+        "pre_head": args.pre_head,
+        "started_epoch": float(args.started_epoch),
+        "control_root": args.control_root,
+        "core_sgwatch": args.core_sgwatch,
+        "packager": args.packager,
+        "watcher": str(pathlib.Path(__file__).resolve()),
+        "payload_dir": args.payload_dir,
+        "foreground": args.foreground == "1",
+        "argument_count": int(args.argument_count or 0),
+        "watcher_start_policy": "prelaunch-independent-session",
+        "outbox_pre_sha256": args.outbox_pre_sha256 or "missing",
+        "lock_dir": args.lock_dir,
+        "wrapper_pid": int(args.wrapper_pid),
+        "core_exit_json": args.core_exit_json,
+    }
+    launch_path.parent.mkdir(parents=True, exist_ok=True)
+    temporary = launch_path.with_suffix(launch_path.suffix + f".{os.getpid()}.tmp")
+    temporary.write_text(json.dumps(launch, indent=2) + "\n", encoding="utf-8")
+    os.replace(temporary, launch_path)
+    return launch
+
+
+def main() -> int:
+    detach_process_session()
+    parser = argparse.ArgumentParser()
+    parser.add_argument("launch_json")
+    parser.add_argument("--initialize", action="store_true")
+    parser.add_argument("--launch-id")
+    parser.add_argument("--repo")
+    parser.add_argument("--pre-head")
+    parser.add_argument("--started-epoch")
+    parser.add_argument("--control-root")
+    parser.add_argument("--core-sgwatch")
+    parser.add_argument("--packager")
+    parser.add_argument("--payload-dir")
+    parser.add_argument("--foreground")
+    parser.add_argument("--argument-count")
+    parser.add_argument("--outbox-pre-sha256")
+    parser.add_argument("--lock-dir")
+    parser.add_argument("--wrapper-pid")
+    parser.add_argument("--core-exit-json")
+    parser.add_argument("--already-finished", action="store_true")
+    parser.add_argument("--launch-reason", default="normal")
+    args = parser.parse_args()
+
+    launch_path = pathlib.Path(args.launch_json)
+    if args.initialize:
+        launch = initialize_launch(args, launch_path)
+    else:
+        launch = json.loads(launch_path.read_text(encoding="utf-8"))
+
+    core_sgwatch = pathlib.Path(launch["core_sgwatch"])
+    control_root = pathlib.Path(launch["control_root"])
+    outbox = control_root / "Outbox"
+    outbox.mkdir(parents=True, exist_ok=True)
+    log_path = control_root / "State" / f"continuity-watcher-{launch['launch_id']}.log"
+    log_path.parent.mkdir(parents=True, exist_ok=True)
+
+    lock_dir = pathlib.Path(launch["lock_dir"]) if launch.get("lock_dir") else None
+    raw_wait_seconds = int(os.environ.get("SYSGRID_CONTINUITY_RAW_WAIT_SECONDS", "14400"))
+    raw_wait_seconds = max(1, min(raw_wait_seconds, 14400))
+    try:
+        with log_path.open("a", encoding="utf-8") as log:
+            log.write(f"watcher_start={time.time()}\n")
+            log.write(f"launch_reason={args.launch_reason}\n")
+            log.write(f"raw_wait_seconds={raw_wait_seconds}\n")
+            foreground = bool(launch.get("foreground"))
+            wrapper_pid = int(launch.get("wrapper_pid") or 0)
+            core_exit_json = pathlib.Path(str(launch.get("core_exit_json") or ""))
+            foreground_grace_seconds = int(os.environ.get("SYSGRID_CONTINUITY_FOREGROUND_GRACE_SECONDS", "30"))
+            foreground_grace_seconds = max(1, min(foreground_grace_seconds, 300))
+            log.write(f"foreground_grace_seconds={foreground_grace_seconds}\n")
+
+            raw = None
+            terminal_seen_at = None
+            overall_deadline = time.time() + raw_wait_seconds
+            watch_proc = None
+            if not args.already_finished:
+                time.sleep(1.0)
+                watch_proc = subprocess.Popen(
+                    [str(core_sgwatch)],
+                    stdout=log,
+                    stderr=log,
+                    start_new_session=True,
+                )
+                log.write(f"core_sgwatch_pid={watch_proc.pid}\n")
+
+            while time.time() < overall_deadline:
+                raw = newest_engine_zip(
+                    outbox,
+                    float(launch["started_epoch"]),
+                    str(launch.get("outbox_pre_sha256") or "missing"),
+                )
+                if raw:
+                    log.write("raw_engine_zip_detected=true\n")
+                    break
+
+                terminal = False
+                if foreground:
+                    if core_exit_json.is_file():
+                        terminal = True
+                        log.write("foreground_terminal_source=core-exit-marker\n")
+                    elif wrapper_pid and not process_alive(wrapper_pid):
+                        terminal = True
+                        log.write("foreground_terminal_source=wrapper-process-gone\n")
+                    if terminal and terminal_seen_at is None:
+                        terminal_seen_at = time.time()
+                    if terminal_seen_at is not None and time.time() - terminal_seen_at >= foreground_grace_seconds:
+                        log.write("foreground_grace_expired=true\n")
+                        break
+
+                if watch_proc is not None and watch_proc.poll() is not None:
+                    log.write(f"core_sgwatch_exit={watch_proc.returncode}\n")
+                    watch_proc = None
+                time.sleep(0.5)
+
+            if watch_proc is not None and watch_proc.poll() is None:
+                terminate_process_group(watch_proc, log)
+            elif watch_proc is not None:
+                log.write(f"core_sgwatch_exit={watch_proc.returncode}\n")
+
+            if raw:
+                raw_copy = control_root / "State" / f"engine-review-{launch['launch_id']}.zip"
+                raw_copy.write_bytes(raw.read_bytes())
+                raw_arg = str(raw_copy)
+            else:
+                raw_arg = ""
+                log.write("raw_engine_zip_missing=true\n")
+
+            cmd = [
+                sys.executable,
+                launch["packager"],
+                "--repo", launch["repo"],
+                "--control-root", launch["control_root"],
+                "--pre-head", launch.get("pre_head", "unknown"),
+                "--launch-json", str(launch_path),
+                "--payload-dir", launch["payload_dir"],
+            ]
+            if raw_arg:
+                cmd += ["--raw-zip", raw_arg]
+            cp = subprocess.run(cmd, stdout=log, stderr=log, check=False)
+            log.write(f"packager_exit={cp.returncode}\n")
+            if cp.returncode == 0:
+                notify(
+                    "✅ SysGrid continuity bundle ready\n"
+                    "Outbox: UPLOAD_THIS_TO_CHATGPT.zip\n"
+                    "Current handoff: SysGrid-Control/Continuity/Current"
+                )
+            else:
+                notify(
+                    "❌ SysGrid continuity packaging failed\n"
+                    "Check SysGrid-Control/State continuity watcher log"
+                )
+            return cp.returncode
+    finally:
+        if lock_dir and lock_dir.is_dir():
+            try:
+                owner = (lock_dir / "launch_id").read_text(encoding="utf-8").strip()
+            except OSError:
+                owner = ""
+            if owner in {"", str(launch.get("launch_id", ""))}:
+                shutil.rmtree(lock_dir, ignore_errors=True)
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

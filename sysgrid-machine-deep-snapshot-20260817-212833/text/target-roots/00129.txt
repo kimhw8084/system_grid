@@ -1,0 +1,39 @@
+ORIGINAL_PATH: /Users/haewonkim/.local/share/sysgrid-runner/backups/20260731T194319Z-pre-launcher-v104-repair/lib/1.0.4/QUALIFICATION/QUALIFICATION_PLAN.md
+ORIGINAL_SHA256: 2bd6a5d427df065db3ff10b3a243aa54b290cd5d58465151a8d439b7c4b35cf6
+================================================================================
+# Stable Engine Qualification Plan v1.0.3
+
+## Scope
+
+Execution-platform lane only. No SysGrid product repository mutation.
+
+## Qualification sequence
+
+1. Verify installer and embedded payload digest.
+2. Select a Python 3.11+ executable without installing dependencies.
+3. Extract the engine to a temporary directory.
+4. Run engine `self-test` from exact released bytes.
+5. Run the full standard-library unittest suite.
+6. Run the complete matrix-mapped fault-injection suite.
+7. Prove `sg` is background-by-default and returns while a managed detached worker completes.
+8. Prove the worker uses a new session, redirected stdio, an exclusive active-run lock, and stale-lock recovery.
+9. Prove a second `sg` cannot launch while one worker is active.
+10. Prove `sg --foreground` retains the explicit attached diagnostic path.
+11. Prove `sgwatch` exits after a terminal state.
+12. Prove notification messages are sanitized, deduplicated, delivered through the existing `sgnotify` bridge with bounded exit evidence, and non-fatal when unavailable or failing.
+13. Prove every review ZIP captures the managed worker log and notification ledger, including the final success/failure event.
+14. Inject a routed Playwright failure and prove the exact referenced source, `llm-report.json`, screenshot, trace/video, and error context are captured within strict size and symlink bounds.
+15. Back up existing `sg`, `sgs`, and `sgwatch` when present; do not overwrite `sgnotify`.
+16. Install the versioned engine directory atomically.
+17. Install wrappers pointing to the exact selected Python and current engine symlink.
+18. Recompute every installed digest.
+19. Run installed self-test and full unittest suite.
+20. Exercise `sgs` idle status and exact-one-input rejection against an isolated fake control root.
+21. Prove successful and failed runs archive exact consumed capsules only after review-ZIP verification.
+22. Create one safe manifest-verified qualification ZIP in the real iCloud Outbox.
+
+## Acceptance
+
+PASS requires all steps, installed/embedded hash equality, no product repository access, complete rollback backup, and one canonical ZIP.
+
+The qualification ZIP must be reviewed before another product capsule is executed.

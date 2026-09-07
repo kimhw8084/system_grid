@@ -1,0 +1,25 @@
+
+===== /Users/haewonkim/.zshrc =====
+31-
+32-
+33-# Added by Antigravity CLI installer
+34-export PATH="/Users/haewonkim/.local/bin:$PATH"
+35-
+36:# SysGrid phone control
+37-export PATH="$HOME/.local/bin:$PATH"
+38-
+39-# >>> INTRADAY_RESEARCH_ENV >>>
+40-export APCA_API_KEY_ID="$(security find-generic-password [REDACTED] "$USER" -s "intraday_research_APCA_API_KEY_ID" -w 2>/dev/null)"
+41-export APCA_API_SECRET_KEY="$(security find-generic-password [REDACTED] "$USER" -s "intraday_research_APCA_API_SECRET_KEY" -w 2>/dev/null)"
+42-export SEC_USER_AGENT="$(security find-generic-password [REDACTED] "$USER" -s "intraday_research_SEC_USER_AGENT" -w 2>/dev/null)"
+43-# <<< INTRADAY_RESEARCH_ENV <<<
+44-
+45:source "$HOME/.config/sysgrid/sg-visible-runtime.zsh"
+
+===== /Users/haewonkim/.zprofile =====
+
+===== /Users/haewonkim/.bashrc =====
+
+===== /Users/haewonkim/.bash_profile =====
+
+===== /Users/haewonkim/.config/fish/config.fish =====

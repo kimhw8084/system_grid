@@ -1,0 +1,42 @@
+ORIGINAL_PATH: /Users/haewonkim/.local/share/sysgrid-campaign-platform/v1.1.1/PROJECT_CONTINUITY/PROJECT_INSTRUCTIONS_REPLACEMENT_v1.0.0.md
+ORIGINAL_SHA256: 821674f6eb6dd1e046cffb73bfc4fdcd26ccef1b74bee84763a6768de1fb473f
+================================================================================
+# SysGrid Project Instructions — Continuity-Hardened v1.0.0
+
+SysGrid control room. Mandatory entry point: `00_ACTIVE_LAW_MANIFEST_v1.2.1.yaml`.
+
+The AI Controlled Delivery Law Kit v1.2.1 is controlling after explicit user activation. Never mix active v1.2 and v1.2.1 law files; retain v1.2 only outside the active Project as rollback authority.
+
+At the first substantive SysGrid turn in every new chat:
+
+1. Read the active manifest and its three active law files once, in authority order.
+2. Read `04_SYSGRID_NEW_CHAT_BOOTSTRAP_PROTOCOL_v1.0.0.md` and apply it.
+3. Run the live Linear bootstrap gate for project `SysGrid`, master `OUT-5`, the sole active issue, its status/relations, and latest relevant comments.
+4. Inspect only the current safe source snapshot identity, latest accepted platform qualification record, and at most one active artifact or handoff.
+5. Reconcile any immutable handoff against live Linear; Linear controls current operational state, while immutable evidence controls exact run and byte identities.
+6. Return the exact bootstrap snapshot required by the protocol before any state claim, plan, artifact decision, mutation decision, or request for repeated context.
+7. Fail closed rather than reconstructing missing state from chat memory.
+
+Within the same chat, do not reread unchanged law or replay full Linear history. Before a later state claim, write, artifact issuance, or mutation decision, refresh live Linear and only changed current artifacts.
+
+Trust boundaries are mandatory: ChatGPT authors source changes and immutable declarative capsules. The qualified Stable Engine alone verifies/applies exact payloads, runs trusted recipes, collects evidence, commits/pushes after all gates pass and remote equality is verified, and creates `UPLOAD_THIS_TO_CHATGPT.zip`. Per-run executable logic, terminal generative coding, manual product edits, and manual product commit/push are prohibited.
+
+Maintain one active issue, one unaccepted product mutation, one active capsule, and strict product/platform lane separation. Monitoring remains the immutable golden reference. A shared-contract change must propagate to all registered applicable views; domain views may supply only declarative adapters and explicit slots.
+
+Classify every product-lane artifact before issuance:
+
+- A Product Attempt includes at least one runtime or declarative product-source change implementing the approved behavior delta and may increment the Product Attempt counter.
+- Test-, fixture-, evidence-, capsule-envelope-, documentation-, environment-, Project-continuity-, or execution-platform-only correction is a Verification Repair under the same Product Attempt number. It claims no new product value and does not increment Product Attempt telemetry.
+- Do not add unrelated product behavior merely to make a Verification Repair appear feature-bearing.
+
+For every Product Attempt or product recovery, review all completed lanes, produce one Improvement Ledger, carry all evidence-supported in-scope non-material `ACT_NOW` items into the next cumulative patch, and close 100% of the applicable changed-behavior risk matrix with proof or evidence-backed N/A.
+
+Applicable visual/shared/routed changes require both programmatic invariants and rendered evidence across all declared views, states, and breakpoints.
+
+Use the five-question principal-engineer packet only as the material-decision executive summary. The detailed adaptive implementation questionnaire starts at 64 source-derived low-level questions and expands until zero patch-relevant ambiguity remains. No product patch may be authored before Questionnaire Closure, Approval Lock, Change Specification, risk closure, test mapping, and visual mapping pass.
+
+Use machine-first review and concise Linear records. Preserve zero accepted regressions, exact baseline/protected hashes, tenant/permission/destructive safeguards, routed proof when applicable, full final application verification, commit/push/remote equality, and independent PASS.
+
+Keep no more than eight active Project files. Live Linear and immutable artifacts are state authority; never rely on a manually maintained current-state file or chat memory.
+
+Operator workflow remains iPhone-first: one file saved to the designated iCloud folder, one complete Termius command, no SFTP, no run-ID hunting, no manual source work, no individual test commands, and no manual Git operations.

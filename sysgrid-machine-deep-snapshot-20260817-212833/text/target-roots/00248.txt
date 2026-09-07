@@ -1,0 +1,22 @@
+ORIGINAL_PATH: /Users/haewonkim/.local/share/sysgrid-supervisor/v1.2.1/RELEASE_TEST_REPORT.json
+ORIGINAL_SHA256: b5dae601ac6c5cc543232a526910c2dafc3a8be9dd39fccf8cbd398172384757
+================================================================================
+{
+  "coverage": [
+    "archive safety and manifest completeness",
+    "capsule schema, patch identity, and declared state ledgers",
+    "Git baseline, dirty-path, and protected-hash verification",
+    "non-blocking run serialization and atomic publication",
+    "exact output correlation and content-addressed storage",
+    "end-to-end success and application-failure single-invocation paths",
+    "complete distribution, staged-tree, existing-target, and installed-tree identity"
+  ],
+  "engine_contract_sha256": "ab63bb20c0de32771e20b0159475205f685f28910a0956c217fb3693c02f96e1",
+  "engine_contract_version": "1.0.4",
+  "installer_tests_sha256": "ea8d7e0edba492e9f0540b8bb58e013788036658804ca8ffe63e4e5097aee203",
+  "result": "PASS",
+  "source_sha256": "69b51cc9ea7b59f22d0625e997f079824d31e751f17540d457aa4231c44ea252",
+  "supervisor_version": "1.2.1",
+  "tests": 42,
+  "tests_sha256": "6e8d2a37ac7f228164548ec560af2f8cd9e58be6079404549d5d9026fd4a2a0a"
+}

@@ -1,0 +1,11 @@
+ORIGINAL_PATH: /Users/haewonkim/.local/state/sysgrid-supervisor/runs/20260801T200755Z-67263-609000/diagnostic/REVIEW_ME_FIRST.md
+ORIGINAL_SHA256: b1f1f2eb3969b520b20b7be9195eafaf98cc84de52687f2e2508dc0a0d987177
+================================================================================
+# SysGrid Supervisor Diagnostic
+
+- Result: failure
+- Classification: CAPSULE_SELECTION_FAILURE
+- Message: Inbox contains 2 capsules with 2 distinct identities (256eadfc9374:1, b6d91af142cc:1); exact choice is ambiguous
+- Product mutation authority: none added by this diagnostic
+
+Review RESULT.json, SUPERVISOR_STATE.json, TRACEBACK.txt, and MANIFEST.sha256.

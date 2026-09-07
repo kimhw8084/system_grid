@@ -1,0 +1,23 @@
+ORIGINAL_PATH: /Users/haewonkim/.local/share/sysgrid-runner/backups/20260729T221444Z-pre-continuity-v104/sgs
+ORIGINAL_SHA256: 992300f0f51c163c93bb8c2ea55fa2e4ea9f0d6195e3c4d91ec2c953a72bb3b7
+================================================================================
+#!/bin/sh
+set -e
+BASE="$HOME/.local/lib/sysgrid-runner/current"
+PYTHON_PATH_FILE="$BASE/PYTHON_PATH"
+if [ ! -f "$PYTHON_PATH_FILE" ]; then
+  echo "SysGrid runner Python path is missing: $PYTHON_PATH_FILE" >&2
+  exit 2
+fi
+PYTHON_BIN=$(sed -n '1p' "$PYTHON_PATH_FILE")
+if [ ! -x "$PYTHON_BIN" ]; then
+  echo "SysGrid runner Python is not executable: $PYTHON_BIN" >&2
+  exit 2
+fi
+case "$(basename "$0")" in
+  sg) COMMAND=control-run ;;
+  sgs) COMMAND=control-status ;;
+  sgwatch) COMMAND=control-watch ;;
+  *) echo "Unknown SysGrid wrapper name" >&2; exit 2 ;;
+esac
+exec "$PYTHON_BIN" "$BASE/sysgrid_runner.py" "$COMMAND" "$@"

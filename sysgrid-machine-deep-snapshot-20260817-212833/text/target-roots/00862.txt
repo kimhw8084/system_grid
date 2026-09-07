@@ -1,0 +1,33 @@
+ORIGINAL_PATH: /Users/haewonkim/.local/state/sysgrid-supervisor/runs/20260803T185133Z-77095-478000/patch.diff
+ORIGINAL_SHA256: e19718784e4ba2022fc3acabc129a5acd2d5aa207c7f0ebd77e964b6107617c5
+================================================================================
+diff --git a/frontend/src/components/FAR.tsx b/frontend/src/components/FAR.tsx
+index 6d1897612416a7e53ac59956867add66f6bcbdf4..8a5da4796e09f0e960fbe2512ba0e77fd9f5f07f 100644
+--- a/frontend/src/components/FAR.tsx
++++ b/frontend/src/components/FAR.tsx
+@@ -1218,7 +1218,8 @@ export default function FAR() {
+                 <button
+                   type="button"
+                   onClick={() => setShowInsights(false)}
+-                  aria-label="Close FAR reliability insights"
++                  aria-label="Close reliability panel"
++                  title="Close reliability panel"
+                   className="relative z-[121] rounded-lg border border-white/10 bg-white/5 p-2 text-slate-400 transition-colors hover:bg-white/10 hover:text-white"
+                 >
+                   <X size={16} />
+diff --git a/frontend/src/components/shared/OperationalDataGrid.tsx b/frontend/src/components/shared/OperationalDataGrid.tsx
+index 7cda2fee175869017548d89581c968a59d1555b6..14156e6ffc5cc42fc15a027aa5712b3d1fabdf98 100644
+--- a/frontend/src/components/shared/OperationalDataGrid.tsx
++++ b/frontend/src/components/shared/OperationalDataGrid.tsx
+@@ -158,9 +158,9 @@ export function OperationalDataGrid({
+       loadingLabel={loadingLabel}
+       variant={surfaceVariant}
+     >
+-      <div className="flex min-h-0 flex-1 flex-col">
++      <div className="flex min-h-0 min-w-0 w-full max-w-full flex-1 flex-col overflow-hidden">
+         {notice}
+-        <div className="min-h-0 flex-1">
++        <div className="min-h-0 min-w-0 w-full max-w-full flex-1 overflow-hidden">
+           <OperationalGridMatrix
+             gridRef={gridRef}
+             rowData={rows}

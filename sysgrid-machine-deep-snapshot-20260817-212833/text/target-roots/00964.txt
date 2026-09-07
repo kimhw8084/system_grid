@@ -1,0 +1,335 @@
+ORIGINAL_PATH: /Users/haewonkim/.local/state/sysgrid-supervisor/runs/20260803T210459Z-89376-290000/diagnostic/SUPERVISOR_STATE.json
+ORIGINAL_SHA256: af7b72d65c27f571236975c1309385742af0d311781b4269197cdecd7c7d3b7d
+================================================================================
+{
+  "attempt": 13,
+  "capsule_cross_ledger": {
+    "changed_path_count": 2,
+    "execution_profile": "promotion_qualification",
+    "execution_scope": {
+      "changed_paths": [
+        "frontend/tests/golden-eight-seeded-visual-matrix.spec.ts",
+        "frontend/tests/far-workflows.spec.ts"
+      ],
+      "execution_profile": "promotion_qualification",
+      "targeted_tests": [
+        "playwright:golden-eight-seeded-visual-matrix",
+        "playwright:far-workflows",
+        "playwright:far-golden-workspace",
+        "playwright:far-chaos"
+      ],
+      "targeted_views": [
+        "monitoring",
+        "assets",
+        "far"
+      ]
+    },
+    "patch_paths": [
+      "frontend/tests/far-workflows.spec.ts",
+      "frontend/tests/golden-eight-seeded-visual-matrix.spec.ts"
+    ],
+    "post_path_count": 95,
+    "pre_path_count": 95,
+    "protected_path_count": 93,
+    "recipe_ids": [
+      "backend-pytest",
+      "frontend-build",
+      "frontend-typecheck",
+      "frontend-vitest",
+      "full-app-gate"
+    ]
+  },
+  "capsule_file": "SYSGRID_OUT31_PA13_R1_RENDERED_READINESS_AND_FAR_LOCATOR_VERIFICATION_REPAIR_v1.0.0.sgcap",
+  "capsule_sha256": "2973872dd78c8590359f8ca99aa8d4fc8e05934dce2d84350d5e3f6f187b1ec2",
+  "capsule_size": 21686,
+  "capsule_stage": "Product Attempt 13 verification-system repair R1 after formal PA12 supersession",
+  "capsule_title": "Product Attempt 13 Verification Repair R1 \u2014 rendered readiness and authoritative FAR locator",
+  "classification": "SUPERVISOR_INTERNAL_FAILURE",
+  "dirty_path_count": 95,
+  "engine_command": [
+    "/opt/anaconda3/bin/python3",
+    "<exact-engine>",
+    "execute",
+    "<exact-capsule>",
+    "--repo",
+    "/Users/haewonkim/home/development/sysgrid",
+    "--outbox",
+    "/Users/haewonkim/.local/state/sysgrid-supervisor/runs/20260803T210459Z-89376-290000/engine-outbox"
+  ],
+  "engine_completed": true,
+  "engine_completed_utc": "2026-08-03T21:05:55Z",
+  "engine_exit_code": -1,
+  "engine_path": "/Users/haewonkim/.local/share/sysgrid-runner/engine-v1.1.1/sysgrid_runner.py",
+  "engine_pid": 89389,
+  "engine_sha256": "66b082fec1e9f6c49152e5ecb4cbb3f998e60ce27d53a2325e5f658634a8d032",
+  "engine_started": true,
+  "engine_started_utc": "2026-08-03T21:05:00Z",
+  "event_timeline": [
+    {
+      "details": {},
+      "elapsed_seconds": 0.02,
+      "event_id": "capsule_selected",
+      "message": "Selecting the one immutable capsule and converging only byte-identical Inbox duplicates.",
+      "notification": {
+        "event_id": "capsule_selected",
+        "presentation_mode": "summary",
+        "required": false,
+        "status": "local_only",
+        "updated_utc": "2026-08-03T21:04:59Z"
+      },
+      "status": "started",
+      "utc": "2026-08-03T21:04:59Z"
+    },
+    {
+      "details": {
+        "changed_path_count": 2,
+        "execution_profile": "promotion_qualification",
+        "execution_scope": {
+          "changed_paths": [
+            "frontend/tests/golden-eight-seeded-visual-matrix.spec.ts",
+            "frontend/tests/far-workflows.spec.ts"
+          ],
+          "execution_profile": "promotion_qualification",
+          "targeted_tests": [
+            "playwright:golden-eight-seeded-visual-matrix",
+            "playwright:far-workflows",
+            "playwright:far-golden-workspace",
+            "playwright:far-chaos"
+          ],
+          "targeted_views": [
+            "monitoring",
+            "assets",
+            "far"
+          ]
+        },
+        "patch_paths": [
+          "frontend/tests/far-workflows.spec.ts",
+          "frontend/tests/golden-eight-seeded-visual-matrix.spec.ts"
+        ],
+        "post_path_count": 95,
+        "pre_path_count": 95,
+        "protected_path_count": 93,
+        "recipe_ids": [
+          "backend-pytest",
+          "frontend-build",
+          "frontend-typecheck",
+          "frontend-vitest",
+          "full-app-gate"
+        ]
+      },
+      "elapsed_seconds": 0.054,
+      "event_id": "capsule_verified",
+      "message": "Capsule archive, manifest, schema, patch identity, and cross-ledger contract are exact.",
+      "notification": {
+        "attempts": 1,
+        "chat_id_suffix": "1055",
+        "event_id": "run_started",
+        "first_attempt_utc": "2026-08-03T21:04:59Z",
+        "message_id": 581,
+        "payload_sha256": "fa515ac6f691d6a7c5d97e9e37cf03b810cdc652aeda660dbad4471af622c275",
+        "required": false,
+        "status": "delivered",
+        "updated_utc": "2026-08-03T21:05:00Z"
+      },
+      "status": "passed",
+      "utc": "2026-08-03T21:05:00Z"
+    },
+    {
+      "details": {},
+      "elapsed_seconds": 0.748,
+      "event_id": "preflight_started",
+      "message": "Running independent platform checks and exact repository-state proof.",
+      "notification": {
+        "event_id": "preflight_started",
+        "presentation_mode": "summary",
+        "required": false,
+        "status": "local_only",
+        "updated_utc": "2026-08-03T21:05:00Z"
+      },
+      "status": "started",
+      "utc": "2026-08-03T21:05:00Z"
+    },
+    {
+      "details": {
+        "dirty_paths": 95,
+        "head": "dbc3f870b5b37dbd53de7ac82697221270e19381",
+        "patch": {
+          "applicable": true,
+          "forward_diagnostic": "Checking patch frontend/tests/far-workflows.spec.ts...\nChecking patch frontend/tests/golden-eight-seeded-visual-matrix.spec.ts...",
+          "forward_exit_code": 0,
+          "reverse_applicable": false,
+          "reverse_diagnostic": "Checking patch frontend/tests/golden-eight-seeded-visual-matrix.spec.ts...\nerror: while searching for:\n        if (JSON.stringify([...routeTenantIds]) !== JSON.stringify([testTenantId])) failures.push(`response tenants: ${JSON.stringify([...routeTenantIds])}`)\n        if (!(await workspace.isVisible().catch(() => false))) failures.push('workspace not visible')\n        if (!(await grid.isVisible().catch(() => false))) failures.push('shared grid surface not visible')\n        await expect(grid.locator('.ag-center-cols-container .ag-row').first()).toBeVisible({ timeout: 30_000 })\n\n        const shellBox = await workspace.boundingBox()\n        const gridBox = await grid.boundingBox()\n\nerror: patch failed: frontend/tests/golden-eight-seeded-visual-matrix.spec.ts:192\nerror: frontend/tests/golden-eight-seeded-visual-matrix.spec.ts: patch does not apply\nChecking patch frontend/tests/far-workflows.spec.ts...\nerror: while searching for:\n    await expect(workspace.getByText('Failure Inventory Maturity Profile')).toBeVisible()\n    await workspace.getByRole('button', { name: /Insights/i }).click()\n    await expect(workspace.getByText('Failure Inventory Maturity Profile')).not.toBeVisible()\n    await page.getByPlaceholder('Search FAR failure modes').fill(far.title)\n    const centerRow = workspace.locator('.ag-center-cols-container .ag-row').filter({ hasText: far.title })\n    await expect(centerRow).toBeVisible()\n    const rowIndex = await centerRow.getAttribute('row-index')\n\nerror: patch failed: frontend/tests/far-workflows.spec.ts:61\nerror: frontend/tests/far-workflows.spec.ts: patch does not apply",
+          "reverse_exit_code": 1
+        }
+      },
+      "elapsed_seconds": 1.145,
+      "event_id": "preflight_completed",
+      "message": "Exact engine, repository, storage, state, protected hashes, and patch state passed.",
+      "notification": {
+        "event_id": "preflight_completed",
+        "presentation_mode": "summary",
+        "required": false,
+        "status": "local_only",
+        "updated_utc": "2026-08-03T21:05:00Z"
+      },
+      "status": "passed",
+      "utc": "2026-08-03T21:05:00Z"
+    },
+    {
+      "details": {},
+      "elapsed_seconds": 1.147,
+      "event_id": "engine_launch",
+      "message": "Launching the exact Stable Engine once; ambiguous mutation replay remains prohibited.",
+      "notification": {
+        "event_id": "engine_launch",
+        "presentation_mode": "summary",
+        "required": false,
+        "status": "local_only",
+        "updated_utc": "2026-08-03T21:05:00Z"
+      },
+      "status": "started",
+      "utc": "2026-08-03T21:05:00Z"
+    }
+  ],
+  "execution_profile": "promotion_qualification",
+  "execution_scope": {
+    "changed_paths": [
+      "frontend/tests/golden-eight-seeded-visual-matrix.spec.ts",
+      "frontend/tests/far-workflows.spec.ts"
+    ],
+    "execution_profile": "promotion_qualification",
+    "targeted_tests": [
+      "playwright:golden-eight-seeded-visual-matrix",
+      "playwright:far-workflows",
+      "playwright:far-golden-workspace",
+      "playwright:far-chaos"
+    ],
+    "targeted_views": [
+      "monitoring",
+      "assets",
+      "far"
+    ]
+  },
+  "exit_code": 70,
+  "issue": "OUT-31",
+  "iteration": 13,
+  "last_progress_event": "engine_launch",
+  "last_progress_message": "Launching the exact Stable Engine once; ambiguous mutation replay remains prohibited.",
+  "last_progress_status": "started",
+  "last_progress_utc": "2026-08-03T21:05:00Z",
+  "message": "[Errno 5] Input/output error",
+  "monotonic_started": 4066326.698932375,
+  "notification_events": {
+    "capsule_selected": {
+      "event_id": "capsule_selected",
+      "presentation_mode": "summary",
+      "required": false,
+      "status": "local_only",
+      "updated_utc": "2026-08-03T21:04:59Z"
+    },
+    "capsule_verified": {
+      "attempts": 1,
+      "chat_id_suffix": "1055",
+      "event_id": "run_started",
+      "first_attempt_utc": "2026-08-03T21:04:59Z",
+      "message_id": 581,
+      "payload_sha256": "fa515ac6f691d6a7c5d97e9e37cf03b810cdc652aeda660dbad4471af622c275",
+      "required": false,
+      "status": "delivered",
+      "updated_utc": "2026-08-03T21:05:00Z"
+    },
+    "engine_launch": {
+      "event_id": "engine_launch",
+      "presentation_mode": "summary",
+      "required": false,
+      "status": "local_only",
+      "updated_utc": "2026-08-03T21:05:00Z"
+    },
+    "preflight_completed": {
+      "event_id": "preflight_completed",
+      "presentation_mode": "summary",
+      "required": false,
+      "status": "local_only",
+      "updated_utc": "2026-08-03T21:05:00Z"
+    },
+    "preflight_started": {
+      "event_id": "preflight_started",
+      "presentation_mode": "summary",
+      "required": false,
+      "status": "local_only",
+      "updated_utc": "2026-08-03T21:05:00Z"
+    }
+  },
+  "notification_policy": {
+    "delivery_semantics": "durably-deduplicated-at-least-once",
+    "engine_heartbeat_seconds": 300,
+    "max_messages_per_run": 3,
+    "presentation_mode": "summary",
+    "registered_events": 21,
+    "required_before_engine": false,
+    "telegram_heartbeats": false
+  },
+  "original_capsule": "/Users/haewonkim/Library/Mobile Documents/com~apple~CloudDocs/SysGrid-Control/Inbox/SYSGRID_OUT31_PA13_R1_RENDERED_READINESS_AND_FAR_LOCATOR_VERIFICATION_REPAIR_v1.0.0.sgcap",
+  "pid": 89376,
+  "preflight": {
+    "declared_state": {
+      "dirty_path_count": 95,
+      "pre_hash_count": 95,
+      "protected_hash_count": 93
+    },
+    "engine_self_test": {
+      "engine_version": "1.1.1",
+      "result": "PASS",
+      "tests": [
+        "safe-path",
+        "manifest",
+        "corruption",
+        "canonical-dirty-paths",
+        "aggregate-recipes"
+      ]
+    },
+    "patch": {
+      "applicable": true,
+      "forward_diagnostic": "Checking patch frontend/tests/far-workflows.spec.ts...\nChecking patch frontend/tests/golden-eight-seeded-visual-matrix.spec.ts...",
+      "forward_exit_code": 0,
+      "reverse_applicable": false,
+      "reverse_diagnostic": "Checking patch frontend/tests/golden-eight-seeded-visual-matrix.spec.ts...\nerror: while searching for:\n        if (JSON.stringify([...routeTenantIds]) !== JSON.stringify([testTenantId])) failures.push(`response tenants: ${JSON.stringify([...routeTenantIds])}`)\n        if (!(await workspace.isVisible().catch(() => false))) failures.push('workspace not visible')\n        if (!(await grid.isVisible().catch(() => false))) failures.push('shared grid surface not visible')\n        await expect(grid.locator('.ag-center-cols-container .ag-row').first()).toBeVisible({ timeout: 30_000 })\n\n        const shellBox = await workspace.boundingBox()\n        const gridBox = await grid.boundingBox()\n\nerror: patch failed: frontend/tests/golden-eight-seeded-visual-matrix.spec.ts:192\nerror: frontend/tests/golden-eight-seeded-visual-matrix.spec.ts: patch does not apply\nChecking patch frontend/tests/far-workflows.spec.ts...\nerror: while searching for:\n    await expect(workspace.getByText('Failure Inventory Maturity Profile')).toBeVisible()\n    await workspace.getByRole('button', { name: /Insights/i }).click()\n    await expect(workspace.getByText('Failure Inventory Maturity Profile')).not.toBeVisible()\n    await page.getByPlaceholder('Search FAR failure modes').fill(far.title)\n    const centerRow = workspace.locator('.ag-center-cols-container .ag-row').filter({ hasText: far.title })\n    await expect(centerRow).toBeVisible()\n    const rowIndex = await centerRow.getAttribute('row-index')\n\nerror: patch failed: frontend/tests/far-workflows.spec.ts:61\nerror: frontend/tests/far-workflows.spec.ts: patch does not apply",
+      "reverse_exit_code": 1
+    },
+    "storage": {
+      "control_free": 56090624000,
+      "local_free": 56090624000,
+      "required": 3221225472
+    }
+  },
+  "repo": "/Users/haewonkim/home/development/sysgrid",
+  "repo_branch": "main",
+  "repo_head": "dbc3f870b5b37dbd53de7ac82697221270e19381",
+  "resource_plan": {
+    "backend_workers": 5,
+    "cpu_count": 12,
+    "e2e_workers": 2,
+    "frontend_workers": 5,
+    "memory_bytes": 19327352832,
+    "preflight_workers": 24,
+    "reserve_memory_bytes": 2147483648,
+    "test_cpu_budget": 11,
+    "usable_memory_bytes": 17179869184
+  },
+  "run_id": "20260803T210459Z-89376-290000",
+  "safe_cleanup": {
+    "inspected": 0,
+    "removed": 0
+  },
+  "safe_retry_count": 0,
+  "stage": "output-verification",
+  "staged_capsule": "/Users/haewonkim/.local/state/sysgrid-supervisor/runs/20260803T210459Z-89376-290000/input/SYSGRID_OUT31_PA13_R1_RENDERED_READINESS_AND_FAR_LOCATOR_VERIFICATION_REPAIR_v1.0.0.sgcap",
+  "started_utc": "2026-08-03T21:04:59Z",
+  "state": "FAILED_NO_ARTIFACT",
+  "telegram": {
+    "chat_id_suffix": "1055",
+    "configured": true,
+    "source": "/Users/haewonkim/.config/sysgrid-supervisor/telegram.json"
+  },
+  "work_dir": "/Users/haewonkim/.local/state/sysgrid-supervisor/runs/20260803T210459Z-89376-290000"
+}

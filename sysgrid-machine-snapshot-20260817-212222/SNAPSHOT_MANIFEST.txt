@@ -1,0 +1,9 @@
+SYSGRID MACHINE SNAPSHOT
+created=2026-08-18T02:22:44Z
+source_pwd=/Users/haewonkim/home/development/sysgrid
+sg_path=/Users/haewonkim/.local/bin/sg
+sg_real=/Users/haewonkim/.local/bin/sg
+
+This collector DID NOT invoke sg.
+This collector DID NOT use sudo.
+This collector DID NOT modify existing machine configuration.

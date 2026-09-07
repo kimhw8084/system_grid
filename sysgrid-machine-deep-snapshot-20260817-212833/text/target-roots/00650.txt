@@ -1,0 +1,32 @@
+ORIGINAL_PATH: /Users/haewonkim/.local/state/sysgrid-supervisor/runs/20260801T200852Z-68332-518000/preflight.json
+ORIGINAL_SHA256: 9f037bc22fcb6f0e37917c5490f9f42ce14fd36b45ca2f4d62be447cb1c4d021
+================================================================================
+{
+  "declared_state": {
+    "dirty_path_count": 57,
+    "pre_hash_count": 57,
+    "protected_hash_count": 19
+  },
+  "engine_self_test": {
+    "engine_version": "1.0.4",
+    "result": "PASS",
+    "tests": [
+      "safe-path",
+      "manifest",
+      "corruption"
+    ]
+  },
+  "patch": {
+    "applicable": true,
+    "forward_diagnostic": "Checking patch scripts/verify-app.sh...",
+    "forward_exit_code": 0,
+    "reverse_applicable": false,
+    "reverse_diagnostic": "Checking patch scripts/verify-app.sh...\nerror: while searching for:\n    npm run check:canonical-verification\n    npm run test:lint\n    npm run typecheck\n    npm run test:coverage -- --maxWorkers \"$FRONTEND_WORKERS\" --run src/components/shared/GoldenWorkspaceGeometryContract.test.ts\n    VITE_API_BASE_URL=\"$BACKEND_ORIGIN\" VITE_FRONTEND_ORIGIN=\"$FRONTEND_ORIGIN\" npm run build\n  )\n  emit_progress frontend_completed passed \"Campaign changed-area verification and production build passed.\"\n\nerror: patch failed: scripts/verify-app.sh:429\nerror: scripts/verify-app.sh: patch does not apply",
+    "reverse_exit_code": 1
+  },
+  "storage": {
+    "control_free": 56698183680,
+    "local_free": 56698183680,
+    "required": 536870912
+  }
+}

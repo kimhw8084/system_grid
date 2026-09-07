@@ -1,0 +1,13 @@
+ORIGINAL_PATH: /Users/haewonkim/.local/state/sysgrid-supervisor/runs/20260806T024223Z-30686-377000/launch.json
+ORIGINAL_SHA256: cadd337d52d8e9c08621d7e9fe39a1010b27872f3e1168775fb91220e6f7cf3f
+================================================================================
+{
+  "capsule_path": "/Users/haewonkim/.local/state/sysgrid-supervisor/runs/20260806T024223Z-30686-377000/input/SYSGRID_OUT31_PA15_PS4_VR2_CANONICAL_PLAYWRIGHT_HELPER_CONTRACT_VERIFICATION_REPAIR_v1.0.3.sgcap",
+  "capsule_sha256": "e6bfed8fb9eb4d3afb3f8769a2f47ce8a97f40c407d8e8fe6ad16e595bdc29de",
+  "command_sha256": "4d343f1ed368218b8074a0d31faaf94e59cc4aa19fc40c373db4ddc1c4db8ef0",
+  "engine_path": "/Users/haewonkim/.local/share/sysgrid-runner/engine-v1.1.1/sysgrid_runner.py",
+  "engine_sha256": "66b082fec1e9f6c49152e5ecb4cbb3f998e60ce27d53a2325e5f658634a8d032",
+  "launched_utc": "2026-08-06T02:42:25Z",
+  "repo": "/Users/haewonkim/home/development/sysgrid",
+  "run_id": "20260806T024223Z-30686-377000"
+}

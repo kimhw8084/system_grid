@@ -1,0 +1,24 @@
+ORIGINAL_PATH: /Users/haewonkim/.local/share/sysgrid-campaign-platform/v1.1.1/tests/test_engine_aggregate.py
+ORIGINAL_SHA256: 6385d9200fb3aaccdfe4fd506524c2deb24a37a90f2f8344d191da0b97731eec
+================================================================================
+import tempfile, unittest, sys
+from pathlib import Path
+sys.path.insert(0,str(Path(__file__).resolve().parents[1]/'payload'))
+import sysgrid_runner as runner
+class AggregateTests(unittest.TestCase):
+    def test_independent_failures_are_all_recorded(self):
+        with tempfile.TemporaryDirectory() as td:
+            root=Path(td); logs=root/'logs'; evidence=root/'evidence'; logs.mkdir(); evidence.mkdir()
+            items=[
+              {'id':'unknown-one','required':True,'lane':'backend','params':{}},
+              {'id':'unknown-two','required':False,'lane':'visual','params':{}},
+              {'id':'unknown-three','required':True,'lane':'frontend','params':{}},
+            ]
+            summary=runner.run_recipe_plan(root,items,logs,evidence)
+            self.assertEqual(len(summary['records']),3)
+            self.assertEqual(summary['counts']['FAIL'],2)
+            self.assertEqual(summary['counts']['WARNING'],1)
+            self.assertEqual(summary['required_failure_count'],2)
+            self.assertTrue((evidence/'TEST_RESULTS.json').is_file())
+            self.assertTrue((evidence/'WARNING_AND_FAILURE_SUMMARY.md').is_file())
+if __name__=='__main__': unittest.main()

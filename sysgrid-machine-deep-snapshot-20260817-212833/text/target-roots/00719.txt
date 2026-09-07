@@ -1,0 +1,18 @@
+ORIGINAL_PATH: /Users/haewonkim/.local/state/sysgrid-supervisor/runs/20260801T200531Z-64552-381000/diagnostic/RESULT.json
+ORIGINAL_SHA256: fae80868c3b1b7c342f2d1b8ef19ff7797fe9fb69c14d9b81708de2ca2ed05f9
+================================================================================
+{
+  "capsule_file": "DOWNLOAD_Attempt_06_Verification_Repair_R1.sgcap",
+  "capsule_sha256": "256eadfc9374106f56f81efedafd26c69f1df21d74ce23b5e720005799f0e386",
+  "classification": "CAPSULE_CROSS_LEDGER_FAILURE",
+  "engine_version": "1.0.4",
+  "exit_code": 65,
+  "finished_utc": "2026-08-01T20:05:31Z",
+  "lane": "execution_platform",
+  "message": "mutation patch contains no canonical diff paths",
+  "mode": "qualification",
+  "mutation_state": "not_started",
+  "result": "failure",
+  "safe_automatic_retry_performed": 0,
+  "supervisor_version": "2.1.2"
+}

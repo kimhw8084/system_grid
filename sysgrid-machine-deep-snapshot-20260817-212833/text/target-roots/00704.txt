@@ -1,0 +1,32 @@
+ORIGINAL_PATH: /Users/haewonkim/.local/state/sysgrid-supervisor/runs/20260801T202245Z-84244-806000/preflight.json
+ORIGINAL_SHA256: a77b055abcc4289fc97eb3c3bbba7a7c0752cafb987e088cc757cb5d28a1919f
+================================================================================
+{
+  "declared_state": {
+    "dirty_path_count": 57,
+    "pre_hash_count": 57,
+    "protected_hash_count": 19
+  },
+  "engine_self_test": {
+    "engine_version": "1.0.4",
+    "result": "PASS",
+    "tests": [
+      "safe-path",
+      "manifest",
+      "corruption"
+    ]
+  },
+  "patch": {
+    "applicable": true,
+    "forward_diagnostic": "Checking patch scripts/verify-app.sh...",
+    "forward_exit_code": 0,
+    "reverse_applicable": false,
+    "reverse_diagnostic": "Checking patch scripts/verify-app.sh...\nerror: while searching for:\n    \"${RUNTIME_ENV_COMMAND[@]}\" ./backend/venv/bin/python seed.py \\\n      --tenant-name \"Playwright Gate\" \\\n      --tenant-db \"$VERIFY_TENANT_DB_REL\" \\\n      --admin-user \"$TEST_USER_ID\" \\\n      --seed-data\n  )\n\n  echo \"Provisioning code-managed reference data...\"\n\nerror: patch failed: scripts/verify-app.sh:183\nerror: scripts/verify-app.sh: patch does not apply",
+    "reverse_exit_code": 1
+  },
+  "storage": {
+    "control_free": 56693489664,
+    "local_free": 56693489664,
+    "required": 536870912
+  }
+}

@@ -1,0 +1,36 @@
+ORIGINAL_PATH: /Users/haewonkim/.local/share/sysgrid-supervisor/v2.1.5/RELEASE_TEST_REPORT.json
+ORIGINAL_SHA256: a5324e16e777832ca48332dd1bf993415aca4c89cd4099f36151a59a69bd60d4
+================================================================================
+{
+  "engine_contract_sha256": "ab63bb20c0de32771e20b0159475205f685f28910a0956c217fb3693c02f96e1",
+  "engine_contract_version": "1.0.4",
+  "progress_event_count": 24,
+  "qualification_contract": [
+    "complete deterministic package identity",
+    "exact Stable Engine identity and self-test",
+    "capsule cross-ledger consistency before mutation",
+    "exact repository state and patch-state proof",
+    "duplicate mutation replay refusal with exact post-state classification",
+    "immutable per-run artifact history and canonical-review preservation",
+    "one authorized engine invocation with replay refusal",
+    "three-message Telegram summary policy with full local event telemetry",
+    "machine-readable resource and runtime telemetry",
+    "verified evidence publication, artifact recovery, and deterministic rebuild",
+    "development-campaign and promotion-qualification profile separation",
+    "campaign delivery cannot commit or claim product acceptance",
+    "promotion requires complete final gate, commit/push, and remote equality",
+    "validated targeted scope exported declaratively to trusted recipes",
+    "file-exact expansion of collapsed embedded untracked directories without nested Git metadata traversal",
+    "duplicate post-state automatically republishes the latest matching immutable product review or emits an explicit no-artifact continuation diagnosis"
+  ],
+  "result": "PASS",
+  "source_sha256": {
+    "BUILD_PACKAGE.py": "5bb405afef8f140d854fd27e592fa525e2da396042eb3c4e252334b1cb69f51e",
+    "INSTALL_AND_QUALIFY.py": "424765f1c3886c56d6fd343ce6379e2b53bb6fc6de4d2188112e322116199011",
+    "payload/sysgrid_supervisor.py": "5eeb2262e3159c254a5d9fe19d526fd3417336d2c2b80455311fb634baf116e5",
+    "payload/test_sysgrid_supervisor.py": "ff93fd7fe04107e79ae374d50c9c3484a96129d186c30256cc52c62acaab0c32",
+    "test_install_and_qualify.py": "edf9847b0f4d923ce053a81f64658cfa020b8588b44056f0fe678baa68638423"
+  },
+  "supervisor_version": "2.1.5",
+  "tests": 104
+}

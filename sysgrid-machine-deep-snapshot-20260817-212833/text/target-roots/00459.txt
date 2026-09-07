@@ -1,0 +1,4 @@
+ORIGINAL_PATH: /Users/haewonkim/.config/sysgrid-supervisor/repo-path
+ORIGINAL_SHA256: 95d78e8e00070dfa79b21662878f374a534acc9f68cdba20983fe16259195069
+================================================================================
+/Users/haewonkim/home/development/sysgrid

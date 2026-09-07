@@ -1,0 +1,32 @@
+ORIGINAL_PATH: /Users/haewonkim/.local/state/sysgrid-supervisor/runs/20260801T234921Z-24504-103000/preflight.json
+ORIGINAL_SHA256: 7e1f8ec03a65a551c29c06f793c02964c6a86f1486a8345fcc4640c87dc21349
+================================================================================
+{
+  "declared_state": {
+    "dirty_path_count": 61,
+    "pre_hash_count": 61,
+    "protected_hash_count": 19
+  },
+  "engine_self_test": {
+    "engine_version": "1.0.4",
+    "result": "PASS",
+    "tests": [
+      "safe-path",
+      "manifest",
+      "corruption"
+    ]
+  },
+  "patch": {
+    "applicable": true,
+    "forward_diagnostic": "Checking patch frontend/src/components/far/FARGoldenWorkspace.tsx...\nChecking patch frontend/tests/far-golden-workspace.spec.ts...",
+    "forward_exit_code": 0,
+    "reverse_applicable": false,
+    "reverse_diagnostic": "Checking patch frontend/tests/far-golden-workspace.spec.ts...\nerror: while searching for:\n\n    const workspace = page.locator('[data-far-golden-workspace=\"true\"]')\n    await expect(workspace.locator('[data-golden-command-bar=\"true\"]')).toBeVisible()\n    const grid = workspace.locator('[data-far-grid=\"true\"]')\n    await expect(grid).toBeVisible()\n    for (const label of ['Failure mode', 'Risk', 'Status', 'Owner', 'System', 'Type']) {\n      await expect(grid.locator('.ag-header-cell').filter({ hasText: label }).first(), `Missing FAR header ${label}`).toBeVisible()\n    }\n\n    await page.getByLabel('FAR analytical mode').selectOption('causes')\n    await expect(grid.locator('.ag-header-cell').filter({ hasText: 'Causes' }).first()).toBeVisible()\n    await page.getByLabel('FAR analytical mode').selectOption('failure_modes')\n    await expect(grid.locator('.ag-header-cell').filter({ hasText: 'Risk' }).first()).toBeVisible()\n\n    await page.locator('button').filter({ hasText: /^Display$/ }).click()\n\nerror: patch failed: frontend/tests/far-golden-workspace.spec.ts:17\nerror: frontend/tests/far-golden-workspace.spec.ts: patch does not apply\nChecking patch frontend/src/components/far/FARGoldenWorkspace.tsx...\nerror: while searching for:\n  const [density, setDensity] = useState<'comfortable' | 'compact'>('comfortable')\n  const [showFilterBar, setShowFilterBar] = useState(true)\n  const [showDisplayControls, setShowDisplayControls] = useState(false)\n  const [showInsights, setShowInsights] = useState(false)\n  const [loadState, setLoadState] = useState<'loading' | 'ready' | 'error'>('loading')\n  const [syncState, setSyncState] = useState<'synced' | 'saving' | 'offline' | 'error'>('synced')\n  const [errorMessage, setErrorMessage] = useState('')\n\nerror: patch failed: frontend/src/components/far/FARGoldenWorkspace.tsx:196\nerror: frontend/src/components/far/FARGoldenWorkspace.tsx: patch does not apply",
+    "reverse_exit_code": 1
+  },
+  "storage": {
+    "control_free": 59463016448,
+    "local_free": 59463016448,
+    "required": 536870912
+  }
+}

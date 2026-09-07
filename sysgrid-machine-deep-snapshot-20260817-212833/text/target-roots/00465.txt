@@ -1,0 +1,6 @@
+ORIGINAL_PATH: /Users/haewonkim/.local/state/sysgrid-workstation/profiles/work/repository-backups/20260809T024611Z/status.txt
+ORIGINAL_SHA256: 749c61d8f5c1e8d68c7e49357c786883258579a7ffc2610e1d9cee465a740c9b
+================================================================================
+ M frontend/src/components/ServicesReal.tsx
+ M frontend/src/components/shared/ServicesDirtyGuardRecovery.test.tsx
+ M frontend/tests/shell-and-search.spec.ts

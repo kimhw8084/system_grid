@@ -1,0 +1,30 @@
+ORIGINAL_PATH: /Users/haewonkim/.local/share/sysgrid-supervisor/v2.0.2/RELEASE_TEST_REPORT.json
+ORIGINAL_SHA256: 06bcf7063c62b6e1b94e4b9b8025b985566b3de4dc1c99b11c2c446401fa3592
+================================================================================
+{
+  "engine_contract_sha256": "ab63bb20c0de32771e20b0159475205f685f28910a0956c217fb3693c02f96e1",
+  "engine_contract_version": "1.0.4",
+  "progress_event_count": 24,
+  "qualification_contract": [
+    "complete deterministic package identity",
+    "exact Stable Engine identity and self-test",
+    "capsule cross-ledger consistency before mutation",
+    "exact repository state and patch-state proof",
+    "duplicate mutation replay refusal with exact post-state classification",
+    "immutable per-run artifact history and canonical-review preservation",
+    "one authorized engine invocation with replay refusal",
+    "three-message Telegram summary policy with full local event telemetry",
+    "machine-readable resource and runtime telemetry",
+    "verified evidence publication, artifact recovery, and deterministic rebuild"
+  ],
+  "result": "PASS",
+  "source_sha256": {
+    "BUILD_PACKAGE.py": "644f8a100c3ee8cd409369a2169069f99647bcdb27f9820dd7f41652d21e0438",
+    "INSTALL_AND_QUALIFY.py": "fc89f03af1a2bdf68e56813db0f1b7ee7ae39c5c2a80a516e0cd378514c0977a",
+    "payload/sysgrid_supervisor.py": "6e069e9655c80a21a86cc4be0741412ab83126c61eb831159e8865b1ecf9fdf0",
+    "payload/test_sysgrid_supervisor.py": "5d9ac70f99faf5992f6ae0462fd2ae28d046e201ad1958d86585d89be12a0fe4",
+    "test_install_and_qualify.py": "18562e707658e6cd86c5c4338b00268976acf1945da04d2eb89af1e7109f33e1"
+  },
+  "supervisor_version": "2.0.2",
+  "tests": 92
+}

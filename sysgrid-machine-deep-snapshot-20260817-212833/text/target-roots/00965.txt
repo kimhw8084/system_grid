@@ -1,0 +1,9 @@
+ORIGINAL_PATH: /Users/haewonkim/.local/state/sysgrid-supervisor/runs/20260803T210459Z-89376-290000/diagnostic/TRACEBACK.txt
+ORIGINAL_SHA256: fbaa2f3c74495bac66a479574c8ae0636e63170a902bbb344dc027ed0d8c0b4a
+================================================================================
+Traceback (most recent call last):
+  File "/Users/haewonkim/.local/share/sysgrid-campaign-platform/v1.1.1/payload/sysgrid_supervisor.py", line 3032, in run_supervised
+    emit_progress_event(
+  File "/Users/haewonkim/.local/share/sysgrid-campaign-platform/v1.1.1/payload/sysgrid_supervisor.py", line 1935, in emit_progress_event
+    print(f"[{event_id}] {message}", flush=True)
+OSError: [Errno 5] Input/output error

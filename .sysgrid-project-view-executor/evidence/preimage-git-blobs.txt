@@ -1,0 +1,3 @@
+4b3cb12e6becbb92f23cef176e193f8c653e1caa  frontend/src/components/ProjectsModernGantt.tsx
+562dbd6e3fdeef6fe02c37a56e648abe2d057ddd  frontend/src/components/ProjectsVisualRepair.css
+379af6e82c3f2eeb9849467cced4c77249b8f6e3  frontend/tests/projects-visual-repair.spec.ts

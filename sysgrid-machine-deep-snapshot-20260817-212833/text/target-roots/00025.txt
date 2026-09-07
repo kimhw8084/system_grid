@@ -1,0 +1,839 @@
+ORIGINAL_PATH: /Users/haewonkim/.local/share/sysgrid-runner/continuity-v1.0.5/continuity_packager.py
+ORIGINAL_SHA256: 1eef6330e2965aacd698289696859a742fa98eb8434bed855e325f28dfb47f61
+================================================================================
+#!/usr/bin/env python3
+from __future__ import annotations
+
+import argparse
+import datetime as dt
+import hashlib
+import json
+import os
+import pathlib
+import re
+import shutil
+import stat
+import subprocess
+import tempfile
+import zipfile
+from typing import Iterable
+
+VERSION = "1.0.5"
+MAX_SOURCE_FILE = 20_000_000
+MAX_SOURCE_TOTAL = 200_000_000
+MAX_SECRET_SCAN_FILE = [REDACTED]
+FORBIDDEN_NAMES = {
+    ".env", ".env.local", ".env.production", ".env.development",
+    ".npmrc", ".pypirc", ".netrc", ".git-credentials",
+    "credentials.json", "credential.json", "service-account.json", "service_account.json",
+    "application_default_credentials.json", "firebase-adminsdk.json",
+    "secrets.json", "secrets.yaml", "secrets.yml", "kubeconfig",
+    "auth.json", "tokens.json", "token.json",
+    "id_rsa", "id_ed25519", "id_ecdsa", "id_dsa",
+    ".DS_Store", ".coverage", "llm-report.json",
+}
+ALLOWED_ENV_EXAMPLES = {
+    ".env.example", ".env.sample", ".env.template",
+}
+FORBIDDEN_EXTENSIONS = {
+    ".zip", ".tgz", ".gz", ".rar", ".7z", ".db", ".sqlite", ".sqlite3",
+    ".db-shm", ".db-wal", ".log", ".pyc", ".pyo", ".so", ".dylib",
+    ".dll", ".exe", ".png", ".jpg", ".jpeg", ".gif", ".webp", ".ico",
+    ".pdf", ".mp4", ".mov", ".avi", ".webm", ".woff", ".woff2", ".ttf", ".otf",
+    ".pem", ".key", ".p12", ".pfx", ".jks", ".keystore", ".kdbx",
+}
+FORBIDDEN_PARTS = {
+    ".git", "node_modules", "venv", "__pycache__", ".pytest_cache", "coverage",
+    "dist", "build", "playwright-report", "test-results", ".ai-review-latest",
+    ".next", ".cache", ".turbo", "site-packages",
+}
+FORBIDDEN_PATH_SUFFIXES = {
+    ".aws/credentials", ".aws/config", ".docker/config.json", ".kube/config",
+    "gcloud/application_default_credentials.json",
+}
+SECRET_BASENAME_RE = [REDACTED]
+    r"(?i)(?:^|[-_.])(credential|credentials|service[-_]?account|private[-_]?key|secret|secrets)(?:[-_.]|$)"
+)
+SECRET_VALUE_PLACEHOLDERS = [REDACTED]
+    "", "example", "sample", "dummy", "fake", "test", "testing", "placeholder",
+    "redacted", "changeme", "change-me", "xxx", "xxxx", "none", "null",
+}
+SECRET_ASSIGNMENT_RE = [REDACTED]
+    r"""(?im)^\s*(?:export\s+)?[A-Z0-9_]*(?:TOKEN|SECRET|PASSWORD|PASSWD|API_KEY|ACCESS_KEY|PRIVATE_KEY|CLIENT_SECRET)[A-Z0-9_]*\s*=\s*["']?([^"'\s#]{8,})"""
+)
+SECRET_MAPPING_RE = [REDACTED]
+    r"""(?im)["']?(?:token|secret|password|passwd|api[_-]?key|private[_-]?key|client[_-]?secret|access[_-]?key)["']?\s*[:=]\s*["']([^"']{8,})["']"""
+)
+SECRET_INLINE_PATTERNS = [REDACTED]
+    re.compile(r"-----BEGIN (?:RSA |EC |OPENSSH |DSA )?PRIVATE KEY-----"),
+    re.compile(r"\bAKIA[0-9A-Z]{16}\b"),
+    re.compile(r"\bgh[pousr]_[A-Za-z0-9]{20,}\b"),
+    re.compile(r"\bxox[baprs]-[A-Za-z0-9-]{20,}\b"),
+    re.compile(r"(?i)\bAuthorization\s*:\s*(?:Bearer|Basic)\s+[A-Za-z0-9._~+/=-]{12,}"),
+)
+PRIVATE_KEY_BLOCK_RE = [REDACTED]
+    r"-----BEGIN (?P<label>(?:RSA |EC |OPENSSH |DSA )?PRIVATE KEY)-----.*?-----END (?P=label)-----",
+    re.DOTALL,
+)
+SECRET_ASSIGNMENT_REDACT_RE = [REDACTED]
+    r"(?im)(?P<prefix>^\s*(?:export\s+)?[A-Za-z0-9_.-]*(?:TOKEN|SECRET|PASSWORD|PASSWD|API_KEY|ACCESS_KEY|PRIVATE_KEY|CLIENT_SECRET)[A-Za-z0-9_.-]*\s*=\s*)(?P<quote>[\"']?)(?P<value>[^\"'\s#]{8,})(?P=quote)"
+)
+SECRET_MAPPING_REDACT_RE = [REDACTED]
+    r"(?im)(?P<prefix>[\"']?(?:token|secret|password|passwd|api[_-]?key|private[_-]?key|client[_-]?secret|access[_-]?key)[\"']?\s*[:=]\s*)(?P<quote>[\"'])(?P<value>[^\"']{8,})(?P=quote)"
+)
+AUTH_HEADER_REDACT_RE = re.compile(
+    r"(?i)(?P<prefix>Authorization\s*:\s*(?:Bearer|Basic)\s+)[A-Za-z0-9._~+/=-]{8,}"
+)
+SENSITIVE_QUERY_REDACT_RE = re.compile(
+    r"(?i)(?P<prefix>[?&](?:access_token|api_key|apikey|token|secret|password|passwd|client_secret|key)=)[^&\s]+"
+)
+PROVIDER_TOKEN_REDACTIONS = [REDACTED]
+    re.compile(r"\bAKIA[0-9A-Z]{16}\b"),
+    re.compile(r"\bgh[pousr]_[A-Za-z0-9]{20,}\b"),
+    re.compile(r"\bxox[baprs]-[A-Za-z0-9-]{20,}\b"),
+    re.compile(r"\bsk_(?:live|test)_[A-Za-z0-9]{16,}\b"),
+)
+
+
+
+def utc_now() -> str:
+    return dt.datetime.now(dt.timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z")
+
+
+def sha256_bytes(data: bytes) -> str:
+    return hashlib.sha256(data).hexdigest()
+
+
+def sha256_file(path: pathlib.Path) -> str:
+    h = hashlib.sha256()
+    with path.open("rb") as f:
+        for chunk in iter(lambda: f.read(1024 * 1024), b""):
+            h.update(chunk)
+    return h.hexdigest()
+
+
+def run(cmd: list[str], cwd: pathlib.Path | None = None, check: bool = True, text: bool = True) -> subprocess.CompletedProcess:
+    return subprocess.run(cmd, cwd=cwd, check=check, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=text)
+
+
+def git_text(repo: pathlib.Path, *args: str, default: str = "") -> str:
+    cp = run(["git", *args], cwd=repo, check=False)
+    return cp.stdout.strip() if cp.returncode == 0 else default
+
+
+def safe_relative_path(raw: str) -> pathlib.PurePosixPath:
+    normalized = raw.replace("\\", "/")
+    p = pathlib.PurePosixPath(normalized)
+    if p.is_absolute() or ".." in p.parts or not p.parts:
+        raise ValueError(f"unsafe path: {raw}")
+    return p
+
+
+def zip_is_symlink(info: zipfile.ZipInfo) -> bool:
+    mode = (info.external_attr >> 16) & 0o170000
+    return mode == stat.S_IFLNK
+
+
+def validate_zip(path: pathlib.Path, verify_manifest: bool = True, require_manifest: bool = False) -> dict:
+    result = {"path": str(path), "sha256": sha256_file(path), "size": path.stat().st_size}
+    with zipfile.ZipFile(path, "r") as z:
+        names = z.namelist()
+        if len(names) != len(set(names)):
+            raise ValueError("duplicate ZIP paths")
+        for info in z.infolist():
+            safe_relative_path(info.filename.rstrip("/")) if info.filename.rstrip("/") else None
+            if zip_is_symlink(info):
+                raise ValueError(f"symlink ZIP member: {info.filename}")
+        bad = z.testzip()
+        if bad:
+            raise ValueError(f"ZIP CRC failure: {bad}")
+        if require_manifest and "MANIFEST.sha256" not in names:
+            raise ValueError("required MANIFEST.sha256 missing")
+        if verify_manifest and "MANIFEST.sha256" in names:
+            manifest_names: list[str] = []
+            for line in z.read("MANIFEST.sha256").decode("utf-8", "strict").splitlines():
+                if not line.strip():
+                    continue
+                if "  " not in line:
+                    raise ValueError("malformed manifest line")
+                digest, name = line.split("  ", 1)
+                if not re.fullmatch(r"[0-9a-f]{64}", digest):
+                    raise ValueError(f"invalid manifest digest: {name}")
+                safe_relative_path(name)
+                if name == "MANIFEST.sha256":
+                    raise ValueError("manifest must not self-list")
+                if name in manifest_names:
+                    raise ValueError(f"duplicate manifest member: {name}")
+                if name not in names:
+                    raise ValueError(f"manifest missing member: {name}")
+                actual = sha256_bytes(z.read(name))
+                if actual != digest:
+                    raise ValueError(f"manifest mismatch: {name}")
+                manifest_names.append(name)
+            actual_files = sorted(n for n in names if not n.endswith("/") and n != "MANIFEST.sha256")
+            if sorted(manifest_names) != actual_files:
+                omitted = sorted(set(actual_files) - set(manifest_names))
+                extra = sorted(set(manifest_names) - set(actual_files))
+                raise ValueError(f"manifest coverage mismatch omitted={omitted[:10]} extra={extra[:10]}")
+        result["entries"] = len(names)
+    return result
+
+
+def is_safe_source_path(path: str) -> bool:
+    p = pathlib.PurePosixPath(path.replace("\\", "/"))
+    lowered = [part.lower() for part in p.parts]
+    normalized = "/".join(lowered)
+    name_lower = p.name.lower()
+    if any(part in FORBIDDEN_PARTS for part in lowered):
+        return False
+    if any(normalized == suffix or normalized.endswith("/" + suffix) for suffix in FORBIDDEN_PATH_SUFFIXES):
+        return False
+    if name_lower.startswith(".env") and name_lower not in ALLOWED_ENV_EXAMPLES:
+        return False
+    if name_lower in FORBIDDEN_NAMES:
+        return False
+    if SECRET_BASENAME_RE.search(name_lower) and name_lower not in ALLOWED_ENV_EXAMPLES:
+        return False
+    if any(name_lower.endswith(ext) for ext in FORBIDDEN_EXTENSIONS):
+        return False
+    return True
+
+
+def _looks_like_placeholder(value: str) -> bool:
+    normalized = value.strip().strip("'\"").lower()
+    if normalized in SECRET_VALUE_PLACEHOLDERS:
+        return True
+    if normalized.startswith(("${", "$", "process.env", "os.environ", "getenv(")):
+        return True
+    if any(word in normalized for word in ("example", "sample", "dummy", "fake", "placeholder", "redacted", "changeme")):
+        return True
+    return False
+
+
+def source_secret_reason(path: pathlib.Path) -> str | None:
+    try:
+        size = path.stat().st_size
+        if size > MAX_SECRET_SCAN_FILE:
+            return "secret-scan-size"
+        data = path.read_bytes()
+        if b"\x00" in data:
+            return "binary-content"
+        text = data.decode("utf-8", "strict")
+    except UnicodeDecodeError:
+        return "non-utf8-content"
+    except OSError:
+        return "unreadable"
+    for pattern in SECRET_INLINE_PATTERNS:
+        if pattern.search(text):
+            return "secret-content"
+    for pattern in (SECRET_ASSIGNMENT_RE, SECRET_MAPPING_RE):
+        for match in pattern.finditer(text):
+            if not _looks_like_placeholder(match.group(1)):
+                return "secret-assignment"
+    return None
+
+
+def sanitize_evidence_text(text: str) -> tuple[str, list[str]]:
+    redactions: list[str] = []
+
+    def redact_private(match: re.Match[str]) -> str:
+        redactions.append("private-key")
+        label = match.group("label")
+        return f"-----BEGIN {label}-----\n[REDACTED]\n-----END {label}-----"
+
+    text = PRIVATE_KEY_BLOCK_RE.sub(redact_private, text)
+
+    def redact_assignment(match: re.Match[str]) -> str:
+        value = match.group("value")
+        if _looks_like_placeholder(value):
+            return match.group(0)
+        redactions.append("secret-assignment")
+        quote = match.group("quote") or ""
+        return f"{match.group('prefix')}{quote}[REDACTED]{quote}"
+
+    text = SECRET_ASSIGNMENT_REDACT_RE.sub(redact_assignment, text)
+
+    def redact_mapping(match: re.Match[str]) -> str:
+        value = match.group("value")
+        if _looks_like_placeholder(value):
+            return match.group(0)
+        redactions.append("secret-mapping")
+        quote = match.group("quote")
+        return f"{match.group('prefix')}{quote}[REDACTED]{quote}"
+
+    text = SECRET_MAPPING_REDACT_RE.sub(redact_mapping, text)
+
+    def redact_auth(match: re.Match[str]) -> str:
+        redactions.append("authorization-header")
+        return match.group("prefix") + "[REDACTED]"
+
+    text = AUTH_HEADER_REDACT_RE.sub(redact_auth, text)
+
+    def redact_query(match: re.Match[str]) -> str:
+        redactions.append("sensitive-query")
+        return match.group("prefix") + "[REDACTED]"
+
+    text = SENSITIVE_QUERY_REDACT_RE.sub(redact_query, text)
+    for pattern in PROVIDER_TOKEN_REDACTIONS:
+        text, count = pattern.subn("[REDACTED]", text)
+        redactions.extend(["provider-token"] * count)
+    return text, redactions
+
+
+def public_git_state(state: dict) -> dict:
+    return {key: value for key, value in state.items() if not key.startswith("_")}
+
+
+def collect_git_state(repo: pathlib.Path) -> dict:
+    head = git_text(repo, "rev-parse", "HEAD", default="unknown")
+    branch = git_text(repo, "branch", "--show-current", default="unknown")
+    upstream = git_text(repo, "rev-parse", "--abbrev-ref", "--symbolic-full-name", "@{u}", default="unknown")
+    remote_sha = git_text(repo, "rev-parse", "@{u}", default="unknown") if upstream != "unknown" else "unknown"
+    status_cp = run(["git", "status", "--porcelain=v1", "-z", "--untracked-files=all"], cwd=repo, check=False, text=False)
+    fields = status_cp.stdout.split(b"\0")
+    status_lines: list[str] = []
+    dirty_paths: list[str] = []
+    i = 0
+    while i < len(fields):
+        entry = fields[i]
+        i += 1
+        if not entry:
+            continue
+        decoded = entry.decode("utf-8", "surrogateescape")
+        status = decoded[:2]
+        path = decoded[3:] if len(decoded) >= 4 else ""
+        if ("R" in status or "C" in status) and i < len(fields) and fields[i]:
+            old_path = path
+            path = fields[i].decode("utf-8", "surrogateescape")
+            i += 1
+            status_lines.append(f"{status} {old_path} -> {path}")
+        else:
+            status_lines.append(f"{status} {path}")
+        if path:
+            dirty_paths.append(path)
+    raw_staged = run(["git", "diff", "--cached", "--binary"], cwd=repo, check=False).stdout
+    raw_working = run(["git", "diff", "--binary"], cwd=repo, check=False).stdout
+    staged_patch, staged_redactions = sanitize_evidence_text(raw_staged)
+    working_patch, working_redactions = sanitize_evidence_text(raw_working)
+    return {
+        "head": head,
+        "branch": branch,
+        "upstream": upstream,
+        "remote_sha": remote_sha,
+        "status": "\n".join(status_lines),
+        "dirty_paths": sorted(set(dirty_paths)),
+        "staged_patch": staged_patch,
+        "working_patch": working_patch,
+        "staged_patch_sha256": sha256_bytes(raw_staged.encode("utf-8", "surrogateescape")),
+        "working_patch_sha256": sha256_bytes(raw_working.encode("utf-8", "surrogateescape")),
+        "evidence_redactions": sorted(staged_redactions + working_redactions),
+        "_raw_staged_patch": raw_staged,
+        "_raw_working_patch": raw_working,
+    }
+
+
+def write_manifest(root: pathlib.Path, output: pathlib.Path) -> None:
+    lines: list[str] = []
+    for p in sorted(root.rglob("*")):
+        if p.is_file() and p != output:
+            rel = p.relative_to(root).as_posix()
+            lines.append(f"{sha256_file(p)}  {rel}")
+    output.write_text("\n".join(lines) + "\n", encoding="utf-8")
+
+
+def build_safe_source_snapshot(repo: pathlib.Path, output_zip: pathlib.Path) -> dict:
+    tracked_raw = run(["git", "ls-files", "-z"], cwd=repo, text=False).stdout
+    tracked = [x.decode("utf-8", "surrogateescape") for x in tracked_raw.split(b"\0") if x]
+    untracked_raw = run(["git", "ls-files", "--others", "--exclude-standard", "-z"], cwd=repo, text=False).stdout
+    untracked = [x.decode("utf-8", "surrogateescape") for x in untracked_raw.split(b"\0") if x]
+    selected: list[tuple[str, pathlib.Path]] = []
+    excluded: list[dict] = []
+    total = 0
+    for rel in sorted(set(tracked + untracked)):
+        if not is_safe_source_path(rel):
+            excluded.append({"path": rel, "reason": "policy"})
+            continue
+        p = repo / rel
+        if not p.is_file() or p.is_symlink():
+            excluded.append({"path": rel, "reason": "missing-or-nonregular"})
+            continue
+        secret_reason = [REDACTED]
+        if secret_reason:
+            excluded.append({"path": rel, "reason": secret_reason})
+            continue
+        size = p.stat().st_size
+        if size > MAX_SOURCE_FILE or total + size > MAX_SOURCE_TOTAL:
+            excluded.append({"path": rel, "reason": "size", "size": size})
+            continue
+        selected.append((rel, p))
+        total += size
+    with tempfile.TemporaryDirectory(prefix="sysgrid-source-") as td:
+        root = pathlib.Path(td)
+        manifest_lines: list[str] = []
+        for rel, src in selected:
+            dst = root / "SOURCE" / rel
+            dst.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(src, dst)
+            manifest_lines.append(f"{sha256_file(dst)}  SOURCE/{rel}")
+        (root / "EXCLUSIONS.json").write_text(json.dumps(excluded, indent=2) + "\n", encoding="utf-8")
+        (root / "SOURCE_MANIFEST.sha256").write_text("\n".join(manifest_lines) + "\n", encoding="utf-8")
+        with zipfile.ZipFile(output_zip, "w", compression=zipfile.ZIP_DEFLATED) as z:
+            for p in sorted(root.rglob("*")):
+                if p.is_file():
+                    z.write(p, p.relative_to(root).as_posix())
+    secret_exclusions = [REDACTED]
+        "secret-content", "secret-assignment", "secret-scan-size", "binary-content",
+        "non-utf8-content", "unreadable",
+    }]
+    return {
+        "files": len(selected),
+        "bytes": total,
+        "excluded": len(excluded),
+        "secret_exclusions": len(secret_exclusions),
+        "secret_exclusion_paths": [item["path"] for item in secret_exclusions],
+        "sha256": sha256_file(output_zip),
+    }
+
+
+def create_fallback_ship_review(repo: pathlib.Path, output_zip: pathlib.Path, state: dict, reason: str) -> None:
+    with tempfile.TemporaryDirectory(prefix="sysgrid-review-fallback-") as td:
+        root = pathlib.Path(td)
+        (root / "AI_REVIEW_BRIEF.md").write_text(
+            "# SysGrid Ship AI Review — Continuity Fallback\n\n"
+            "The canonical ship wrapper could not complete. This read-only fallback preserves the safe redacted current state and exact non-secret hashes.\n\n"
+            f"Reason: `{reason}`\n",
+            encoding="utf-8",
+        )
+        (root / "git-state.json").write_text(json.dumps(public_git_state(state), indent=2) + "\n", encoding="utf-8")
+        (root / "working-tree.patch").write_text(state.get("working_patch", ""), encoding="utf-8")
+        (root / "staged.patch").write_text(state.get("staged_patch", ""), encoding="utf-8")
+        build_safe_source_snapshot(repo, root / "REPOSITORY_SOURCE.zip")
+        write_manifest(root, root / "MANIFEST.sha256")
+        with zipfile.ZipFile(output_zip, "w", compression=zipfile.ZIP_DEFLATED) as z:
+            for p in sorted(root.rglob("*")):
+                if p.is_file():
+                    z.write(p, p.relative_to(root).as_posix())
+
+
+def copy_untracked(repo: pathlib.Path, clone: pathlib.Path) -> list[dict]:
+    raw = run(["git", "ls-files", "--others", "--exclude-standard", "-z"], cwd=repo, text=False).stdout
+    excluded: list[dict] = []
+    for value in raw.split(b"\0"):
+        if not value:
+            continue
+        rel = value.decode("utf-8", "surrogateescape")
+        if not is_safe_source_path(rel):
+            excluded.append({"path": rel, "reason": "policy"})
+            continue
+        src = repo / rel
+        if not src.is_file() or src.is_symlink():
+            excluded.append({"path": rel, "reason": "missing-or-nonregular"})
+            continue
+        reason = source_secret_reason(src)
+        if reason:
+            excluded.append({"path": rel, "reason": reason})
+            continue
+        dst = clone / rel
+        dst.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(src, dst)
+    return excluded
+
+
+def run_ship_ai_review(repo: pathlib.Path, pre_head: str, output_zip: pathlib.Path, state: dict, source_info: dict | None = None) -> dict:
+    script = repo / "scripts" / "ship-ai-review.sh"
+    if not script.is_file():
+        create_fallback_ship_review(repo, output_zip, state, "scripts/ship-ai-review.sh missing")
+        return {"status": "fallback", "reason": "script-missing", "sha256": sha256_file(output_zip)}
+    real_head = state["head"]
+    dirty = bool(state["dirty_paths"])
+    log_text = ""
+    try:
+        if source_info and source_info.get("secret_exclusions", 0):
+            create_fallback_ship_review(
+                repo,
+                output_zip,
+                state,
+                "secret-bearing or unscannable repository files were excluded; canonical ship review suppressed",
+            )
+            return {
+                "status": "fallback",
+                "reason": "secret-bearing-repository-files",
+                "sha256": sha256_file(output_zip),
+                "excluded_paths": source_info.get("secret_exclusion_paths", []),
+            }
+        if state.get("evidence_redactions"):
+            create_fallback_ship_review(
+                repo,
+                output_zip,
+                state,
+                "secret-bearing values were redacted from Git evidence; canonical ship review suppressed",
+            )
+            return {
+                "status": "fallback",
+                "reason": "secret-bearing-git-evidence",
+                "sha256": sha256_file(output_zip),
+                "redactions": state.get("evidence_redactions", []),
+            }
+        if dirty:
+            with tempfile.TemporaryDirectory(prefix="sysgrid-review-clone-") as td:
+                clone = pathlib.Path(td) / "repo"
+                run(["git", "clone", "--no-hardlinks", "--local", str(repo), str(clone)])
+                run(["git", "checkout", real_head], cwd=clone)
+                staged = state.get("_raw_staged_patch", "")
+                working = state.get("_raw_working_patch", "")
+                if staged:
+                    cp = subprocess.run(["git", "apply", "--index", "--binary", "-"], cwd=clone, input=staged, text=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+                    if cp.returncode != 0:
+                        raise RuntimeError(f"staged patch apply failed: {cp.stderr}")
+                if working:
+                    cp = subprocess.run(["git", "apply", "--binary", "-"], cwd=clone, input=working, text=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+                    if cp.returncode != 0:
+                        raise RuntimeError(f"working patch apply failed: {cp.stderr}")
+                untracked_exclusions = copy_untracked(repo, clone)
+                if any(item.get("reason") not in {"policy"} for item in untracked_exclusions):
+                    raise RuntimeError(
+                        "secret-bearing or unscannable untracked files were excluded from the synthetic review clone"
+                    )
+                run(["git", "config", "user.name", "SysGrid Continuity Snapshot"], cwd=clone)
+                run(["git", "config", "user.email", "continuity@sysgrid.local"], cwd=clone)
+                run(["git", "add", "-A"], cwd=clone)
+                if run(["git", "diff", "--cached", "--quiet"], cwd=clone, check=False).returncode != 0:
+                    run(["git", "commit", "-m", "SYSGRID CONTINUITY SNAPSHOT ONLY"], cwd=clone)
+                snapshot_head = git_text(clone, "rev-parse", "HEAD")
+                clone_script = clone / "scripts" / "ship-ai-review.sh"
+                args = [
+                    str(clone_script), "--no-commit", "--no-push", "--base", real_head,
+                    "--head", snapshot_head, "--mode", "full", "--checks", "none",
+                    "--artifact-policy", "block", "--output", str(output_zip),
+                    "--goal", "Create a complete continuity review of the exact retained SysGrid working state without mutating the real repository.",
+                ]
+                cp = run(args, cwd=clone, check=False)
+                log_text = cp.stdout + "\n" + cp.stderr
+                if cp.returncode != 0 or not output_zip.is_file():
+                    raise RuntimeError(f"ship review failed in snapshot clone: exit {cp.returncode}\n{log_text[-4000:]}")
+        else:
+            base = pre_head if pre_head and pre_head != "unknown" else real_head
+            args = [
+                str(script), "--no-commit", "--no-push", "--base", base,
+                "--head", real_head, "--mode", "full", "--checks", "none",
+                "--artifact-policy", "block", "--output", str(output_zip),
+                "--goal", "Create the complete SysGrid run-continuity review package for seamless ChatGPT takeover.",
+            ]
+            if base == real_head:
+                args.append("--allow-empty")
+            cp = run(args, cwd=repo, check=False)
+            log_text = cp.stdout + "\n" + cp.stderr
+            if cp.returncode != 0 or not output_zip.is_file():
+                raise RuntimeError(f"ship review failed: exit {cp.returncode}\n{log_text[-4000:]}")
+        validate_zip(output_zip, verify_manifest=True)
+        return {"status": "pass", "sha256": sha256_file(output_zip), "log_tail": log_text[-2000:]}
+    except Exception as exc:
+        create_fallback_ship_review(repo, output_zip, state, str(exc))
+        return {"status": "fallback", "reason": str(exc), "sha256": sha256_file(output_zip), "log_tail": log_text[-2000:]}
+
+
+def load_json_from_zip(z: zipfile.ZipFile, name: str) -> dict:
+    try:
+        return json.loads(z.read(name).decode("utf-8"))
+    except Exception:
+        return {}
+
+
+def parse_capsule_from_result(result: dict) -> pathlib.Path | None:
+    raw = result.get("capsule_archive")
+    if raw:
+        p = pathlib.Path(raw)
+        if p.is_file():
+            return p
+    return None
+
+
+def load_active_laws(payload_dir: pathlib.Path, stage: pathlib.Path) -> list[str]:
+    law_dir = payload_dir / "active_law"
+    included: list[str] = []
+    if law_dir.is_dir():
+        target = stage / "CONTINUITY" / "ACTIVE_LAW"
+        target.mkdir(parents=True, exist_ok=True)
+        for p in sorted(law_dir.iterdir()):
+            if p.is_file():
+                shutil.copy2(p, target / p.name)
+                included.append(p.name)
+    return included
+
+
+def build_bootstrap(result: dict, state: dict, handoff: dict) -> str:
+    verdict = result.get("result", "unknown")
+    classification = result.get("classification", "unknown")
+    message = result.get("message", "unknown")
+    return f"""# SysGrid Seamless Takeover Bootstrap
+
+This package is the mandatory starting point for the next SysGrid chat.
+
+## Control snapshot
+
+- Project: {result.get('project', 'SysGrid')}
+- Master context: OUT-5 — GOAL: SysGrid Workspace Goldenization & Plug-and-Play Spread
+- Sole active issue: {result.get('issue', 'OUT-31')}
+- Stage: {result.get('stage', 'unknown')}
+- Iteration / attempt: {result.get('iteration', 'unknown')} / {result.get('attempt', 'unknown')}
+- Engine: {result.get('engine_version', 'unknown')}
+- Run result: {verdict}
+- Classification: {classification}
+- Message: {message}
+- Current HEAD: {state.get('head', 'unknown')}
+- Upstream: {state.get('upstream', 'unknown')}
+- Remote SHA: {state.get('remote_sha', 'unknown')}
+- Dirty paths: {len(state.get('dirty_paths', []))}
+- Bundle SHA-256: {handoff.get('bundle_sha256', 'computed after packaging')}
+
+## Mandatory next-chat procedure
+
+1. Read `CONTINUITY/ACTIVE_LAW/00_ACTIVE_LAW_MANIFEST_v1.1.yaml` and every active file in authority order.
+2. Read current Linear project `SysGrid`, master issue `OUT-5`, active issue `{result.get('issue', 'OUT-31')}`, and latest comments.
+3. Read `RESULT.json`, `PROVENANCE.json`, `CONTINUITY/HANDOFF.json`, and `CONTINUITY/LINEAR_UPDATE_PENDING.md`.
+4. Reconcile the local handoff with Linear before claiming current state.
+5. Review `CONTINUITY/SHIP_AI_REVIEW.zip` and `CONTINUITY/REPOSITORY_SOURCE.zip` before authoring source changes.
+6. Continue from the exact gate below; do not rerun superseded capsules.
+
+## Current gate
+
+{handoff.get('safe_next_action', 'Review the run evidence and determine the narrowest safe next action.')}
+
+## Goldenization definition
+
+Goldenization means one authoritative dynamically synchronized system. Shared components, visuals, graphics, tables, columns, rows, controls, interactions, lifecycle behavior, and convenience features live once. Domains provide declarative adapters and explicit specialized slots only.
+"""
+
+
+def build_linear_update(result: dict, state: dict, ship: dict) -> str:
+    dirty_lines = "\n".join(f"- `{p}`" for p in state.get("dirty_paths", [])) or "- none"
+    return f"""## Automatic sg run handoff pending Linear reconciliation
+
+### Run identity
+
+- Project: {result.get('project', 'SysGrid')}
+- Master context: OUT-5
+- Active issue: {result.get('issue', 'OUT-31')}
+- Stage: {result.get('stage', 'unknown')}
+- Iteration / attempt: {result.get('iteration', 'unknown')} / {result.get('attempt', 'unknown')}
+- Engine: {result.get('engine_version', 'unknown')}
+- Result: {result.get('result', 'unknown')}
+- Classification: {result.get('classification', 'unknown')}
+- Failed stage: {result.get('failed_stage', 'none')}
+- Message: {result.get('message', 'unknown')}
+
+### Exact repository state
+
+- HEAD: `{state.get('head', 'unknown')}`
+- Branch: `{state.get('branch', 'unknown')}`
+- Upstream: `{state.get('upstream', 'unknown')}`
+- Remote SHA: `{state.get('remote_sha', 'unknown')}`
+- Dirty paths:
+{dirty_lines}
+
+### Continuity evidence
+
+- Canonical bundle SHA-256: detached; compute from the uploaded ZIP bytes or read `SysGrid-Control/Continuity/Current/SHA256.txt`
+- Ship AI review status: `{ship.get('status', 'unknown')}`
+- Local current handoff: `SysGrid-Control/Continuity/Current/`
+- Canonical upload: `SysGrid-Control/Outbox/UPLOAD_THIS_TO_CHATGPT.zip`
+
+### Binding rule
+
+This payload was generated automatically by `sg`. The next ChatGPT control room must apply or supersede it in Linear before substantive SysGrid work. No state claim may rely on chat memory alone.
+"""
+
+
+def safe_next_action(result: dict) -> str:
+    classification = result.get("classification", "")
+    if classification == "BASELINE_MISMATCH":
+        return "Reconcile the actual clean HEAD and the issued capsule baseline. Do not classify the commit as unauthorized when it was created by an operator-requested review wrapper. Correct the platform workflow before product reissuance."
+    if result.get("result") == "success":
+        return "Independently review the complete canonical bundle, record the verdict in Linear, and only then lock or advance the product stage."
+    return "Review the exact failure evidence and retained state, record the verdict in Linear, and issue only the narrowest correction matching the proven failure class."
+
+
+def build_bundle(repo: pathlib.Path, control_root: pathlib.Path, raw_zip: pathlib.Path | None, pre_head: str, payload_dir: pathlib.Path, launch: dict) -> pathlib.Path:
+    outbox = control_root / "Outbox"
+    outbox.mkdir(parents=True, exist_ok=True)
+    continuity = control_root / "Continuity"
+    current = continuity / "Current"
+    archive_root = continuity / "Archive"
+    state = collect_git_state(repo)
+
+    with tempfile.TemporaryDirectory(prefix="sysgrid-continuity-") as td:
+        stage = pathlib.Path(td) / "stage"
+        stage.mkdir(parents=True)
+        raw_info: dict = {"status": "missing"}
+        result: dict = {
+            "project": "SysGrid", "issue": "OUT-31", "result": "failure",
+            "classification": "CONTINUITY_RAW_ENGINE_ZIP_MISSING",
+            "message": "The core engine did not produce a readable canonical ZIP.",
+            "engine_version": "1.0.3",
+        }
+        provenance: dict = {}
+        if raw_zip and raw_zip.is_file():
+            raw_info = validate_zip(raw_zip, require_manifest=True)
+            engine_copy = stage / "ENGINE" / "UPLOAD_THIS_TO_CHATGPT.engine.zip"
+            engine_copy.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(raw_zip, engine_copy)
+            with zipfile.ZipFile(raw_zip, "r") as z:
+                result = load_json_from_zip(z, "RESULT.json") or result
+                provenance = load_json_from_zip(z, "PROVENANCE.json")
+                for info in z.infolist():
+                    if info.is_dir():
+                        continue
+                    name = info.filename
+                    if name == "MANIFEST.sha256":
+                        name = "ENGINE_MANIFEST.sha256"
+                    elif name == "REVIEW_ME_FIRST.md":
+                        name = "ENGINE_REVIEW_ME_FIRST.md"
+                    dst = stage / name
+                    dst.parent.mkdir(parents=True, exist_ok=True)
+                    dst.write_bytes(z.read(info.filename))
+
+        # RESULT and PROVENANCE are mandatory even when the core engine could not
+        # produce a raw ZIP; write normalized copies from the parsed/default state.
+        (stage / "RESULT.json").write_text(json.dumps(result, indent=2) + "\n", encoding="utf-8")
+        (stage / "PROVENANCE.json").write_text(json.dumps(provenance, indent=2) + "\n", encoding="utf-8")
+
+        continuity_stage = stage / "CONTINUITY"
+        continuity_stage.mkdir(parents=True, exist_ok=True)
+        source_info = build_safe_source_snapshot(repo, continuity_stage / "REPOSITORY_SOURCE.zip")
+        ship_zip = continuity_stage / "SHIP_AI_REVIEW.zip"
+        ship = run_ship_ai_review(repo, pre_head, ship_zip, state, source_info)
+
+        capsule = parse_capsule_from_result(result)
+        if capsule:
+            capsule_dst = stage / "CONTINUITY" / "CAPSULE" / capsule.name
+            capsule_dst.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(capsule, capsule_dst)
+
+        laws = load_active_laws(payload_dir, stage)
+        public_state = public_git_state(state)
+        handoff = {
+            "schema_version": "1.0",
+            "continuity_version": VERSION,
+            "created_utc": utc_now(),
+            "launch": launch,
+            "result": result,
+            "provenance": provenance,
+            "repository": public_state,
+            "raw_engine_zip": raw_info,
+            "ship_ai_review": ship,
+            "source_snapshot": source_info,
+            "active_law_files": laws,
+            "safe_next_action": safe_next_action(result),
+            "bundle_sha256": "external-detached",
+            "bundle_sha256_location": "SysGrid-Control/Continuity/Current/SHA256.txt",
+            "bundle_integrity": "Verify the uploaded ZIP bytes independently; every internal member is covered by MANIFEST.sha256. A ZIP cannot truthfully contain its own final SHA-256.",
+        }
+        (stage / "CONTINUITY" / "HANDOFF.json").write_text(json.dumps(handoff, indent=2) + "\n", encoding="utf-8")
+        (stage / "CONTINUITY" / "git-status.txt").write_text(state.get("status", "") + "\n", encoding="utf-8")
+        (stage / "CONTINUITY" / "working-tree.patch").write_text(state.get("working_patch", ""), encoding="utf-8")
+        (stage / "CONTINUITY" / "staged.patch").write_text(state.get("staged_patch", ""), encoding="utf-8")
+        (stage / "CONTINUITY" / "QUALIFIED_PLATFORM.json").write_text(json.dumps({
+            "version": VERSION,
+            "core_engine_version": result.get("engine_version", "1.0.3"),
+            "continuity_contract": "Every sg run produces an enriched canonical Outbox bundle and iCloud Current/Archive handoff.",
+            "linear_sync": "A ready-to-apply Linear update is always produced. Direct local Linear mutation requires separately configured credentials and is not assumed.",
+        }, indent=2) + "\n", encoding="utf-8")
+
+        # The final ZIP digest is necessarily detached: embedding a ZIP's own SHA-256
+        # changes the ZIP bytes and invalidates that value. Internal continuity files
+        # therefore state the detached policy; Current/Archive SHA256.txt carry the
+        # exact post-copy digest, while MANIFEST.sha256 covers every internal member.
+        (stage / "CONTINUITY" / "BOOTSTRAP.md").write_text(build_bootstrap(result, state, handoff), encoding="utf-8")
+        (stage / "CONTINUITY" / "LINEAR_UPDATE_PENDING.md").write_text(build_linear_update(result, state, ship), encoding="utf-8")
+        (stage / "CONTINUITY" / "BUNDLE_DIGEST_POLICY.md").write_text(
+            "# Canonical bundle digest policy\n\n"
+            "A ZIP cannot truthfully contain its own final SHA-256 because adding that value changes the ZIP bytes.\n\n"
+            "- Verify all internal members with `MANIFEST.sha256`.\n"
+            "- Verify the complete uploaded ZIP by computing SHA-256 from the uploaded bytes.\n"
+            "- On the local machine, the detached digest is stored beside the bundle in "
+            "`SysGrid-Control/Continuity/Current/SHA256.txt` and the matching archive directory.\n",
+            encoding="utf-8",
+        )
+        review_first = f"""# SysGrid Canonical Continuity Review
+
+- Core result: {result.get('result', 'unknown')}
+- Classification: {result.get('classification', 'unknown')}
+- Issue: {result.get('issue', 'OUT-31')}
+- Iteration / attempt: {result.get('iteration', 'unknown')} / {result.get('attempt', 'unknown')}
+- Current HEAD: {state.get('head', 'unknown')}
+- Dirty paths: {len(state.get('dirty_paths', []))}
+- Ship AI review: {ship.get('status', 'unknown')}
+
+Start with `CONTINUITY/BOOTSTRAP.md` and `CONTINUITY/HANDOFF.json`.
+"""
+        (stage / "REVIEW_ME_FIRST.md").write_text(review_first, encoding="utf-8")
+
+        manifest = stage / "MANIFEST.sha256"
+        write_manifest(stage, manifest)
+        final_temp = pathlib.Path(td) / "UPLOAD_THIS_TO_CHATGPT.final.zip"
+        with zipfile.ZipFile(final_temp, "w", compression=zipfile.ZIP_DEFLATED) as z:
+            for p in sorted(stage.rglob("*")):
+                if p.is_file():
+                    z.write(p, p.relative_to(stage).as_posix())
+        validate_zip(final_temp, require_manifest=True)
+        final_sha = sha256_file(final_temp)
+
+        final_path = outbox / "UPLOAD_THIS_TO_CHATGPT.zip"
+        atomic = outbox / f".UPLOAD_THIS_TO_CHATGPT.{os.getpid()}.tmp"
+        shutil.copy2(final_temp, atomic)
+        if sha256_file(atomic) != final_sha:
+            raise RuntimeError("Outbox copy hash mismatch")
+        os.replace(atomic, final_path)
+        if sha256_file(final_path) != final_sha:
+            raise RuntimeError("Outbox post-replace hash mismatch")
+
+        run_id = str(result.get("run_id") or launch.get("launch_id") or dt.datetime.now().strftime("%Y%m%dT%H%M%S"))
+        archive_dir = archive_root / run_id
+        if archive_dir.exists():
+            shutil.rmtree(archive_dir)
+        archive_dir.mkdir(parents=True, exist_ok=True)
+        if current.exists():
+            shutil.rmtree(current)
+        current.mkdir(parents=True, exist_ok=True)
+        for rel in [
+            "CONTINUITY/BOOTSTRAP.md",
+            "CONTINUITY/HANDOFF.json",
+            "CONTINUITY/LINEAR_UPDATE_PENDING.md",
+            "CONTINUITY/QUALIFIED_PLATFORM.json",
+            "CONTINUITY/BUNDLE_DIGEST_POLICY.md",
+        ]:
+            src = stage / rel
+            dst = current / pathlib.Path(rel).name
+            shutil.copy2(src, dst)
+            shutil.copy2(src, archive_dir / pathlib.Path(rel).name)
+        shutil.copy2(final_path, current / "UPLOAD_THIS_TO_CHATGPT.zip")
+        shutil.copy2(final_path, archive_dir / "UPLOAD_THIS_TO_CHATGPT.zip")
+        if sha256_file(current / "UPLOAD_THIS_TO_CHATGPT.zip") != final_sha:
+            raise RuntimeError("Current continuity copy hash mismatch")
+        if sha256_file(archive_dir / "UPLOAD_THIS_TO_CHATGPT.zip") != final_sha:
+            raise RuntimeError("Archive continuity copy hash mismatch")
+        (current / "SHA256.txt").write_text(final_sha + "  UPLOAD_THIS_TO_CHATGPT.zip\n", encoding="utf-8")
+        (archive_dir / "SHA256.txt").write_text(final_sha + "  UPLOAD_THIS_TO_CHATGPT.zip\n", encoding="utf-8")
+        return final_path
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--repo", required=True)
+    parser.add_argument("--control-root", required=True)
+    parser.add_argument("--raw-zip")
+    parser.add_argument("--pre-head", default="unknown")
+    parser.add_argument("--launch-json", required=True)
+    parser.add_argument("--payload-dir", required=True)
+    args = parser.parse_args()
+    repo = pathlib.Path(args.repo).resolve()
+    control_root = pathlib.Path(args.control_root).expanduser().resolve()
+    raw_zip = pathlib.Path(args.raw_zip).resolve() if args.raw_zip else None
+    launch = json.loads(pathlib.Path(args.launch_json).read_text(encoding="utf-8"))
+    final = build_bundle(repo, control_root, raw_zip, args.pre_head, pathlib.Path(args.payload_dir), launch)
+    print(json.dumps({"status": "PASS", "path": str(final), "sha256": sha256_file(final), "version": VERSION}, indent=2))
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

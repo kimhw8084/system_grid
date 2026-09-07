@@ -1,0 +1,9 @@
+PID=27164
+27164 27028   501 haewonkim Mon09PM   0:00.04 S+   bash /Users/haewonkim/home/development/sysgrid/scripts/start-local.sh --backend-host 127.0.0.1 --backend-port 8000 --frontend-host 127.0.0.1 --frontend-port 5173 --api-base-url http://127.0.0.1:8000 --frontend-origin http://127.0.0.1:5173 --default-user-id haewon.kim --auto-admin-user-ids haewon.kim --admin-full-name Haewon Kim --admin-email haewon.kim@sysgrid.local --admin-department Infrastructure --user-id-env-var AccessKey --runtime-effective-user-id haewon.kim --profile-name work --runtime-log-dir /Users/haewonkim/.local/state/sysgrid-workstation/profiles/work/runs/20260811T024021Z --runtime-report-file /Users/haewonkim/.local/state/sysgrid-workstation/profiles/work/runs/20260811T024021Z/runtime-report.json --preserve-data --strict-checks
+
+COMMAND   PID      USER   FD   TYPE DEVICE SIZE/OFF                NODE NAME
+bash    27164 haewonkim  cwd    DIR   1,14     2400            70339124 /Users/haewonkim/home/development/sysgrid
+bash    27164 haewonkim  txt    REG   1,14  1088464            30280146 /opt/homebrew/Cellar/bash/5.2.37/bin/bash
+bash    27164 haewonkim  txt    REG   1,14   350112            30279859 /opt/homebrew/Cellar/ncurses/6.5/lib/libncursesw.6.dylib
+bash    27164 haewonkim  txt    REG   1,14    81288 1152921500312536081 /usr/share/locale/en_US.UTF-8/LC_COLLATE
+bash    27164 haewonkim  txt    REG   1,14  2289328 1152921500312524539 /usr/lib/dyld

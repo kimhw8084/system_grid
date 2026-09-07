@@ -1,0 +1,32 @@
+ORIGINAL_PATH: /Users/haewonkim/.local/state/sysgrid-supervisor/runs/20260801T212735Z-59010-915000/preflight.json
+ORIGINAL_SHA256: e4062d4d9eaacab7b8ccc0da80b53b698759f5781ca1d8fec6323b03e23d7e1d
+================================================================================
+{
+  "declared_state": {
+    "dirty_path_count": 57,
+    "pre_hash_count": 57,
+    "protected_hash_count": 19
+  },
+  "engine_self_test": {
+    "engine_version": "1.0.4",
+    "result": "PASS",
+    "tests": [
+      "safe-path",
+      "manifest",
+      "corruption"
+    ]
+  },
+  "patch": {
+    "applicable": true,
+    "forward_diagnostic": "Checking patch frontend/src/components/shared/OperationalWorkspaceShells.tsx...\nChecking patch frontend/src/components/shared/GoldenWorkspaceGeometryContract.test.ts...",
+    "forward_exit_code": 0,
+    "reverse_applicable": false,
+    "reverse_diagnostic": "Checking patch frontend/src/components/shared/GoldenWorkspaceGeometryContract.test.ts...\nerror: while searching for:\n    expect(shell).toContain(\"GOLDEN_GRID_CONTENT_CLASS = 'relative box-border flex min-h-0 min-w-0 w-full max-w-full flex-1 overflow-hidden\")\n    expect(shell).toContain('data-golden-grid-content=\"true\"')\n    expect(shell).toContain('[&_.ag-center-cols-container]:!min-w-full')\n    expect(shell).toContain('[&_.ag-center-cols-container]:!max-w-[400%]')\n    expect(shell).toContain('[&_.ag-center-cols-container_.ag-row]:!max-w-full')\n    expect(shell).not.toContain('[&_.ag-center-cols-container]:!w-full')\n    expect(shell).toContain('[&>*]:!w-full')\n\nerror: patch failed: frontend/src/components/shared/GoldenWorkspaceGeometryContract.test.ts:28\nerror: frontend/src/components/shared/GoldenWorkspaceGeometryContract.test.ts: patch does not apply\nChecking patch frontend/src/components/shared/OperationalWorkspaceShells.tsx...\nerror: while searching for:\n\nexport const GOLDEN_WORKSPACE_GEOMETRY_VERSION = '3'\nexport const GOLDEN_WORKSPACE_FRAME_CLASS = 'h-full min-h-0 min-w-0 w-full max-w-full box-border flex flex-col items-stretch space-y-4 overflow-hidden [&>*]:!ml-0 [&>*]:!mr-0 [&>*]:!min-w-0 [&>*]:!max-w-full [&>*]:!w-full [&>*]:self-stretch'\nexport const GOLDEN_GRID_BASE_CLASS = 'operational-grid-shell operational-grid relative box-border flex min-h-0 min-w-0 w-full max-w-full flex-1 flex-col overflow-hidden glass-panel ag-theme-alpine-dark [&_.ag-root-wrapper]:!min-w-0 [&_.ag-root-wrapper]:!w-full [&_.ag-root-wrapper]:!max-w-full [&_.ag-root]:!min-w-0 [&_.ag-root]:!w-full [&_.ag-root]:!max-w-full [&_.ag-body]:!min-w-0 [&_.ag-body]:!max-w-full [&_.ag-body-viewport]:!min-w-0 [&_.ag-body-viewport]:!max-w-full [&_.ag-center-cols-viewport]:!min-w-0 [&_.ag-center-cols-viewport]:!max-w-full [&_.ag-center-cols-container]:!min-w-full [&_.ag-center-cols-container]:!max-w-[400%] [&_.ag-center-cols-container_.ag-row]:!max-w-full'\nexport const GOLDEN_GRID_VARIANT_CLASS =",
+    "reverse_exit_code": 1
+  },
+  "storage": {
+    "control_free": 56932450304,
+    "local_free": 56932450304,
+    "required": 536870912
+  }
+}

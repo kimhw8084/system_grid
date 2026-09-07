@@ -1,0 +1,3 @@
+=== launchctl list ===
+-	0	com.apple.AOSPushRelay
+62550	-9	com.apple.sidecar-relay

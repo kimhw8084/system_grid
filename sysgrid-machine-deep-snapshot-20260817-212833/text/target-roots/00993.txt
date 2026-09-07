@@ -1,0 +1,18 @@
+ORIGINAL_PATH: /Users/haewonkim/.local/state/sysgrid-supervisor/runs/20260804T010704Z-54912-696000/diagnostic/RESULT.json
+ORIGINAL_SHA256: dd5be4a52d3e4226539f1ab19528a521b88df15cffb08d5cc0668d176c363e3e
+================================================================================
+{
+  "capsule_file": "SYSGRID_OUT31_PA13_PS2_FAR_BOUNDED_COLUMN_LIFECYCLE_CORRECTION_v1.0.0.sgcap",
+  "capsule_sha256": "93bb6a9f8925f9c8ba16bd49f89e8bcabcc6fb0088e9274370a8bda61e2c7434",
+  "classification": "ENGINE_OUTPUT_MISSING",
+  "engine_version": "1.1.1",
+  "exit_code": 74,
+  "finished_utc": "2026-08-04T01:18:07Z",
+  "lane": "execution_platform",
+  "message": "engine did not create UPLOAD_THIS_TO_CHATGPT.zip",
+  "mode": "qualification",
+  "mutation_state": "engine_completed",
+  "result": "failure",
+  "safe_automatic_retry_performed": 0,
+  "supervisor_version": "2.2.1"
+}

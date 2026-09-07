@@ -1,0 +1,61 @@
+ORIGINAL_PATH: /Users/haewonkim/.local/share/sysgrid-supervisor/v1.2.1/test_install_and_qualify.py
+ORIGINAL_SHA256: ea8d7e0edba492e9f0540b8bb58e013788036658804ca8ffe63e4e5097aee203
+================================================================================
+from __future__ import annotations
+
+import hashlib
+import tempfile
+import unittest
+from pathlib import Path
+
+import INSTALL_AND_QUALIFY as installer
+
+
+class InstallerIdentityTests(unittest.TestCase):
+    def write_manifest(self, root: Path, files: dict[str, bytes]) -> None:
+        lines = []
+        for rel, data in sorted(files.items()):
+            path = root / rel
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_bytes(data)
+            lines.append(f"{hashlib.sha256(data).hexdigest()}  {rel}")
+        (root / "MANIFEST.sha256").write_text("\n".join(lines) + "\n", encoding="utf-8")
+
+    def test_released_package_has_exact_complete_coverage(self) -> None:
+        manifest = installer.verify_tree_manifest(installer.PACKAGE_ROOT)
+        self.assertEqual(manifest, installer.VERIFIED_PACKAGE_MANIFEST)
+        self.assertFalse(any("__pycache__" in p.parts or p.suffix == ".pyc" for p in installer.PACKAGE_ROOT.rglob("*")))
+
+    def test_tree_manifest_rejects_unlisted_bytecode(self) -> None:
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            self.write_manifest(root, {"payload/main.py": b"print('safe')\n"})
+            extra = root / "payload/__pycache__/main.cpython-313.pyc"
+            extra.parent.mkdir(parents=True)
+            extra.write_bytes(b"untrusted-bytecode")
+            with self.assertRaises(installer.PackageVerificationError):
+                installer.verify_tree_manifest(root)
+
+    def test_tree_manifest_rejects_hidden_extra(self) -> None:
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            self.write_manifest(root, {"payload/main.py": b"pass\n"})
+            (root / ".unexpected").write_bytes(b"extra")
+            with self.assertRaises(installer.PackageVerificationError):
+                installer.verify_tree_manifest(root)
+
+    def test_tree_manifest_rejects_digest_mismatch(self) -> None:
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            self.write_manifest(root, {"payload/main.py": b"pass\n"})
+            (root / "payload/main.py").write_bytes(b"changed\n")
+            with self.assertRaises(installer.PackageVerificationError):
+                installer.verify_tree_manifest(root)
+
+    def test_tree_manifest_rejects_unsafe_manifest_path(self) -> None:
+        with self.assertRaises(installer.PackageVerificationError):
+            installer.parse_package_manifest("" + "0" * 64 + "  ../escape.py\n")
+
+
+if __name__ == "__main__":
+    unittest.main()

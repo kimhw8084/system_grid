@@ -1,0 +1,98 @@
+STATE_ROOT=/Users/haewonkim/Library/Application Support/SysGridDelivery
+
+total 72
+drwx------   13 haewonkim  staff   416 Aug 16 18:31 .
+drwx------+ 143 haewonkim  staff  4576 Aug 17 13:52 ..
+-rw-------    1 haewonkim  staff   432 Aug 14 15:08 ACTIVATION.json
+drwx------    7 haewonkim  staff   224 Aug  8 11:24 backups
+-rw-------    1 haewonkim  staff  1292 Aug 13 17:10 config.json
+drwx------   15 haewonkim  staff   480 Aug 12 12:55 evidence
+drwxr-xr-x    4 haewonkim  staff   128 Aug 13 17:10 fastpath-backups
+-rw-------    1 haewonkim  staff   444 Aug  8 11:24 INSTALLATION_STATE.json
+-rw-------    1 haewonkim  staff  2352 Aug 16 18:32 last-result.json
+-rw-------    1 haewonkim  staff  1377 Aug  7 22:39 migration-qualification.log
+-rw-------    1 haewonkim  staff  8408 Aug  8 11:24 rc4-qualification.log
+-rw-------    1 haewonkim  staff  2927 Aug 16 18:31 replay.json
+drwx------    4 haewonkim  staff   128 Aug  7 22:38 tools
+
+=== recursive metadata, depth <= 3 ===
+/Users/haewonkim/Library/Application Support/SysGridDelivery
+/Users/haewonkim/Library/Application Support/SysGridDelivery/ACTIVATION.json
+/Users/haewonkim/Library/Application Support/SysGridDelivery/tools
+/Users/haewonkim/Library/Application Support/SysGridDelivery/tools/gh_2.94.0_macOS_arm64.zip
+/Users/haewonkim/Library/Application Support/SysGridDelivery/tools/gh-2.94.0
+/Users/haewonkim/Library/Application Support/SysGridDelivery/tools/gh-2.94.0/gh
+/Users/haewonkim/Library/Application Support/SysGridDelivery/tools/gh-2.94.0/ARCHIVE.sha256
+/Users/haewonkim/Library/Application Support/SysGridDelivery/last-result.json
+/Users/haewonkim/Library/Application Support/SysGridDelivery/evidence
+/Users/haewonkim/Library/Application Support/SysGridDelivery/evidence/20260811T150741Z-8ef35ca8
+/Users/haewonkim/Library/Application Support/SysGridDelivery/evidence/20260811T150741Z-8ef35ca8/candidate-far-src5-operable-grid-tdre
+/Users/haewonkim/Library/Application Support/SysGridDelivery/evidence/20260808T230608Z-8099ec4d
+/Users/haewonkim/Library/Application Support/SysGridDelivery/evidence/20260808T230608Z-8099ec4d/candidate-far-tdre
+/Users/haewonkim/Library/Application Support/SysGridDelivery/evidence/20260809T021832Z-e78d27e1
+/Users/haewonkim/Library/Application Support/SysGridDelivery/evidence/20260809T021832Z-e78d27e1/candidate-far-tdre
+/Users/haewonkim/Library/Application Support/SysGridDelivery/evidence/20260809T021832Z-e78d27e1/operator-far-tdre
+/Users/haewonkim/Library/Application Support/SysGridDelivery/evidence/20260808T203215Z-310a8fb7
+/Users/haewonkim/Library/Application Support/SysGridDelivery/evidence/20260808T203215Z-310a8fb7/candidate-far-tdre
+/Users/haewonkim/Library/Application Support/SysGridDelivery/evidence/20260812T134903Z-754d5461
+/Users/haewonkim/Library/Application Support/SysGridDelivery/evidence/20260812T134903Z-754d5461/candidate-far-src8-self-seeded-runtime-tdre
+/Users/haewonkim/Library/Application Support/SysGridDelivery/evidence/20260812T023436Z-ca48ea75
+/Users/haewonkim/Library/Application Support/SysGridDelivery/evidence/20260812T023436Z-ca48ea75/candidate-far-src7-pregrid-sanitization-tdre
+/Users/haewonkim/Library/Application Support/SysGridDelivery/evidence/20260812T152822Z-a4cd52e8
+/Users/haewonkim/Library/Application Support/SysGridDelivery/evidence/20260812T152822Z-a4cd52e8/operator-far-accepted-visual-audit
+/Users/haewonkim/Library/Application Support/SysGridDelivery/evidence/20260809T034335Z-73f68088
+/Users/haewonkim/Library/Application Support/SysGridDelivery/evidence/20260809T034335Z-73f68088/candidate-far-visible-grid-tdre
+/Users/haewonkim/Library/Application Support/SysGridDelivery/evidence/20260809T020524Z-900b3cb7
+/Users/haewonkim/Library/Application Support/SysGridDelivery/evidence/20260809T020524Z-900b3cb7/candidate-far-tdre
+/Users/haewonkim/Library/Application Support/SysGridDelivery/evidence/20260809T020524Z-900b3cb7/operator-far-tdre
+/Users/haewonkim/Library/Application Support/SysGridDelivery/evidence/20260808T180149Z-a6de7bba
+/Users/haewonkim/Library/Application Support/SysGridDelivery/evidence/20260808T180149Z-a6de7bba/candidate-far-tdre
+/Users/haewonkim/Library/Application Support/SysGridDelivery/evidence/20260808T170935Z-3d6f9f2c
+/Users/haewonkim/Library/Application Support/SysGridDelivery/evidence/20260808T170935Z-3d6f9f2c/candidate-far-tdre
+/Users/haewonkim/Library/Application Support/SysGridDelivery/evidence/20260808T170935Z-3d6f9f2c/operator-far-tdre
+/Users/haewonkim/Library/Application Support/SysGridDelivery/evidence/20260812T175225Z-7fc5f449
+/Users/haewonkim/Library/Application Support/SysGridDelivery/evidence/20260812T175225Z-7fc5f449/operator-far-accepted-visual-audit-fresh-runtime
+/Users/haewonkim/Library/Application Support/SysGridDelivery/evidence/20260811T204006Z-cbae6197
+/Users/haewonkim/Library/Application Support/SysGridDelivery/evidence/20260811T204006Z-cbae6197/candidate-far-src6-durable-operable-grid-tdre
+/Users/haewonkim/Library/Application Support/SysGridDelivery/config.json
+/Users/haewonkim/Library/Application Support/SysGridDelivery/fastpath-backups
+/Users/haewonkim/Library/Application Support/SysGridDelivery/fastpath-backups/recovery-20260813T221058Z
+/Users/haewonkim/Library/Application Support/SysGridDelivery/fastpath-backups/recovery-20260813T221058Z/ACTIVATION.json
+/Users/haewonkim/Library/Application Support/SysGridDelivery/fastpath-backups/recovery-20260813T221058Z/observed_sg_runner.py
+/Users/haewonkim/Library/Application Support/SysGridDelivery/fastpath-backups/recovery-20260813T221058Z/config.json
+/Users/haewonkim/Library/Application Support/SysGridDelivery/fastpath-backups/20260813T220703Z
+/Users/haewonkim/Library/Application Support/SysGridDelivery/fastpath-backups/20260813T220703Z/ACTIVATION.json
+/Users/haewonkim/Library/Application Support/SysGridDelivery/fastpath-backups/20260813T220703Z/config.json
+/Users/haewonkim/Library/Application Support/SysGridDelivery/fastpath-backups/20260813T220703Z/sg_runner.py
+/Users/haewonkim/Library/Application Support/SysGridDelivery/INSTALLATION_STATE.json
+/Users/haewonkim/Library/Application Support/SysGridDelivery/replay.json
+/Users/haewonkim/Library/Application Support/SysGridDelivery/migration-qualification.log
+/Users/haewonkim/Library/Application Support/SysGridDelivery/backups
+/Users/haewonkim/Library/Application Support/SysGridDelivery/backups/20260808T032451Z
+/Users/haewonkim/Library/Application Support/SysGridDelivery/backups/20260808T032451Z/legacy-inbound-config.json
+/Users/haewonkim/Library/Application Support/SysGridDelivery/backups/20260808T032451Z/sgwatch.legacy
+/Users/haewonkim/Library/Application Support/SysGridDelivery/backups/20260808T032451Z/control-repository.previous
+/Users/haewonkim/Library/Application Support/SysGridDelivery/backups/20260808T032451Z/sg.legacy
+/Users/haewonkim/Library/Application Support/SysGridDelivery/backups/20260808T032403Z
+/Users/haewonkim/Library/Application Support/SysGridDelivery/backups/20260808T032403Z/legacy-inbound-config.json
+/Users/haewonkim/Library/Application Support/SysGridDelivery/backups/20260808T032403Z/sgwatch.legacy
+/Users/haewonkim/Library/Application Support/SysGridDelivery/backups/20260808T032403Z/control-repository.previous
+/Users/haewonkim/Library/Application Support/SysGridDelivery/backups/20260808T032403Z/sg.legacy
+/Users/haewonkim/Library/Application Support/SysGridDelivery/backups/20260808T033850Z
+/Users/haewonkim/Library/Application Support/SysGridDelivery/backups/20260808T033850Z/legacy-inbound-config.json
+/Users/haewonkim/Library/Application Support/SysGridDelivery/backups/20260808T033850Z/com.sysgrid.public-relay.plist
+/Users/haewonkim/Library/Application Support/SysGridDelivery/backups/20260808T033850Z/sgwatch.legacy
+/Users/haewonkim/Library/Application Support/SysGridDelivery/backups/20260808T033850Z/actions.runner.kimhw8084-system_grid.sysgrid-relay-HaeBook-Pro-M3-1785852110.plist
+/Users/haewonkim/Library/Application Support/SysGridDelivery/backups/20260808T033850Z/control-repository.previous
+/Users/haewonkim/Library/Application Support/SysGridDelivery/backups/20260808T033850Z/sg.legacy
+/Users/haewonkim/Library/Application Support/SysGridDelivery/backups/rc4-20260808T162359Z
+/Users/haewonkim/Library/Application Support/SysGridDelivery/backups/rc4-20260808T162359Z/sg_runner.py.rc3
+/Users/haewonkim/Library/Application Support/SysGridDelivery/backups/rc4-20260808T162359Z/sg.rc3
+/Users/haewonkim/Library/Application Support/SysGridDelivery/backups/rc4-20260808T162359Z/sg_git_credential.py.rc3
+/Users/haewonkim/Library/Application Support/SysGridDelivery/backups/rc4-20260808T162359Z/sg_cli.py.rc3
+/Users/haewonkim/Library/Application Support/SysGridDelivery/backups/rc4-20260808T162359Z/config.json.rc3
+/Users/haewonkim/Library/Application Support/SysGridDelivery/backups/20260808T031752Z
+/Users/haewonkim/Library/Application Support/SysGridDelivery/backups/20260808T031752Z/legacy-inbound-config.json
+/Users/haewonkim/Library/Application Support/SysGridDelivery/backups/20260808T031752Z/sgwatch.legacy
+/Users/haewonkim/Library/Application Support/SysGridDelivery/backups/20260808T031752Z/sg.legacy
+/Users/haewonkim/Library/Application Support/SysGridDelivery/rc4-qualification.log

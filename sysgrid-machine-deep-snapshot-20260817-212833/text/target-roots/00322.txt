@@ -1,0 +1,112 @@
+ORIGINAL_PATH: /Users/haewonkim/.local/share/sysgrid-campaign-platform/v1.0.0/QUALIFICATION_REPORT.json
+ORIGINAL_SHA256: e3562d43a9212c5db3481fd3961d0ae56ddbb3f89c5119f9ab989244aa3e0b16
+================================================================================
+{
+  "files": {
+    "INSTALL_AND_QUALIFY.command": {
+      "sha256": "6c0ab1b74beb541b4a230d2124ae6fe85ed08bd2be1a3a6a4e6bf9be6d25df70",
+      "size": 8038
+    },
+    "RELEASE_DESCRIPTOR.json": {
+      "sha256": "eee468d354c283922a6782db3f0f1d4a06da73d088a7ed4faff05fcba4b573d8",
+      "size": 2594
+    },
+    "payload/sg": {
+      "sha256": "9fcfdbba3cf8df3074ad93ad721623821f6e9d0a8844973eece5469aa34cffef",
+      "size": 960
+    },
+    "payload/sysgrid_campaign.py": {
+      "sha256": "c1d322644646efbaa937ab1a5bbe6e2c07631cc0a082543dd8ee7a105b025c23",
+      "size": 16919
+    },
+    "payload/sysgrid_runner.py": {
+      "sha256": "490b3e9f2313f3b912be1b1c77d096fdb06542acf75aa0a5a737b277118dcc0b",
+      "size": 80721
+    },
+    "payload/sysgrid_state_identity.py": {
+      "sha256": "1a737b2da5749099f73a3ed530a139311fd0a0d45137dd5873524f328b657bcb",
+      "size": 4661
+    },
+    "payload/sysgrid_supervisor.py": {
+      "sha256": "fe14901c1487eaf578b1ec1c24ecf4362e940e104e408926ccfa5d8dfc459d80",
+      "size": 152000
+    }
+  },
+  "invariants_proved": [
+    "canonical individual-file dirty path identity",
+    "nested FAR and patches untracked-tree expansion",
+    "strict campaign manifest",
+    "64-question minimum",
+    "zero unresolved questionnaire closure",
+    "Approval Lock digest binding",
+    "fourteen-category risk closure",
+    "behavior-to-test mapping",
+    "pre-Inbox engine and repository preflight",
+    "independent recipe aggregation",
+    "safe source authority capture",
+    "campaign metadata evidence",
+    "optional notifications cannot block execution",
+    "one-command installation",
+    "versioned rollback backup",
+    "no product repository mutation during platform qualification"
+  ],
+  "limitations": [
+    "The user machine must run INSTALL_AND_QUALIFY.command to independently confirm its local environment.",
+    "Product Attempt 12 remains frozen until that machine qualification output is returned and reviewed."
+  ],
+  "product_attempt": 12,
+  "product_value_added": false,
+  "repair": "Platform Repair P1",
+  "result": "PASS",
+  "schema_version": "1.0",
+  "tests": {
+    "activation_evidence_packaging": {
+      "failure_artifact": "UPLOAD_DIAGNOSTIC_TO_CHATGPT_PLATFORM_ACTIVATION.zip",
+      "manifest_verified": true,
+      "result": "PASS",
+      "success_artifact": "UPLOAD_THIS_TO_CHATGPT_PLATFORM_ACTIVATION.zip"
+    },
+    "campaign_controller_self_test": {
+      "result": "PASS",
+      "version": "1.0.0"
+    },
+    "clean_room_installer": {
+      "result": "PASS"
+    },
+    "component_unit_tests": {
+      "count": 7,
+      "result": "PASS"
+    },
+    "deterministic_rebuild": {
+      "result": "PASS"
+    },
+    "engine_self_test": {
+      "result": "PASS",
+      "version": "1.1.0"
+    },
+    "managed_end_to_end_campaign": {
+      "artifact_sha256": "d9f45096281876bd2a8db42febc8eac2913c58eb2607c1f352b0f8979377ff82",
+      "artifact_size": 43910,
+      "classification": "PASS",
+      "required_evidence_present": true,
+      "result": "success",
+      "returncode": 0,
+      "test_counts": {
+        "BLOCKED": 0,
+        "FAIL": 0,
+        "PASS": 1,
+        "WARNING": 0
+      }
+    },
+    "pre_inbox_campaign_integration": {
+      "question_count": 64,
+      "result": "PASS",
+      "risk_categories": 14
+    },
+    "supervisor_self_test": {
+      "result": "PASS",
+      "version": "2.2.0"
+    }
+  },
+  "work_class": "platform_verification_repair"
+}

@@ -1,0 +1,22 @@
+=== TCP 5173 ===
+COMMAND     PID      USER   FD   TYPE             DEVICE SIZE/OFF NODE NAME
+node       8152 haewonkim   28u  IPv4 0xc89cca0c668cfd5e      0t0  TCP 127.0.0.1:5173->127.0.0.1:64661 (CLOSED)
+node       8152 haewonkim   29u  IPv4 0xb59d6ab2c38982cd      0t0  TCP 127.0.0.1:5173->127.0.0.1:52002 (CLOSED)
+node       8152 haewonkim   30u  IPv4 0xdbf02815f8cb6438      0t0  TCP 127.0.0.1:5173->127.0.0.1:64663 (CLOSED)
+node       8152 haewonkim   31u  IPv4 0x7ee2759fd33da2ac      0t0  TCP 127.0.0.1:5173->127.0.0.1:51755 (CLOSED)
+node       8152 haewonkim   32u  IPv4 0x385fef63756bc6bd      0t0  TCP 127.0.0.1:5173 (LISTEN)
+node       8152 haewonkim   33u  IPv4 0x64b458a3bf9e6fc1      0t0  TCP 127.0.0.1:5173->127.0.0.1:64664 (CLOSED)
+node       8152 haewonkim   34u  IPv4 0x76b77316379ec76d      0t0  TCP 127.0.0.1:5173->127.0.0.1:64665 (CLOSED)
+node       8152 haewonkim   36u  IPv4 0xe8d99ad3293eccae      0t0  TCP 127.0.0.1:5173->127.0.0.1:51714 (CLOSED)
+node       8152 haewonkim   38u  IPv4 0x59404aa139b4b164      0t0  TCP 127.0.0.1:5173->127.0.0.1:51750 (ESTABLISHED)
+node       8152 haewonkim   39u  IPv4 0xeb46ad18127ca15b      0t0  TCP 127.0.0.1:5173->127.0.0.1:64040 (CLOSED)
+node       8152 haewonkim   40u  IPv4  0x9354b0f3f34666f      0t0  TCP 127.0.0.1:5173->127.0.0.1:64666 (CLOSED)
+node       8152 haewonkim   41u  IPv4 0x94b8ce0192d88a05      0t0  TCP 127.0.0.1:5173->127.0.0.1:64671 (CLOSED)
+node       8152 haewonkim   44u  IPv4 0x6febf276af44a1e6      0t0  TCP 127.0.0.1:5173->127.0.0.1:51557 (CLOSED)
+node       8152 haewonkim   52u  IPv4 0x68286949828655f7      0t0  TCP 127.0.0.1:5173->127.0.0.1:64036 (CLOSED)
+node       8152 haewonkim   56u  IPv4 0x2909f11ecea56b1a      0t0  TCP 127.0.0.1:5173->127.0.0.1:51607 (CLOSED)
+Google    24637 haewonkim  119u  IPv4 0xf2ae2e783dd73fa7      0t0  TCP 127.0.0.1:51750->127.0.0.1:5173 (ESTABLISHED)
+
+=== TCP 8000 ===
+COMMAND   PID      USER   FD   TYPE             DEVICE SIZE/OFF NODE NAME
+Python  27867 haewonkim    9u  IPv4 0x23816f34709de070      0t0  TCP 127.0.0.1:8000 (LISTEN)

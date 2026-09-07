@@ -1,0 +1,336 @@
+ORIGINAL_PATH: /Users/haewonkim/.local/state/sysgrid-supervisor/runs/20260801T195955Z-58073-775000/patch.diff
+ORIGINAL_SHA256: fbcf430ecf6c38f82e8214f20c8e74ca8812d47935e0145e6c15a02645454524
+================================================================================
+diff --git a/frontend/src/components/shared/GoldenWorkspaceGeometryContract.test.ts b/frontend/src/components/shared/GoldenWorkspaceGeometryContract.test.ts
+index 43bb1a9..4e01f3e 100644
+--- a/frontend/src/components/shared/GoldenWorkspaceGeometryContract.test.ts
++++ b/frontend/src/components/shared/GoldenWorkspaceGeometryContract.test.ts
+@@ -22,11 +22,13 @@ describe('Golden workspace geometry contract', () => {
+     const layout = read('shared/LayoutPrimitives.tsx')
+     const commandBar = read('shared/WorkspaceCommandBar.tsx')
+ 
+-    expect(shell).toContain("GOLDEN_WORKSPACE_GEOMETRY_VERSION = '2'")
+-    expect(shell).toContain("GOLDEN_WORKSPACE_FRAME_CLASS = 'h-full min-h-0 min-w-0 w-full flex flex-col items-stretch space-y-4 overflow-hidden [&>*]:min-w-0 [&>*]:max-w-full'")
+-    expect(shell).toContain("GOLDEN_GRID_BASE_CLASS = 'operational-grid-shell operational-grid flex flex-1 w-full max-w-full min-w-0 min-h-0 flex-col glass-panel overflow-hidden ag-theme-alpine-dark relative'")
+-    expect(shell).toContain("GOLDEN_GRID_CONTENT_CLASS = 'flex min-h-0 min-w-0 w-full max-w-full flex-1 overflow-hidden [&>*]:min-h-0 [&>*]:min-w-0 [&>*]:max-w-full [&>*]:w-full'")
++    expect(shell).toContain("GOLDEN_WORKSPACE_GEOMETRY_VERSION = '3'")
++    expect(shell).toContain("GOLDEN_WORKSPACE_FRAME_CLASS = 'h-full min-h-0 min-w-0 w-full max-w-full box-border flex flex-col items-stretch space-y-4 overflow-hidden [&>*]:!ml-0 [&>*]:!mr-0 [&>*]:!min-w-0 [&>*]:!max-w-full [&>*]:!w-full [&>*]:self-stretch'")
++    expect(shell).toContain("GOLDEN_GRID_BASE_CLASS = 'operational-grid-shell operational-grid relative box-border flex min-h-0 min-w-0 w-full max-w-full flex-1 flex-col overflow-hidden glass-panel ag-theme-alpine-dark")
++    expect(shell).toContain("GOLDEN_GRID_CONTENT_CLASS = 'relative box-border flex min-h-0 min-w-0 w-full max-w-full flex-1 overflow-hidden")
+     expect(shell).toContain('data-golden-grid-content="true"')
++    expect(shell).toContain('[&_.ag-center-cols-container]:!w-full')
++    expect(shell).toContain('[&>*]:!w-full')
+     expect(shell).toContain("golden: 'rounded-lg'")
+     expect(shell).toContain("'attached-panel': 'rounded-t-none border-x border-b border-white/5'")
+     expect(shell).toContain('data-golden-geometry-version={GOLDEN_WORKSPACE_GEOMETRY_VERSION}')
+@@ -36,7 +38,7 @@ describe('Golden workspace geometry contract', () => {
+     expect(layout).toContain('data-golden-page-header="true"')
+     expect(layout).toContain('data-golden-page-toolbar="true"')
+ 
+-    expect(commandBar).toContain("GOLDEN_COMMAND_BAR_STACK_CLASS = 'space-y-4 min-w-0 w-full max-w-full self-stretch'")
++    expect(commandBar).toContain("GOLDEN_COMMAND_BAR_STACK_CLASS = 'box-border min-w-0 w-full max-w-full self-stretch space-y-4")
+     expect(commandBar).toContain("GOLDEN_COMMAND_BAR_SECONDARY_CLASS = 'px-4 py-3'")
+     expect(commandBar).toContain("GOLDEN_FILTER_CHIP_ROW_CLASS = 'flex flex-wrap items-center gap-2'")
+     expect(commandBar).toContain('data-golden-command-bar="true"')
+@@ -44,7 +46,7 @@ describe('Golden workspace geometry contract', () => {
+ 
+   it.each(views)('%s cannot locally reconstruct fundamental shell geometry', (file) => {
+     const source = read(file)
+-    expect(source).not.toContain('h-full min-h-0 min-w-0 w-full flex flex-col items-stretch space-y-4 overflow-hidden')
++    expect(source).not.toContain('h-full min-h-0 min-w-0 w-full max-w-full box-border flex flex-col items-stretch space-y-4 overflow-hidden')
+     expect(source).not.toContain('flex flex-wrap items-start justify-between gap-6')
+     expect(source).not.toContain('overflow-x-auto rounded-lg border border-white/5 bg-black/20 px-4 py-3')
+     expect(source).not.toContain('rounded-t-none border-x border-b border-white/5')
+diff --git a/frontend/src/components/shared/OperationalWorkspaceShells.tsx b/frontend/src/components/shared/OperationalWorkspaceShells.tsx
+index 472b52a..6657795 100644
+--- a/frontend/src/components/shared/OperationalWorkspaceShells.tsx
++++ b/frontend/src/components/shared/OperationalWorkspaceShells.tsx
+@@ -11,15 +11,15 @@ type WorkspaceFilterChip = { id: string; label: string; onRemove: () => void }
+ export type GoldenWorkspaceKey = 'monitoring' | 'assets' | 'services' | 'external' | 'network' | 'far' | 'research' | 'vendors'
+ export type GoldenWorkspaceArchetype = 'table' | 'hybrid' | 'analytical'
+ 
+-export const GOLDEN_WORKSPACE_GEOMETRY_VERSION = '2'
+-export const GOLDEN_WORKSPACE_FRAME_CLASS = 'h-full min-h-0 min-w-0 w-full flex flex-col items-stretch space-y-4 overflow-hidden [&>*]:min-w-0 [&>*]:max-w-full'
+-export const GOLDEN_GRID_BASE_CLASS = 'operational-grid-shell operational-grid flex flex-1 w-full max-w-full min-w-0 min-h-0 flex-col glass-panel overflow-hidden ag-theme-alpine-dark relative'
++export const GOLDEN_WORKSPACE_GEOMETRY_VERSION = '3'
++export const GOLDEN_WORKSPACE_FRAME_CLASS = 'h-full min-h-0 min-w-0 w-full max-w-full box-border flex flex-col items-stretch space-y-4 overflow-hidden [&>*]:!ml-0 [&>*]:!mr-0 [&>*]:!min-w-0 [&>*]:!max-w-full [&>*]:!w-full [&>*]:self-stretch'
++export const GOLDEN_GRID_BASE_CLASS = 'operational-grid-shell operational-grid relative box-border flex min-h-0 min-w-0 w-full max-w-full flex-1 flex-col overflow-hidden glass-panel ag-theme-alpine-dark [&_.ag-root-wrapper]:!min-w-0 [&_.ag-root-wrapper]:!w-full [&_.ag-root-wrapper]:!max-w-full [&_.ag-root]:!min-w-0 [&_.ag-root]:!w-full [&_.ag-root]:!max-w-full [&_.ag-body]:!min-w-0 [&_.ag-body]:!max-w-full [&_.ag-body-viewport]:!min-w-0 [&_.ag-body-viewport]:!max-w-full [&_.ag-center-cols-viewport]:!min-w-0 [&_.ag-center-cols-viewport]:!max-w-full [&_.ag-center-cols-container]:!min-w-0 [&_.ag-center-cols-container]:!w-full [&_.ag-center-cols-container]:!max-w-full'
+ export const GOLDEN_GRID_VARIANT_CLASS = {
+   golden: 'rounded-lg',
+   'attached-panel': 'rounded-t-none border-x border-b border-white/5',
+ } as const
+ 
+-export const GOLDEN_GRID_CONTENT_CLASS = 'flex min-h-0 min-w-0 w-full max-w-full flex-1 overflow-hidden [&>*]:min-h-0 [&>*]:min-w-0 [&>*]:max-w-full [&>*]:w-full'
++export const GOLDEN_GRID_CONTENT_CLASS = 'relative box-border flex min-h-0 min-w-0 w-full max-w-full flex-1 overflow-hidden [&>*]:!min-h-0 [&>*]:!min-w-0 [&>*]:!w-full [&>*]:!max-w-full [&>*]:flex-1'
+ 
+ export const getOperationalGridSurfaceStyle = (
+   fontSize: number,
+diff --git a/frontend/src/components/shared/WorkspaceCommandBar.tsx b/frontend/src/components/shared/WorkspaceCommandBar.tsx
+index 73d0a3b..f17ef15 100644
+--- a/frontend/src/components/shared/WorkspaceCommandBar.tsx
++++ b/frontend/src/components/shared/WorkspaceCommandBar.tsx
+@@ -2,7 +2,7 @@ import React from 'react'
+ import { AnimatePresence, motion } from 'framer-motion'
+ import { PageToolbar } from './LayoutPrimitives'
+ 
+-export const GOLDEN_COMMAND_BAR_STACK_CLASS = 'space-y-4 min-w-0 w-full max-w-full self-stretch'
++export const GOLDEN_COMMAND_BAR_STACK_CLASS = 'box-border min-w-0 w-full max-w-full self-stretch space-y-4 [&>*]:!ml-0 [&>*]:!mr-0 [&>*]:!w-full [&>*]:!max-w-full'
+ export const GOLDEN_COMMAND_BAR_SECONDARY_CLASS = 'px-4 py-3'
+ export const GOLDEN_FILTER_CHIP_ROW_CLASS = 'flex flex-wrap items-center gap-2'
+ 
+diff --git a/frontend/tests/golden-eight-seeded-visual-matrix.spec.ts b/frontend/tests/golden-eight-seeded-visual-matrix.spec.ts
+index b2de2ff..e31b833 100644
+--- a/frontend/tests/golden-eight-seeded-visual-matrix.spec.ts
++++ b/frontend/tests/golden-eight-seeded-visual-matrix.spec.ts
+@@ -16,6 +16,20 @@ import { goldenWorkspaceRouteMatrix } from './helpers/routeMatrix'
+ 
+ const apiBase = testApiBase
+ 
++
++const campaignTargetViews = (() => {
++  if (process.env.SYSGRID_EXECUTION_PROFILE !== 'development_campaign') return null
++  try {
++    const parsed = JSON.parse(process.env.SYSGRID_TARGETED_VIEWS_JSON || '[]')
++    return new Set(Array.isArray(parsed) ? parsed.map(String) : [])
++  } catch {
++    return new Set<string>()
++  }
++})()
++
++const activeGoldenRoutes = campaignTargetViews && campaignTargetViews.size
++  ? goldenWorkspaceRouteMatrix.filter((route) => campaignTargetViews.has(route.key))
++  : goldenWorkspaceRouteMatrix
+ async function createVendor(request: APIRequestContext, stamp: string) {
+   const response = await request.post(`${apiBase}/vendors`, {
+     data: { name: `PW-SEED-VENDOR-${stamp}`, country: 'USA' },
+@@ -139,7 +153,7 @@ async function paintedPixelEvidence(locator: any) {
+ }
+ 
+ test.describe.parallel('Golden Eight non-short-circuit populated validation matrix', () => {
+-  for (const route of goldenWorkspaceRouteMatrix) {
++  for (const route of activeGoldenRoutes) {
+     test(`${route.key}: geometry, tenant, paint, and populated evidence`, async ({ page, sysApi: request }, testInfo) => {
+       await resetBrowserState(page)
+       await seedGoldenEight(request)
+diff --git a/frontend/tests/shell-and-search.spec.ts b/frontend/tests/shell-and-search.spec.ts
+index 201518c..1ce5fc6 100644
+--- a/frontend/tests/shell-and-search.spec.ts
++++ b/frontend/tests/shell-and-search.spec.ts
+@@ -5,6 +5,7 @@ import { test } from './helpers/sysgrid-test';
+ import { resetBrowserState, seedOperationalScenario, waitForAppIdle } from './helpers/sysgrid'
+ import { goldenWorkspaceRouteMatrix } from './helpers/routeMatrix'
+ 
++
+ test.describe('App shell and global search', () => {
+   test('loads the dashboard and feature audit HUD', async ({ page }) => {
+     await resetBrowserState(page)
+@@ -70,6 +71,19 @@ test.describe('App shell and global search', () => {
+ 
+ const goldenRoutes = goldenWorkspaceRouteMatrix
+ 
++const campaignTargetViews = (() => {
++  if (process.env.SYSGRID_EXECUTION_PROFILE !== 'development_campaign') return null
++  try {
++    const parsed = JSON.parse(process.env.SYSGRID_TARGETED_VIEWS_JSON || '[]')
++    return new Set(Array.isArray(parsed) ? parsed.map(String) : [])
++  } catch {
++    return new Set<string>()
++  }
++})()
++const activeGoldenRoutes = campaignTargetViews && campaignTargetViews.size
++  ? goldenRoutes.filter((route) => campaignTargetViews.has(route.key))
++  : goldenRoutes
++
+ type GeometryBox = { x: number; y: number; width: number; height: number; right: number; bottom: number }
+ 
+ 
+@@ -157,7 +171,7 @@ test.describe('Golden Eight rendered geometry', () => {
+       bodyError?: string
+     }> = []
+ 
+-    for (const route of goldenRoutes) {
++    for (const route of activeGoldenRoutes) {
+       const routeEntries: typeof inventory = []
+       const pendingResponses = new Set<Promise<void>>()
+       const responseErrors: string[] = []
+@@ -219,7 +233,7 @@ test.describe('Golden Eight rendered geometry', () => {
+     const outputPath = testInfo.outputPath('golden-eight-api-shape-inventory.json')
+     await writeFile(outputPath, `${JSON.stringify({ viewport: { width: 1440, height: 1000 }, routes: goldenRoutes, inventory }, null, 2)}\n`, 'utf8')
+ 
+-    for (const route of goldenRoutes) {
++    for (const route of activeGoldenRoutes) {
+       expect(inventory.some((entry) => entry.route === route.path)).toBeTruthy()
+     }
+   })
+@@ -227,12 +241,12 @@ test.describe('Golden Eight rendered geometry', () => {
+     await resetBrowserState(page)
+     await page.setViewportSize({ width: 1440, height: 1000 })
+ 
+-    for (const route of goldenRoutes) {
++    for (const route of activeGoldenRoutes) {
+       await page.goto(route.path)
+       await waitForAppIdle(page)
+       const { shell, boxes } = await readGoldenGeometry(page)
+ 
+-      await expect(shell).toHaveAttribute('data-golden-geometry-version', '2')
++      await expect(shell).toHaveAttribute('data-golden-geometry-version', '3')
+       await expect(shell).toHaveAttribute('data-golden-archetype', route.archetype)
+       expect(boxes.header.y).toBeLessThan(boxes.commandBar.y)
+       expect(boxes.commandBar.bottom).toBeLessThanOrEqual(boxes.grid.y + 1)
+@@ -271,12 +285,12 @@ test.describe('Golden Eight rendered geometry', () => {
+     await resetBrowserState(page)
+     await page.setViewportSize({ width: 390, height: 844 })
+ 
+-    for (const route of goldenRoutes) {
++    for (const route of activeGoldenRoutes) {
+       await page.goto(route.path)
+       await waitForAppIdle(page)
+       const { shell, boxes } = await readGoldenGeometry(page)
+ 
+-      await expect(shell).toHaveAttribute('data-golden-geometry-version', '2')
++      await expect(shell).toHaveAttribute('data-golden-geometry-version', '3')
+       await expect(shell).toHaveAttribute('data-golden-archetype', route.archetype)
+       expect(boxes.header.y).toBeLessThan(boxes.commandBar.y)
+       expect(boxes.commandBar.bottom).toBeLessThanOrEqual(boxes.grid.y + 1)
+diff --git a/scripts/verify-app.sh b/scripts/verify-app.sh
+old mode 100644
+new mode 100755
+index bc195b1..1f495ab
+--- a/scripts/verify-app.sh
++++ b/scripts/verify-app.sh
+@@ -25,6 +25,7 @@ FRONTEND_PID=""
+ LANE_DIR="$(mktemp -d "${TMPDIR:-/tmp}/sysgrid-verify-lanes.XXXXXX")"
+ PROGRESS_SEQUENCE=0
+ FRONTEND_WORKERS="${SYSGRID_FRONTEND_WORKERS:-4}"
++EXECUTION_PROFILE="${SYSGRID_EXECUTION_PROFILE:-promotion_qualification}"
+ 
+ GOLDEN_WORKSPACE_KEYS=(monitoring assets services external network far research vendors)
+ PLAYWRIGHT_SPECS=(
+@@ -182,8 +183,7 @@ prepare_disposable_runtime() {
+     "${RUNTIME_ENV_COMMAND[@]}" ./backend/venv/bin/python seed.py \
+       --tenant-name "Playwright Gate" \
+       --tenant-db "$VERIFY_TENANT_DB_REL" \
+-      --admin-user "$TEST_USER_ID" \
+-      --no-seed-data
++      --admin-user "$TEST_USER_ID"
+   )
+ 
+   echo "Provisioning code-managed reference data..."
+@@ -211,7 +211,7 @@ launch_frontend() {
+   FRONTEND_PID=$!
+ }
+ 
+-assert_clean_fixture_contract() {
++assert_seeded_fixture_contract() {
+   local headers=(-H "X-User-Id: $TEST_USER_ID" -H "X-Tenant-Id: $TEST_TENANT_ID")
+   local tenants devices services external network far research monitoring vendors reference_options
+ 
+@@ -249,16 +249,16 @@ if missing:
+     raise SystemExit(f"Missing code-managed reference options: {missing}")
+ '
+ 
+-  [[ "$devices" == "[]" ]] || { echo "Expected zero seeded devices, observed: $devices" >&2; exit 1; }
+-  [[ "$services" == "[]" ]] || { echo "Expected zero seeded services, observed: $services" >&2; exit 1; }
+-  [[ "$external" == "[]" ]] || { echo "Expected zero seeded external entities, observed: $external" >&2; exit 1; }
+-  [[ "$network" == "[]" ]] || { echo "Expected zero seeded network connections, observed: $network" >&2; exit 1; }
+-  [[ "$far" == "[]" ]] || { echo "Expected zero seeded FAR modes, observed: $far" >&2; exit 1; }
+-  [[ "$research" == "[]" ]] || { echo "Expected zero seeded Research investigations, observed: $research" >&2; exit 1; }
+-  [[ "$monitoring" == "[]" ]] || { echo "Expected zero seeded monitoring records, observed: $monitoring" >&2; exit 1; }
+-  [[ "$vendors" == "[]" ]] || { echo "Expected zero seeded vendors, observed: $vendors" >&2; exit 1; }
++  [[ "$devices" != "[]" ]] || { echo "Expected material seeded devices, observed an empty collection." >&2; exit 1; }
++  [[ "$services" != "[]" ]] || { echo "Expected material seeded services, observed an empty collection." >&2; exit 1; }
++  [[ "$external" != "[]" ]] || { echo "Expected material seeded external entities, observed an empty collection." >&2; exit 1; }
++  [[ "$network" != "[]" ]] || { echo "Expected material seeded network connections, observed an empty collection." >&2; exit 1; }
++  [[ "$far" != "[]" ]] || { echo "Expected material seeded FAR modes, observed an empty collection." >&2; exit 1; }
++  [[ "$research" != "[]" ]] || { echo "Expected material seeded Research investigations, observed an empty collection." >&2; exit 1; }
++  [[ "$monitoring" != "[]" ]] || { echo "Expected material seeded monitoring records, observed an empty collection." >&2; exit 1; }
++  [[ "$vendors" != "[]" ]] || { echo "Expected material seeded vendors, observed an empty collection." >&2; exit 1; }
+ 
+-  echo "Disposable Playwright fixture contract passed: one tenant, code-managed reference data, zero domain rows."
++  echo "Disposable Playwright fixture contract passed: one tenant, code-managed reference data, and material seeded domain rows."
+ }
+ 
+ assert_local_playwright_runtime() {
+@@ -393,6 +393,48 @@ if len(records) != len(keys):
+ PY_MATRIX
+ }
+ 
++
++json_array_lines() {
++  local value="$1"
++  "$BACKEND_DIR/venv/bin/python" - "$value" <<'PY_JSON_ARRAY'
++import json, sys
++value = json.loads(sys.argv[1] or '[]')
++if not isinstance(value, list):
++    raise SystemExit('target scope must be a JSON array')
++for item in value:
++    print(str(item))
++PY_JSON_ARRAY
++}
++
++configure_campaign_scope() {
++  [[ "$EXECUTION_PROFILE" == "development_campaign" ]] || return 0
++  local token
++  local selected=()
++  while IFS= read -r token; do
++    case "$token" in
++      playwright:golden-seeded) selected+=(tests/golden-eight-seeded-visual-matrix.spec.ts) ;;
++      playwright:shell-geometry) selected+=(tests/shell-and-search.spec.ts) ;;
++      playwright:sentinel) selected+=(tests/sentinel_comprehensive.spec.ts) ;;
++      *) echo "Unsupported campaign test token: $token" >&2; exit 65 ;;
++    esac
++  done < <(json_array_lines "${SYSGRID_TARGETED_TESTS_JSON:-[]}")
++  [[ "${#selected[@]}" -gt 0 ]] || { echo "Development campaign requires targeted Playwright tests." >&2; exit 65; }
++  PLAYWRIGHT_SPECS=("${selected[@]}")
++}
++
++run_campaign_validation_lanes() {
++  emit_progress static_started started "Campaign static and changed-area verification started."
++  (
++    cd "$FRONTEND_DIR"
++    npm run check:canonical-verification
++    npm run test:lint
++    npm run typecheck
++    npm run test:coverage -- --maxWorkers "$FRONTEND_WORKERS" --run frontend/src/components/shared/GoldenWorkspaceGeometryContract.test.ts
++    VITE_API_BASE_URL="$BACKEND_ORIGIN" VITE_FRONTEND_ORIGIN="$FRONTEND_ORIGIN" npm run build
++  )
++  emit_progress frontend_completed passed "Campaign changed-area verification and production build passed."
++}
++
+ run_static_lane() {
+   cd "$FRONTEND_DIR"
+   npm run check:canonical-verification
+@@ -524,14 +566,19 @@ run_validation_lanes() {
+ 
+ assert_canonical_playwright_suite
+ assert_local_playwright_runtime
+-run_validation_lanes
++configure_campaign_scope
++if [[ "$EXECUTION_PROFILE" == "development_campaign" ]]; then
++  run_campaign_validation_lanes
++else
++  run_validation_lanes
++fi
+ 
+ prepare_disposable_runtime
+ launch_backend
+ launch_frontend
+ wait_for_url "$BACKEND_URL" "isolated backend" "$BACKEND_PID"
+ wait_for_url "$FRONTEND_URL" "isolated production frontend" "$FRONTEND_PID"
+-assert_clean_fixture_contract
++assert_seeded_fixture_contract
+ emit_progress runtime_ready passed "Disposable tenant, backend, and exact production frontend are ready."
+ 
+ PLAYWRIGHT_ENV_COMMAND=(
+@@ -576,6 +623,8 @@ if [[ "$PLAYWRIGHT_STATUS" != "0" ]]; then
+   exit "$PLAYWRIGHT_STATUS"
+ fi
+ emit_progress playwright_completed passed "Canonical Playwright matrix passed."
+-assert_final_tenant_contract
+-assert_canonical_runtime_evidence
+-assert_populated_golden_eight_evidence
++if [[ "$EXECUTION_PROFILE" == "promotion_qualification" ]]; then
++  assert_final_tenant_contract
++  assert_canonical_runtime_evidence
++  assert_populated_golden_eight_evidence
++fi

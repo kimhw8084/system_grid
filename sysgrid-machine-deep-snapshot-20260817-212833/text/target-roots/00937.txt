@@ -1,0 +1,491 @@
+ORIGINAL_PATH: /Users/haewonkim/.local/state/sysgrid-supervisor/runs/20260802T033203Z-34878-805000/SUPERVISOR_STATE.json
+ORIGINAL_SHA256: e83e4ad1973f5499b3c0366f34ae50c62571e467945b30080dc80b7dc57b1040
+================================================================================
+{
+  "artifact": "/Users/haewonkim/Library/Mobile Documents/com~apple~CloudDocs/SysGrid-Control/Outbox/UPLOAD_THIS_TO_CHATGPT.zip",
+  "artifact_sha256": "7f8c27a9833c4d633f3819758eaeae09a8342ea7139217d9054972150831909c",
+  "artifact_size": 1801828,
+  "attempt": 12,
+  "capsule_archive": "/Users/haewonkim/Library/Mobile Documents/com~apple~CloudDocs/SysGrid-Control/Archive/Processed-Capsules/20260802T033205Z__a538686306d2__DOWNLOAD_Attempt_12_Repair_R2_Strict_Stable_Engine_Schema.sgcap",
+  "capsule_cross_ledger": {
+    "changed_path_count": 10,
+    "execution_profile": "development_campaign",
+    "execution_scope": {
+      "changed_paths": [
+        "backend/app/api/workspaces.py",
+        "backend/test_workspace_views.py",
+        "frontend/src/components/FAR.tsx",
+        "frontend/src/components/MonitoringGrid.tsx",
+        "frontend/src/components/far/FARGoldenWorkspace.tsx",
+        "frontend/src/components/shared/FARResearchGoldenPresentationContract.test.ts",
+        "frontend/src/components/shared/GoldenWorkspaceGeometryContract.test.ts",
+        "frontend/src/components/shared/GoldenWorkspaceShellContract.test.ts",
+        "frontend/src/components/shared/OperationalWorkspaceShells.tsx",
+        "frontend/tests/far-golden-workspace.spec.ts"
+      ],
+      "execution_profile": "development_campaign",
+      "targeted_tests": [
+        "backend:test_workspace_views",
+        "frontend:golden-workspace-contracts",
+        "playwright:far-golden-workspace",
+        "playwright:far-workflows",
+        "playwright:monitoring-workflows",
+        "playwright:workspace-collaborative-views",
+        "playwright:shell-geometry"
+      ],
+      "targeted_views": [
+        "far",
+        "monitoring"
+      ]
+    },
+    "patch_paths": [
+      "backend/app/api/workspaces.py",
+      "backend/test_workspace_views.py",
+      "frontend/src/components/FAR.tsx",
+      "frontend/src/components/MonitoringGrid.tsx",
+      "frontend/src/components/far/FARGoldenWorkspace.tsx",
+      "frontend/src/components/shared/FARResearchGoldenPresentationContract.test.ts",
+      "frontend/src/components/shared/GoldenWorkspaceGeometryContract.test.ts",
+      "frontend/src/components/shared/GoldenWorkspaceShellContract.test.ts",
+      "frontend/src/components/shared/OperationalWorkspaceShells.tsx",
+      "frontend/tests/far-golden-workspace.spec.ts"
+    ],
+    "post_path_count": 67,
+    "pre_path_count": 65,
+    "protected_path_count": 21,
+    "recipe_ids": [
+      "full-app-gate"
+    ]
+  },
+  "capsule_file": "DOWNLOAD_Attempt_12_Repair_R2_Strict_Stable_Engine_Schema.sgcap",
+  "capsule_sha256": "a538686306d2bf15f24ead98f3a4a5adf9f23e7a81ac7dcb01c345f3fd9f983a",
+  "capsule_size": 42606,
+  "capsule_stage": "Repair R2: Strict Stable Engine Capsule Schema Compatibility",
+  "capsule_title": "Iteration 36 Product Attempt 12 Repair R2: Strict Stable Engine Capsule Schema Compatibility",
+  "classification": "BASELINE_MISMATCH",
+  "dirty_path_count": 65,
+  "engine_command": [
+    "/opt/homebrew/opt/python@3.14/bin/python3.14",
+    "<exact-engine>",
+    "execute",
+    "<exact-capsule>",
+    "--repo",
+    "/Users/haewonkim/home/development/sysgrid",
+    "--outbox",
+    "/Users/haewonkim/.local/state/sysgrid-supervisor/runs/20260802T033203Z-34878-805000/engine-outbox"
+  ],
+  "engine_completed": true,
+  "engine_completed_utc": "2026-08-02T03:32:05Z",
+  "engine_exit_code": 1,
+  "engine_path": "/Users/haewonkim/.local/lib/sysgrid-runner/1.0.4/sysgrid_runner.py",
+  "engine_pid": 34927,
+  "engine_sha256": "ab63bb20c0de32771e20b0159475205f685f28910a0956c217fb3693c02f96e1",
+  "engine_started": true,
+  "engine_started_utc": "2026-08-02T03:32:04Z",
+  "event_timeline": [
+    {
+      "details": {},
+      "elapsed_seconds": 0.007,
+      "event_id": "capsule_selected",
+      "message": "Selecting the one immutable capsule and converging only byte-identical Inbox duplicates.",
+      "notification": {
+        "event_id": "capsule_selected",
+        "presentation_mode": "summary",
+        "required": false,
+        "status": "local_only",
+        "updated_utc": "2026-08-02T03:32:03Z"
+      },
+      "status": "started",
+      "utc": "2026-08-02T03:32:03Z"
+    },
+    {
+      "details": {
+        "changed_path_count": 10,
+        "execution_profile": "development_campaign",
+        "execution_scope": {
+          "changed_paths": [
+            "backend/app/api/workspaces.py",
+            "backend/test_workspace_views.py",
+            "frontend/src/components/FAR.tsx",
+            "frontend/src/components/MonitoringGrid.tsx",
+            "frontend/src/components/far/FARGoldenWorkspace.tsx",
+            "frontend/src/components/shared/FARResearchGoldenPresentationContract.test.ts",
+            "frontend/src/components/shared/GoldenWorkspaceGeometryContract.test.ts",
+            "frontend/src/components/shared/GoldenWorkspaceShellContract.test.ts",
+            "frontend/src/components/shared/OperationalWorkspaceShells.tsx",
+            "frontend/tests/far-golden-workspace.spec.ts"
+          ],
+          "execution_profile": "development_campaign",
+          "targeted_tests": [
+            "backend:test_workspace_views",
+            "frontend:golden-workspace-contracts",
+            "playwright:far-golden-workspace",
+            "playwright:far-workflows",
+            "playwright:monitoring-workflows",
+            "playwright:workspace-collaborative-views",
+            "playwright:shell-geometry"
+          ],
+          "targeted_views": [
+            "far",
+            "monitoring"
+          ]
+        },
+        "patch_paths": [
+          "backend/app/api/workspaces.py",
+          "backend/test_workspace_views.py",
+          "frontend/src/components/FAR.tsx",
+          "frontend/src/components/MonitoringGrid.tsx",
+          "frontend/src/components/far/FARGoldenWorkspace.tsx",
+          "frontend/src/components/shared/FARResearchGoldenPresentationContract.test.ts",
+          "frontend/src/components/shared/GoldenWorkspaceGeometryContract.test.ts",
+          "frontend/src/components/shared/GoldenWorkspaceShellContract.test.ts",
+          "frontend/src/components/shared/OperationalWorkspaceShells.tsx",
+          "frontend/tests/far-golden-workspace.spec.ts"
+        ],
+        "post_path_count": 67,
+        "pre_path_count": 65,
+        "protected_path_count": 21,
+        "recipe_ids": [
+          "full-app-gate"
+        ]
+      },
+      "elapsed_seconds": 0.023,
+      "event_id": "capsule_verified",
+      "message": "Capsule archive, manifest, schema, patch identity, and cross-ledger contract are exact.",
+      "notification": {
+        "attempts": 1,
+        "chat_id_suffix": "1055",
+        "event_id": "run_started",
+        "first_attempt_utc": "2026-08-02T03:32:03Z",
+        "message_id": 557,
+        "payload_sha256": "40d82ccdf01e8c4c7d9b44af9bc677b47a4fb43cc30fd2cfc29f3758fe7417db",
+        "required": true,
+        "status": "delivered",
+        "updated_utc": "2026-08-02T03:32:03Z"
+      },
+      "status": "passed",
+      "utc": "2026-08-02T03:32:03Z"
+    },
+    {
+      "details": {},
+      "elapsed_seconds": 0.62,
+      "event_id": "preflight_started",
+      "message": "Running independent platform checks and exact repository-state proof.",
+      "notification": {
+        "event_id": "preflight_started",
+        "presentation_mode": "summary",
+        "required": false,
+        "status": "local_only",
+        "updated_utc": "2026-08-02T03:32:03Z"
+      },
+      "status": "started",
+      "utc": "2026-08-02T03:32:03Z"
+    },
+    {
+      "details": {
+        "dirty_paths": 65,
+        "head": "dbc3f870b5b37dbd53de7ac82697221270e19381",
+        "patch": {
+          "applicable": true,
+          "forward_diagnostic": "Checking patch backend/app/api/workspaces.py...\nChecking patch backend/test_workspace_views.py...\nChecking patch frontend/src/components/FAR.tsx...\nChecking patch frontend/src/components/MonitoringGrid.tsx...\nChecking patch frontend/src/components/far/FARGoldenWorkspace.tsx...\nChecking patch frontend/src/components/shared/FARResearchGoldenPresentationContract.test.ts...\nChecking patch frontend/src/components/shared/GoldenWorkspaceGeometryContract.test.ts...\nChecking patch frontend/src/components/shared/GoldenWorkspaceShellContract.test.ts...\nChecking patch frontend/src/components/shared/OperationalWorkspaceShells.tsx...\nChecking patch frontend/tests/far-golden-workspace.spec.ts...",
+          "forward_exit_code": 0,
+          "reverse_applicable": false,
+          "reverse_diagnostic": "Checking patch frontend/tests/far-golden-workspace.spec.ts...\nerror: while searching for:\nimport { expect } from '@playwright/test'\nimport { test } from './helpers/sysgrid-test'\nimport { clickResilientButton, resetBrowserState, waitForAppIdle } from './helpers/sysgrid'\n\nasync function waitForFAR(page: any) {\n  await waitForAppIdle(page)\n  await expect(page.locator('[data-far-golden-workspace=\"true\"]')).toBeVisible()\n}\n\n\nerror: patch failed: frontend/tests/far-golden-workspace.spec.ts:1\nerror: frontend/tests/far-golden-workspace.spec.ts: patch does not apply\nChecking patch frontend/src/components/shared/OperationalWorkspaceShells.tsx...\nerror: while searching for:\nimport { PageHeader } from './LayoutPrimitives'\nimport { WorkspaceCommandBar } from './WorkspaceCommandBar'\nimport { WorkspaceFloatingPanel } from './OperationalWorkspacePrimitives'\n\nconst join = (...parts: Array<string | false | null | undefined>) => parts.filter(Boolean).join(' ')\ntype WorkspaceFilterChip = { id: string; label: string; onRemove: () => void }\n\nerror: patch failed: frontend/src/components/shared/OperationalWorkspaceShells.tsx:5\nerror: frontend/src/components/shared/OperationalWorkspaceShells.tsx: patch does not apply\nChecking patch frontend/src/components/shared/GoldenWorkspaceShellContract.test.ts...\nerror: while searching for:\n    expect(routeMatrix).toContain(`key: '${view.key}', path: '${view.route}'`)\n  })\n\n  it('protects newer Monitoring search input from late remote hydration', () => {\n    const monitoring = readComponent('MonitoringGrid.tsx')\n    expect(monitoring).toContain('const monitoringLocalSearchTouchedRef = useRef(false)')\n    expect(monitoring).toContain('if (!monitoringLocalSearchTouchedRef.current)')\n    expect(monitoring).toContain('const setMonitoringSearchFromUser = useCallback')\n    expect(monitoring).toContain('onChange={(e) => setMonitoringSearchFromUser(e.target.value)}')\n  })\n\n  it('contains no stale plural Assets route in active source or tests', () => {\n    expe",
+          "reverse_exit_code": 1
+        }
+      },
+      "elapsed_seconds": 0.956,
+      "event_id": "preflight_completed",
+      "message": "Exact engine, repository, storage, state, protected hashes, and patch state passed.",
+      "notification": {
+        "event_id": "preflight_completed",
+        "presentation_mode": "summary",
+        "required": false,
+        "status": "local_only",
+        "updated_utc": "2026-08-02T03:32:04Z"
+      },
+      "status": "passed",
+      "utc": "2026-08-02T03:32:04Z"
+    },
+    {
+      "details": {},
+      "elapsed_seconds": 0.958,
+      "event_id": "engine_launch",
+      "message": "Launching the exact Stable Engine once; ambiguous mutation replay remains prohibited.",
+      "notification": {
+        "event_id": "engine_launch",
+        "presentation_mode": "summary",
+        "required": false,
+        "status": "local_only",
+        "updated_utc": "2026-08-02T03:32:04Z"
+      },
+      "status": "started",
+      "utc": "2026-08-02T03:32:04Z"
+    },
+    {
+      "details": {
+        "engine_exit_code": 1
+      },
+      "elapsed_seconds": 1.984,
+      "event_id": "engine_completed",
+      "message": "Stable Engine exited with code 1; verifying its complete evidence.",
+      "notification": {
+        "event_id": "engine_completed",
+        "presentation_mode": "summary",
+        "required": false,
+        "status": "local_only",
+        "updated_utc": "2026-08-02T03:32:05Z"
+      },
+      "status": "failed",
+      "utc": "2026-08-02T03:32:05Z"
+    },
+    {
+      "details": {
+        "artifact_size": 1801828,
+        "manifest_entries": 80
+      },
+      "elapsed_seconds": 1.995,
+      "event_id": "evidence_verified",
+      "message": "Engine evidence is complete and exactly correlated to capsule, engine, and process exit.",
+      "notification": {
+        "event_id": "evidence_verified",
+        "presentation_mode": "summary",
+        "required": false,
+        "status": "local_only",
+        "updated_utc": "2026-08-02T03:32:05Z"
+      },
+      "status": "passed",
+      "utc": "2026-08-02T03:32:05Z"
+    },
+    {
+      "details": {},
+      "elapsed_seconds": 1.998,
+      "event_id": "publication_started",
+      "message": "Publishing one content-addressed, fsynced, atomic canonical review ZIP.",
+      "notification": {
+        "event_id": "publication_started",
+        "presentation_mode": "summary",
+        "required": false,
+        "status": "local_only",
+        "updated_utc": "2026-08-02T03:32:05Z"
+      },
+      "status": "started",
+      "utc": "2026-08-02T03:32:05Z"
+    },
+    {
+      "details": {
+        "artifact_sha256": "7f8c27a9833c4d633f3819758eaeae09a8342ea7139217d9054972150831909c",
+        "exit_code": 1
+      },
+      "elapsed_seconds": 2.028,
+      "event_id": "publication_completed",
+      "message": "Run complete. Engine runtime: 0.0s. Canonical review ZIP is ready for upload.",
+      "notification": {
+        "attempts": 1,
+        "chat_id_suffix": "1055",
+        "event_id": "run_completed",
+        "first_attempt_utc": "2026-08-02T03:32:05Z",
+        "message_id": 558,
+        "payload_sha256": "2952bccfe243a6b5c2084060210911abacde37f973d1614f3c63ebf9e15d9898",
+        "required": false,
+        "status": "delivered",
+        "updated_utc": "2026-08-02T03:32:05Z"
+      },
+      "status": "failed",
+      "utc": "2026-08-02T03:32:05Z"
+    }
+  ],
+  "execution_profile": "development_campaign",
+  "execution_scope": {
+    "changed_paths": [
+      "backend/app/api/workspaces.py",
+      "backend/test_workspace_views.py",
+      "frontend/src/components/FAR.tsx",
+      "frontend/src/components/MonitoringGrid.tsx",
+      "frontend/src/components/far/FARGoldenWorkspace.tsx",
+      "frontend/src/components/shared/FARResearchGoldenPresentationContract.test.ts",
+      "frontend/src/components/shared/GoldenWorkspaceGeometryContract.test.ts",
+      "frontend/src/components/shared/GoldenWorkspaceShellContract.test.ts",
+      "frontend/src/components/shared/OperationalWorkspaceShells.tsx",
+      "frontend/tests/far-golden-workspace.spec.ts"
+    ],
+    "execution_profile": "development_campaign",
+    "targeted_tests": [
+      "backend:test_workspace_views",
+      "frontend:golden-workspace-contracts",
+      "playwright:far-golden-workspace",
+      "playwright:far-workflows",
+      "playwright:monitoring-workflows",
+      "playwright:workspace-collaborative-views",
+      "playwright:shell-geometry"
+    ],
+    "targeted_views": [
+      "far",
+      "monitoring"
+    ]
+  },
+  "issue": "OUT-31",
+  "iteration": 36,
+  "last_progress_event": "publication_completed",
+  "last_progress_message": "Run complete. Engine runtime: 0.0s. Canonical review ZIP is ready for upload.",
+  "last_progress_status": "failed",
+  "last_progress_utc": "2026-08-02T03:32:05Z",
+  "message": "dirty paths expected ['backend/app/api/workspaces.py', 'backend/app/main.py', 'backend/test_import_workflows.py', 'backend/test_main.py', 'backend/test_workspace_views.py', 'frontend/package.json', 'frontend/playwright.config.ts', 'frontend/scripts/check-canonical-verification-contract.cjs', 'frontend/scripts/check-shell-contracts.cjs', 'frontend/src/api/apiClient.test.ts', 'frontend/src/api/apiClient.ts', 'frontend/src/components/External.tsx', 'frontend/src/components/MonitoringGrid.tsx', 'frontend/src/components/ServicesReal.tsx', 'frontend/src/components/assets/AssetGoldenShellScaffold.tsx', 'frontend/src/components/far/FARGoldenWorkspace.tsx', 'frontend/src/components/far/FARGoldenWorkspaceModel.test.ts', 'frontend/src/components/far/FARGoldenWorkspaceModel.ts', 'frontend/src/components/settings/externalExportDiagnostics.ts', 'frontend/src/components/shared/CanonicalVerificationContract.test.ts', 'frontend/src/components/shared/GoldenWorkspaceGeometryContract.test.ts', 'frontend/src/components/shared/GoldenWorkspaceShellContract.test.ts', 'frontend/src/components/shared/OperationalDataStatus.test.ts', 'frontend/src/components/shared/OperationalDataStatus.tsx', 'frontend/src/components/shared/OperationalSavedViewsPanel.test.tsx', 'frontend/src/components/shared/OperationalWorkspace.ts', 'frontend/src/components/shared/OperationalWorkspaceCapabilities.test.ts', 'frontend/src/components/shared/OperationalWorkspaceShells.tsx', 'frontend/src/components/shared/TenantSelector.tsx', 'frontend/src/components/shared/WorkspaceCommandBar.tsx', 'frontend/test_linter.cjs', 'frontend/tests/architecture-workflows.spec.ts', 'frontend/tests/assets-stage33-evidence.spec.ts', 'frontend/tests/assets-stage34-evidence.spec.ts', 'frontend/tests/assets-stage35-evidence.spec.ts', 'frontend/tests/assets-stage36-evidence.spec.ts', 'frontend/tests/assets-vendors-bulk-preview.spec.ts', 'frontend/tests/blank-slate-audit.spec.ts', 'frontend/tests/crud-api-contracts.spec.ts', 'frontend/tests/external-services-bulk-preview.spec.ts', 'frontend/tests/far-golden-workspace.spec.ts', 'frontend/tests/golden-eight-seeded-visual-matrix.spec.ts', 'frontend/tests/helpers/routeMatrix.ts', 'frontend/tests/helpers/sentinel.ts', 'frontend/tests/helpers/sysgrid-test.ts', 'frontend/tests/helpers/sysgrid.ts', 'frontend/tests/knowledge-workflows.spec.ts', 'frontend/tests/monitoring-workflows.spec.ts', 'frontend/tests/pre-test-check.spec.ts', 'frontend/tests/projects-creation-flow.spec.ts', 'frontend/tests/research-workflows.spec.ts', 'frontend/tests/sentinel_comprehensive.spec.ts', 'frontend/tests/sentinel_smoke.spec.ts', 'frontend/tests/service-workflows.spec.ts', 'frontend/tests/settings-and-audit.spec.ts', 'frontend/tests/shell-and-search.spec.ts', 'frontend/tests/vendors-real-runtime.spec.ts', 'frontend/tests/view-deeplink-matrix.spec.ts', 'frontend/tests/view-empty-states.spec.ts', 'frontend/tests/workspace-collaborative-views.spec.ts', 'patches/FAR_DIRECT_APPLY_FULL_GOLDEN_RECOVERY/APPLY_FAR_RECOVERY.command', 'patches/FAR_DIRECT_APPLY_FULL_GOLDEN_RECOVERY/FAR_FULL_GOLDEN_RECOVERY.patch', 'patches/FAR_DIRECT_APPLY_FULL_GOLDEN_RECOVERY/README.md', 'patches/FAR_DIRECT_APPLY_FULL_GOLDEN_RECOVERY/ROLLBACK_FAR_FULL_GOLDEN_RECOVERY.patch', 'scripts/verify-app.sh'], got ['backend/app/api/workspaces.py', 'backend/app/main.py', 'backend/test_import_workflows.py', 'backend/test_main.py', 'backend/test_workspace_views.py', 'frontend/package.json', 'frontend/playwright.config.ts', 'frontend/scripts/check-canonical-verification-contract.cjs', 'frontend/scripts/check-shell-contracts.cjs', 'frontend/src/api/apiClient.test.ts', 'frontend/src/api/apiClient.ts', 'frontend/src/components/External.tsx', 'frontend/src/components/MonitoringGrid.tsx', 'frontend/src/components/ServicesReal.tsx', 'frontend/src/components/assets/AssetGoldenShellScaffold.tsx', 'frontend/src/components/far/', 'frontend/src/components/settings/externalExportDiagnostics.ts', 'frontend/src/components/shared/CanonicalVerificationContract.test.ts', 'frontend/src/components/shared/GoldenWorkspaceGeometryContract.test.ts', 'frontend/src/components/shared/GoldenWorkspaceShellContract.test.ts', 'frontend/src/components/shared/OperationalDataStatus.test.ts', 'frontend/src/components/shared/OperationalDataStatus.tsx', 'frontend/src/components/shared/OperationalSavedViewsPanel.test.tsx', 'frontend/src/components/shared/OperationalWorkspace.ts', 'frontend/src/components/shared/OperationalWorkspaceCapabilities.test.ts', 'frontend/src/components/shared/OperationalWorkspaceShells.tsx', 'frontend/src/components/shared/TenantSelector.tsx', 'frontend/src/components/shared/WorkspaceCommandBar.tsx', 'frontend/test_linter.cjs', 'frontend/tests/architecture-workflows.spec.ts', 'frontend/tests/assets-stage33-evidence.spec.ts', 'frontend/tests/assets-stage34-evidence.spec.ts', 'frontend/tests/assets-stage35-evidence.spec.ts', 'frontend/tests/assets-stage36-evidence.spec.ts', 'frontend/tests/assets-vendors-bulk-preview.spec.ts', 'frontend/tests/blank-slate-audit.spec.ts', 'frontend/tests/crud-api-contracts.spec.ts', 'frontend/tests/external-services-bulk-preview.spec.ts', 'frontend/tests/far-golden-workspace.spec.ts', 'frontend/tests/golden-eight-seeded-visual-matrix.spec.ts', 'frontend/tests/helpers/routeMatrix.ts', 'frontend/tests/helpers/sentinel.ts', 'frontend/tests/helpers/sysgrid-test.ts', 'frontend/tests/helpers/sysgrid.ts', 'frontend/tests/knowledge-workflows.spec.ts', 'frontend/tests/monitoring-workflows.spec.ts', 'frontend/tests/pre-test-check.spec.ts', 'frontend/tests/projects-creation-flow.spec.ts', 'frontend/tests/research-workflows.spec.ts', 'frontend/tests/sentinel_comprehensive.spec.ts', 'frontend/tests/sentinel_smoke.spec.ts', 'frontend/tests/service-workflows.spec.ts', 'frontend/tests/settings-and-audit.spec.ts', 'frontend/tests/shell-and-search.spec.ts', 'frontend/tests/vendors-real-runtime.spec.ts', 'frontend/tests/view-deeplink-matrix.spec.ts', 'frontend/tests/view-empty-states.spec.ts', 'frontend/tests/workspace-collaborative-views.spec.ts', 'patches/', 'scripts/verify-app.sh']",
+  "monotonic_started": 3918072.75091175,
+  "notification_events": {
+    "capsule_selected": {
+      "event_id": "capsule_selected",
+      "presentation_mode": "summary",
+      "required": false,
+      "status": "local_only",
+      "updated_utc": "2026-08-02T03:32:03Z"
+    },
+    "capsule_verified": {
+      "attempts": 1,
+      "chat_id_suffix": "1055",
+      "event_id": "run_started",
+      "first_attempt_utc": "2026-08-02T03:32:03Z",
+      "message_id": 557,
+      "payload_sha256": "40d82ccdf01e8c4c7d9b44af9bc677b47a4fb43cc30fd2cfc29f3758fe7417db",
+      "required": true,
+      "status": "delivered",
+      "updated_utc": "2026-08-02T03:32:03Z"
+    },
+    "engine_completed": {
+      "event_id": "engine_completed",
+      "presentation_mode": "summary",
+      "required": false,
+      "status": "local_only",
+      "updated_utc": "2026-08-02T03:32:05Z"
+    },
+    "engine_launch": {
+      "event_id": "engine_launch",
+      "presentation_mode": "summary",
+      "required": false,
+      "status": "local_only",
+      "updated_utc": "2026-08-02T03:32:04Z"
+    },
+    "evidence_verified": {
+      "event_id": "evidence_verified",
+      "presentation_mode": "summary",
+      "required": false,
+      "status": "local_only",
+      "updated_utc": "2026-08-02T03:32:05Z"
+    },
+    "preflight_completed": {
+      "event_id": "preflight_completed",
+      "presentation_mode": "summary",
+      "required": false,
+      "status": "local_only",
+      "updated_utc": "2026-08-02T03:32:04Z"
+    },
+    "preflight_started": {
+      "event_id": "preflight_started",
+      "presentation_mode": "summary",
+      "required": false,
+      "status": "local_only",
+      "updated_utc": "2026-08-02T03:32:03Z"
+    },
+    "publication_completed": {
+      "attempts": 1,
+      "chat_id_suffix": "1055",
+      "event_id": "run_completed",
+      "first_attempt_utc": "2026-08-02T03:32:05Z",
+      "message_id": 558,
+      "payload_sha256": "2952bccfe243a6b5c2084060210911abacde37f973d1614f3c63ebf9e15d9898",
+      "required": false,
+      "status": "delivered",
+      "updated_utc": "2026-08-02T03:32:05Z"
+    },
+    "publication_started": {
+      "event_id": "publication_started",
+      "presentation_mode": "summary",
+      "required": false,
+      "status": "local_only",
+      "updated_utc": "2026-08-02T03:32:05Z"
+    }
+  },
+  "notification_policy": {
+    "delivery_semantics": "durably-deduplicated-at-least-once",
+    "engine_heartbeat_seconds": 120,
+    "max_messages_per_run": 3,
+    "presentation_mode": "summary",
+    "registered_events": 24,
+    "required_before_engine": true,
+    "telegram_heartbeats": false
+  },
+  "original_capsule": "/Users/haewonkim/Library/Mobile Documents/com~apple~CloudDocs/SysGrid-Control/Inbox/DOWNLOAD_Attempt_12_Repair_R2_Strict_Stable_Engine_Schema.sgcap",
+  "pid": 34878,
+  "preflight": {
+    "declared_state": {
+      "dirty_path_count": 65,
+      "pre_hash_count": 65,
+      "protected_hash_count": 21
+    },
+    "engine_self_test": {
+      "engine_version": "1.0.4",
+      "result": "PASS",
+      "tests": [
+        "safe-path",
+        "manifest",
+        "corruption"
+      ]
+    },
+    "patch": {
+      "applicable": true,
+      "forward_diagnostic": "Checking patch backend/app/api/workspaces.py...\nChecking patch backend/test_workspace_views.py...\nChecking patch frontend/src/components/FAR.tsx...\nChecking patch frontend/src/components/MonitoringGrid.tsx...\nChecking patch frontend/src/components/far/FARGoldenWorkspace.tsx...\nChecking patch frontend/src/components/shared/FARResearchGoldenPresentationContract.test.ts...\nChecking patch frontend/src/components/shared/GoldenWorkspaceGeometryContract.test.ts...\nChecking patch frontend/src/components/shared/GoldenWorkspaceShellContract.test.ts...\nChecking patch frontend/src/components/shared/OperationalWorkspaceShells.tsx...\nChecking patch frontend/tests/far-golden-workspace.spec.ts...",
+      "forward_exit_code": 0,
+      "reverse_applicable": false,
+      "reverse_diagnostic": "Checking patch frontend/tests/far-golden-workspace.spec.ts...\nerror: while searching for:\nimport { expect } from '@playwright/test'\nimport { test } from './helpers/sysgrid-test'\nimport { clickResilientButton, resetBrowserState, waitForAppIdle } from './helpers/sysgrid'\n\nasync function waitForFAR(page: any) {\n  await waitForAppIdle(page)\n  await expect(page.locator('[data-far-golden-workspace=\"true\"]')).toBeVisible()\n}\n\n\nerror: patch failed: frontend/tests/far-golden-workspace.spec.ts:1\nerror: frontend/tests/far-golden-workspace.spec.ts: patch does not apply\nChecking patch frontend/src/components/shared/OperationalWorkspaceShells.tsx...\nerror: while searching for:\nimport { PageHeader } from './LayoutPrimitives'\nimport { WorkspaceCommandBar } from './WorkspaceCommandBar'\nimport { WorkspaceFloatingPanel } from './OperationalWorkspacePrimitives'\n\nconst join = (...parts: Array<string | false | null | undefined>) => parts.filter(Boolean).join(' ')\ntype WorkspaceFilterChip = { id: string; label: string; onRemove: () => void }\n\nerror: patch failed: frontend/src/components/shared/OperationalWorkspaceShells.tsx:5\nerror: frontend/src/components/shared/OperationalWorkspaceShells.tsx: patch does not apply\nChecking patch frontend/src/components/shared/GoldenWorkspaceShellContract.test.ts...\nerror: while searching for:\n    expect(routeMatrix).toContain(`key: '${view.key}', path: '${view.route}'`)\n  })\n\n  it('protects newer Monitoring search input from late remote hydration', () => {\n    const monitoring = readComponent('MonitoringGrid.tsx')\n    expect(monitoring).toContain('const monitoringLocalSearchTouchedRef = useRef(false)')\n    expect(monitoring).toContain('if (!monitoringLocalSearchTouchedRef.current)')\n    expect(monitoring).toContain('const setMonitoringSearchFromUser = useCallback')\n    expect(monitoring).toContain('onChange={(e) => setMonitoringSearchFromUser(e.target.value)}')\n  })\n\n  it('contains no stale plural Assets route in active source or tests', () => {\n    expe",
+      "reverse_exit_code": 1
+    },
+    "storage": {
+      "control_free": 57291358208,
+      "local_free": 57291358208,
+      "required": 536870912
+    }
+  },
+  "recovered_without_product_replay": false,
+  "repo": "/Users/haewonkim/home/development/sysgrid",
+  "repo_branch": "main",
+  "repo_head": "dbc3f870b5b37dbd53de7ac82697221270e19381",
+  "resource_plan": {
+    "backend_workers": 4,
+    "cpu_count": 12,
+    "e2e_workers": 2,
+    "frontend_workers": 4,
+    "memory_bytes": 19327352832,
+    "preflight_workers": 24,
+    "reserve_memory_bytes": 2147483648,
+    "test_cpu_budget": 11,
+    "usable_memory_bytes": 17179869184
+  },
+  "run_id": "20260802T033203Z-34878-805000",
+  "runtime_summary": {
+    "artifact": "/Users/haewonkim/.local/state/sysgrid-supervisor/runs/20260802T033203Z-34878-805000/engine-outbox/UPLOAD_THIS_TO_CHATGPT.zip",
+    "classification": "BASELINE_MISMATCH",
+    "commands": [],
+    "engine_total_seconds": 0.0,
+    "failed_stage": "baseline",
+    "finished_utc": "2026-08-02T03:32:04Z",
+    "result": "failure",
+    "started_utc": "2026-08-02T03:32:04Z"
+  },
+  "safe_cleanup": {
+    "inspected": 0,
+    "removed": 0
+  },
+  "safe_retry_count": 0,
+  "stage": "complete",
+  "staged_capsule": "/Users/haewonkim/.local/state/sysgrid-supervisor/runs/20260802T033203Z-34878-805000/input/DOWNLOAD_Attempt_12_Repair_R2_Strict_Stable_Engine_Schema.sgcap",
+  "started_utc": "2026-08-02T03:32:03Z",
+  "state": "FAILED_REVIEW_READY",
+  "supervisor_version": "2.1.5",
+  "telegram": {
+    "chat_id_suffix": "1055",
+    "configured": true,
+    "source": "/Users/haewonkim/.config/sysgrid-supervisor/telegram.json"
+  },
+  "updated_utc": "2026-08-02T03:32:05Z",
+  "work_dir": "/Users/haewonkim/.local/state/sysgrid-supervisor/runs/20260802T033203Z-34878-805000"
+}

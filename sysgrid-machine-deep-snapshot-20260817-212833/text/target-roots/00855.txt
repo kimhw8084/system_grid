@@ -1,0 +1,16 @@
+ORIGINAL_PATH: /Users/haewonkim/.local/state/sysgrid-supervisor/runs/20260801T210051Z-28246-090000/patch.diff
+ORIGINAL_SHA256: 1ec775901178c629e52a35f46a53857204c25d6322c64b3e7a6c32de25b8dccd
+================================================================================
+diff --git a/frontend/src/components/shared/GoldenWorkspaceGeometryContract.test.ts b/frontend/src/components/shared/GoldenWorkspaceGeometryContract.test.ts
+--- a/frontend/src/components/shared/GoldenWorkspaceGeometryContract.test.ts
++++ b/frontend/src/components/shared/GoldenWorkspaceGeometryContract.test.ts
+@@ -27,7 +27,8 @@
+     expect(shell).toContain("GOLDEN_GRID_BASE_CLASS = 'operational-grid-shell operational-grid relative box-border flex min-h-0 min-w-0 w-full max-w-full flex-1 flex-col overflow-hidden glass-panel ag-theme-alpine-dark")
+     expect(shell).toContain("GOLDEN_GRID_CONTENT_CLASS = 'relative box-border flex min-h-0 min-w-0 w-full max-w-full flex-1 overflow-hidden")
+     expect(shell).toContain('data-golden-grid-content="true"')
+-    expect(shell).toContain('[&_.ag-center-cols-container]:!w-full')
++    expect(shell).toContain('[&_.ag-center-cols-container]:!min-w-full')
++    expect(shell).not.toContain('[&_.ag-center-cols-container]:!w-full')
+     expect(shell).toContain('[&>*]:!w-full')
+     expect(shell).toContain("golden: 'rounded-lg'")
+     expect(shell).toContain("'attached-panel': 'rounded-t-none border-x border-b border-white/5'")

@@ -1,0 +1,37 @@
+{
+  "reported_by": "principal",
+  "observed_after_commit": "66244b997a70b85e6e887870c96db958f3f0d22d",
+  "symptoms": [
+    "Refreshing Project View shows 'Unknown workspace key.'",
+    "Individual Project View content becomes smaller/closer to center than other workspaces",
+    "Project surfaces include random black/darker backgrounds instead of same/slightly brighter than app background",
+    "Overview lacks a usable Project Information cover as the main landing page"
+  ],
+  "repair_semantics": "same Project View perfection objective; usability/regression correction only",
+  "repair8_packaging_correction": {
+    "failed_result_sha256": "ba2947a9f044d201465aa3541a77b304523199d4ee2636dfc191085d4bacb658",
+    "failure": "preflight guard mistyped projects-visual-repair.spec.ts Git blob",
+    "actual_blob": "9e104744565bb6ef6b11b1b4243ac45a14cbe15c",
+    "incorrect_expected_blob": "9e104744565bb6ef6b11b1b4243ac45a14a9ab95",
+    "repo_application_from_failed_attempt": "NOT_ATTEMPTED"
+  },
+  "repair9_parent_result": {
+    "repair": 8,
+    "result_sha256": "0b33041203fc0ed166bbf103146e1779572145f4d29e371dfba1ffea5316f910",
+    "status": "FAIL",
+    "local_application": "NOT_ATTEMPTED",
+    "proof": {
+      "geometry_unit": "12/12 PASS",
+      "frontend_build": "PASS",
+      "real_app_smoke": "15/16 PASS",
+      "only_failure": "Project overview brightness policy"
+    },
+    "observed_colors": {
+      "body": "rgb(26, 27, 38)",
+      "project_frame": "rgb(10, 12, 20)",
+      "cover": "color(srgb 0.209725 0.213176 0.251137)",
+      "outcome": "color(srgb 0.155843 0.159529 0.200078)"
+    },
+    "diagnosis": "Project frame remained darker than the app page; test parser also did not account for color(srgb) serialization."
+  }
+}

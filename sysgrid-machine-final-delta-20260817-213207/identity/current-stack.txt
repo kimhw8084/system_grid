@@ -1,0 +1,66 @@
+
+============================================================
+/Users/haewonkim/.local/bin/sg
+-rwxr-xr-x  1 haewonkim  staff  147 Aug  8 11:24 /Users/haewonkim/.local/bin/sg
+8568fbb49e3664076d4f3c4871bfa520c675f6cc80f4be54dc9649d3a69b9360  /Users/haewonkim/.local/bin/sg
+/Users/haewonkim/.local/bin/sg: Bourne-Again shell script text executable, ASCII text
+
+============================================================
+/Users/haewonkim/.local/share/sysgrid-delivery-v1.3.0/sg_cli.py
+-rwxr-xr-x  1 haewonkim  staff  5012 Aug 17 09:25 /Users/haewonkim/.local/share/sysgrid-delivery-v1.3.0/sg_cli.py
+f137c06450504a5d275f4174ac491296f777c01efccc352ffbaae08c66b1a339  /Users/haewonkim/.local/share/sysgrid-delivery-v1.3.0/sg_cli.py
+/Users/haewonkim/.local/share/sysgrid-delivery-v1.3.0/sg_cli.py: Python script text executable, ASCII text
+
+============================================================
+/Users/haewonkim/.local/share/sysgrid-delivery-v1.3.0/sg_runner.py
+-rwxr-xr-x  1 haewonkim  staff  3281 Aug 17 13:37 /Users/haewonkim/.local/share/sysgrid-delivery-v1.3.0/sg_runner.py
+747af261f46101bc5d7b602eba33db2d36b7279f04cd167aaa29b7e26762842c  /Users/haewonkim/.local/share/sysgrid-delivery-v1.3.0/sg_runner.py
+/Users/haewonkim/.local/share/sysgrid-delivery-v1.3.0/sg_runner.py: Python script text executable, ASCII text
+
+============================================================
+/Users/haewonkim/.local/share/sysgrid-delivery-v1.3.0/command_enumeration_core.py
+-rwxr-xr-x  1 haewonkim  staff  3983 Aug 17 13:37 /Users/haewonkim/.local/share/sysgrid-delivery-v1.3.0/command_enumeration_core.py
+5bb810e53455a1152e9241899e4e6ad97de9dc538c5affb3693df1f802b30f95  /Users/haewonkim/.local/share/sysgrid-delivery-v1.3.0/command_enumeration_core.py
+/Users/haewonkim/.local/share/sysgrid-delivery-v1.3.0/command_enumeration_core.py: Python script text executable, ASCII text
+
+============================================================
+/Users/haewonkim/.local/share/sysgrid-delivery-v1.3.0/linear_text_capsule.py
+-rwxr-xr-x  1 haewonkim  staff  9183 Aug 17 09:25 /Users/haewonkim/.local/share/sysgrid-delivery-v1.3.0/linear_text_capsule.py
+044edd83a321287549b46b3c7e3641ed92ed3b18a59342efeac9ef27a3dc1f4a  /Users/haewonkim/.local/share/sysgrid-delivery-v1.3.0/linear_text_capsule.py
+/Users/haewonkim/.local/share/sysgrid-delivery-v1.3.0/linear_text_capsule.py: Python script text executable, ASCII text
+
+============================================================
+/Users/haewonkim/.local/share/sysgrid-delivery-v1.3.0/sg_git_credential.py
+-rwxr-xr-x  1 haewonkim  staff  2101 Aug  8 11:24 /Users/haewonkim/.local/share/sysgrid-delivery-v1.3.0/sg_git_credential.py
+9cc8c902eeca3903c80383e85b623f8576b4e17be531632a92c4d9a5a365837f  /Users/haewonkim/.local/share/sysgrid-delivery-v1.3.0/sg_git_credential.py
+/Users/haewonkim/.local/share/sysgrid-delivery-v1.3.0/sg_git_credential.py: Python script text executable, ASCII text
+
+============================================================
+/Users/haewonkim/.local/share/sysgrid-delivery-v1.3.0/.sysgrid-runner-install.json
+-rw-------  1 haewonkim  staff  623 Aug 17 09:25 /Users/haewonkim/.local/share/sysgrid-delivery-v1.3.0/.sysgrid-runner-install.json
+bd523a32041afe5235d9a487764a59aa9d722c9932aa3a249bdc91bebe389910  /Users/haewonkim/.local/share/sysgrid-delivery-v1.3.0/.sysgrid-runner-install.json
+/Users/haewonkim/.local/share/sysgrid-delivery-v1.3.0/.sysgrid-runner-install.json: JSON data
+
+============================================================
+/Users/haewonkim/.local/share/sysgrid-delivery-v1.3.0/PACKAGE_IDENTITY.json
+-rw-r--r--@ 1 haewonkim  staff  1495 Aug  8 10:18 /Users/haewonkim/.local/share/sysgrid-delivery-v1.3.0/PACKAGE_IDENTITY.json
+81ec4359adf8139d31fb091a5e66949dd436ddd728e4819af2b6b0015b1b5dd6  /Users/haewonkim/.local/share/sysgrid-delivery-v1.3.0/PACKAGE_IDENTITY.json
+/Users/haewonkim/.local/share/sysgrid-delivery-v1.3.0/PACKAGE_IDENTITY.json: JSON data
+
+============================================================
+/Users/haewonkim/.local/share/sysgrid-delivery-v1.3.0/sg_cli.py.fastpath.rollback
+-rwxr-xr-x  1 haewonkim  staff  37596 Aug 17 09:17 /Users/haewonkim/.local/share/sysgrid-delivery-v1.3.0/sg_cli.py.fastpath.rollback
+377bf5ddc09212c39217f7d0323a5f9c878aae2bd91323ef8c2333de4368e404  /Users/haewonkim/.local/share/sysgrid-delivery-v1.3.0/sg_cli.py.fastpath.rollback
+/Users/haewonkim/.local/share/sysgrid-delivery-v1.3.0/sg_cli.py.fastpath.rollback: Python script text executable, Unicode text, UTF-8 text
+
+============================================================
+/Users/haewonkim/.local/share/sysgrid-delivery-v1.3.0/sg_runner.py.fastpath.rollback
+-rwxr-xr-x  1 haewonkim  staff  53402 Aug 17 09:17 /Users/haewonkim/.local/share/sysgrid-delivery-v1.3.0/sg_runner.py.fastpath.rollback
+800bd87a59d46572cd1d218d4c01857e97080838d5ee54d349c25f257191d00b  /Users/haewonkim/.local/share/sysgrid-delivery-v1.3.0/sg_runner.py.fastpath.rollback
+/Users/haewonkim/.local/share/sysgrid-delivery-v1.3.0/sg_runner.py.fastpath.rollback: Python script text executable, ASCII text
+
+============================================================
+/Users/haewonkim/.local/share/sysgrid-delivery-v1.3.0/sg_runner.py.fresh-rev2.rollback
+-rwxr-xr-x  1 haewonkim  staff  32630 Aug 17 13:37 /Users/haewonkim/.local/share/sysgrid-delivery-v1.3.0/sg_runner.py.fresh-rev2.rollback
+0cf92efcb19a4c4534855da43d2923fae4b8e6829eb04379bc335ed7a0e31198  /Users/haewonkim/.local/share/sysgrid-delivery-v1.3.0/sg_runner.py.fresh-rev2.rollback
+/Users/haewonkim/.local/share/sysgrid-delivery-v1.3.0/sg_runner.py.fresh-rev2.rollback: Python script text executable, Unicode text, UTF-8 text

@@ -1,0 +1,22 @@
+ORIGINAL_PATH: /Users/haewonkim/.local/share/sysgrid-campaign-platform/v1.1.1/README.md
+ORIGINAL_SHA256: 4bbd26c749cc9ecdef501a82669af9660639160093c21e4c0dac780e09da85cf
+================================================================================
+# SysGrid Campaign Platform v1.1.1 — Production Source Authority
+
+Platform Verification Repair P2-R1. No product behavior is added.
+
+This cumulative release retains P2 and adds a qualified read-only source-authority command:
+
+```bash
+sg source-authority
+```
+
+The command discovers the current SysGrid repository, captures every tracked and valid untracked source/configuration/test file, exact Git state and binary diffs, route/API/test and dependency maps, platform identity, and a source-tree non-mutation proof. It writes one canonical artifact to:
+
+```text
+~/Library/Mobile Documents/com~apple~CloudDocs/SysGrid-Control/Outbox/UPLOAD_THIS_TO_CHATGPT_SOURCE_AUTHORITY.zip
+```
+
+Secrets, credential files, dependency directories, caches, generated outputs, and unrelated binaries are excluded and enumerated. If a complete safe snapshot cannot be produced, the tool fails closed and writes `UPLOAD_DIAGNOSTIC_TO_CHATGPT_SOURCE_AUTHORITY.zip` instead.
+
+Product Attempt 12 remains unaccepted. This repair only removes manual source-export work from the approved fresh-chat workflow.

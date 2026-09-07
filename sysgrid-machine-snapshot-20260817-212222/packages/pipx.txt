@@ -1,0 +1,7 @@
+venvs are in /Users/haewonkim/.local/pipx/venvs
+apps are exposed on your $PATH at /Users/haewonkim/.local/bin
+manual pages are exposed at /Users/haewonkim/.local/share/man
+   package headroom-ai 0.22.4, installed using Python 3.13.13
+    - headroom
+   package virtualenv 20.30.0, installed using Python 3.13.2
+    - virtualenv

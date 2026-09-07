@@ -1,0 +1,13 @@
+ORIGINAL_PATH: /Users/haewonkim/.local/state/sysgrid-supervisor/runs/20260804T020649Z-5189-068000/launch.json
+ORIGINAL_SHA256: 41ab4476f2279d5e7db3c457131650b01533424387a37870f72525dba6396c43
+================================================================================
+{
+  "capsule_path": "/Users/haewonkim/.local/state/sysgrid-supervisor/runs/20260804T020649Z-5189-068000/input/SYSGRID_OUT31_PA13_PS2_POST_STATE_VERIFICATION_RECOVERY_v1.0.0.sgcap",
+  "capsule_sha256": "6db6933e60edb7363c86153fce993daf67bab9524b3f10e5c5231cff1829d7bf",
+  "command_sha256": "986a71ff42cdadc415d2bafd539da47b690a2372098f9e9ffe18c1b52788de28",
+  "engine_path": "/Users/haewonkim/.local/share/sysgrid-runner/engine-v1.1.1/sysgrid_runner.py",
+  "engine_sha256": "66b082fec1e9f6c49152e5ecb4cbb3f998e60ce27d53a2325e5f658634a8d032",
+  "launched_utc": "2026-08-04T02:06:50Z",
+  "repo": "/Users/haewonkim/home/development/sysgrid",
+  "run_id": "20260804T020649Z-5189-068000"
+}

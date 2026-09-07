@@ -1,0 +1,89 @@
+ORIGINAL_PATH: /Users/haewonkim/.local/share/sysgrid-supervisor/v2.0.1/test_install_and_qualify.py
+ORIGINAL_SHA256: 484a14c3f153e647ebf45a3c9674bc5f603b3be9d86ef2ad8a36ed07aab5d78d
+================================================================================
+from __future__ import annotations
+
+import hashlib
+import tempfile
+import unittest
+from unittest import mock
+from pathlib import Path
+
+import INSTALL_AND_QUALIFY as installer
+
+
+class InstallerIdentityTests(unittest.TestCase):
+    def write_manifest(self, root: Path, files: dict[str, bytes]) -> None:
+        lines = []
+        for rel, data in sorted(files.items()):
+            path = root / rel
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_bytes(data)
+            lines.append(f"{hashlib.sha256(data).hexdigest()}  {rel}")
+        (root / "MANIFEST.sha256").write_text("\n".join(lines) + "\n", encoding="utf-8")
+
+    def test_automatic_telegram_discovery_configures_fresh_private_chat(self) -> None:
+        valid = {"bot_token": "12345:abcdefghijklmnopqrstuvwxyzABCDE", "chat_id": "987654", "source": "test"}
+        with mock.patch.object(installer.sys.stdin, "isatty", return_value=True), \
+             mock.patch.object(installer.getpass, "getpass", return_value=valid["bot_token"]), \
+             mock.patch.object(installer.sg, "load_telegram_config", side_effect=[None, valid]), \
+             mock.patch.object(installer.sg, "telegram_prepare_private_chat_discovery", return_value={
+                 "username": "sysgrid_notify_bot", "baseline_update_id": 20
+             }), \
+             mock.patch.object(installer, "_open_telegram_bot", return_value="https://t.me/sysgrid_notify_bot"), \
+             mock.patch.object(installer.sg, "telegram_wait_for_fresh_private_chats", return_value=[{
+                 "chat_id": valid["chat_id"], "display": "Owner", "update_id": 21
+             }]), \
+             mock.patch.object(installer.sg, "save_telegram_config") as save, \
+             mock.patch.object(installer.sg, "telegram_probe", return_value={
+                 "source": "test", "chat_id_suffix": "7654", "message_id": 9
+             }):
+            result = installer.ensure_telegram_configuration()
+        save.assert_called_once_with(valid["bot_token"], valid["chat_id"])
+        self.assertTrue(result["delivered"])
+        self.assertTrue(result["automatic_discovery"])
+
+    def test_unittest_count_is_derived_from_exact_suite_output(self) -> None:
+        output = "case ... ok\n\n----------------------------------------------------------------------\nRan 75 tests in 1.234s\n\nOK\n"
+        self.assertEqual(installer.unittest_count(output), 75)
+        with self.assertRaises(installer.PackageVerificationError):
+            installer.unittest_count("OK without a unittest summary")
+
+    def test_released_package_has_exact_complete_coverage(self) -> None:
+        manifest = installer.verify_tree_manifest(installer.PACKAGE_ROOT)
+        self.assertEqual(manifest, installer.VERIFIED_PACKAGE_MANIFEST)
+        self.assertFalse(any("__pycache__" in p.parts or p.suffix == ".pyc" for p in installer.PACKAGE_ROOT.rglob("*")))
+
+    def test_tree_manifest_rejects_unlisted_bytecode(self) -> None:
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            self.write_manifest(root, {"payload/main.py": b"print('safe')\n"})
+            extra = root / "payload/__pycache__/main.cpython-313.pyc"
+            extra.parent.mkdir(parents=True)
+            extra.write_bytes(b"untrusted-bytecode")
+            with self.assertRaises(installer.PackageVerificationError):
+                installer.verify_tree_manifest(root)
+
+    def test_tree_manifest_rejects_hidden_extra(self) -> None:
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            self.write_manifest(root, {"payload/main.py": b"pass\n"})
+            (root / ".unexpected").write_bytes(b"extra")
+            with self.assertRaises(installer.PackageVerificationError):
+                installer.verify_tree_manifest(root)
+
+    def test_tree_manifest_rejects_digest_mismatch(self) -> None:
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            self.write_manifest(root, {"payload/main.py": b"pass\n"})
+            (root / "payload/main.py").write_bytes(b"changed\n")
+            with self.assertRaises(installer.PackageVerificationError):
+                installer.verify_tree_manifest(root)
+
+    def test_tree_manifest_rejects_unsafe_manifest_path(self) -> None:
+        with self.assertRaises(installer.PackageVerificationError):
+            installer.parse_package_manifest("" + "0" * 64 + "  ../escape.py\n")
+
+
+if __name__ == "__main__":
+    unittest.main()

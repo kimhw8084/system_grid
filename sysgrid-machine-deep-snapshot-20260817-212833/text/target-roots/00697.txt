@@ -1,0 +1,290 @@
+ORIGINAL_PATH: /Users/haewonkim/.local/state/sysgrid-supervisor/runs/20260803T035809Z-31355-367000/patch.diff
+ORIGINAL_SHA256: 2a0163bb7ab4e84b84f08a42767eb145ae40e065fe156c595ec9a7a5e0687c81
+================================================================================
+diff --git a/backend/app/schemas/schemas.py b/backend/app/schemas/schemas.py
+index e5f5ddfb2269b5bdbaa33140f2df5f09f52fe09c..3033572e0d683734addad6eda45d49a1163fd5f7 100644
+--- a/backend/app/schemas/schemas.py
++++ b/backend/app/schemas/schemas.py
+@@ -1,4 +1,4 @@
+-from pydantic import BaseModel, ConfigDict, Field, AliasChoices, field_validator, model_validator
++from pydantic import BaseModel, ConfigDict, Field, AliasChoices, StrictInt, field_validator, model_validator
+ from typing import List, Optional, Any, Dict, Literal
+ from datetime import datetime
+ from urllib.parse import urlparse
+@@ -770,11 +770,11 @@ class KnowledgeEntryTinyResponse(BaseSchema):
+ 
+ 
+ class FarResolutionCreate(FARStrictModel):
+-    knowledge_id: Optional[int] = Field(default=None, ge=1)
++    knowledge_id: Optional[StrictInt] = Field(default=None, ge=1)
+     preventive_follow_up: Optional[str] = Field(default=None, max_length=10000)
+     responsible_team: Optional[str] = Field(default=None, max_length=200)
+     guidance_notes: Optional[str] = Field(default=None, max_length=10000)
+-    cause_ids: List[int] = Field(default_factory=list, max_length=200)
++    cause_ids: List[StrictInt] = Field(default_factory=list, max_length=200)
+     idempotency_key: str = Field(min_length=8, max_length=200)
+ 
+ 
+@@ -794,9 +794,9 @@ class FarMitigationCreate(FARStrictModel):
+     mitigation_steps: Optional[str] = Field(default=None, max_length=10000)
+     responsible_team: Optional[str] = Field(default=None, max_length=200)
+     status: str = Field(default="Not Started", min_length=1, max_length=80)
+-    cause_id: Optional[int] = Field(default=None, ge=1)
+-    monitoring_item_id: Optional[int] = Field(default=None, ge=1)
+-    mode_ids: List[int] = Field(default_factory=list, max_length=200)
++    cause_id: Optional[StrictInt] = Field(default=None, ge=1)
++    monitoring_item_id: Optional[StrictInt] = Field(default=None, ge=1)
++    mode_ids: List[StrictInt] = Field(default_factory=list, max_length=200)
+     idempotency_key: str = Field(min_length=8, max_length=200)
+ 
+ 
+@@ -813,8 +813,8 @@ class FarMitigationResponse(BaseSchema):
+ 
+ 
+ class FarPreventionCreate(FARStrictModel):
+-    failure_mode_id: int = Field(ge=1)
+-    cause_id: Optional[int] = Field(default=None, ge=1)
++    failure_mode_id: StrictInt = Field(ge=1)
++    cause_id: Optional[StrictInt] = Field(default=None, ge=1)
+     prevention_action: str = Field(min_length=1, max_length=10000)
+     status: str = Field(default="Open", min_length=1, max_length=80)
+     target_date: Optional[datetime] = None
+@@ -837,18 +837,18 @@ class FarPreventionResponse(BaseSchema):
+ 
+ class FarCauseCreate(FARStrictModel):
+     cause_text: str = Field(min_length=1, max_length=10000)
+-    occurrence_level: int = Field(default=1, ge=1, le=10)
++    occurrence_level: StrictInt = Field(default=1, ge=1, le=10)
+     responsible_team: Optional[str] = Field(default=None, max_length=200)
+-    mode_ids: List[int] = Field(default_factory=list, max_length=200)
++    mode_ids: List[StrictInt] = Field(default_factory=list, max_length=200)
+     idempotency_key: str = Field(min_length=8, max_length=200)
+ 
+ 
+ class FarCauseUpdate(FARStrictModel):
+-    expected_version: int = Field(ge=1)
++    expected_version: StrictInt = Field(ge=1)
+     cause_text: Optional[str] = Field(default=None, min_length=1, max_length=10000)
+-    occurrence_level: Optional[int] = Field(default=None, ge=1, le=10)
++    occurrence_level: Optional[StrictInt] = Field(default=None, ge=1, le=10)
+     responsible_team: Optional[str] = Field(default=None, max_length=200)
+-    mode_ids: Optional[List[int]] = Field(default=None, max_length=200)
++    mode_ids: Optional[List[StrictInt]] = Field(default=None, max_length=200)
+     change_summary: str = Field(default="FAR cause updated", min_length=1, max_length=1000)
+     idempotency_key: str = Field(min_length=8, max_length=200)
+ 
+@@ -877,36 +877,36 @@ class FarFailureModeCreate(FARStrictModel):
+     failure_type: str = Field(default="Design", min_length=1, max_length=120)
+     title: str = Field(min_length=1, max_length=500)
+     effect: Optional[str] = Field(default=None, max_length=20000)
+-    severity: int = Field(default=1, ge=1, le=10)
+-    occurrence: int = Field(default=1, ge=1, le=10)
+-    detection: int = Field(default=1, ge=1, le=10)
++    severity: StrictInt = Field(default=1, ge=1, le=10)
++    occurrence: StrictInt = Field(default=1, ge=1, le=10)
++    detection: StrictInt = Field(default=1, ge=1, le=10)
+     status: FARStatus = "Analyzing"
+     owner_user_id: Optional[str] = Field(default=None, max_length=200)
+     owner_team: Optional[str] = Field(default=None, max_length=200)
+     due_at: Optional[datetime] = None
+-    affected_asset_ids: List[int] = Field(default_factory=list, max_length=500, validation_alias=AliasChoices("affected_asset_ids", "affected_assets"))
+-    cause_ids: List[int] = Field(default_factory=list, max_length=500)
+-    linked_rca_ids: List[int] = Field(default_factory=list, max_length=500)
++    affected_asset_ids: List[StrictInt] = Field(default_factory=list, max_length=500, validation_alias=AliasChoices("affected_asset_ids", "affected_assets"))
++    cause_ids: List[StrictInt] = Field(default_factory=list, max_length=500)
++    linked_rca_ids: List[StrictInt] = Field(default_factory=list, max_length=500)
+     metadata_json: Dict[str, Any] = Field(default_factory=dict)
+     idempotency_key: str = Field(min_length=8, max_length=200)
+ 
+ 
+ class FarFailureModeUpdate(FARStrictModel):
+-    expected_version: int = Field(ge=1)
++    expected_version: StrictInt = Field(ge=1)
+     system_name: Optional[str] = Field(default=None, min_length=1, max_length=200)
+     failure_type: Optional[str] = Field(default=None, min_length=1, max_length=120)
+     title: Optional[str] = Field(default=None, min_length=1, max_length=500)
+     effect: Optional[str] = Field(default=None, max_length=20000)
+-    severity: Optional[int] = Field(default=None, ge=1, le=10)
+-    occurrence: Optional[int] = Field(default=None, ge=1, le=10)
+-    detection: Optional[int] = Field(default=None, ge=1, le=10)
++    severity: Optional[StrictInt] = Field(default=None, ge=1, le=10)
++    occurrence: Optional[StrictInt] = Field(default=None, ge=1, le=10)
++    detection: Optional[StrictInt] = Field(default=None, ge=1, le=10)
+     status: Optional[FARStatus] = None
+     owner_user_id: Optional[str] = Field(default=None, max_length=200)
+     owner_team: Optional[str] = Field(default=None, max_length=200)
+     due_at: Optional[datetime] = None
+-    affected_asset_ids: Optional[List[int]] = Field(default=None, max_length=500, validation_alias=AliasChoices("affected_asset_ids", "affected_assets"))
+-    cause_ids: Optional[List[int]] = Field(default=None, max_length=500)
+-    linked_rca_ids: Optional[List[int]] = Field(default=None, max_length=500)
++    affected_asset_ids: Optional[List[StrictInt]] = Field(default=None, max_length=500, validation_alias=AliasChoices("affected_asset_ids", "affected_assets"))
++    cause_ids: Optional[List[StrictInt]] = Field(default=None, max_length=500)
++    linked_rca_ids: Optional[List[StrictInt]] = Field(default=None, max_length=500)
+     metadata_json: Optional[Dict[str, Any]] = None
+     change_summary: str = Field(default="FAR record updated", min_length=1, max_length=1000, validation_alias=AliasChoices("change_summary", "_change_summary"))
+     idempotency_key: str = Field(min_length=8, max_length=200)
+@@ -941,8 +941,8 @@ class FarFailureModeResponse(BaseSchema):
+     
+ 
+ class FarRetirementPreviewRequest(FARStrictModel):
+-    ids: List[int] = Field(min_length=1, max_length=500)
+-    expected_versions: Dict[int, int]
++    ids: List[StrictInt] = Field(min_length=1, max_length=500)
++    expected_versions: Dict[int, StrictInt]
+     reason: str = Field(min_length=3, max_length=1000)
+     idempotency_key: str = Field(min_length=8, max_length=200)
+ 
+@@ -983,14 +983,14 @@ class FarOperationExecuteRequest(FARStrictModel):
+ 
+ 
+ class FarRestoreRequest(FARStrictModel):
+-    expected_version: int = Field(ge=1)
++    expected_version: StrictInt = Field(ge=1)
+     reason: str = Field(min_length=3, max_length=1000)
+     idempotency_key: str = Field(min_length=8, max_length=200)
+ 
+ 
+ class FarHistoryRestoreRequest(FARStrictModel):
+-    expected_version: int = Field(ge=1)
+-    history_version: int = Field(ge=1)
++    expected_version: StrictInt = Field(ge=1)
++    history_version: StrictInt = Field(ge=1)
+     reason: str = Field(min_length=3, max_length=1000)
+     idempotency_key: str = Field(min_length=8, max_length=200)
+ 
+@@ -1019,9 +1019,9 @@ class FarEntityHistoryResponse(BaseSchema):
+ 
+ 
+ class FarNestedRetireRequest(FARStrictModel):
+-    expected_version: int = Field(ge=1)
++    expected_version: StrictInt = Field(ge=1)
+     reason: str = Field(min_length=3, max_length=1000)
+-    mode_id: Optional[int] = Field(default=None, ge=1)
++    mode_id: Optional[StrictInt] = Field(default=None, ge=1)
+     idempotency_key: str = Field(min_length=8, max_length=200)
+ 
+ 
+@@ -1181,8 +1181,8 @@ class ProjectCreate(ProjectBase):
+ 
+ class FarPreventionProjectCreate(FARStrictModel):
+     project: ProjectCreate
+-    failure_mode_id: int = Field(ge=1)
+-    cause_id: Optional[int] = Field(default=None, ge=1)
++    failure_mode_id: StrictInt = Field(ge=1)
++    cause_id: Optional[StrictInt] = Field(default=None, ge=1)
+     prevention_action: str = Field(min_length=1, max_length=20000)
+     responsible_team: Optional[str] = Field(default=None, max_length=200)
+     target_date: Optional[datetime] = None
+diff --git a/backend/app/services/far_service.py b/backend/app/services/far_service.py
+index 29376d4775a111cae7cc7d24a9ab6c0a86b7e904..8769c0f91a433459f5d6238aef7d1a269a7782be 100644
+--- a/backend/app/services/far_service.py
++++ b/backend/app/services/far_service.py
+@@ -872,7 +872,18 @@ async def create_cause(db: AsyncSession, request: Request, data: schemas.FarCaus
+             raise HTTPException(status_code=409, detail={"code": "FAR_IDEMPOTENCY_KEY_REUSED"})
+         return dict((prior.result_json or {}).get("record") or {})
+     modes = await exact_entities(db, models.FarFailureMode, data.mode_ids, active_field="is_retired", label="mode_ids")
+-    cause = models.FarFailureCause(cause_text=data.cause_text.strip(), occurrence_level=data.occurrence_level, responsible_team=data.responsible_team, version=1, is_retired=False, failure_modes=modes, created_by_user_id=actor_identity(request))
++    cause = models.FarFailureCause(
++        cause_text=data.cause_text.strip(),
++        occurrence_level=data.occurrence_level,
++        responsible_team=data.responsible_team,
++        version=1,
++        is_retired=False,
++        failure_modes=modes,
++        resolutions=[],
++        mitigations=[],
++        prevention_actions=[],
++        created_by_user_id=actor_identity(request),
++    )
+     db.add(cause)
+     correlation = str(uuid4())
+     try:
+diff --git a/backend/test_far_integrity.py b/backend/test_far_integrity.py
+index bc31b3055c8e8b4eb1e4c9e80b22457f875283e0..3e22048ba587289bed1df124d35a35029d4bf7b9 100644
+--- a/backend/test_far_integrity.py
++++ b/backend/test_far_integrity.py
+@@ -68,4 +68,7 @@ def test_far_source_contains_no_hard_delete_implementation():
+     assert "FAR_LEGACY_DESTRUCTIVE_ROUTE_DISABLED" in text
+     assert "retirement/preview" in text
+     assert "nested/retirement/execute" in text
+-    assert ".delete(" not in text
++    assert text.count("@router.delete(") == 5
++    assert text.count("return _legacy_mutation_response(") >= 5
++    assert "await db.delete(" not in text
++    assert "db.delete(" not in text
+diff --git a/frontend/src/components/far/FARDomain.ts b/frontend/src/components/far/FARDomain.ts
+index d781c805522b8f2ff342c04cb136e61a7bc9cefc..e2b7704048fa34e42a0278c75db5aa9a750adca7 100644
+--- a/frontend/src/components/far/FARDomain.ts
++++ b/frontend/src/components/far/FARDomain.ts
+@@ -236,7 +236,8 @@ export function sanitizeFARSavedViewDefinition(value: unknown): FARSavedViewDefi
+         if (!colId) return []
+         const next: FARSavedViewDefinition['columnLayoutState'][number] = { colId }
+         if (typeof record.hide === 'boolean') next.hide = record.hide
+-        if (record.pinned === 'left' || record.pinned === 'right' || record.pinned === null) next.pinned = record.pinned
++        const pinned = record.pinned
++        if (pinned === 'left' || pinned === 'right' || pinned === null) next.pinned = pinned
+         if (typeof record.width === 'number' && Number.isFinite(record.width) && record.width >= 40 && record.width <= 2000) next.width = Math.trunc(record.width)
+         if (record.sort === 'asc' || record.sort === 'desc') next.sort = record.sort
+         return [next]
+diff --git a/frontend/src/components/shared/GoldenWorkspaceGeometryContract.test.ts b/frontend/src/components/shared/GoldenWorkspaceGeometryContract.test.ts
+index 7d1c550214844475d97881658c0ed63069d530a7..4a73e7b2f3ed79ea6af756805108dd0d8e03d748 100644
+--- a/frontend/src/components/shared/GoldenWorkspaceGeometryContract.test.ts
++++ b/frontend/src/components/shared/GoldenWorkspaceGeometryContract.test.ts
+@@ -47,20 +47,21 @@ describe('Golden workspace geometry contract', () => {
+     expect(commandBar).toContain('data-golden-command-bar="true"')
+   })
+ 
+-  it('routes FAR through a typed domain adapter while retaining the shared golden owners', () => {
++  it('keeps FAR in the shared shell without a duplicate runtime or grid owner', () => {
+     const shell = read('shared/OperationalWorkspaceShells.tsx')
+     const farWorkspace = read('far/FARGoldenWorkspace.tsx')
++    const farRuntime = read('FAR.tsx')
+ 
+-    expect(shell).toContain("workspace === 'far'")
+-    expect(shell).toContain('<FARGoldenWorkspace')
+-    expect(shell).toContain('frameClassName={GOLDEN_WORKSPACE_FRAME_CLASS}')
+-    expect(shell).toContain('gridClassName={GOLDEN_GRID_BASE_CLASS}')
+-    expect(farWorkspace).toContain("import { PageHeader } from '../shared/LayoutPrimitives'")
+-    expect(farWorkspace).toContain("import { WorkspaceCommandBar } from '../shared/WorkspaceCommandBar'")
+-    expect(farWorkspace).toContain('data-far-golden-workspace="true"')
+-    expect(farWorkspace).toContain('data-far-detail-panel="true"')
+-    expect(farWorkspace).toContain('<AgGridReact<FARRecord>')
+-    expect(farWorkspace).not.toContain('max-w-[400%]')
++    expect(shell).not.toContain("workspace === 'far'")
++    expect(shell).not.toContain('<FARGoldenWorkspace')
++    expect(farWorkspace).toContain('data-far-compatibility-adapter="true"')
++    expect(farWorkspace).toContain('{children ?? null}')
++    expect(farWorkspace).not.toContain('<AgGridReact')
++    expect(farWorkspace).not.toContain('fetch(')
++    expect(farRuntime).toContain('<OperationalWorkspaceShell')
++    expect(farRuntime).toContain('<OperationalDataGrid')
++    expect(farRuntime).toContain('data-far-grid="true"')
++    expect(farRuntime).not.toContain('<AgGridReact')
+   })
+ 
+   it.each(views)('%s cannot locally reconstruct fundamental shell geometry', (file) => {
+diff --git a/frontend/src/components/shared/OperationalDataGrid.tsx b/frontend/src/components/shared/OperationalDataGrid.tsx
+index ca72f2cb273ea35a924bbb5697c5af8c61e9bd4f..584c0397b0cbcacb2450a1f44f39e06356c6f99e 100644
+--- a/frontend/src/components/shared/OperationalDataGrid.tsx
++++ b/frontend/src/components/shared/OperationalDataGrid.tsx
+@@ -80,6 +80,7 @@ export function OperationalDataGrid({
+   loadingIcon,
+   loadingLabel,
+   dataState,
++  stateAction,
+   className = '',
+   surfaceVariant = 'golden',
+   height,
+diff --git a/frontend/src/components/shared/OperationalWorkspaceShells.tsx b/frontend/src/components/shared/OperationalWorkspaceShells.tsx
+index 186eea742d5d78509ce9854fd0e347a493e16c37..7206e98fcac89e8d568b57c5160058d30c39aa9c 100644
+--- a/frontend/src/components/shared/OperationalWorkspaceShells.tsx
++++ b/frontend/src/components/shared/OperationalWorkspaceShells.tsx
+@@ -380,7 +380,7 @@ export function OperationalDisplayPanel({
+ export function OperationalSavedViewsPanel<TView extends {
+   id: string
+   name: string
+-  config?: { groupBy?: string }
++  config?: unknown
+   scope?: 'personal' | 'team'
+   source?: 'system' | 'remote' | 'local'
+ }>({

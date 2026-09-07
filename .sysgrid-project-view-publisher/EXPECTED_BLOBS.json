@@ -1,0 +1,10 @@
+{
+  "frontend/src/components/ProjectsModernGantt.tsx": "15160b7d4b18b9f877aaa49be175628a14a9ab95",
+  "frontend/src/components/ProjectsSchedulingCompletion.tsx": "28663d0a9858afcae7d39d0dfa1652c901d6d4ee",
+  "frontend/src/components/ProjectsVisualRepair.css": "b2bd92bb77d3d60fffad27a644b41209feec676b",
+  "frontend/tests/projects-navigation.spec.ts": "4db5eed685e43b9d43ca7461a0088a1e7d221a03",
+  "frontend/tests/projects-out40-slice-e-timeline-dependency-a11y.spec.ts": "2e257214b4854a756aeb37f8c770fcab4c650210",
+  "frontend/tests/projects-out40-slice-g-accessible-name-audit.spec.ts": "9bb45acc166cc8984f33efffdde5b13f0e3e6948",
+  "frontend/tests/projects-out40-slice-h-gantt-modernization.spec.ts": "98daa22e1c2cfc4b98ba981855c95aaecb4359e1",
+  "frontend/tests/projects-visual-repair.spec.ts": "9e104744565bb6ef6b11b1b4243ac45a14cbe15c"
+}

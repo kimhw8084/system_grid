@@ -1,0 +1,23 @@
+ORIGINAL_PATH: /Users/haewonkim/.local/state/sysgrid-supervisor/runs/20260805T021717Z-26018-073000/patch.diff
+ORIGINAL_SHA256: ce0191790a44d004ebf7645f2dcb7f437fbe35b2cab8a02366a8a7b625acbcaf
+================================================================================
+diff --git a/frontend/src/components/shared/CanonicalVerificationContract.test.ts b/frontend/src/components/shared/CanonicalVerificationContract.test.ts
+index 33795d5c5adef43be8ea254fa5e81acb76be3075..a39aac3a88bceb739c21fc325c404e2a3350fa24 100644
+--- a/frontend/src/components/shared/CanonicalVerificationContract.test.ts
++++ b/frontend/src/components/shared/CanonicalVerificationContract.test.ts
+@@ -15,7 +15,14 @@ describe('canonical verification contract', () => {
+     expect(script).toContain('"${PLAYWRIGHT_ENV_COMMAND[@]}" "$FRONTEND_DIR/node_modules/.bin/playwright" test "${PLAYWRIGHT_SPECS[@]}"')
+     expect(script).not.toContain('npx playwright')
+     expect(script).toContain('run_validation_lanes')
+-    expect(script).toContain('npm run preview -- --host "$FRONTEND_HOST"')
++    expect(script).toContain('local vite_bin="$FRONTEND_DIR/node_modules/.bin/vite"')
++    expect(script).toContain('"$vite_bin" preview --host "$FRONTEND_HOST" --port "$FRONTEND_PORT" --strictPort')
++    expect(script).toContain('wait_for_listener "$FRONTEND_PORT" "isolated production frontend"')
++    expect(script).toContain('wait_for_http "$FRONTEND_URL" "isolated production frontend"')
++    expect(script).toContain(`curl --noproxy '*' --connect-timeout 1 --max-time 3 -fsS "$url"`)
++    expect(script).toContain('readiness_diagnostics')
++    expect(script).toContain('launch_frontend_with_readiness')
++    expect(script).not.toContain('npm run preview --')
+     expect(script).toContain('VITE_API_BASE_URL="$BACKEND_ORIGIN" VITE_FRONTEND_ORIGIN="$FRONTEND_ORIGIN" npm run build')
+     expect(script).not.toMatch(/^\s*npm run check:shell-contracts\s*$/m)
+     expect(script).not.toContain('npm run dev --')

@@ -1,0 +1,5 @@
+
+===== ROOT /Users/haewonkim/.config/sysgrid =====
+D 0o755 uid=501 gid=20 mtime=1786243570277667643 /Users/haewonkim/.config/sysgrid/workstations
+F 0o644 uid=501 gid=20 size=4210 mtime=1786588304486300726 sha256=6b8c865909908486e7205827e60b993e0b0c83cb2e521437b31971b066fa89aa /Users/haewonkim/.config/sysgrid/sg-visible-runtime.zsh
+F 0o600 uid=501 gid=20 size=578 mtime=1786243570280872248 sha256=8bef650e466783a697d50dc1e51b97eb3a482ae0802edd5d73be31261a6537b1 /Users/haewonkim/.config/sysgrid/workstations/work.env

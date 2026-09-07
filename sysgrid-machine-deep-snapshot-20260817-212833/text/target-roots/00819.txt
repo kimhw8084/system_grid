@@ -1,0 +1,34 @@
+ORIGINAL_PATH: /Users/haewonkim/.local/state/sysgrid-supervisor/runs/20260804T223738Z-98558-119000/preflight.json
+ORIGINAL_SHA256: 518a8c20c8b9cfa43b8407f909b20311ab0cf0d4aa31eae19f3e9af6e5eaef37
+================================================================================
+{
+  "declared_state": {
+    "dirty_path_count": 96,
+    "pre_hash_count": 96,
+    "protected_hash_count": 717
+  },
+  "engine_self_test": {
+    "engine_version": "1.1.1",
+    "result": "PASS",
+    "tests": [
+      "safe-path",
+      "manifest",
+      "corruption",
+      "canonical-dirty-paths",
+      "aggregate-recipes"
+    ]
+  },
+  "patch": {
+    "applicable": true,
+    "forward_diagnostic": "Checking patch frontend/src/components/FAR.tsx...",
+    "forward_exit_code": 0,
+    "reverse_applicable": false,
+    "reverse_diagnostic": "Checking patch frontend/src/components/FAR.tsx...\nerror: while searching for:\n          rows={filteredModes || []}\n          columnDefs={columnDefs as any}\n          runtime={farGridRuntime}\n          onFirstDataRendered={(event) => {\n            if (!firstDataColumnLayoutAppliedRef.current) {\n              firstDataColumnLayoutAppliedRef.current = true\n              applyInitialColumnLayout(event.api)\n            }\n            synchronizeAnalyticalFocus(event.api)\n          }}\n          onRowDataUpdated={(event) => synchronizeAnalyticalFocus(event.api)}\n          quickFilterText={searchTerm}\n          fontSize={fontSize}\n\nerror: patch failed: frontend/src/components/FAR.tsx:1376\nerror: frontend/src/components/FAR.tsx: patch does not apply",
+    "reverse_exit_code": 1
+  },
+  "storage": {
+    "control_free": 50516791296,
+    "local_free": 50516791296,
+    "required": 3221225472
+  }
+}

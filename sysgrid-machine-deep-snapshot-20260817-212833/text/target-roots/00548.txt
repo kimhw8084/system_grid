@@ -1,0 +1,656 @@
+ORIGINAL_PATH: /Users/haewonkim/.local/state/sysgrid-supervisor/runs/20260803T105811Z-80909-082000/SUPERVISOR_STATE.json
+ORIGINAL_SHA256: aba1b1827de44b383388b23545dc7ad103349dbabcbebcccee6a1066e93cf832
+================================================================================
+{
+  "artifact": "/Users/haewonkim/Library/Mobile Documents/com~apple~CloudDocs/SysGrid-Control/Outbox/UPLOAD_THIS_TO_CHATGPT.zip",
+  "artifact_sha256": "cccdf8c3958dc0a5e7a678596c05d8e52d14d9ded6366d80bf629bebcc422113",
+  "artifact_size": 13452276,
+  "attempt": 12,
+  "capsule_archive": "/Users/haewonkim/Library/Mobile Documents/com~apple~CloudDocs/SysGrid-Control/Archive/Processed-Capsules/20260803T110539Z__52fe25168971__SYSGRID_OUT31_PA12_R3_FAR_VERIFICATION_REPAIR_v1.0.0.sgcap",
+  "capsule_cross_ledger": {
+    "changed_path_count": 4,
+    "execution_profile": "promotion_qualification",
+    "execution_scope": {
+      "changed_paths": [
+        "backend/alembic/versions/e3f4a5b6c7d8_harden_far_integrity_and_recovery.py",
+        "backend/app/api/far.py",
+        "backend/app/api/import_engine.py",
+        "backend/app/models/models.py",
+        "backend/app/schemas/schemas.py",
+        "backend/app/services/__init__.py",
+        "backend/app/services/far_exchange.py",
+        "backend/app/services/far_service.py",
+        "backend/test_cross_module_integrations.py",
+        "backend/test_far_import_export.py",
+        "backend/test_far_integrity.py",
+        "backend/test_far_migration.py",
+        "backend/test_far_permissions_and_tenants.py",
+        "backend/test_far_workflows.py",
+        "frontend/src/components/AuditLogs.tsx",
+        "frontend/src/components/Dashboard.tsx",
+        "frontend/src/components/FAR.tsx",
+        "frontend/src/components/Knowledge.tsx",
+        "frontend/src/components/assets/AssetDetailsView.tsx",
+        "frontend/src/components/far/FARDomain.ts",
+        "frontend/src/components/far/FARGoldenWorkspace.tsx",
+        "frontend/src/components/far/FARGoldenWorkspaceModel.test.ts",
+        "frontend/src/components/far/FARGoldenWorkspaceModel.ts",
+        "frontend/src/components/far/FARLifecycle.ts",
+        "frontend/src/components/shared/FARModals.tsx",
+        "frontend/src/components/shared/FARResearchGoldenPresentationContract.test.ts",
+        "frontend/src/components/shared/LayoutPrimitives.tsx",
+        "frontend/src/components/shared/OperationalDataGrid.tsx",
+        "frontend/src/components/shared/OperationalWorkspaceShells.tsx",
+        "frontend/tests/far-golden-workspace.spec.ts",
+        "frontend/tests/far-workflows.spec.ts",
+        "frontend/tests/helpers/sysgrid.ts",
+        "frontend/tests/resilience/far-chaos.spec.ts",
+        "scripts/verify-app.sh",
+        "seed.py"
+      ],
+      "execution_profile": "promotion_qualification",
+      "targeted_tests": [
+        "backend/test_far_workflows.py",
+        "backend/test_far_integrity.py",
+        "backend/test_far_permissions_and_tenants.py",
+        "backend/test_far_import_export.py",
+        "backend/test_far_migration.py",
+        "backend/test_cross_module_integrations.py",
+        "frontend/src/components/far/FARGoldenWorkspaceModel.test.ts",
+        "frontend/src/components/shared/FARResearchGoldenPresentationContract.test.ts",
+        "frontend/src/components/shared/CollaborativeWorkspaceViews.hook.test.tsx",
+        "frontend/src/components/shared/GoldenWorkspaceGeometryContract.test.ts",
+        "frontend/src/components/shared/GoldenWorkspaceShellContract.test.ts",
+        "frontend/src/components/shared/OperationalBulkPreviewModal.test.tsx",
+        "frontend/src/components/shared/useOperationalBulkWorkflow.test.tsx",
+        "frontend/tests/far-golden-workspace.spec.ts",
+        "frontend/tests/far-workflows.spec.ts",
+        "frontend/tests/resilience/far-chaos.spec.ts"
+      ],
+      "targeted_views": [
+        "far:failure_modes",
+        "far:causes",
+        "far:mitigations",
+        "far:prevention"
+      ]
+    },
+    "patch_paths": [
+      "frontend/tests/far-workflows.spec.ts",
+      "frontend/tests/helpers/sysgrid.ts",
+      "scripts/verify-app.sh",
+      "seed.py"
+    ],
+    "post_path_count": 93,
+    "pre_path_count": 92,
+    "protected_path_count": 20,
+    "recipe_ids": [
+      "backend-pytest",
+      "frontend-build",
+      "frontend-typecheck",
+      "frontend-vitest",
+      "full-app-gate"
+    ]
+  },
+  "capsule_file": "SYSGRID_OUT31_PA12_R3_FAR_VERIFICATION_REPAIR_v1.0.0.sgcap",
+  "capsule_sha256": "52fe251689710f5275271d3c4947e0e2fcd6e79640588e45b4eeac9896a42246",
+  "capsule_size": 45779,
+  "capsule_stage": "Product Attempt 12 FAR cumulative verification repair R3",
+  "capsule_title": "Product Attempt 12 Verification Repair R3 \u2014 isolated routed proof and deterministic fixtures",
+  "classification": "AGGREGATE_VERIFICATION_FAILURE",
+  "dirty_path_count": 92,
+  "engine_command": [
+    "/opt/anaconda3/bin/python3",
+    "<exact-engine>",
+    "execute",
+    "<exact-capsule>",
+    "--repo",
+    "/Users/haewonkim/home/development/sysgrid",
+    "--outbox",
+    "/Users/haewonkim/.local/state/sysgrid-supervisor/runs/20260803T105811Z-80909-082000/engine-outbox"
+  ],
+  "engine_completed": true,
+  "engine_completed_utc": "2026-08-03T11:05:39Z",
+  "engine_elapsed_seconds": 300.5,
+  "engine_exit_code": 1,
+  "engine_last_activity_age_seconds": 201.0024492740631,
+  "engine_last_heartbeat_utc": "2026-08-03T11:03:12Z",
+  "engine_path": "/Users/haewonkim/.local/share/sysgrid-runner/engine-v1.1.1/sysgrid_runner.py",
+  "engine_pid": 80926,
+  "engine_process_metrics": {
+    "available": true,
+    "cpu_percent": 89.2,
+    "process_count": 5,
+    "rss_bytes": 364462080,
+    "states": [
+      "R   ",
+      "S   ",
+      "S+  ",
+      "Ss  "
+    ]
+  },
+  "engine_sha256": "66b082fec1e9f6c49152e5ecb4cbb3f998e60ce27d53a2325e5f658634a8d032",
+  "engine_stall_suspected": false,
+  "engine_started": true,
+  "engine_started_utc": "2026-08-03T10:58:12Z",
+  "event_timeline": [
+    {
+      "details": {},
+      "elapsed_seconds": 0.01,
+      "event_id": "capsule_selected",
+      "message": "Selecting the one immutable capsule and converging only byte-identical Inbox duplicates.",
+      "notification": {
+        "event_id": "capsule_selected",
+        "presentation_mode": "summary",
+        "required": false,
+        "status": "local_only",
+        "updated_utc": "2026-08-03T10:58:11Z"
+      },
+      "status": "started",
+      "utc": "2026-08-03T10:58:11Z"
+    },
+    {
+      "details": {
+        "changed_path_count": 4,
+        "execution_profile": "promotion_qualification",
+        "execution_scope": {
+          "changed_paths": [
+            "backend/alembic/versions/e3f4a5b6c7d8_harden_far_integrity_and_recovery.py",
+            "backend/app/api/far.py",
+            "backend/app/api/import_engine.py",
+            "backend/app/models/models.py",
+            "backend/app/schemas/schemas.py",
+            "backend/app/services/__init__.py",
+            "backend/app/services/far_exchange.py",
+            "backend/app/services/far_service.py",
+            "backend/test_cross_module_integrations.py",
+            "backend/test_far_import_export.py",
+            "backend/test_far_integrity.py",
+            "backend/test_far_migration.py",
+            "backend/test_far_permissions_and_tenants.py",
+            "backend/test_far_workflows.py",
+            "frontend/src/components/AuditLogs.tsx",
+            "frontend/src/components/Dashboard.tsx",
+            "frontend/src/components/FAR.tsx",
+            "frontend/src/components/Knowledge.tsx",
+            "frontend/src/components/assets/AssetDetailsView.tsx",
+            "frontend/src/components/far/FARDomain.ts",
+            "frontend/src/components/far/FARGoldenWorkspace.tsx",
+            "frontend/src/components/far/FARGoldenWorkspaceModel.test.ts",
+            "frontend/src/components/far/FARGoldenWorkspaceModel.ts",
+            "frontend/src/components/far/FARLifecycle.ts",
+            "frontend/src/components/shared/FARModals.tsx",
+            "frontend/src/components/shared/FARResearchGoldenPresentationContract.test.ts",
+            "frontend/src/components/shared/LayoutPrimitives.tsx",
+            "frontend/src/components/shared/OperationalDataGrid.tsx",
+            "frontend/src/components/shared/OperationalWorkspaceShells.tsx",
+            "frontend/tests/far-golden-workspace.spec.ts",
+            "frontend/tests/far-workflows.spec.ts",
+            "frontend/tests/helpers/sysgrid.ts",
+            "frontend/tests/resilience/far-chaos.spec.ts",
+            "scripts/verify-app.sh",
+            "seed.py"
+          ],
+          "execution_profile": "promotion_qualification",
+          "targeted_tests": [
+            "backend/test_far_workflows.py",
+            "backend/test_far_integrity.py",
+            "backend/test_far_permissions_and_tenants.py",
+            "backend/test_far_import_export.py",
+            "backend/test_far_migration.py",
+            "backend/test_cross_module_integrations.py",
+            "frontend/src/components/far/FARGoldenWorkspaceModel.test.ts",
+            "frontend/src/components/shared/FARResearchGoldenPresentationContract.test.ts",
+            "frontend/src/components/shared/CollaborativeWorkspaceViews.hook.test.tsx",
+            "frontend/src/components/shared/GoldenWorkspaceGeometryContract.test.ts",
+            "frontend/src/components/shared/GoldenWorkspaceShellContract.test.ts",
+            "frontend/src/components/shared/OperationalBulkPreviewModal.test.tsx",
+            "frontend/src/components/shared/useOperationalBulkWorkflow.test.tsx",
+            "frontend/tests/far-golden-workspace.spec.ts",
+            "frontend/tests/far-workflows.spec.ts",
+            "frontend/tests/resilience/far-chaos.spec.ts"
+          ],
+          "targeted_views": [
+            "far:failure_modes",
+            "far:causes",
+            "far:mitigations",
+            "far:prevention"
+          ]
+        },
+        "patch_paths": [
+          "frontend/tests/far-workflows.spec.ts",
+          "frontend/tests/helpers/sysgrid.ts",
+          "scripts/verify-app.sh",
+          "seed.py"
+        ],
+        "post_path_count": 93,
+        "pre_path_count": 92,
+        "protected_path_count": 20,
+        "recipe_ids": [
+          "backend-pytest",
+          "frontend-build",
+          "frontend-typecheck",
+          "frontend-vitest",
+          "full-app-gate"
+        ]
+      },
+      "elapsed_seconds": 0.034,
+      "event_id": "capsule_verified",
+      "message": "Capsule archive, manifest, schema, patch identity, and cross-ledger contract are exact.",
+      "notification": {
+        "attempts": 1,
+        "chat_id_suffix": "1055",
+        "event_id": "run_started",
+        "first_attempt_utc": "2026-08-03T10:58:11Z",
+        "message_id": 567,
+        "payload_sha256": "f4aaa404fa5f97b73ff03abd248b978cf6ab80ad4a721e2a5a9cfe5bf5856913",
+        "required": false,
+        "status": "delivered",
+        "updated_utc": "2026-08-03T10:58:11Z"
+      },
+      "status": "passed",
+      "utc": "2026-08-03T10:58:11Z"
+    },
+    {
+      "details": {},
+      "elapsed_seconds": 0.634,
+      "event_id": "preflight_started",
+      "message": "Running independent platform checks and exact repository-state proof.",
+      "notification": {
+        "event_id": "preflight_started",
+        "presentation_mode": "summary",
+        "required": false,
+        "status": "local_only",
+        "updated_utc": "2026-08-03T10:58:11Z"
+      },
+      "status": "started",
+      "utc": "2026-08-03T10:58:11Z"
+    },
+    {
+      "details": {
+        "dirty_paths": 92,
+        "head": "dbc3f870b5b37dbd53de7ac82697221270e19381",
+        "patch": {
+          "applicable": true,
+          "forward_diagnostic": "Checking patch frontend/tests/far-workflows.spec.ts...\nChecking patch frontend/tests/helpers/sysgrid.ts...\nChecking patch scripts/verify-app.sh...\nwarning: scripts/verify-app.sh has type 100755, expected 100644\nChecking patch seed.py...",
+          "forward_exit_code": 0,
+          "reverse_applicable": false,
+          "reverse_diagnostic": "Checking patch seed.py...\nerror: while searching for:\n        print(\" -> FAR, RCA, and investigations\")\n        far_modes = []\n        for idx in range(10):\n            severity = random.randint(5, 10)\n            occurrence = random.randint(2, 8)\n            detection = random.randint(1, 6)\n            mode = models.FarFailureMode(\n                system_name=random.choice(systems),\n                failure_type=random.choice([\"Design\", \"Operational\", \"Dependency\", \"Capacity\"]),\n\nerror: patch failed: seed.py:1022\nerror: seed.py: patch does not apply\nChecking patch scripts/verify-app.sh...\nwarning: scripts/verify-app.sh has type 100755, expected 100644\nerror: while searching for:\n  tests/golden-eight-seeded-visual-matrix.spec.ts\n  tests/view-deeplink-matrix.spec.ts\n  tests/view-empty-states.spec.ts\n  tests/far-golden-workspace.spec.ts\n  tests/far-workflows.spec.ts\n  tests/resilience/far-chaos.spec.ts\n)\n\nRUNTIME_ENV_COMMAND=(\n\nerror: patch failed: scripts/verify-app.sh:37\nerror: scripts/verify-app.sh: patch does not apply\nChecking patch frontend/tests/helpers/sysgrid.ts...\nerror: while searching for:\n    status: 'Scheduled'\n  })\n\n  const far = await createFarMode(request, {\n    system_name: systemName,\n    title: `PW-FAR-${nonce}`,\n    effect: 'Simulated failure mode',\n    severity: 8,\n    occurrence: 4,\n    detection: 3,\n    affected_asset_ids: [primary.id],\n  })\n\n  return { stamp: nonce, systemName, primary, secondary, tertiary, service, knowledge, monitoring, maintenance, far }\n\nerror: patch failed: frontend/tests/helpers/sysgrid.ts:530\nerror: frontend/tests/helpers/sysgrid.ts: patch does not apply\nChecking patch frontend/tests/far-workflows.spec.ts...\nerror: while searching for:\n\n    await page.goto(`/far?far=${far.id}`)\n    await expect(page.locator('[data-workspace=\"far\"]')).toBeVisible()\n    await expect(page).toHaveURL(new RegExp(`/far\\\\?far=${far.id}$`))\n    await expect(page.getByRole('button', { name: /Causal Forensics/i })).toBeVisible()\n    await expect(p",
+          "reverse_exit_code": 1
+        }
+      },
+      "elapsed_seconds": 1.125,
+      "event_id": "preflight_completed",
+      "message": "Exact engine, repository, storage, state, protected hashes, and patch state passed.",
+      "notification": {
+        "event_id": "preflight_completed",
+        "presentation_mode": "summary",
+        "required": false,
+        "status": "local_only",
+        "updated_utc": "2026-08-03T10:58:12Z"
+      },
+      "status": "passed",
+      "utc": "2026-08-03T10:58:12Z"
+    },
+    {
+      "details": {},
+      "elapsed_seconds": 1.127,
+      "event_id": "engine_launch",
+      "message": "Launching the exact Stable Engine once; ambiguous mutation replay remains prohibited.",
+      "notification": {
+        "event_id": "engine_launch",
+        "presentation_mode": "summary",
+        "required": false,
+        "status": "local_only",
+        "updated_utc": "2026-08-03T10:58:12Z"
+      },
+      "status": "started",
+      "utc": "2026-08-03T10:58:12Z"
+    },
+    {
+      "details": {
+        "engine_exit_code": 1
+      },
+      "elapsed_seconds": 447.943,
+      "event_id": "engine_completed",
+      "message": "Stable Engine exited with code 1; verifying its complete evidence.",
+      "notification": {
+        "event_id": "engine_completed",
+        "presentation_mode": "summary",
+        "required": false,
+        "status": "local_only",
+        "updated_utc": "2026-08-03T11:05:39Z"
+      },
+      "status": "failed",
+      "utc": "2026-08-03T11:05:39Z"
+    },
+    {
+      "details": {
+        "artifact_size": 13452276,
+        "manifest_entries": 857
+      },
+      "elapsed_seconds": 448.022,
+      "event_id": "evidence_verified",
+      "message": "Engine evidence is complete and exactly correlated to capsule, engine, and process exit.",
+      "notification": {
+        "event_id": "evidence_verified",
+        "presentation_mode": "summary",
+        "required": false,
+        "status": "local_only",
+        "updated_utc": "2026-08-03T11:05:39Z"
+      },
+      "status": "passed",
+      "utc": "2026-08-03T11:05:39Z"
+    },
+    {
+      "details": {},
+      "elapsed_seconds": 448.027,
+      "event_id": "publication_started",
+      "message": "Publishing one content-addressed, fsynced, atomic canonical review ZIP.",
+      "notification": {
+        "event_id": "publication_started",
+        "presentation_mode": "summary",
+        "required": false,
+        "status": "local_only",
+        "updated_utc": "2026-08-03T11:05:39Z"
+      },
+      "status": "started",
+      "utc": "2026-08-03T11:05:39Z"
+    },
+    {
+      "details": {
+        "artifact_sha256": "cccdf8c3958dc0a5e7a678596c05d8e52d14d9ded6366d80bf629bebcc422113",
+        "exit_code": 1
+      },
+      "elapsed_seconds": 448.381,
+      "event_id": "publication_completed",
+      "message": "Run complete. Engine runtime: 445.0s. Canonical review ZIP is ready for upload.",
+      "notification": {
+        "attempts": 1,
+        "chat_id_suffix": "1055",
+        "event_id": "run_completed",
+        "first_attempt_utc": "2026-08-03T11:05:39Z",
+        "message_id": 568,
+        "payload_sha256": "df8a12b07065e5a8fe2b9298958e1dbd53dbf1e9677b8cf3aad3fd35fa860911",
+        "required": false,
+        "status": "delivered",
+        "updated_utc": "2026-08-03T11:05:40Z"
+      },
+      "status": "failed",
+      "utc": "2026-08-03T11:05:40Z"
+    }
+  ],
+  "execution_profile": "promotion_qualification",
+  "execution_scope": {
+    "changed_paths": [
+      "backend/alembic/versions/e3f4a5b6c7d8_harden_far_integrity_and_recovery.py",
+      "backend/app/api/far.py",
+      "backend/app/api/import_engine.py",
+      "backend/app/models/models.py",
+      "backend/app/schemas/schemas.py",
+      "backend/app/services/__init__.py",
+      "backend/app/services/far_exchange.py",
+      "backend/app/services/far_service.py",
+      "backend/test_cross_module_integrations.py",
+      "backend/test_far_import_export.py",
+      "backend/test_far_integrity.py",
+      "backend/test_far_migration.py",
+      "backend/test_far_permissions_and_tenants.py",
+      "backend/test_far_workflows.py",
+      "frontend/src/components/AuditLogs.tsx",
+      "frontend/src/components/Dashboard.tsx",
+      "frontend/src/components/FAR.tsx",
+      "frontend/src/components/Knowledge.tsx",
+      "frontend/src/components/assets/AssetDetailsView.tsx",
+      "frontend/src/components/far/FARDomain.ts",
+      "frontend/src/components/far/FARGoldenWorkspace.tsx",
+      "frontend/src/components/far/FARGoldenWorkspaceModel.test.ts",
+      "frontend/src/components/far/FARGoldenWorkspaceModel.ts",
+      "frontend/src/components/far/FARLifecycle.ts",
+      "frontend/src/components/shared/FARModals.tsx",
+      "frontend/src/components/shared/FARResearchGoldenPresentationContract.test.ts",
+      "frontend/src/components/shared/LayoutPrimitives.tsx",
+      "frontend/src/components/shared/OperationalDataGrid.tsx",
+      "frontend/src/components/shared/OperationalWorkspaceShells.tsx",
+      "frontend/tests/far-golden-workspace.spec.ts",
+      "frontend/tests/far-workflows.spec.ts",
+      "frontend/tests/helpers/sysgrid.ts",
+      "frontend/tests/resilience/far-chaos.spec.ts",
+      "scripts/verify-app.sh",
+      "seed.py"
+    ],
+    "execution_profile": "promotion_qualification",
+    "targeted_tests": [
+      "backend/test_far_workflows.py",
+      "backend/test_far_integrity.py",
+      "backend/test_far_permissions_and_tenants.py",
+      "backend/test_far_import_export.py",
+      "backend/test_far_migration.py",
+      "backend/test_cross_module_integrations.py",
+      "frontend/src/components/far/FARGoldenWorkspaceModel.test.ts",
+      "frontend/src/components/shared/FARResearchGoldenPresentationContract.test.ts",
+      "frontend/src/components/shared/CollaborativeWorkspaceViews.hook.test.tsx",
+      "frontend/src/components/shared/GoldenWorkspaceGeometryContract.test.ts",
+      "frontend/src/components/shared/GoldenWorkspaceShellContract.test.ts",
+      "frontend/src/components/shared/OperationalBulkPreviewModal.test.tsx",
+      "frontend/src/components/shared/useOperationalBulkWorkflow.test.tsx",
+      "frontend/tests/far-golden-workspace.spec.ts",
+      "frontend/tests/far-workflows.spec.ts",
+      "frontend/tests/resilience/far-chaos.spec.ts"
+    ],
+    "targeted_views": [
+      "far:failure_modes",
+      "far:causes",
+      "far:mitigations",
+      "far:prevention"
+    ]
+  },
+  "issue": "OUT-31",
+  "iteration": 12,
+  "last_progress_event": "publication_completed",
+  "last_progress_message": "Run complete. Engine runtime: 445.0s. Canonical review ZIP is ready for upload.",
+  "last_progress_status": "failed",
+  "last_progress_utc": "2026-08-03T11:05:40Z",
+  "message": "required recipes failed or blocked: ['full-app-gate']",
+  "monotonic_started": 4029918.525314708,
+  "notification_events": {
+    "capsule_selected": {
+      "event_id": "capsule_selected",
+      "presentation_mode": "summary",
+      "required": false,
+      "status": "local_only",
+      "updated_utc": "2026-08-03T10:58:11Z"
+    },
+    "capsule_verified": {
+      "attempts": 1,
+      "chat_id_suffix": "1055",
+      "event_id": "run_started",
+      "first_attempt_utc": "2026-08-03T10:58:11Z",
+      "message_id": 567,
+      "payload_sha256": "f4aaa404fa5f97b73ff03abd248b978cf6ab80ad4a721e2a5a9cfe5bf5856913",
+      "required": false,
+      "status": "delivered",
+      "updated_utc": "2026-08-03T10:58:11Z"
+    },
+    "engine-heartbeat-1": {
+      "event_id": "engine-heartbeat-1",
+      "presentation_mode": "summary",
+      "required": false,
+      "status": "local_only",
+      "updated_utc": "2026-08-03T11:03:12Z"
+    },
+    "engine_completed": {
+      "event_id": "engine_completed",
+      "presentation_mode": "summary",
+      "required": false,
+      "status": "local_only",
+      "updated_utc": "2026-08-03T11:05:39Z"
+    },
+    "engine_launch": {
+      "event_id": "engine_launch",
+      "presentation_mode": "summary",
+      "required": false,
+      "status": "local_only",
+      "updated_utc": "2026-08-03T10:58:12Z"
+    },
+    "evidence_verified": {
+      "event_id": "evidence_verified",
+      "presentation_mode": "summary",
+      "required": false,
+      "status": "local_only",
+      "updated_utc": "2026-08-03T11:05:39Z"
+    },
+    "preflight_completed": {
+      "event_id": "preflight_completed",
+      "presentation_mode": "summary",
+      "required": false,
+      "status": "local_only",
+      "updated_utc": "2026-08-03T10:58:12Z"
+    },
+    "preflight_started": {
+      "event_id": "preflight_started",
+      "presentation_mode": "summary",
+      "required": false,
+      "status": "local_only",
+      "updated_utc": "2026-08-03T10:58:11Z"
+    },
+    "publication_completed": {
+      "attempts": 1,
+      "chat_id_suffix": "1055",
+      "event_id": "run_completed",
+      "first_attempt_utc": "2026-08-03T11:05:39Z",
+      "message_id": 568,
+      "payload_sha256": "df8a12b07065e5a8fe2b9298958e1dbd53dbf1e9677b8cf3aad3fd35fa860911",
+      "required": false,
+      "status": "delivered",
+      "updated_utc": "2026-08-03T11:05:40Z"
+    },
+    "publication_started": {
+      "event_id": "publication_started",
+      "presentation_mode": "summary",
+      "required": false,
+      "status": "local_only",
+      "updated_utc": "2026-08-03T11:05:39Z"
+    }
+  },
+  "notification_policy": {
+    "delivery_semantics": "durably-deduplicated-at-least-once",
+    "engine_heartbeat_seconds": 300,
+    "max_messages_per_run": 3,
+    "presentation_mode": "summary",
+    "registered_events": 21,
+    "required_before_engine": false,
+    "telegram_heartbeats": false
+  },
+  "original_capsule": "/Users/haewonkim/Library/Mobile Documents/com~apple~CloudDocs/SysGrid-Control/Inbox/SYSGRID_OUT31_PA12_R3_FAR_VERIFICATION_REPAIR_v1.0.0.sgcap",
+  "pid": 80909,
+  "preflight": {
+    "declared_state": {
+      "dirty_path_count": 92,
+      "pre_hash_count": 92,
+      "protected_hash_count": 20
+    },
+    "engine_self_test": {
+      "engine_version": "1.1.1",
+      "result": "PASS",
+      "tests": [
+        "safe-path",
+        "manifest",
+        "corruption",
+        "canonical-dirty-paths",
+        "aggregate-recipes"
+      ]
+    },
+    "patch": {
+      "applicable": true,
+      "forward_diagnostic": "Checking patch frontend/tests/far-workflows.spec.ts...\nChecking patch frontend/tests/helpers/sysgrid.ts...\nChecking patch scripts/verify-app.sh...\nwarning: scripts/verify-app.sh has type 100755, expected 100644\nChecking patch seed.py...",
+      "forward_exit_code": 0,
+      "reverse_applicable": false,
+      "reverse_diagnostic": "Checking patch seed.py...\nerror: while searching for:\n        print(\" -> FAR, RCA, and investigations\")\n        far_modes = []\n        for idx in range(10):\n            severity = random.randint(5, 10)\n            occurrence = random.randint(2, 8)\n            detection = random.randint(1, 6)\n            mode = models.FarFailureMode(\n                system_name=random.choice(systems),\n                failure_type=random.choice([\"Design\", \"Operational\", \"Dependency\", \"Capacity\"]),\n\nerror: patch failed: seed.py:1022\nerror: seed.py: patch does not apply\nChecking patch scripts/verify-app.sh...\nwarning: scripts/verify-app.sh has type 100755, expected 100644\nerror: while searching for:\n  tests/golden-eight-seeded-visual-matrix.spec.ts\n  tests/view-deeplink-matrix.spec.ts\n  tests/view-empty-states.spec.ts\n  tests/far-golden-workspace.spec.ts\n  tests/far-workflows.spec.ts\n  tests/resilience/far-chaos.spec.ts\n)\n\nRUNTIME_ENV_COMMAND=(\n\nerror: patch failed: scripts/verify-app.sh:37\nerror: scripts/verify-app.sh: patch does not apply\nChecking patch frontend/tests/helpers/sysgrid.ts...\nerror: while searching for:\n    status: 'Scheduled'\n  })\n\n  const far = await createFarMode(request, {\n    system_name: systemName,\n    title: `PW-FAR-${nonce}`,\n    effect: 'Simulated failure mode',\n    severity: 8,\n    occurrence: 4,\n    detection: 3,\n    affected_asset_ids: [primary.id],\n  })\n\n  return { stamp: nonce, systemName, primary, secondary, tertiary, service, knowledge, monitoring, maintenance, far }\n\nerror: patch failed: frontend/tests/helpers/sysgrid.ts:530\nerror: frontend/tests/helpers/sysgrid.ts: patch does not apply\nChecking patch frontend/tests/far-workflows.spec.ts...\nerror: while searching for:\n\n    await page.goto(`/far?far=${far.id}`)\n    await expect(page.locator('[data-workspace=\"far\"]')).toBeVisible()\n    await expect(page).toHaveURL(new RegExp(`/far\\\\?far=${far.id}$`))\n    await expect(page.getByRole('button', { name: /Causal Forensics/i })).toBeVisible()\n    await expect(p",
+      "reverse_exit_code": 1
+    },
+    "storage": {
+      "control_free": 57521729536,
+      "local_free": 57521729536,
+      "required": 3221225472
+    }
+  },
+  "product_progress_error": {
+    "classification": "PRODUCT_PROGRESS_FAILURE",
+    "message": "unregistered product progress event: static_started",
+    "utc": "2026-08-03T10:59:51Z"
+  },
+  "recovered_without_product_replay": false,
+  "repo": "/Users/haewonkim/home/development/sysgrid",
+  "repo_branch": "main",
+  "repo_head": "dbc3f870b5b37dbd53de7ac82697221270e19381",
+  "resource_plan": {
+    "backend_workers": 5,
+    "cpu_count": 12,
+    "e2e_workers": 2,
+    "frontend_workers": 5,
+    "memory_bytes": 19327352832,
+    "preflight_workers": 24,
+    "reserve_memory_bytes": 2147483648,
+    "test_cpu_budget": 11,
+    "usable_memory_bytes": 17179869184
+  },
+  "run_id": "20260803T105811Z-80909-082000",
+  "runtime_summary": {
+    "artifact": "/Users/haewonkim/.local/state/sysgrid-supervisor/runs/20260803T105811Z-80909-082000/engine-outbox/UPLOAD_THIS_TO_CHATGPT.zip",
+    "classification": "AGGREGATE_VERIFICATION_FAILURE",
+    "commands": [
+      {
+        "duration_seconds": 23.501,
+        "exit_code": 0,
+        "recipe_id": "backend-pytest",
+        "timed_out": false
+      },
+      {
+        "duration_seconds": 7.428,
+        "exit_code": 0,
+        "recipe_id": "frontend-vitest",
+        "timed_out": false
+      },
+      {
+        "duration_seconds": 47.98,
+        "exit_code": 0,
+        "recipe_id": "frontend-typecheck",
+        "timed_out": false
+      },
+      {
+        "duration_seconds": 19.123,
+        "exit_code": 0,
+        "recipe_id": "frontend-build",
+        "timed_out": false
+      },
+      {
+        "duration_seconds": 343.239,
+        "exit_code": 1,
+        "recipe_id": "full-app-gate",
+        "timed_out": false
+      }
+    ],
+    "engine_total_seconds": 445.0,
+    "failed_stage": "verification-plan",
+    "finished_utc": "2026-08-03T11:05:37Z",
+    "result": "failure",
+    "started_utc": "2026-08-03T10:58:12Z"
+  },
+  "safe_cleanup": {
+    "inspected": 0,
+    "removed": 0
+  },
+  "safe_retry_count": 0,
+  "stage": "complete",
+  "staged_capsule": "/Users/haewonkim/.local/state/sysgrid-supervisor/runs/20260803T105811Z-80909-082000/input/SYSGRID_OUT31_PA12_R3_FAR_VERIFICATION_REPAIR_v1.0.0.sgcap",
+  "started_utc": "2026-08-03T10:58:11Z",
+  "state": "FAILED_REVIEW_READY",
+  "supervisor_version": "2.2.1",
+  "telegram": {
+    "chat_id_suffix": "1055",
+    "configured": true,
+    "source": "/Users/haewonkim/.config/sysgrid-supervisor/telegram.json"
+  },
+  "updated_utc": "2026-08-03T11:05:40Z",
+  "work_dir": "/Users/haewonkim/.local/state/sysgrid-supervisor/runs/20260803T105811Z-80909-082000"
+}

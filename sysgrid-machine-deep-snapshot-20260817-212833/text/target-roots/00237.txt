@@ -1,0 +1,93 @@
+ORIGINAL_PATH: /Users/haewonkim/.local/share/sysgrid-supervisor/v1.3.4/README.md
+ORIGINAL_SHA256: a42ae1eab0bc4b3169461f19d1f5d5ce8cef06deedf8d787436d542800fd001a
+================================================================================
+# SysGrid Execution Supervisor v1.3.4
+
+This is the qualified-wrapper candidate for the independently accepted **SysGrid Stable Engine v1.0.4**. It invokes only exact engine bytes with SHA-256:
+
+`ab63bb20c0de32771e20b0159475205f685f28910a0956c217fb3693c02f96e1`
+
+The supervisor does not generate product code, weaken tests, improvise commands, or commit/push outside the engine's immutable capsule contract.
+
+## One-command installation and qualification
+
+Run from the directory containing the ZIP:
+
+```bash
+rm -rf SYSGRID_EXECUTION_SUPERVISOR_v1.3.4 && unzip -q SYSGRID_EXECUTION_SUPERVISOR_v1.3.4.zip && cd SYSGRID_EXECUTION_SUPERVISOR_v1.3.4 && ./INSTALL_AND_QUALIFY.command
+```
+
+The installer verifies the complete extracted tree before importing payload code, runs the 74-test released-byte suite, locates and self-tests the exact accepted engine, installs immutable versioned bytes and atomic wrappers, reruns the same suite from staged bytes, verifies the final installed tree, and creates:
+
+`~/Library/Mobile Documents/com~apple~CloudDocs/SysGrid-Control/Outbox/UPLOAD_THIS_TO_CHATGPT.zip`
+
+Upload that qualification ZIP for independent review. Installation never starts a product mutation.
+
+## Normal operation after independent PASS
+
+With one safe capsule in `SysGrid-Control/Inbox`:
+
+```bash
+sg
+```
+
+Or provide the capsule explicitly:
+
+```bash
+sg run /absolute/path/to/capsule.sgcap
+```
+
+Status:
+
+```bash
+sgs
+sgwatch
+sg notification-test
+```
+
+## What v1.3.4 changes
+
+### Mandatory Telegram progress delivery
+
+- Installation discovers existing Telegram credentials from secure SysGrid config or environment variables. When absent, it prompts only for the hidden bot token, validates the bot with `getMe`, opens the bot conversation, and learns the numeric private-chat ID from one fresh `/start` message.
+- Automatic discovery is refused when the bot has an active webhook, because Telegram does not allow `getUpdates` long polling while a webhook is configured; non-interactive and webhook-managed setups can provide a numeric `SYSGRID_TELEGRAM_CHAT_ID` directly.
+- Credentials are stored only in a local `0600` configuration file and are never copied into qualification evidence, logs, or product artifacts.
+- Installation sends a live Telegram probe before activation and repeats the probe from the exact installed supervisor bytes.
+- Every numbered supervisor step emits one deduplicated Telegram message. Steps 1–3 fail closed before Stable Engine launch if mandatory delivery is unavailable.
+- Long step 3 execution emits a bounded heartbeat every five minutes with elapsed time and run ID.
+- Completion and failure messages include classification and runtime while preserving product evidence even if Telegram becomes unavailable after engine launch.
+
+### Runtime observability
+
+- `sgs` now shows live elapsed time, last Telegram heartbeat, Telegram configuration status, and the last engine runtime.
+- The supervisor extracts only timing/classification metadata from verified engine evidence and appends it to a local immutable-style JSONL runtime history without altering the trusted ZIP.
+- Runtime summaries include each recipe duration, exit code, timeout state, total engine duration, and failed stage.
+
+### Existing convergence protections retained
+
+- Exact live-engine reattachment after supervisor interruption.
+- Verified completed-output recovery without product replay.
+- One safe mutation retry only from complete exact pre-state proof.
+- Replay refusal for post-state, unknown state, or ambiguity.
+- Byte-identical Inbox duplicate convergence.
+- Complete canonical diagnostic ZIP on platform failure.
+
+### Existing safety and performance retained
+
+- One non-blocking kernel lock.
+- Exact engine SHA-256 and self-test.
+- Complete capsule and package manifest coverage.
+- Strict ZIP safety, CRC, decompression, and executable-member defenses.
+- Canonical `.txt`, GNU-style `.sha256`, and JSON state-ledger compatibility.
+- Resource-aware concurrent independent preflight with complete aggregate reporting.
+- Content-addressed, SHA-verified, fsynced, atomic evidence publication.
+
+## Performance boundary
+
+The supervisor maximizes safe platform concurrency and exports detected CPU/memory capacity as resource hints. The immutable capsule and Stable Engine remain authoritative for product-test ordering and parallel test workers. The supervisor cannot safely invent new tests, skip gates, force-apply a patch, or replay an ambiguous mutation.
+
+The intended useful outcomes are:
+
+1. **PASS:** all declared product gates complete and delivery succeeds.
+2. **Application findings:** the complete trusted test matrix returns review-ready product defects.
+3. **Rare trust stop:** continuing would risk wrong or duplicate product mutation; one diagnostic ZIP is produced for exact recovery.

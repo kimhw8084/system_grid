@@ -1,0 +1,29 @@
+{
+  "failure_signature": "Repair 1 cleared the legacy sentinel; remaining failures are pre-R4 Slice H harness assumptions",
+  "files": {
+    "README.md": {
+      "bytes": 1388,
+      "sha256": "e60ece6316d845159b5d43d7943735c0b35ff6a45a1b4076334293c376bcdc35"
+    },
+    "evidence/failure-signature.json": {
+      "bytes": 1269,
+      "sha256": "00a38a0e02ae34ca417640cd686c55e059a3adb95b251ccf929bdab93002d066"
+    },
+    "repair_and_prove.py": {
+      "bytes": 19333,
+      "sha256": "24056e3afe11cc07647b03b2012167f4e6e3b28e5a4ae0caf95d5e3b71e4de2a"
+    },
+    "run_from_repo.sh": {
+      "bytes": 123,
+      "sha256": "fb0ab5ebece8443e95c123732e11cb41e5f3c2197274800177aba007e19356b3"
+    }
+  },
+  "objective": "Approved Project View Perfection",
+  "parent_result_sha256": "6e6b6bc6cae8b75e6a0c3e0df2757be6e7b1cf03d8578d068d8f34decd769a38",
+  "product_postimages_preserved": true,
+  "proof_before_apply": true,
+  "repair_iteration": 2,
+  "repair_path": "frontend/tests/projects-out40-slice-h-gantt-modernization.spec.ts",
+  "same_semantics": true,
+  "schema": "SYSGRID_PROJECT_VIEW_REPAIR_EXECUTOR_V1"
+}

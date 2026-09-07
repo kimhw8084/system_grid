@@ -1,0 +1,8 @@
+ORIGINAL_PATH: /Users/haewonkim/.local/state/sysgrid-workstation/profiles/work/runs/20260811T024021Z/typecheck.log
+ORIGINAL_SHA256: a49fa35f45a552fbfdbe514c3f9a7bff5499c9901bae4ac58c4a19dd1656ed7a
+================================================================================
+npm notice
+npm notice New major version of npm available! 11.12.1 -> 12.0.2
+npm notice Changelog: https://github.com/npm/cli/releases/tag/v12.0.2
+npm notice To update run: npm install -g npm@12.0.2
+npm notice

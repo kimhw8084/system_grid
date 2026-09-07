@@ -1,0 +1,34 @@
+ORIGINAL_PATH: /Users/haewonkim/.local/state/sysgrid-supervisor/runs/20260804T172401Z-66168-326000/preflight.json
+ORIGINAL_SHA256: a89aaf6ffc4636903a891da5dc11e9bef26da5b4606bcbd815197e4e9f1dd3da
+================================================================================
+{
+  "declared_state": {
+    "dirty_path_count": 95,
+    "pre_hash_count": 95,
+    "protected_hash_count": 720
+  },
+  "engine_self_test": {
+    "engine_version": "1.1.1",
+    "result": "PASS",
+    "tests": [
+      "safe-path",
+      "manifest",
+      "corruption",
+      "canonical-dirty-paths",
+      "aggregate-recipes"
+    ]
+  },
+  "patch": {
+    "applicable": true,
+    "forward_diagnostic": "Checking patch frontend/src/components/FAR.tsx...\nChecking patch frontend/tests/far-golden-workspace.spec.ts...\nChecking patch frontend/tests/far-workflows.spec.ts...",
+    "forward_exit_code": 0,
+    "reverse_applicable": false,
+    "reverse_diagnostic": "Checking patch frontend/tests/far-workflows.spec.ts...\nerror: while searching for:\n    await expect(retirementAction).toBeEnabled()\n    await retirementAction.click()\n\n    await expect(page.getByRole('heading', { name: 'FAR bulk preview' })).toBeVisible()\n    await expect(page.getByText('Retire failure vectors', { exact: true })).toBeVisible()\n    await page.getByRole('textbox', { name: 'Retirement reason' }).fill('Superseded failure vector retained for audit evidence')\n    await clickResilientButton(page, 'Prepare retirement preview')\n    await expect(page.getByRole('heading', { name: 'FAR bulk preview' })).toBeVisible()\n    await expect(page.getByText('Retire failure vectors', { exact: true })).toBeVisible()\n    await clickResilientButton(page, 'Cancel')\n\nerror: patch failed: frontend/tests/far-workflows.spec.ts:75\nerror: frontend/tests/far-workflows.spec.ts: patch does not apply\nChecking patch frontend/tests/far-golden-workspace.spec.ts...\nerror: while searching for:\n      metrics.maxScrollLeft,\n      `FAR center-column viewport must overflow when required headers are virtualized. Initially missing: ${initiallyMissing.join(', ')}`,\n    ).toBeGreaterThan(0)\n\n    const firstCell = grid.locator('.ag-center-cols-container .ag-row .ag-cell').first()\n    await expect(firstCell).toBeVisible()\n    await firstCell.click()\n    await page.keyboard.press('Home')\n    const observedScrollPositions: number[] = []\n    for (let index = 0; index < 32; index += 1) {\n      await page.evaluate(() => new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve()))))\n      await collectInstantiatedHeaders()\n      observedScrollPositions.push(await centerViewport.evaluate((element: HTMLElement) => element.scrollLeft))\n      if (findMissingHeaders([...headers], required).length === 0 && Math.max(...observedScrollPositions) >= metrics.maxScrollLeft - 2) break\n      await page.keyboard.press('ArrowRight')\n    }\n    expect(Math.max(...observedScrollPosition",
+    "reverse_exit_code": 1
+  },
+  "storage": {
+    "control_free": 53610610688,
+    "local_free": 53610610688,
+    "required": 3221225472
+  }
+}

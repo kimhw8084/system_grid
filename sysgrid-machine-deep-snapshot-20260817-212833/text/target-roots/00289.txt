@@ -1,0 +1,15 @@
+ORIGINAL_PATH: /Users/haewonkim/.local/share/sysgrid-supervisor/backups/20260801T224904Z-pre-v2.1.5/sg
+ORIGINAL_SHA256: 929a271dfd1efbbeaee8ebfd5590b436f3ca189523014323a4ac420eb5beebce
+================================================================================
+#!/usr/bin/env bash
+set -Eeuo pipefail
+case "${1:-}" in
+  run) shift; exec /opt/homebrew/opt/python@3.14/bin/python3.14 /Users/haewonkim/.local/share/sysgrid-supervisor/v2.1.4/payload/sysgrid_supervisor.py run "$@" ;;
+  status) shift; exec /opt/homebrew/opt/python@3.14/bin/python3.14 /Users/haewonkim/.local/share/sysgrid-supervisor/v2.1.4/payload/sysgrid_supervisor.py status "$@" ;;
+  watch) shift; exec /opt/homebrew/opt/python@3.14/bin/python3.14 /Users/haewonkim/.local/share/sysgrid-supervisor/v2.1.4/payload/sysgrid_supervisor.py watch "$@" ;;
+  self-test) shift; exec /opt/homebrew/opt/python@3.14/bin/python3.14 /Users/haewonkim/.local/share/sysgrid-supervisor/v2.1.4/payload/sysgrid_supervisor.py self-test "$@" ;;
+  notification-test) shift; exec /opt/homebrew/opt/python@3.14/bin/python3.14 /Users/haewonkim/.local/share/sysgrid-supervisor/v2.1.4/payload/sysgrid_supervisor.py notification-test "$@" ;;
+  recover-artifact) shift; exec /opt/homebrew/opt/python@3.14/bin/python3.14 /Users/haewonkim/.local/share/sysgrid-supervisor/v2.1.4/payload/sysgrid_supervisor.py recover-artifact "$@" ;;
+  "") exec /opt/homebrew/opt/python@3.14/bin/python3.14 /Users/haewonkim/.local/share/sysgrid-supervisor/v2.1.4/payload/sysgrid_supervisor.py run ;;
+  *) exec /opt/homebrew/opt/python@3.14/bin/python3.14 /Users/haewonkim/.local/share/sysgrid-supervisor/v2.1.4/payload/sysgrid_supervisor.py run "$@" ;;
+esac

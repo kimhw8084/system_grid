@@ -1,0 +1,29 @@
+ORIGINAL_PATH: /Users/haewonkim/.local/state/sysgrid-supervisor/runs/20260801T001132Z-1074-720000/preflight.json
+ORIGINAL_SHA256: 66fee6974e208c71d800deb2153f28ed7b862cbf8118119cfc63c00328ef0844
+================================================================================
+{
+  "declared_state": {
+    "dirty_path_count": 52,
+    "pre_hash_count": 52,
+    "protected_hash_count": 21
+  },
+  "engine_self_test": {
+    "engine_version": "1.0.4",
+    "result": "PASS",
+    "tests": [
+      "safe-path",
+      "manifest",
+      "corruption"
+    ]
+  },
+  "patch_failure": {
+    "classification": "PATCH_STATE_FAILURE",
+    "exit_code": 69,
+    "message": "patch is not forward-applicable to the exact declared repository pre-state; forward=Checking patch frontend/src/components/shared/OperationalWorkspace.ts...\nChecking patch frontend/src/components/shared/OperationalWorkspaceCapabilities.test.ts...\nChecking patch frontend/src/components/shared/OperationalWorkspaceShells.tsx...\nChecking patch frontend/src/components/shared/WorkspaceCommandBar.tsx...\nerror: while searching for:\n  filterChips?: Array<{ id: string; label: string; onRemove: () => void }>\n}) {\n  return (\n    <div className=\"space-y-4\">\n      <PageToolbar left={left} right={right} />\n      {secondary ? <PageToolbar left={secondary} className=\"px-4 py-3\" /> : null}\n      <AnimatePresence>\n\nerror: patch failed: frontend/src/components/shared/WorkspaceCommandBar.tsx:14\nerror: frontend/src/components/shared/WorkspaceCommandBar.tsx: patch does not apply\nChecking patch frontend/tests/golden-eight-seeded-visual-matrix.spec.ts...\nChecking patch scripts/verify-app.sh...\nwarning: scripts/verify-app.sh has type 100755, expected 100644; reverse=Checking patch scripts/verify-app.sh...\nwarning: scripts/verify-app.sh has type 100755, expected 100644\nerror: while searching for:\nassert_populated_golden_eight_evidence() {\n  local key\n  local count\n  local matrix_count=0\n  for key in \"${GOLDEN_WORKSPACE_KEYS[@]}\"; do\n    count=\"$(find \"$FRONTEND_DIR/test-results\" -type f -name \"${key}-populated-desktop.png\" | wc -l | tr -d ' ')\"\n    [[ \"$count\" == \"1\" ]] || {\n      echo \"Expected exactly one populated desktop screenshot for $key, found $count.\" >&2\n      exit 1\n    }\n    count=\"$(find \"$FRONTEND_DIR/test-results\" -type f -name \"${key}-grid-populated-desktop.png\" | wc -l | tr -d ' ')\"\n    [[ \"$count\" == \"1\" ]] || {\n      echo \"Expected exactly one fixed-viewport grid screenshot for $key, found $count.\" >&2\n      exit 1\n    }\n    count=\"$(find \"$FRONTEND_DIR/test-results\" -type f -name \"${key}-matrix-result.json\" | wc -l | tr -d ' ')\"\n    [[ \"$count\" == \"1\" ]] || {\n      echo \"Expected exactly one matrix result for $key, found $count.\" >&2\n      exit 1\n    }\n    matrix_count=$((matrix_count + count))\n  done\n  [[ \"$matrix_count\" == \"${#GOLDEN_WORKSPACE_KEYS[@]}\" ]] || {\n    echo \"Golden Eight matrix result count mismatch: $matrix_count.\" >&2\n    exit 1\n  }\n  \"$BACKEND_DIR/venv/bin/python\" - \"$FRONTEND_DIR/test-results\" \"${GOLDEN_WORKSPACE_KEYS[@]}\" <<'PY_MATRIX'\nimport json\nimport sys\nfrom pathlib import Path\n\nroot = Path(sys.argv[1])\nkeys = sys.argv[2:]\nrecords = []\nfor key in keys:\n    matches = list(root.rglob(f\"{key}-matrix-result.json\"))\n    if len(matches) != 1:\n        raise SystemExit(f\"Expected one matrix record for {key}, found {len(matches)}\")\n    record = json.loads(matches[0].read_text())\n    records.append(record)\n    if record.get(\"workspace\") != key:\n        raise SystemExit(f\"Workspace mismatch for {key}: {record!r}\")\n    if record.get(\"status\") != \"PASS\" or record.get(\"failures\"):\n        raise SystemExit(f\"Matrix failure for {key}: {record!r}\")\nif len(records) != len(keys):\n    raise SystemExit(f\""
+  },
+  "storage": {
+    "control_free": 57721819136,
+    "local_free": 57721819136,
+    "required": 536870912
+  }
+}

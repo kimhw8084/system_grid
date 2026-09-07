@@ -1,0 +1,34 @@
+ORIGINAL_PATH: /Users/haewonkim/.local/state/sysgrid-supervisor/runs/20260805T125837Z-59044-504000/preflight.json
+ORIGINAL_SHA256: c19556eb41c3fb39ef19b6566c5ece3333281d9ddad0244ff704106c5a7150e9
+================================================================================
+{
+  "declared_state": {
+    "dirty_path_count": 97,
+    "pre_hash_count": 97,
+    "protected_hash_count": 717
+  },
+  "engine_self_test": {
+    "engine_version": "1.1.1",
+    "result": "PASS",
+    "tests": [
+      "safe-path",
+      "manifest",
+      "corruption",
+      "canonical-dirty-paths",
+      "aggregate-recipes"
+    ]
+  },
+  "patch": {
+    "applicable": true,
+    "forward_diagnostic": "Checking patch frontend/src/components/shared/OperationalWorkspacePrimitives.tsx...\nChecking patch frontend/src/components/shared/OperationalWorkspaceShells.tsx...\nChecking patch frontend/src/components/shared/OperationalSavedViewsPanel.test.tsx...\nChecking patch frontend/tests/far-golden-workspace.spec.ts...",
+    "forward_exit_code": 0,
+    "reverse_applicable": false,
+    "reverse_diagnostic": "Checking patch frontend/tests/far-golden-workspace.spec.ts...\nerror: while searching for:\n\nasync function waitForSettledAnchoredGeometry(page: any, trigger: any, panel: any) {\n  let previousSignature = ''\n  let consecutiveMatches = 0\n  let latest: { triggerBox: any; panelBox: any; scrollSurfaceBox: any; viewport: any } | null = null\n  await expect.poll(async () => {\n    await page.evaluate(() => new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve()))))\n    const panelHandle = await panel.elementHandle()\n    if (!panelHandle) return false\n    try {\n      latest = await trigger.evaluate((triggerElement: HTMLElement, panelElement: HTMLElement) => {\n        const triggerRect = triggerElement.getBoundingClientRect()\n        const panelRect = panelElement.getBoundingClientRect()\n        const scrollSurface = panelElement.querySelector<HTMLElement>('[data-workspace-panel-scroll-surface=\"true\"]')\n        const scrollRect = scrollSurface?.getBoundingClientRect()\n        return {\n          triggerBox: { x: triggerRect.x, y: triggerRect.y, width: triggerRect.width, height: triggerRect.height },\n          panelBox: { x: panelRect.x, y: panelRect.y, width: panelRect.width, height: panelRect.height },\n          scrollSurfaceBox: scrollRect ? { x: scrollRect.x, y: scrollRect.y, width: scrollRect.width, height: scrollRect.height } : null,\n          viewport: { width: window.innerWidth, height: window.innerHeight },\n        }\n      }, panelHandle)\n    } finally {\n      await panelHandle.dispose()\n    }\n    if (!latest?.scrollSurfaceBox) return false\n    const { triggerBox, panelBox, scrollSurfaceBox, viewport } = latest\n    const signature = JSON.stringify([\n      triggerBox.x, triggerBox.y, triggerBox.width, triggerBox.height,\n      panelBox.x, panelBox.y, panelBox.width, panelBox.height,\n      scrollSurfaceBox.x, scrollSurfaceBox.y, scrollSurfaceBox.width, scrollSurfaceBox.height,\n      viewport.width, viewport.height,\n    ])\n    if (sign",
+    "reverse_exit_code": 1
+  },
+  "storage": {
+    "control_free": 53786832896,
+    "local_free": 53786832896,
+    "required": 3221225472
+  }
+}

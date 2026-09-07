@@ -1,0 +1,12 @@
+{
+  "Label" => "com.sysgrid.public-relay"
+  "ProcessType" => "Background"
+  "ProgramArguments" => [
+    0 => "/opt/anaconda3/bin/python3"
+    1 => "/Users/haewonkim/.local/share/sysgrid-campaign-platform/v1.1.1/payload/sysgrid_relay_daemon.py"
+  ]
+  "RunAtLoad" => 1
+  "StandardErrorPath" => "/Users/haewonkim/Library/Application Support/SysGridRelay/watcher.stderr.log"
+  "StandardOutPath" => "/Users/haewonkim/Library/Application Support/SysGridRelay/watcher.stdout.log"
+  "StartInterval" => 60
+}

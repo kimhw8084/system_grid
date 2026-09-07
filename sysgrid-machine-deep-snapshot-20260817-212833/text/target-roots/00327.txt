@@ -1,0 +1,45 @@
+ORIGINAL_PATH: /Users/haewonkim/.local/share/sysgrid-campaign-platform/v1.0.0/tests/test_campaign_full.py
+ORIGINAL_SHA256: 27d25b7f8badff98d71a0a7081111df2212bc145f901defc11cb1522b78145a1
+================================================================================
+import hashlib, json, tempfile, unittest, zipfile, sys
+from pathlib import Path
+sys.path.insert(0,str(Path(__file__).resolve().parents[1]/'payload'))
+from sysgrid_campaign import validate_campaign, RISK_CATEGORIES
+
+class FullCampaignTests(unittest.TestCase):
+    def make_package(self, root: Path) -> Path:
+        cid='SYSGRID-CAMPAIGN-TEST'
+        questions=[]
+        for i in range(64):
+            questions.append({'id':f'Q-{i+1:03d}','category':'test','question':'Exact behavior?','observed_behavior':'Observed','recommended_answer':'Recommended','confidence':'HIGH','alternatives':[],'implementation_consequences':['consequence'],'required_tests':['test'],'required_evidence':['evidence'],'decision':'Approved','status':'APPROVED'})
+        objs={
+            'RUN.json':{'schema_version':'1.1','capsule_version':'1.0','project':'SysGrid','master_context':'OUT-5','issue':'OUT-31','stage':'synthetic qualification','iteration':0,'attempt':0,'title':'Synthetic qualification','lane':'execution_platform','mode':'qualification','engine':{'required_version':'1.1.0'},'baseline':{'branch':'main','head':'0000000000000000000000000000000000000000','upstream':'origin/main'},'state':{'pre_expected_dirty_paths':'STATE/pre_paths.txt','post_expected_dirty_paths':'STATE/post_paths.txt','pre_hashes':'STATE/pre_hashes.sha256','post_hashes':'STATE/post_hashes.sha256','protected_hashes':'STATE/protected.sha256'},'patch':None,'recipes':[{'id':'full-app-gate','params':{'timeout':60},'required':True,'lane':'full','depends_on':[]}],'acceptance':{},'delivery':{'commit_push':False},'evidence':{}},
+            'QUESTIONNAIRE.json':{'schema_version':'1.0','campaign_id':cid,'classification':'product_attempt','questions':questions},
+            'QUESTIONNAIRE_CLOSURE.json':{'schema_version':'1.0','campaign_id':cid,'closed':True,'unresolved_count':0},
+            'CHANGE_SPEC.json':{'schema_version':'1.0','campaign_id':cid,'approved_behavior_ids':['B-1']},
+            'RISK_MATRIX.json':{'schema_version':'1.0','campaign_id':cid,'categories':[{'id':c,'status':'EVIDENCE_BACKED_NA','evidence':['not applicable in synthetic qualification']} for c in RISK_CATEGORIES]},
+            'TEST_PLAN.json':{'schema_version':'1.0','campaign_id':cid,'behavior_mappings':[{'behavior_id':'B-1','tests':['synthetic']}]},
+            'VISUAL_MATRIX.json':{'schema_version':'1.0','campaign_id':cid,'applicable':False,'entries':[]},
+            'IMPROVEMENT_LEDGER.json':{'schema_version':'1.0','campaign_id':cid,'items':[]},
+            'NEXT_CAMPAIGN_SEED.json':{'schema_version':'1.0','campaign_id':cid,'act_now':[]},
+        }
+        for name,obj in objs.items(): (root/name).write_text(json.dumps(obj,sort_keys=True)+'\n')
+        approval={'schema_version':'1.0','campaign_id':cid}
+        for key,name in [('questionnaire_sha256','QUESTIONNAIRE.json'),('change_spec_sha256','CHANGE_SPEC.json'),('risk_matrix_sha256','RISK_MATRIX.json'),('test_plan_sha256','TEST_PLAN.json'),('visual_matrix_sha256','VISUAL_MATRIX.json')]:
+            approval[key]=hashlib.sha256((root/name).read_bytes()).hexdigest()
+        (root/'APPROVAL_LOCK.json').write_text(json.dumps(approval,sort_keys=True)+'\n')
+        lines=[]
+        for p in sorted(root.iterdir()):
+            if p.is_file() and p.name!='MANIFEST.sha256': lines.append(f'{hashlib.sha256(p.read_bytes()).hexdigest()}  {p.name}')
+        (root/'MANIFEST.sha256').write_text('\n'.join(lines)+'\n')
+        output=root.parent/'campaign.sgcap'
+        with zipfile.ZipFile(output,'w',zipfile.ZIP_DEFLATED) as zf:
+            for p in sorted(root.iterdir()): zf.write(p,p.name)
+        return output
+    def test_full_campaign_validates(self):
+        with tempfile.TemporaryDirectory() as td:
+            root=Path(td)/'root'; root.mkdir(); package=self.make_package(root)
+            result=validate_campaign(package)
+            self.assertEqual(result['questions'],64)
+            self.assertEqual(result['campaign_id'],'SYSGRID-CAMPAIGN-TEST')
+if __name__=='__main__': unittest.main()

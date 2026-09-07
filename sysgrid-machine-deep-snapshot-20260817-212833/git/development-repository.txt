@@ -1,0 +1,27 @@
+=== HEAD ===
+bd358717439c950b9c952cced1be25908d73fbc8
+
+=== branch ===
+main
+
+=== status ===
+## main...origin/main
+ M backend/.env.local.runtime
+?? sysgrid-machine-deep-snapshot-20260817-212833/
+?? sysgrid-machine-snapshot-20260817-212222/
+
+=== remotes ===
+origin	git@github.com:kimhw8084/system_grid.git (fetch)
+origin	git@github.com:kimhw8084/system_grid.git (push)
+
+=== worktrees ===
+worktree /Users/haewonkim/home/development/sysgrid
+HEAD bd358717439c950b9c952cced1be25908d73fbc8
+branch refs/heads/main
+
+worktree /Users/haewonkim/Library/Caches/SysGrid/operator-fddee7b80843
+HEAD fddee7b80843bf4736fdd4722968bef10a380987
+detached
+
+
+=== selected OUT-31 refs ===

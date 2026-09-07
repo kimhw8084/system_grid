@@ -1,0 +1,91 @@
+ORIGINAL_PATH: /Users/haewonkim/.local/state/sysgrid-supervisor/runs/20260801T200542Z-64807-004000/SUPERVISOR_STATE.json
+ORIGINAL_SHA256: a74210da220d0c05348bf87aebad10a254031d4099626830785d82202f67cc03
+================================================================================
+{
+  "artifact": "/Users/haewonkim/Library/Mobile Documents/com~apple~CloudDocs/SysGrid-Control/Outbox/UPLOAD_DIAGNOSTIC_TO_CHATGPT.zip",
+  "artifact_sha256": "2ea6bb22b19bd14dd7865c56f5c8fcce194770ea567cae434ade164deb0eac78",
+  "artifact_size": 2597,
+  "classification": "CAPSULE_CROSS_LEDGER_FAILURE",
+  "event_timeline": [
+    {
+      "details": {},
+      "elapsed_seconds": 0.005,
+      "event_id": "capsule_selected",
+      "message": "Selecting the one immutable capsule and converging only byte-identical Inbox duplicates.",
+      "notification": {
+        "event_id": "capsule_selected",
+        "presentation_mode": "summary",
+        "required": false,
+        "status": "local_only",
+        "updated_utc": "2026-08-01T20:05:42Z"
+      },
+      "status": "started",
+      "utc": "2026-08-01T20:05:42Z"
+    }
+  ],
+  "exit_code": 65,
+  "last_progress_event": "capsule_selected",
+  "last_progress_message": "Selecting the one immutable capsule and converging only byte-identical Inbox duplicates.",
+  "last_progress_status": "started",
+  "last_progress_utc": "2026-08-01T20:05:42Z",
+  "message": "mutation patch contains no canonical diff paths",
+  "monotonic_started": 3891298.586539666,
+  "notification_events": {
+    "capsule_selected": {
+      "event_id": "capsule_selected",
+      "presentation_mode": "summary",
+      "required": false,
+      "status": "local_only",
+      "updated_utc": "2026-08-01T20:05:42Z"
+    },
+    "run_failed": {
+      "attempts": 1,
+      "chat_id_suffix": "1055",
+      "event_id": "run_failed",
+      "first_attempt_utc": "2026-08-01T20:05:42Z",
+      "message_id": 504,
+      "payload_sha256": "55a8252018c1ad6e0556ed35ff9a5d2805d98b7b1aa4ac98d21f1d163fcba710",
+      "required": false,
+      "status": "delivered",
+      "updated_utc": "2026-08-01T20:05:43Z"
+    }
+  },
+  "notification_policy": {
+    "delivery_semantics": "durably-deduplicated-at-least-once",
+    "engine_heartbeat_seconds": 120,
+    "max_messages_per_run": 3,
+    "presentation_mode": "summary",
+    "registered_events": 24,
+    "required_before_engine": true,
+    "telegram_heartbeats": false
+  },
+  "pid": 64807,
+  "resource_plan": {
+    "backend_workers": 4,
+    "cpu_count": 12,
+    "e2e_workers": 2,
+    "frontend_workers": 4,
+    "memory_bytes": 19327352832,
+    "preflight_workers": 24,
+    "reserve_memory_bytes": 2147483648,
+    "test_cpu_budget": 11,
+    "usable_memory_bytes": 17179869184
+  },
+  "run_id": "20260801T200542Z-64807-004000",
+  "safe_cleanup": {
+    "inspected": 0,
+    "removed": 0
+  },
+  "safe_retry_count": 0,
+  "stage": "capsule-selection",
+  "started_utc": "2026-08-01T20:05:42Z",
+  "state": "FAILED_REVIEW_READY",
+  "supervisor_version": "2.1.2",
+  "telegram": {
+    "chat_id_suffix": "1055",
+    "configured": true,
+    "source": "/Users/haewonkim/.config/sysgrid-supervisor/telegram.json"
+  },
+  "updated_utc": "2026-08-01T20:05:43Z",
+  "work_dir": "/Users/haewonkim/.local/state/sysgrid-supervisor/runs/20260801T200542Z-64807-004000"
+}

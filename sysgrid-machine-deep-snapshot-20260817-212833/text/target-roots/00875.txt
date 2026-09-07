@@ -1,0 +1,164 @@
+ORIGINAL_PATH: /Users/haewonkim/.local/state/sysgrid-supervisor/runs/20260805T001326Z-82098-392000/patch.diff
+ORIGINAL_SHA256: 52a0ab0bb20ab0e65cbdb9e4f21504ea44083a57e77d57a0473d12bfb6c44efe
+================================================================================
+diff --git a/frontend/src/components/FAR.tsx b/frontend/src/components/FAR.tsx
+index 966324e..8499be4 100644
+--- a/frontend/src/components/FAR.tsx
++++ b/frontend/src/components/FAR.tsx
+@@ -1,5 +1,5 @@
+ import React, { useState, useMemo, useEffect, useCallback, useRef } from 'react'
+-import { WorkspaceEmptyState } from "./shared/OperationalWorkspacePrimitives";
++import { WorkspaceEmptyState, useWorkspaceAnchoredLayer } from "./shared/OperationalWorkspacePrimitives";
+ import { useNavigate, useSearchParams } from 'react-router-dom'
+ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+ import { 
+@@ -291,6 +291,7 @@ export default function FAR() {
+   const [showConfig, setShowConfig] = useState(false)
+   const [selectedIds, setSelectedIds] = useState<number[]>([])
+   const [showSavedViews, setShowSavedViews] = useState(false)
++  const { triggerRef: viewsButtonRef, panelRef: viewsPanelRef, panelStyle: viewsPanelStyle } = useWorkspaceAnchoredLayer(showSavedViews, { minWidth: 420 })
+   const [newViewName, setNewViewName] = useState('')
+   const [activeViewId, setActiveViewId] = useState<string | null>(FAR_SYSTEM_VIEW_ID)
+   const [savedViews, setSavedViews] = useState<FARSavedView[]>(() => [{
+@@ -1002,7 +1003,7 @@ export default function FAR() {
+       : columnId === 'effect'
+         ? { minWidth: 220, maxWidth: 420 }
+         : columnId === 'analytical_focus'
+-          ? { minWidth: 240, maxWidth: 480 }
++          ? { minWidth: isNarrowViewport ? 160 : 240, maxWidth: isNarrowViewport ? 240 : 480 }
+           : {}
+ 
+     return {
+@@ -1030,13 +1031,19 @@ export default function FAR() {
+   const applyInitialColumnLayout = useCallback((api: any) => {
+     const pending = pendingColumnStateRef.current
+     const sourceState = pending?.length ? pending : canonicalColumnLayoutState
+-    const state = sourceState.map((entry: any) => {
++    const normalizedState = sourceState.map((entry: any) => {
+       const colId = String(entry.colId || '')
+       const normalized = { ...entry }
+       if (isNarrowViewport && ['selection', 'id', 'actions'].includes(colId)) normalized.pinned = null
+       if (colId === 'analytical_focus') normalized.hide = workspaceMode === 'failure_modes'
+       return normalized
+     })
++    const state = isNarrowViewport && workspaceMode !== 'failure_modes'
++      ? [
++          ...normalizedState.filter((entry: any) => String(entry.colId || '') === 'analytical_focus'),
++          ...normalizedState.filter((entry: any) => String(entry.colId || '') !== 'analytical_focus'),
++        ]
++      : normalizedState
+     if (!api?.applyColumnState || !state.length) return
+     suppressColumnCaptureRef.current = true
+     api.applyColumnState({ state, applyOrder: true })
+@@ -1044,7 +1051,7 @@ export default function FAR() {
+       api.applyColumnState({ state, applyOrder: true })
+       if (workspaceMode !== 'failure_modes') {
+         api.setColumnsVisible?.(['analytical_focus'], true)
+-        api.ensureColumnVisible?.('analytical_focus', 'end')
++        api.ensureColumnVisible?.('analytical_focus', isNarrowViewport ? 'start' : 'end')
+       }
+       window.setTimeout(() => {
+         suppressColumnCaptureRef.current = false
+@@ -1058,10 +1065,17 @@ export default function FAR() {
+     const column = api.getColumn?.('analytical_focus')
+     if (!column) return false
+     if (column.isVisible?.() !== active) api.setColumnsVisible?.(['analytical_focus'], active)
+-    if (active) api.ensureColumnVisible?.('analytical_focus', 'end')
++    if (active && isNarrowViewport) {
++      suppressColumnCaptureRef.current = true
++      api.moveColumns?.(['analytical_focus'], 0)
++      window.requestAnimationFrame(() => {
++        suppressColumnCaptureRef.current = false
++      })
++    }
++    if (active) api.ensureColumnVisible?.('analytical_focus', isNarrowViewport ? 'start' : 'end')
+     api.refreshHeader?.()
+     return true
+-  }, [workspaceMode])
++  }, [isNarrowViewport, workspaceMode])
+ 
+   const farGridRuntime = useMemo(() => ({
+     preserveExplicitColumnWidths: true,
+@@ -1180,7 +1194,7 @@ export default function FAR() {
+       )}
+       toolbarControls={(
+         <ToolbarGroup>
+-          <ToolbarButton active={showSavedViews} onClick={() => toggleContextPanel('views')} title="Collaborative FAR views">
++          <ToolbarButton ref={viewsButtonRef as any} active={showSavedViews} onClick={() => toggleContextPanel('views')} title="Collaborative FAR views">
+             <Save size={14} /> Views
+           </ToolbarButton>
+           <ToolbarButton active={showStyleLab} onClick={() => toggleContextPanel('display')} title="Display density controls">
+@@ -1283,7 +1297,8 @@ export default function FAR() {
+     >
+       <OperationalSavedViewsPanel
+         isOpen={showSavedViews}
+-        panelStyle={{ position: 'fixed', top: 132, right: 16, zIndex: 120 }}
++        panelRef={viewsPanelRef}
++        panelStyle={viewsPanelStyle}
+         entityLabel="FAR"
+         onClose={() => setShowSavedViews(false)}
+         activeViewId={activeViewId}
+diff --git a/frontend/tests/far-golden-workspace.spec.ts b/frontend/tests/far-golden-workspace.spec.ts
+index 1007fbb..4182c85 100644
+--- a/frontend/tests/far-golden-workspace.spec.ts
++++ b/frontend/tests/far-golden-workspace.spec.ts
+@@ -116,7 +116,7 @@ test.describe('FAR whole-view golden workspace', () => {
+     expect(findMissingHeaders(failureModeHeaders, canonicalHeaders)).toEqual([])
+ 
+     await workspace.getByRole('tab', { name: 'Causes' }).click()
+-    await expect(grid.locator('.ag-header-cell').filter({ hasText: /^Causes$/ }).first()).toBeVisible()
++    await expect(grid.getByRole('columnheader', { name: 'Causes', exact: true })).toBeVisible()
+     await expectReachableHeaders(page, grid, [...canonicalHeaders, 'Causes'])
+     await workspace.getByRole('tab', { name: 'Mitigations' }).click()
+     await expectReachableHeaders(page, grid, [...canonicalHeaders, 'Mitigations'])
+@@ -169,8 +169,24 @@ test.describe('FAR whole-view golden workspace', () => {
+     expect(page.url()).toBe(deepLink)
+ 
+     await clickResilientButton(page, 'Close failure mode dossier')
+-    await clickResilientButton(page, 'Views')
++    const viewsButton = workspace.getByRole('button', { name: 'Views', exact: true })
++    await viewsButton.click()
++    const viewsPanel = page.locator('[data-workspace-panel-key="views-menu"]')
++    await expect(viewsPanel).toBeVisible()
+     await expect(page.getByTestId('workspace-view-sync-status')).toContainText(/Synced|Loading|Saving|Unsaved/)
++    const viewsButtonBox = await viewsButton.boundingBox()
++    const viewsPanelBox = await viewsPanel.boundingBox()
++    const viewport = page.viewportSize()
++    expect(viewsButtonBox).not.toBeNull()
++    expect(viewsPanelBox).not.toBeNull()
++    expect(viewport).not.toBeNull()
++    if (viewsButtonBox && viewsPanelBox && viewport) {
++      const expectedLeft = Math.max(12, Math.min(viewsButtonBox.x, viewport.width - viewsPanelBox.width - 12))
++      expect(Math.abs(viewsPanelBox.x - expectedLeft)).toBeLessThanOrEqual(2)
++      expect(viewsPanelBox.y).toBeGreaterThanOrEqual(viewsButtonBox.y + viewsButtonBox.height + 6)
++      expect(viewsPanelBox.x).toBeGreaterThanOrEqual(12)
++      expect(viewsPanelBox.x + viewsPanelBox.width).toBeLessThanOrEqual(viewport.width - 12)
++    }
+     await clickResilientButton(page, 'Close saved views')
+ 
+     const search = page.getByLabel('Search FAR failure modes')
+@@ -220,9 +236,23 @@ test.describe('FAR whole-view golden workspace', () => {
+     await expect(workspace.getByRole('tab', { name: 'Causes' })).toHaveAttribute('aria-selected', 'true')
+     await expect(workspace.locator('[data-far-summary="true"]')).toHaveCount(0)
+     const narrowGrid = workspace.locator('[data-far-grid="true"]')
+-    await expect(narrowGrid.locator('.ag-header-cell').filter({ hasText: /^Causes$/ }).first()).toBeVisible()
++    await expect(narrowGrid.getByRole('columnheader', { name: 'Causes', exact: true })).toBeVisible()
+     await expectReachableHeaders(page, narrowGrid, ['Failure Mode', 'Causes'])
+ 
++    const narrowViewsButton = workspace.getByRole('button', { name: 'Views', exact: true })
++    await narrowViewsButton.click()
++    const narrowViewsPanel = page.locator('[data-workspace-panel-key="views-menu"]')
++    await expect(narrowViewsPanel).toBeVisible()
++    const narrowPanelBox = await narrowViewsPanel.boundingBox()
++    const narrowViewport = page.viewportSize()
++    expect(narrowPanelBox).not.toBeNull()
++    expect(narrowViewport).not.toBeNull()
++    if (narrowPanelBox && narrowViewport) {
++      expect(narrowPanelBox.x).toBeGreaterThanOrEqual(12)
++      expect(narrowPanelBox.x + narrowPanelBox.width).toBeLessThanOrEqual(narrowViewport.width - 12)
++    }
++    await clickResilientButton(page, 'Close saved views')
++
+     await page.screenshot({ path: testInfo.outputPath('far-whole-view-golden-narrow.png'), fullPage: false, animations: 'disabled' })
+   })
+ 

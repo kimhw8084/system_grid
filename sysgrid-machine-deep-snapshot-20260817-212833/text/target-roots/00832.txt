@@ -1,0 +1,34 @@
+ORIGINAL_PATH: /Users/haewonkim/.local/state/sysgrid-supervisor/runs/20260806T173517Z-8065-037000/preflight.json
+ORIGINAL_SHA256: 3cda5cdebb6d0e00f4df5471e5284af332d6a3760ae66dcb3970c8e7297f2566
+================================================================================
+{
+  "declared_state": {
+    "dirty_path_count": 98,
+    "pre_hash_count": 98,
+    "protected_hash_count": 718
+  },
+  "engine_self_test": {
+    "engine_version": "1.1.1",
+    "result": "PASS",
+    "tests": [
+      "safe-path",
+      "manifest",
+      "corruption",
+      "canonical-dirty-paths",
+      "aggregate-recipes"
+    ]
+  },
+  "patch": {
+    "applicable": true,
+    "forward_diagnostic": "Checking patch scripts/start-local.sh...\nChecking patch scripts/workstation-up.sh...\nChecking patch seed.py...",
+    "forward_exit_code": 0,
+    "reverse_applicable": false,
+    "reverse_diagnostic": "Checking patch seed.py...\nerror: while searching for:\n    parser.add_argument(\"--tenant-name\", default=\"Local Demo\")\n    parser.add_argument(\"--tenant-db\", default=\"tenants/local-demo/local_demo.db\")\n    parser.add_argument(\"--admin-user\", default=\"haewon.kim\")\n    parser.add_argument(\"--admin-full-name\", default=None, help=\"Display name for the primary disposable admin\")\n    parser.add_argument(\"--admin-email\", default=None, help=\"Email for the primary disposable admin\")\n    parser.add_argument(\"--admin-department\", default=\"Infrastructure\", help=\"Department for disposable admins\")\n    parser.add_argument(\"--extra-admin-user\", action=\"append\", default=[], help=\"Additional user ids to grant admin access and select for this tenant\")\n    parser.add_argument(\"--seed-data\", action=\"store_true\", help=\"Seed full domain data\")\n    parser.add_argument(\"--no-seed-data\", action=\"store_true\", help=\"Skip domain/demo data and create only the bootstrap shell\")\n\nerror: patch failed: seed.py:1570\nerror: seed.py: patch does not apply\nChecking patch scripts/workstation-up.sh...\nerror: scripts/workstation-up.sh: No such file or directory\nChecking patch scripts/start-local.sh...\nerror: while searching for:\n#!/usr/bin/env bash\nset -Eeuo pipefail\n\nROOT_DIR=\"$(cd \"$(dirname \"${BASH_SOURCE[0]}\")/..\" && pwd)\"\nBACKEND_DIR=\"$ROOT_DIR/backend\"\n\nerror: patch failed: scripts/start-local.sh:1\nerror: scripts/start-local.sh: patch does not apply",
+    "reverse_exit_code": 1
+  },
+  "storage": {
+    "control_free": 31711526912,
+    "local_free": 31711526912,
+    "required": 3221225472
+  }
+}

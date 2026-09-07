@@ -1,0 +1,16 @@
+{
+  "EnvironmentVariables" => {
+    "ACTIONS_RUNNER_SVC" => "1"
+  }
+  "Label" => "actions.runner.kimhw8084-system_grid.sysgrid-relay-HaeBook-Pro-M3-1785852110"
+  "ProcessType" => "Interactive"
+  "ProgramArguments" => [
+    0 => "/Users/haewonkim/sysgrid-actions-runner/runsvc.sh"
+  ]
+  "RunAtLoad" => 1
+  "SessionCreate" => 1
+  "StandardErrorPath" => "/Users/haewonkim/Library/Logs/actions.runner.kimhw8084-system_grid.sysgrid-relay-HaeBook-Pro-M3-1785852110/stderr.log"
+  "StandardOutPath" => "/Users/haewonkim/Library/Logs/actions.runner.kimhw8084-system_grid.sysgrid-relay-HaeBook-Pro-M3-1785852110/stdout.log"
+  "UserName" => "haewonkim"
+  "WorkingDirectory" => "/Users/haewonkim/sysgrid-actions-runner"
+}

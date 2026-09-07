@@ -1,0 +1,1035 @@
+ORIGINAL_PATH: /Users/haewonkim/.local/share/sysgrid-campaign-platform/v1.1.1/payload/sysgrid_linear_inbound.py
+ORIGINAL_SHA256: 906f5b7d1b71f4df44d52645d52bf5ce0d795c417c32c10c91465f26a0ac48dc
+================================================================================
+#!/usr/bin/env python3
+from __future__ import annotations
+
+import argparse
+import base64
+import contextlib
+import datetime as dt
+import fcntl
+import hashlib
+import importlib.util
+import json
+import os
+from pathlib import Path
+import re
+import shutil
+import stat
+import subprocess
+import sys
+import tempfile
+import urllib.error
+import urllib.parse
+import urllib.request
+import uuid
+
+SCHEMA_VERSION = "1.0.0"
+CLASSIFICATION = "SYSGRID_INBOUND_CAPSULE_COMMAND"
+MARKER_START = "<!-- SYSGRID_INBOUND_COMMAND_START -->"
+MARKER_END = "<!-- SYSGRID_INBOUND_COMMAND_END -->"
+CHUNK_SCHEMA_VERSION = "1.0.0"
+CHUNK_CLASSIFICATION = "SYSGRID_INBOUND_CAPSULE_CHUNK"
+CHUNK_MARKER_START = "<!-- SYSGRID_INBOUND_CHUNK_START -->"
+CHUNK_MARKER_END = "<!-- SYSGRID_INBOUND_CHUNK_END -->"
+COMMENT_CHUNK_TRANSPORT = "linear-comment-chunks"
+COMMENT_PARTS_TRANSPORT = "linear-comment-parts-v2"
+ATTACHMENT_TRANSPORT = "attachment"
+LOCAL_BUNDLE_TRANSPORT = "local-bundle-v1"
+COMMENT_CHUNK_COUNT = 8
+MAX_COMMENT_PARTS = 64
+STATE_ROOT = Path.home() / "Library/Application Support/SysGridInbound"
+CONFIG_PATH = STATE_ROOT / "config.json"
+STATE_PATH = STATE_ROOT / "state.json"
+PENDING_PATH = STATE_ROOT / "pending.json"
+LOCK_PATH = STATE_ROOT / "inbound.lock"
+ATTESTATIONS = STATE_ROOT / "attestations"
+STAGING = STATE_ROOT / "staging"
+LOCAL_BUNDLES = STATE_ROOT / "capsules"
+PLATFORM_ROOT = Path.home() / ".local/share/sysgrid-campaign-platform/v1.1.1"
+SUPERVISOR_PATH = PLATFORM_ROOT / "payload/sysgrid_supervisor.py"
+SHA256_RE = re.compile(r"^[0-9a-f]{64}$")
+GIT_SHA_RE = re.compile(r"^[0-9a-f]{40}$")
+FILENAME_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_.-]{1,240}\.sgcap$")
+ISSUE_RE = re.compile(r"^[A-Z][A-Z0-9]+-[1-9][0-9]*$")
+BASE_COMMAND_FIELDS = {
+    "schema_version", "classification", "status", "issue", "master", "project",
+    "repository", "product_attempt", "repair_surface", "capsule_filename",
+    "capsule_sha256", "capsule_size", "expected_head", "expected_origin_main",
+    "principal_approval_comment_id", "authorization_comment_id", "issued_at",
+    "expires_at", "replay_id", "execution_mode"
+}
+OPTIONAL_COMMAND_FIELDS = {"transport", "chunk_set_id", "chunk_count", "encoded_sha256"}
+ALLOWED_FIELDS = BASE_COMMAND_FIELDS | OPTIONAL_COMMAND_FIELDS
+REQUIRED_FIELDS = BASE_COMMAND_FIELDS.copy()
+CHUNK_FIELDS = {
+    "schema_version", "classification", "issue", "project", "capsule_filename",
+    "capsule_sha256", "capsule_size", "chunk_set_id", "chunk_index", "chunk_count",
+    "chunk_sha256", "encoded_sha256", "data_b64"
+}
+
+
+class InboundError(RuntimeError):
+    def __init__(self, classification: str, message: str, exit_code: int = 66):
+        super().__init__(message)
+        self.classification = classification
+        self.exit_code = exit_code
+
+
+def utc_now() -> dt.datetime:
+    return dt.datetime.now(dt.timezone.utc)
+
+
+def parse_utc(value: str, field: str) -> dt.datetime:
+    try:
+        parsed = dt.datetime.fromisoformat(value.replace("Z", "+00:00"))
+    except Exception as exc:
+        raise InboundError("COMMAND_SCHEMA_FAILURE", f"{field} is not ISO-8601 UTC") from exc
+    if parsed.tzinfo is None:
+        raise InboundError("COMMAND_SCHEMA_FAILURE", f"{field} must include timezone")
+    return parsed.astimezone(dt.timezone.utc)
+
+
+def sha256_file(path: Path) -> str:
+    h = hashlib.sha256()
+    with path.open("rb") as src:
+        for chunk in iter(lambda: src.read(1024 * 1024), b""):
+            h.update(chunk)
+    return h.hexdigest()
+
+
+def atomic_json(path: Path, value: object, mode: int = 0o600) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    fd, tmp = tempfile.mkstemp(prefix=f".{path.name}.", dir=path.parent)
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8") as out:
+            json.dump(value, out, indent=2, sort_keys=True)
+            out.write("\n")
+            out.flush()
+            os.fsync(out.fileno())
+        os.chmod(tmp, mode)
+        os.replace(tmp, path)
+    finally:
+        with contextlib.suppress(FileNotFoundError):
+            os.unlink(tmp)
+
+
+def read_json(path: Path, default: object) -> object:
+    if not path.is_file():
+        return default
+    try:
+        return json.loads(path.read_text(encoding="utf-8"))
+    except Exception as exc:
+        raise InboundError("LOCAL_STATE_FAILURE", f"invalid JSON: {path}") from exc
+
+
+def load_config() -> dict:
+    cfg = read_json(CONFIG_PATH, {})
+    if not isinstance(cfg, dict):
+        raise InboundError("CONFIGURATION_FAILURE", "inbound config is not an object")
+    required = {
+        "linear_endpoint", "keychain_service", "keychain_account", "issue", "master",
+        "project", "repository", "principal_author_id", "control_root"
+    }
+    missing = sorted(required - set(cfg))
+    if missing:
+        raise InboundError("CONFIGURATION_FAILURE", f"config missing: {missing}")
+    return cfg
+
+
+def keychain_token(cfg: dict) -> str:
+    cmd = [
+        "/usr/bin/security", "find-generic-password", "-a", str(cfg["keychain_account"]),
+        "-s", str(cfg["keychain_service"]), "-w"
+    ]
+    completed = subprocess.run(cmd, text=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    token = [REDACTED]
+    if completed.returncode or not token:
+        raise InboundError("LINEAR_AUTHENTICATION_FAILURE", "could not read Linear API key from Keychain", 77)
+    return token
+
+
+def graphql(cfg: dict, query: str, variables: dict | None = None, *, signed_files: bool = False) -> dict:
+    token = [REDACTED]
+    headers = {"Authorization": token, "Content-Type": "application/json"}
+    if signed_files:
+        headers["public-file-urls-expire-in"] = "180"
+    req = urllib.request.Request(
+        str(cfg["linear_endpoint"]),
+        data=json.dumps({"query": query, "variables": variables or {}}).encode("utf-8"),
+        headers=headers,
+        method="POST",
+    )
+    try:
+        with urllib.request.urlopen(req, timeout=30) as response:
+            payload = json.load(response)
+    except urllib.error.HTTPError as exc:
+        body = exc.read().decode("utf-8", errors="replace")[:2000]
+        raise InboundError("LINEAR_API_FAILURE", f"Linear HTTP {exc.code}: {body}", 69) from exc
+    except Exception as exc:
+        raise InboundError("LINEAR_API_FAILURE", f"Linear request failed: {exc}", 69) from exc
+    if payload.get("errors"):
+        raise InboundError("LINEAR_API_FAILURE", json.dumps(payload["errors"], sort_keys=True)[:4000], 69)
+    data = payload.get("data")
+    if not isinstance(data, dict):
+        raise InboundError("LINEAR_API_FAILURE", "Linear response has no data object", 69)
+    return data
+
+
+def issue_snapshot(cfg: dict) -> dict:
+    query = """
+    query InboundDoctor($issue: String!, $master: String!) {
+      viewer { id name email }
+      target: issue(id: $issue) {
+        id identifier title
+        state { name type }
+        project { name }
+        parent { identifier }
+      }
+      master: issue(id: $master) {
+        id identifier
+        children(first: 250) { nodes { identifier state { name type } } }
+      }
+    }
+    """
+    data = graphql(cfg, query, {"issue": cfg["issue"], "master": cfg["master"]})
+    viewer, target, master = data.get("viewer"), data.get("target"), data.get("master")
+    if not isinstance(viewer, dict) or viewer.get("id") != cfg["principal_author_id"]:
+        raise InboundError("PRINCIPAL_IDENTITY_FAILURE", "Linear viewer does not match configured principal")
+    if not isinstance(target, dict) or target.get("identifier") != cfg["issue"]:
+        raise InboundError("ISSUE_AUTHORITY_FAILURE", f"{cfg['issue']} is not accessible")
+    if (target.get("project") or {}).get("name") != cfg["project"]:
+        raise InboundError("ISSUE_AUTHORITY_FAILURE", "target issue project mismatch")
+    if (target.get("parent") or {}).get("identifier") != cfg["master"]:
+        raise InboundError("ISSUE_AUTHORITY_FAILURE", "target issue master mismatch")
+    if not isinstance(master, dict) or master.get("identifier") != cfg["master"]:
+        raise InboundError("ISSUE_AUTHORITY_FAILURE", "master issue is not accessible")
+    children = ((master.get("children") or {}).get("nodes") or [])
+    # SysGrid operational law defines the active mutation surface as started work.
+    # Queued/unstarted children remain roadmap authority but are not active mutations.
+    active = sorted(
+        item.get("identifier") for item in children
+        if isinstance(item, dict) and (item.get("state") or {}).get("type") == "started"
+    )
+    if active != [cfg["issue"]]:
+        raise InboundError("SOLE_ACTIVE_ISSUE_FAILURE", f"started children of {cfg['master']} are {active!r}")
+    if (target.get("state") or {}).get("type") != "started":
+        raise InboundError("ISSUE_AUTHORITY_FAILURE", f"issue state is {(target.get('state') or {}).get('type')!r}, expected 'started'")
+    return {"viewer": viewer, "target": target, "active_children": active}
+
+
+def paginate_comments(cfg: dict) -> list[dict]:
+    query = """
+    query InboundComments($issue: String!, $after: String) {
+      issue(id: $issue) {
+        comments(first: 50, after: $after) {
+          nodes { id body createdAt user { id name email } }
+          pageInfo { hasNextPage endCursor }
+        }
+      }
+    }
+    """
+    after = None
+    result: list[dict] = []
+    for _ in range(50):
+        data = graphql(cfg, query, {"issue": cfg["issue"], "after": after})
+        conn = ((data.get("issue") or {}).get("comments") or {})
+        nodes = conn.get("nodes") or []
+        result.extend(item for item in nodes if isinstance(item, dict))
+        page = conn.get("pageInfo") or {}
+        if not page.get("hasNextPage"):
+            return result
+        after = page.get("endCursor")
+        if not after:
+            break
+    raise InboundError("LINEAR_PAGINATION_FAILURE", "comment pagination did not converge")
+
+
+def paginate_attachments(cfg: dict) -> list[dict]:
+    query = """
+    query InboundAttachments($issue: String!, $after: String) {
+      issue(id: $issue) {
+        attachments(first: 50, after: $after) {
+          nodes { id title subtitle url createdAt }
+          pageInfo { hasNextPage endCursor }
+        }
+      }
+    }
+    """
+    after = None
+    result: list[dict] = []
+    for _ in range(20):
+        data = graphql(cfg, query, {"issue": cfg["issue"], "after": after}, signed_files=True)
+        conn = ((data.get("issue") or {}).get("attachments") or {})
+        nodes = conn.get("nodes") or []
+        result.extend(item for item in nodes if isinstance(item, dict))
+        page = conn.get("pageInfo") or {}
+        if not page.get("hasNextPage"):
+            return result
+        after = page.get("endCursor")
+        if not after:
+            break
+    raise InboundError("LINEAR_PAGINATION_FAILURE", "attachment pagination did not converge")
+
+
+def extract_marked_json(comment: dict, marker_start: str, marker_end: str, label: str) -> dict | None:
+    body = comment.get("body")
+    if not isinstance(body, str) or marker_start not in body or marker_end not in body:
+        return None
+    if body.count(marker_start) != 1 or body.count(marker_end) != 1:
+        raise InboundError("COMMAND_SCHEMA_FAILURE", f"ambiguous {label} markers in comment {comment.get('id')}")
+    start = body.find(marker_start) + len(marker_start)
+    end = body.find(marker_end, start)
+    if end < 0:
+        return None
+    raw = body[start:end].strip()
+    if raw.startswith("```json"):
+        raw = raw[len("```json"):].strip()
+    elif raw.startswith("```"):
+        raw = raw[len("```"):].strip()
+    if raw.endswith("```"):
+        raw = raw[:-3].strip()
+    try:
+        value = json.loads(raw)
+    except Exception as exc:
+        raise InboundError("COMMAND_SCHEMA_FAILURE", f"invalid {label} JSON in comment {comment.get('id')}") from exc
+    if not isinstance(value, dict):
+        raise InboundError("COMMAND_SCHEMA_FAILURE", f"{label} manifest must be an object")
+    return value
+
+
+def extract_manifest(comment: dict) -> dict | None:
+    return extract_marked_json(comment, MARKER_START, MARKER_END, "command")
+
+
+def extract_chunk(comment: dict) -> dict | None:
+    return extract_marked_json(comment, CHUNK_MARKER_START, CHUNK_MARKER_END, "chunk")
+
+
+def validate_manifest(cfg: dict, comment: dict, manifest: dict, all_comments: list[dict]) -> dict:
+    fields = set(manifest)
+    missing = sorted(REQUIRED_FIELDS - fields)
+    extra = sorted(fields - ALLOWED_FIELDS)
+    if missing or extra:
+        raise InboundError("COMMAND_SCHEMA_FAILURE", f"manifest fields missing={missing} extra={extra}")
+    exact = {
+        "schema_version": SCHEMA_VERSION,
+        "classification": CLASSIFICATION,
+        "status": "ACTIVE",
+        "issue": cfg["issue"],
+        "master": cfg["master"],
+        "project": cfg["project"],
+        "repository": cfg["repository"],
+        "execution_mode": "pull-run",
+    }
+    for field, expected in exact.items():
+        if manifest.get(field) != expected:
+            raise InboundError("COMMAND_AUTHORITY_FAILURE", f"{field} mismatch")
+    if manifest.get("authorization_comment_id") != comment.get("id"):
+        raise InboundError("COMMAND_AUTHORITY_FAILURE", "authorization comment self-ID mismatch")
+    author = comment.get("user") or {}
+    if author.get("id") != cfg["principal_author_id"]:
+        raise InboundError("PRINCIPAL_IDENTITY_FAILURE", "authorization comment author mismatch")
+    if not ISSUE_RE.fullmatch(str(manifest.get("issue"))) or not ISSUE_RE.fullmatch(str(manifest.get("master"))):
+        raise InboundError("COMMAND_SCHEMA_FAILURE", "invalid issue identifier")
+    filename = str(manifest.get("capsule_filename"))
+    if not FILENAME_RE.fullmatch(filename) or Path(filename).name != filename:
+        raise InboundError("COMMAND_SCHEMA_FAILURE", "invalid capsule filename")
+    if not SHA256_RE.fullmatch(str(manifest.get("capsule_sha256"))):
+        raise InboundError("COMMAND_SCHEMA_FAILURE", "invalid capsule SHA-256")
+    if not isinstance(manifest.get("capsule_size"), int) or not 1 <= manifest["capsule_size"] <= 512 * 1024 * 1024:
+        raise InboundError("COMMAND_SCHEMA_FAILURE", "invalid capsule size")
+    for field in ("expected_head", "expected_origin_main"):
+        if not GIT_SHA_RE.fullmatch(str(manifest.get(field))):
+            raise InboundError("COMMAND_SCHEMA_FAILURE", f"invalid {field}")
+    try:
+        uuid.UUID(str(manifest.get("replay_id")))
+        uuid.UUID(str(manifest.get("principal_approval_comment_id")))
+        uuid.UUID(str(manifest.get("authorization_comment_id")))
+    except Exception as exc:
+        raise InboundError("COMMAND_SCHEMA_FAILURE", "invalid UUID field") from exc
+    transport = manifest.get("transport", ATTACHMENT_TRANSPORT)
+    if transport not in {ATTACHMENT_TRANSPORT, COMMENT_CHUNK_TRANSPORT, COMMENT_PARTS_TRANSPORT, LOCAL_BUNDLE_TRANSPORT}:
+        raise InboundError("COMMAND_SCHEMA_FAILURE", f"unsupported transport {transport!r}")
+    chunk_fields = {"chunk_set_id", "chunk_count", "encoded_sha256"}
+    if transport in {ATTACHMENT_TRANSPORT, LOCAL_BUNDLE_TRANSPORT}:
+        unexpected = sorted(chunk_fields & fields)
+        if unexpected:
+            raise InboundError("COMMAND_SCHEMA_FAILURE", f"non-comment command has chunk fields: {unexpected}")
+    else:
+        missing_chunks = sorted(chunk_fields - fields)
+        if missing_chunks:
+            raise InboundError("COMMAND_SCHEMA_FAILURE", f"comment transport missing: {missing_chunks}")
+        try:
+            uuid.UUID(str(manifest.get("chunk_set_id")))
+        except Exception as exc:
+            raise InboundError("COMMAND_SCHEMA_FAILURE", "invalid chunk_set_id") from exc
+        count = manifest.get("chunk_count")
+        if transport == COMMENT_CHUNK_TRANSPORT and count != COMMENT_CHUNK_COUNT:
+            raise InboundError("COMMAND_SCHEMA_FAILURE", f"legacy chunk_count must be {COMMENT_CHUNK_COUNT}")
+        if transport == COMMENT_PARTS_TRANSPORT and (not isinstance(count, int) or not 1 <= count <= MAX_COMMENT_PARTS):
+            raise InboundError("COMMAND_SCHEMA_FAILURE", f"part count must be 1..{MAX_COMMENT_PARTS}")
+        if not SHA256_RE.fullmatch(str(manifest.get("encoded_sha256"))):
+            raise InboundError("COMMAND_SCHEMA_FAILURE", "invalid encoded_sha256")
+    issued = parse_utc(str(manifest["issued_at"]), "issued_at")
+    expires = parse_utc(str(manifest["expires_at"]), "expires_at")
+    now = utc_now()
+    if expires <= issued or expires - issued > dt.timedelta(hours=24):
+        raise InboundError("COMMAND_FRESHNESS_FAILURE", "command lifetime must be positive and <=24h")
+    if issued > now + dt.timedelta(minutes=5):
+        raise InboundError("COMMAND_FRESHNESS_FAILURE", "command issued in the future")
+    if expires <= now:
+        raise InboundError("COMMAND_FRESHNESS_FAILURE", "command expired")
+    approval_id = manifest["principal_approval_comment_id"]
+    approval = next((c for c in all_comments if c.get("id") == approval_id), None)
+    if not approval:
+        raise InboundError("PRINCIPAL_APPROVAL_FAILURE", "referenced approval comment not found")
+    if (approval.get("user") or {}).get("id") != cfg["principal_author_id"]:
+        raise InboundError("PRINCIPAL_APPROVAL_FAILURE", "approval comment author mismatch")
+    if str(approval.get("createdAt", "")) >= str(comment.get("createdAt", "")):
+        raise InboundError("PRINCIPAL_APPROVAL_FAILURE", "approval must predate authorization")
+    approval_body = str(approval.get("body", ""))
+    if "EXPLICIT" not in approval_body.upper() or "APPROV" not in approval_body.upper():
+        raise InboundError("PRINCIPAL_APPROVAL_FAILURE", "approval comment lacks explicit approval evidence")
+    validated = dict(manifest)
+    validated["transport"] = transport
+    return validated
+
+
+def discover_active_command(cfg: dict) -> tuple[dict, dict, list[dict]]:
+    issue_snapshot(cfg)
+    comments = paginate_comments(cfg)
+    candidates: list[tuple[dict, dict]] = []
+    for comment in comments:
+        manifest = extract_manifest(comment)
+        if manifest is None:
+            continue
+        if manifest.get("classification") == CLASSIFICATION and manifest.get("status") == "ACTIVE":
+            candidates.append((comment, manifest))
+    if len(candidates) != 1:
+        raise InboundError("COMMAND_SELECTION_FAILURE", f"expected exactly one ACTIVE command; found {len(candidates)}")
+    comment, manifest = candidates[0]
+    return comment, validate_manifest(cfg, comment, manifest, comments), comments
+
+
+def validate_chunk_manifest(
+    cfg: dict,
+    comment: dict,
+    chunk: dict,
+    command_comment: dict,
+    manifest: dict,
+) -> dict:
+    fields = set(chunk)
+    missing = sorted(CHUNK_FIELDS - fields)
+    extra = sorted(fields - CHUNK_FIELDS)
+    if missing or extra:
+        raise InboundError("CHUNK_SCHEMA_FAILURE", f"chunk fields missing={missing} extra={extra}")
+    exact = {
+        "schema_version": CHUNK_SCHEMA_VERSION,
+        "classification": CHUNK_CLASSIFICATION,
+        "issue": cfg["issue"],
+        "project": cfg["project"],
+        "capsule_filename": manifest["capsule_filename"],
+        "capsule_sha256": manifest["capsule_sha256"],
+        "capsule_size": manifest["capsule_size"],
+        "chunk_set_id": manifest["chunk_set_id"],
+        "chunk_count": manifest["chunk_count"],
+        "encoded_sha256": manifest["encoded_sha256"],
+    }
+    for field, expected in exact.items():
+        if chunk.get(field) != expected:
+            raise InboundError("CHUNK_AUTHORITY_FAILURE", f"{field} mismatch in chunk comment {comment.get('id')}")
+    if (comment.get("user") or {}).get("id") != cfg["principal_author_id"]:
+        raise InboundError("CHUNK_AUTHOR_FAILURE", f"chunk comment {comment.get('id')} author mismatch")
+    if str(comment.get("createdAt", "")) >= str(command_comment.get("createdAt", "")):
+        raise InboundError("CHUNK_FRESHNESS_FAILURE", f"chunk comment {comment.get('id')} is late")
+    index = chunk.get("chunk_index")
+    count = manifest["chunk_count"]
+    if not isinstance(index, int) or not 1 <= index <= count:
+        raise InboundError("CHUNK_SCHEMA_FAILURE", f"invalid chunk_index {index!r}")
+    data_b64 = chunk.get("data_b64")
+    if not isinstance(data_b64, str) or not data_b64 or any(ch.isspace() for ch in data_b64):
+        raise InboundError("CHUNK_SCHEMA_FAILURE", f"invalid base64 payload in chunk {index}")
+    digest = hashlib.sha256(data_b64.encode("ascii")).hexdigest()
+    if digest != chunk.get("chunk_sha256"):
+        raise InboundError("CHUNK_HASH_FAILURE", f"chunk {index} encoded hash mismatch")
+    return chunk
+
+
+def reconstruct_comment_chunks(
+    cfg: dict,
+    command_comment: dict,
+    manifest: dict,
+    all_comments: list[dict],
+    dest: Path,
+) -> list[str]:
+    selected: list[tuple[dict, dict]] = []
+    for comment in all_comments:
+        chunk = extract_chunk(comment)
+        if chunk is None:
+            continue
+        if chunk.get("classification") != CHUNK_CLASSIFICATION:
+            continue
+        if chunk.get("chunk_set_id") == manifest["chunk_set_id"]:
+            selected.append((comment, validate_chunk_manifest(cfg, comment, chunk, command_comment, manifest)))
+    count = manifest["chunk_count"]
+    if len(selected) != count:
+        raise InboundError(
+            "CHUNK_SELECTION_FAILURE",
+            f"expected {count} chunks for {manifest['chunk_set_id']}; found {len(selected)}",
+        )
+    by_index: dict[int, tuple[dict, dict]] = {}
+    for comment, chunk in selected:
+        index = int(chunk["chunk_index"])
+        if index in by_index:
+            raise InboundError("CHUNK_DUPLICATE_FAILURE", f"duplicate chunk index {index}")
+        by_index[index] = (comment, chunk)
+    expected_indexes = list(range(1, count + 1))
+    if sorted(by_index) != expected_indexes:
+        raise InboundError("CHUNK_SELECTION_FAILURE", f"chunk indexes are {sorted(by_index)!r}")
+    chronological = [
+        int(chunk["chunk_index"])
+        for comment, chunk in sorted(selected, key=lambda item: (str(item[0].get("createdAt", "")), str(item[0].get("id", ""))))
+    ]
+    if chronological != expected_indexes:
+        raise InboundError("CHUNK_ORDER_FAILURE", f"chunk creation order is {chronological!r}")
+    encoded = "".join(by_index[index][1]["data_b64"] for index in expected_indexes)
+    encoded_digest = hashlib.sha256(encoded.encode("ascii")).hexdigest()
+    if encoded_digest != manifest["encoded_sha256"]:
+        raise InboundError("CHUNK_AGGREGATE_HASH_FAILURE", "aggregate encoded hash mismatch")
+    try:
+        raw = base64.b64decode(encoded, validate=True)
+    except Exception as exc:
+        raise InboundError("CHUNK_BASE64_FAILURE", "strict base64 reconstruction failed") from exc
+    if base64.b64encode(raw).decode("ascii") != encoded:
+        raise InboundError("CHUNK_BASE64_FAILURE", "base64 payload is not canonical")
+    if len(raw) != manifest["capsule_size"]:
+        raise InboundError("CHUNK_SIZE_FAILURE", f"expected {manifest['capsule_size']}, got {len(raw)}")
+    digest = hashlib.sha256(raw).hexdigest()
+    if digest != manifest["capsule_sha256"]:
+        raise InboundError("CHUNK_CAPSULE_HASH_FAILURE", f"expected {manifest['capsule_sha256']}, got {digest}")
+    with dest.open("wb") as out:
+        out.write(raw)
+        out.flush()
+        os.fsync(out.fileno())
+    os.chmod(dest, 0o600)
+    return [str(by_index[index][0].get("id")) for index in expected_indexes]
+
+
+def local_state() -> dict:
+    state = read_json(STATE_PATH, {"accepted_replay_ids": [], "rejected": [], "last": None})
+    if not isinstance(state, dict):
+        raise InboundError("LOCAL_STATE_FAILURE", "state is not an object")
+    state.setdefault("accepted_replay_ids", [])
+    state.setdefault("rejected", [])
+    return state
+
+
+def repository_path() -> Path:
+    env = os.environ.get("SYSGRID_REPO")
+    candidates = []
+    if env:
+        candidates.append(Path(env).expanduser())
+    for hint in (Path.home()/".config/sysgrid-supervisor/repo-path", Path.home()/".config/sysgrid-runner/repo-path"):
+        if hint.is_file():
+            with contextlib.suppress(Exception):
+                candidates.append(Path(hint.read_text(encoding="utf-8").strip()).expanduser())
+    candidates.extend([Path.cwd(), Path.home()/"home/development/sysgrid", Path.home()/"SysGrid", Path.home()/"Projects/SysGrid"])
+    for candidate in candidates:
+        if not candidate:
+            continue
+        completed = subprocess.run(["git", "-C", str(candidate), "rev-parse", "--show-toplevel"], text=True, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
+        if completed.returncode == 0:
+            return Path(completed.stdout.strip()).resolve()
+    raise InboundError("REPOSITORY_DISCOVERY_FAILURE", "could not locate SysGrid repository")
+
+
+def git_value(repo: Path, *args: str) -> str:
+    completed = subprocess.run(["git", "-C", str(repo), *args], text=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    if completed.returncode:
+        raise InboundError("REPOSITORY_IDENTITY_FAILURE", completed.stderr.strip()[:1000])
+    return completed.stdout.strip()
+
+
+def verify_repo(cfg: dict, manifest: dict) -> Path:
+    repo = repository_path()
+    top = git_value(repo, "rev-parse", "--show-toplevel")
+    if Path(top).resolve() != repo:
+        raise InboundError("REPOSITORY_IDENTITY_FAILURE", "repository root mismatch")
+    head = git_value(repo, "rev-parse", "HEAD")
+    origin = git_value(repo, "rev-parse", "origin/main")
+    if head != manifest["expected_head"]:
+        raise InboundError("BASELINE_FAILURE", f"HEAD mismatch: {head}")
+    if origin != manifest["expected_origin_main"]:
+        raise InboundError("BASELINE_FAILURE", f"origin/main mismatch: {origin}")
+    remote = git_value(repo, "remote", "get-url", "origin")
+    normalized = remote.removesuffix(".git")
+    if cfg["repository"] not in normalized:
+        raise InboundError("REPOSITORY_IDENTITY_FAILURE", f"origin does not match {cfg['repository']}")
+    return repo
+
+
+def import_supervisor():
+    if not SUPERVISOR_PATH.is_file() or SUPERVISOR_PATH.is_symlink():
+        raise InboundError("SUPERVISOR_IDENTITY_FAILURE", "qualified supervisor missing")
+    spec = importlib.util.spec_from_file_location("sysgrid_supervisor_inbound", SUPERVISOR_PATH)
+    if spec is None or spec.loader is None:
+        raise InboundError("SUPERVISOR_IDENTITY_FAILURE", "cannot load supervisor")
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[spec.name] = module
+    spec.loader.exec_module(module)
+    return module
+
+
+def copy_local_bundle(manifest: dict, dest: Path, *, cache_root: Path = LOCAL_BUNDLES) -> Path:
+    filename = str(manifest["capsule_filename"])
+    source = cache_root / filename
+    if source.parent.resolve() != cache_root.resolve():
+        raise InboundError("LOCAL_BUNDLE_IDENTITY_FAILURE", "local bundle path escaped cache root")
+    if not source.is_file() or source.is_symlink():
+        raise InboundError("LOCAL_BUNDLE_SELECTION_FAILURE", f"qualified local bundle missing: {filename}")
+    mode = stat.S_IMODE(source.stat().st_mode)
+    if mode & 0o077:
+        raise InboundError("LOCAL_BUNDLE_PERMISSION_FAILURE", f"local bundle mode is broader than 0600: {oct(mode)}")
+    size = source.stat().st_size
+    digest = sha256_file(source)
+    if size != manifest["capsule_size"]:
+        raise InboundError("LOCAL_BUNDLE_SIZE_FAILURE", f"expected {manifest['capsule_size']}, got {size}")
+    if digest != manifest["capsule_sha256"]:
+        raise InboundError("LOCAL_BUNDLE_HASH_FAILURE", f"expected {manifest['capsule_sha256']}, got {digest}")
+    with source.open("rb") as src, dest.open("wb") as out:
+        shutil.copyfileobj(src, out, length=1024 * 1024)
+        out.flush()
+        os.fsync(out.fileno())
+    os.chmod(dest, 0o600)
+    if dest.stat().st_size != size or sha256_file(dest) != digest:
+        raise InboundError("LOCAL_BUNDLE_COPY_FAILURE", "copied local bundle identity mismatch")
+    return source
+
+
+def download_attachment(cfg: dict, attachment: dict, dest: Path) -> None:
+    url = attachment.get("url")
+    if not isinstance(url, str) or not url.startswith("https://"):
+        raise InboundError("ATTACHMENT_IDENTITY_FAILURE", "attachment URL is not HTTPS")
+    headers = {}
+    if urllib.parse.urlparse(url).hostname == "uploads.linear.app":
+        headers["Authorization"] = keychain_token(cfg)
+    req = urllib.request.Request(url, headers=headers, method="GET")
+    try:
+        with urllib.request.urlopen(req, timeout=120) as response, dest.open("wb") as out:
+            while True:
+                chunk = response.read(1024 * 1024)
+                if not chunk:
+                    break
+                out.write(chunk)
+            out.flush()
+            os.fsync(out.fileno())
+    except Exception as exc:
+        raise InboundError("ATTACHMENT_DOWNLOAD_FAILURE", f"download failed: {exc}", 69) from exc
+    os.chmod(dest, 0o600)
+
+
+def attestation(kind: str, payload: dict) -> Path:
+    ATTESTATIONS.mkdir(parents=True, exist_ok=True)
+    stamp = utc_now().strftime("%Y%m%dT%H%M%SZ")
+    path = ATTESTATIONS / f"{stamp}-{kind}-{uuid.uuid4().hex[:10]}.json"
+    atomic_json(path, payload)
+    return path
+
+
+def verify_and_stage(cfg: dict, *, stage: bool) -> dict:
+    comment, manifest, comments = discover_active_command(cfg)
+    state = local_state()
+    if manifest["replay_id"] in state.get("accepted_replay_ids", []):
+        raise InboundError("REPLAY_FAILURE", "command replay ID was already accepted")
+    pending = read_json(PENDING_PATH, None)
+    if isinstance(pending, dict) and pending.get("replay_id") not in {None, manifest["replay_id"]}:
+        raise InboundError("PENDING_COMMAND_FAILURE", "a different command is already pending")
+    verify_repo(cfg, manifest)
+    STAGING.mkdir(parents=True, exist_ok=True)
+    with tempfile.NamedTemporaryFile(prefix="download-", suffix=".sgcap", dir=STAGING, delete=False) as tmp:
+        temp_path = Path(tmp.name)
+    source_identity: dict[str, object] = {"transport": manifest["transport"]}
+    try:
+        if manifest["transport"] in {COMMENT_CHUNK_TRANSPORT, COMMENT_PARTS_TRANSPORT}:
+            source_identity["chunk_comment_ids"] = reconstruct_comment_chunks(
+                cfg, comment, manifest, comments, temp_path
+            )
+            source_identity["chunk_set_id"] = manifest["chunk_set_id"]
+        elif manifest["transport"] == LOCAL_BUNDLE_TRANSPORT:
+            source = copy_local_bundle(manifest, temp_path)
+            source_identity["local_bundle_filename"] = source.name
+            source_identity["local_bundle_sha256"] = sha256_file(source)
+        else:
+            attachments = paginate_attachments(cfg)
+            matches = [a for a in attachments if a.get("title") == manifest["capsule_filename"]]
+            if len(matches) != 1:
+                raise InboundError("ATTACHMENT_SELECTION_FAILURE", f"expected one attachment titled {manifest['capsule_filename']!r}; found {len(matches)}")
+            download_attachment(cfg, matches[0], temp_path)
+            source_identity["attachment_id"] = matches[0].get("id")
+        size = temp_path.stat().st_size
+        digest = sha256_file(temp_path)
+        if size != manifest["capsule_size"]:
+            raise InboundError("CAPSULE_SIZE_FAILURE", f"expected {manifest['capsule_size']}, got {size}")
+        if digest != manifest["capsule_sha256"]:
+            raise InboundError("CAPSULE_HASH_FAILURE", f"expected {manifest['capsule_sha256']}, got {digest}")
+        supervisor = import_supervisor()
+        capsule = supervisor.inspect_capsule(temp_path)
+        supervisor.validate_capsule_cross_ledger(capsule)
+        if capsule.sha256 != manifest["capsule_sha256"] or capsule.size != manifest["capsule_size"]:
+            raise InboundError("CAPSULE_IDENTITY_FAILURE", "Supervisor capsule identity mismatch")
+        run = capsule.run
+        if run.get("project") != cfg["project"] or run.get("issue") != cfg["issue"]:
+            raise InboundError("CAPSULE_SCOPE_FAILURE", "capsule project/issue mismatch")
+        baseline = run.get("baseline") or {}
+        if baseline.get("head") != manifest["expected_head"]:
+            raise InboundError("CAPSULE_BASELINE_FAILURE", "capsule baseline differs from command")
+        result = {
+            "state": "VERIFIED" if not stage else "STAGED",
+            "verified_at": utc_now().isoformat().replace("+00:00", "Z"),
+            "authorization_comment_id": comment["id"],
+            **source_identity,
+            **manifest,
+        }
+        if stage:
+            control = Path(str(cfg["control_root"])).expanduser()
+            inbox = control / "Inbox"
+            inbox.mkdir(parents=True, exist_ok=True)
+            existing = [p for p in inbox.iterdir() if p.is_file() and not p.name.startswith(".") and p.suffix.lower() in {".sgcap", ".zip"}]
+            if existing:
+                raise InboundError("INBOX_ADMISSION_FAILURE", f"Inbox is not empty: {[p.name for p in existing]}")
+            destination = inbox / manifest["capsule_filename"]
+            os.replace(temp_path, destination)
+            with destination.open("rb") as src:
+                os.fsync(src.fileno())
+            result["staged_path"] = str(destination)
+            atomic_json(PENDING_PATH, result)
+        attestation("verified" if not stage else "staged", result)
+        return result
+    finally:
+        with contextlib.suppress(FileNotFoundError):
+            temp_path.unlink()
+
+
+def finalize(supervisor_rc: int, relay_rc: int) -> dict:
+    pending = read_json(PENDING_PATH, None)
+    if not isinstance(pending, dict):
+        return {"state": "NO_INBOUND_COMMAND"}
+    state = local_state()
+    replay_id = pending.get("replay_id")
+    if replay_id and replay_id not in state["accepted_replay_ids"]:
+        state["accepted_replay_ids"].append(replay_id)
+    state["accepted_replay_ids"] = state["accepted_replay_ids"][-500:]
+    terminal = {
+        **pending,
+        "state": "TERMINAL",
+        "supervisor_rc": supervisor_rc,
+        "relay_rc": relay_rc,
+        "terminal_at": utc_now().isoformat().replace("+00:00", "Z"),
+    }
+    state["last"] = terminal
+    atomic_json(STATE_PATH, state)
+    attestation("terminal", terminal)
+    if pending.get("transport") == LOCAL_BUNDLE_TRANSPORT:
+        filename = str(pending.get("capsule_filename", ""))
+        if FILENAME_RE.fullmatch(filename) and Path(filename).name == filename:
+            cached = LOCAL_BUNDLES / filename
+            if cached.is_symlink():
+                terminal["local_bundle_cache_cleanup"] = "REJECTED_SYMLINK"
+            elif cached.exists():
+                cached.unlink()
+                terminal["local_bundle_cache_cleanup"] = "CONSUMED"
+            else:
+                terminal["local_bundle_cache_cleanup"] = "ALREADY_ABSENT"
+            state["last"] = terminal
+            atomic_json(STATE_PATH, state)
+    with contextlib.suppress(FileNotFoundError):
+        PENDING_PATH.unlink()
+    return terminal
+
+
+def command_status(cfg: dict) -> dict:
+    snap = issue_snapshot(cfg)
+    pending = read_json(PENDING_PATH, None)
+    state = local_state()
+    try:
+        comment, manifest, _ = discover_active_command(cfg)
+        command = {"comment_id": comment["id"], **manifest}
+    except InboundError as exc:
+        command = {"classification": exc.classification, "message": str(exc)}
+    return {
+        "issue": cfg["issue"],
+        "project": cfg["project"],
+        "status": (snap["target"].get("state") or {}).get("name"),
+        "active_children": snap["active_children"],
+        "pending": pending,
+        "last": state.get("last"),
+        "remote_command": command,
+    }
+
+
+def doctor(cfg: dict) -> dict:
+    checks: dict[str, object] = {}
+    if os.name != "posix" or sys.platform != "darwin":
+        raise InboundError("PLATFORM_FAILURE", "SysGrid inbound bootstrap requires macOS")
+    st = CONFIG_PATH.stat()
+    checks["config_mode"] = oct(stat.S_IMODE(st.st_mode))
+    if stat.S_IMODE(st.st_mode) & 0o077:
+        raise InboundError("CONFIGURATION_FAILURE", "config permissions are broader than 0600")
+    token = [REDACTED]
+    checks["keychain"] = f"PASS ({len(token)} characters)"
+    snap = issue_snapshot(cfg)
+    checks["linear"] = f"PASS ({snap['viewer'].get('name')})"
+    checks["authority"] = f"PASS ({cfg['master']} -> {cfg['issue']})"
+    control = Path(str(cfg["control_root"])).expanduser()
+    inbox = control / "Inbox"
+    inbox.mkdir(parents=True, exist_ok=True)
+    probe = inbox / f".inbound-doctor-{uuid.uuid4().hex}"
+    probe.write_bytes(b"")
+    probe.unlink()
+    checks["inbox"] = f"PASS ({inbox})"
+    LOCAL_BUNDLES.mkdir(parents=True, exist_ok=True)
+    os.chmod(LOCAL_BUNDLES, 0o700)
+    bundle_mode = stat.S_IMODE(LOCAL_BUNDLES.stat().st_mode)
+    if bundle_mode & 0o077:
+        raise InboundError("LOCAL_BUNDLE_PERMISSION_FAILURE", "local bundle cache permissions are broader than 0700")
+    checks["local_bundle_cache"] = f"PASS ({LOCAL_BUNDLES})"
+    repo = repository_path()
+    head = git_value(repo, "rev-parse", "HEAD")
+    origin = git_value(repo, "rev-parse", "origin/main")
+    checks["repository"] = f"PASS (HEAD={head[:12]}, origin/main={origin[:12]})"
+    if not SUPERVISOR_PATH.is_file() or SUPERVISOR_PATH.is_symlink():
+        raise InboundError("SUPERVISOR_IDENTITY_FAILURE", "supervisor missing or symlinked")
+    supervisor = import_supervisor()
+    if getattr(supervisor, "ENGINE_VERSION", None) != "1.1.1":
+        raise InboundError("SUPERVISOR_IDENTITY_FAILURE", "unexpected Stable Engine version")
+    checks["stable_engine"] = "PASS (1.1.1)"
+    state = local_state()
+    checks["replay_ledger"] = f"PASS ({len(state.get('accepted_replay_ids', []))} accepted)"
+    checks["remote_command"] = "NOT_ISSUED"
+    try:
+        comment, manifest, _ = discover_active_command(cfg)
+        checks["remote_command"] = f"ACTIVE ({comment['id']}, {manifest['capsule_filename']})"
+    except InboundError as exc:
+        if exc.classification != "COMMAND_SELECTION_FAILURE" or "found 0" not in str(exc):
+            checks["remote_command"] = f"NONE/REJECTED ({exc.classification}: {exc})"
+    return checks
+
+
+def self_test() -> dict:
+    example = {
+        "schema_version": SCHEMA_VERSION, "classification": CLASSIFICATION, "status": "ACTIVE",
+        "issue": "OUT-31", "master": "OUT-5", "project": "SysGrid",
+        "repository": "kimhw8084/system_grid", "product_attempt": "PA15",
+        "repair_surface": "test/fixture/assertion", "capsule_filename": "XX.sgcap",
+        "capsule_sha256": "a"*64, "capsule_size": 1, "expected_head": "b"*40,
+        "expected_origin_main": "b"*40, "principal_approval_comment_id": str(uuid.uuid4()),
+        "authorization_comment_id": str(uuid.uuid4()), "issued_at": "2026-08-05T18:00:00Z",
+        "expires_at": "2026-08-05T20:00:00Z", "replay_id": str(uuid.uuid4()),
+        "execution_mode": "pull-run"
+    }
+    body = MARKER_START + "\n```json\n" + json.dumps(example) + "\n```\n" + MARKER_END
+    parsed = extract_manifest({"id": example["authorization_comment_id"], "body": body})
+    assert parsed == example
+    assert SHA256_RE.fullmatch(example["capsule_sha256"])
+    assert FILENAME_RE.fullmatch(example["capsule_filename"])
+
+    principal = "principal"
+    approval_id = str(uuid.uuid4())
+    authorization_id = [REDACTED]
+    now = utc_now()
+    approval_comment = {
+        "id": approval_id,
+        "createdAt": (now - dt.timedelta(minutes=5)).isoformat().replace("+00:00", "Z"),
+        "user": {"id": principal},
+        "body": "EXPLICIT principal approval for PA15 VR2",
+    }
+    authorization_comment = [REDACTED]
+        "id": authorization_id,
+        "createdAt": (now - dt.timedelta(minutes=1)).isoformat().replace("+00:00", "Z"),
+        "user": {"id": principal},
+    }
+    local_command = {
+        **example,
+        "transport": LOCAL_BUNDLE_TRANSPORT,
+        "principal_approval_comment_id": approval_id,
+        "authorization_comment_id": authorization_id,
+        "issued_at": (now - dt.timedelta(minutes=1)).isoformat().replace("+00:00", "Z"),
+        "expires_at": (now + dt.timedelta(hours=1)).isoformat().replace("+00:00", "Z"),
+    }
+    local_cfg = {
+        "issue": "OUT-31", "master": "OUT-5", "project": "SysGrid",
+        "repository": "kimhw8084/system_grid", "principal_author_id": principal,
+    }
+    validated_local = validate_manifest(
+        local_cfg, authorization_comment, local_command, [approval_comment, authorization_comment]
+    )
+    assert validated_local["transport"] == LOCAL_BUNDLE_TRANSPORT
+
+    raw = bytes(range(256)) * 4
+    with tempfile.TemporaryDirectory() as tmp:
+        cache = Path(tmp) / "capsules"
+        cache.mkdir(mode=0o700)
+        source = cache / "LOCAL_SELF_TEST.sgcap"
+        source.write_bytes(raw)
+        os.chmod(source, 0o600)
+        local_manifest = {
+            "capsule_filename": source.name,
+            "capsule_sha256": hashlib.sha256(raw).hexdigest(),
+            "capsule_size": len(raw),
+        }
+        dest = Path(tmp) / "copied.sgcap"
+        selected = copy_local_bundle(local_manifest, dest, cache_root=cache)
+        assert selected == source and dest.read_bytes() == raw
+        source.write_bytes(raw + b"tamper")
+        try:
+            copy_local_bundle(local_manifest, dest, cache_root=cache)
+            raise AssertionError("tampered local bundle was accepted")
+        except InboundError as exc:
+            assert exc.classification in {"LOCAL_BUNDLE_SIZE_FAILURE", "LOCAL_BUNDLE_HASH_FAILURE"}
+
+    encoded = base64.b64encode(raw).decode("ascii")
+    parts = [encoded[(len(encoded) * i) // COMMENT_CHUNK_COUNT:(len(encoded) * (i + 1)) // COMMENT_CHUNK_COUNT] for i in range(COMMENT_CHUNK_COUNT)]
+    capsule_sha = hashlib.sha256(raw).hexdigest()
+    encoded_sha = hashlib.sha256(encoded.encode("ascii")).hexdigest()
+    chunk_set_id = str(uuid.uuid4())
+    command_comment = {"id": str(uuid.uuid4()), "createdAt": "2026-08-05T19:00:30Z", "user": {"id": "principal"}}
+    manifest = {
+        "capsule_filename": "SELF_TEST.sgcap", "capsule_sha256": capsule_sha,
+        "capsule_size": len(raw), "chunk_set_id": chunk_set_id,
+        "chunk_count": COMMENT_CHUNK_COUNT, "encoded_sha256": encoded_sha,
+    }
+    cfg = {"issue": "OUT-31", "project": "SysGrid", "principal_author_id": "principal"}
+    comments = []
+    for index, part in enumerate(parts, start=1):
+        chunk = {
+            "schema_version": CHUNK_SCHEMA_VERSION,
+            "classification": CHUNK_CLASSIFICATION,
+            "issue": "OUT-31",
+            "project": "SysGrid",
+            "capsule_filename": manifest["capsule_filename"],
+            "capsule_sha256": capsule_sha,
+            "capsule_size": len(raw),
+            "chunk_set_id": chunk_set_id,
+            "chunk_index": index,
+            "chunk_count": COMMENT_CHUNK_COUNT,
+            "chunk_sha256": hashlib.sha256(part.encode("ascii")).hexdigest(),
+            "encoded_sha256": encoded_sha,
+            "data_b64": part,
+        }
+        comments.append({
+            "id": str(uuid.uuid4()),
+            "createdAt": f"2026-08-05T19:00:{index:02d}Z",
+            "user": {"id": "principal"},
+            "body": CHUNK_MARKER_START + "\n```json\n" + json.dumps(chunk, sort_keys=True) + "\n```\n" + CHUNK_MARKER_END,
+        })
+    with tempfile.TemporaryDirectory() as tmp:
+        dest = Path(tmp) / "self-test.sgcap"
+        ids = reconstruct_comment_chunks(cfg, command_comment, manifest, comments, dest)
+        assert dest.read_bytes() == raw
+        assert len(ids) == COMMENT_CHUNK_COUNT
+        try:
+            reconstruct_comment_chunks(cfg, command_comment, manifest, comments[:-1], dest)
+            raise AssertionError("missing chunk was accepted")
+        except InboundError as exc:
+            assert exc.classification == "CHUNK_SELECTION_FAILURE"
+        duplicate = comments + [dict(comments[-1], id=str(uuid.uuid4()), createdAt="2026-08-05T19:00:09Z")]
+        try:
+            reconstruct_comment_chunks(cfg, command_comment, manifest, duplicate, dest)
+            raise AssertionError("duplicate chunk was accepted")
+        except InboundError as exc:
+            assert exc.classification in {"CHUNK_SELECTION_FAILURE", "CHUNK_DUPLICATE_FAILURE"}
+    part_count = 32
+    part_values = [encoded[(len(encoded) * i) // part_count:(len(encoded) * (i + 1)) // part_count] for i in range(part_count)]
+    part_manifest = dict(manifest, chunk_set_id=str(uuid.uuid4()), chunk_count=part_count)
+    part_comments = []
+    for index, part in enumerate(part_values, start=1):
+        item = {
+            "schema_version": CHUNK_SCHEMA_VERSION, "classification": CHUNK_CLASSIFICATION,
+            "issue": "OUT-31", "project": "SysGrid",
+            "capsule_filename": part_manifest["capsule_filename"], "capsule_sha256": capsule_sha,
+            "capsule_size": len(raw), "chunk_set_id": part_manifest["chunk_set_id"],
+            "chunk_index": index, "chunk_count": part_count,
+            "chunk_sha256": hashlib.sha256(part.encode("ascii")).hexdigest(),
+            "encoded_sha256": encoded_sha, "data_b64": part,
+        }
+        part_comments.append({
+            "id": str(uuid.uuid4()), "createdAt": f"2026-08-05T19:01:{index:02d}Z",
+            "user": {"id": "principal"},
+            "body": CHUNK_MARKER_START + "\n" + json.dumps(item, sort_keys=True) + "\n" + CHUNK_MARKER_END,
+        })
+    with tempfile.TemporaryDirectory() as tmp:
+        dest = Path(tmp) / "parts-self-test.sgcap"
+        ids = reconstruct_comment_chunks(cfg, {**command_comment, "createdAt": "2026-08-05T19:02:00Z"}, part_manifest, part_comments, dest)
+        assert dest.read_bytes() == raw and len(ids) == part_count
+        damaged = [dict(c) for c in part_comments]
+        damaged[9] = dict(damaged[9], body=damaged[9]["body"].replace(part_values[9][:8], "AAAAAAAA", 1))
+        try:
+            reconstruct_comment_chunks(cfg, {**command_comment, "createdAt": "2026-08-05T19:02:00Z"}, part_manifest, damaged, dest)
+            raise AssertionError("damaged 32-part transport was accepted")
+        except InboundError as exc:
+            assert exc.classification == "CHUNK_HASH_FAILURE"
+    return {
+        "parser": "PASS",
+        "schema": "PASS",
+        "hash": "PASS",
+        "comment_chunks": "PASS",
+        "strict_base64": "PASS",
+        "missing_chunk_rejection": "PASS",
+        "duplicate_chunk_rejection": "PASS",
+        "small_comment_parts_32": "PASS",
+        "small_part_tamper_rejection": "PASS",
+        "local_bundle_manifest": "PASS",
+        "local_bundle_copy": "PASS",
+        "local_bundle_tamper_rejection": "PASS",
+    }
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser(prog="sysgrid_linear_inbound")
+    sub = parser.add_subparsers(dest="command", required=True)
+    sub.add_parser("doctor")
+    sub.add_parser("command-status")
+    p_pull = sub.add_parser("pull")
+    p_pull.add_argument("--stage", action="store_true")
+    p_fin = sub.add_parser("finalize")
+    p_fin.add_argument("--supervisor-rc", type=int, required=True)
+    p_fin.add_argument("--relay-rc", type=int, required=True)
+    sub.add_parser("self-test")
+    args = parser.parse_args()
+    STATE_ROOT.mkdir(parents=True, exist_ok=True)
+    os.chmod(STATE_ROOT, 0o700)
+    LOCK_PATH.touch(mode=0o600, exist_ok=True)
+    try:
+        with LOCK_PATH.open("r+") as lock:
+            fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
+            if args.command == "self-test":
+                result = self_test()
+            else:
+                cfg = load_config()
+                if args.command == "doctor":
+                    result = doctor(cfg)
+                elif args.command == "command-status":
+                    result = command_status(cfg)
+                elif args.command == "pull":
+                    result = verify_and_stage(cfg, stage=args.stage)
+                elif args.command == "finalize":
+                    result = finalize(args.supervisor_rc, args.relay_rc)
+                else:
+                    raise AssertionError(args.command)
+        print(json.dumps(result, indent=2, sort_keys=True))
+        return 0
+    except BlockingIOError:
+        print("INBOUND_LOCK_FAILURE: another inbound operation is active", file=sys.stderr)
+        return 75
+    except InboundError as exc:
+        payload = {"classification": exc.classification, "message": str(exc), "at": utc_now().isoformat().replace("+00:00", "Z")}
+        with contextlib.suppress(Exception):
+            attestation("rejected", payload)
+        print(f"{exc.classification}: {exc}", file=sys.stderr)
+        return exc.exit_code
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

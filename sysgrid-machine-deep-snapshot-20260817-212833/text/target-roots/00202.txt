@@ -1,0 +1,43 @@
+ORIGINAL_PATH: /Users/haewonkim/.local/share/sysgrid-supervisor/v2.1.2/README.md
+ORIGINAL_SHA256: 87caf8f07e8e3bff3d715e76638ffae98c4004ffc81c3897aa1fa4bb296065ee
+================================================================================
+# SysGrid Execution Supervisor v2.1.2
+
+This is the consolidated, fail-closed qualification candidate for exact SysGrid Stable Engine v1.0.4 (`ab63bb20c0de32771e20b0159475205f685f28910a0956c217fb3693c02f96e1`). Release identity, test count, progress events, resource policy, documentation, qualification evidence, and package metadata are generated from `RELEASE_SOURCE.json` into manifest-covered `RELEASE_DESCRIPTOR.json`.
+
+## Operator action
+
+```bash
+rm -rf SYSGRID_EXECUTION_SUPERVISOR_v2.1.2 && unzip -q SYSGRID_EXECUTION_SUPERVISOR_v2.1.2.zip && cd SYSGRID_EXECUTION_SUPERVISOR_v2.1.2 && ./INSTALL_AND_QUALIFY.command
+```
+
+The installer discovers a byte-identical issued archive from bounded common locations regardless of filename or reconstructs the exact deterministic archive from the manifest-verified extracted tree. It then proves byte identity, runs the final-byte suite from released and staged trees, preserves the accepted Stable Engine, proves live Telegram delivery, installs atomically, and publishes one qualification ZIP. It never starts a product mutation.
+
+## Normal operation after independent PASS
+
+```bash
+sg
+sgs
+sgwatch
+sg notification-test
+sg recover-artifact <run-id>
+```
+
+## Consolidated guarantees
+
+- Capsule ZIP, manifest, schema, state ledgers, protected files, patch paths, recipes, delivery branch, and upstream are cross-checked before engine launch.
+- One exact engine invocation; complete output correlation; interrupted-run convergence; no ambiguous mutation replay.
+- Full local telemetry for 24 registered platform/product events, with at most three concise Telegram messages per run: start, high-level progress, and completion.
+- Engine health is sampled every 120 seconds for `sgs` and evidence, without Telegram heartbeat spam.
+- Every review or diagnostic ZIP is stored by content hash and immutable run identity; preflight diagnostics never overwrite the canonical product-review ZIP.
+- Exact post-state duplicate mutation launches are rejected before engine execution, and `sg recover-artifact <run-id>` republishes prior verified evidence without product replay.
+- Two execution profiles: `development_campaign` for fast risk-targeted cumulative work with no commit/push, and `promotion_qualification` for the one complete release-grade gate.
+- Declarative campaign target scope is validated before launch and exported to trusted recipes without granting runtime command authority.
+- Resource-budget exports for backend, frontend, and E2E workers; the capsule and trusted recipe remain authoritative for actual product parallelism.
+- Trusted recipes may append validated run-bound JSONL progress to `SYSGRID_PROGRESS_FILE`; malformed progress is recorded but cannot terminate or replay an already authorized run.
+- Runtime history captures command durations, event timeline, process metrics, resource plan, and progress diagnostics without altering engine evidence.
+- Evidence ZIPs store already-compressed media without redundant recompression and deterministically deflate text evidence.
+
+## Trust boundary
+
+The supervisor does not author product source, invent commands, skip gates, weaken assertions, force patches, commit, or push. Exact product mutation and delivery remain owned by the independently qualified Stable Engine and immutable capsule.

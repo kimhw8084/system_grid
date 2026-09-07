@@ -1,0 +1,3 @@
+$ otool -L /Users/haewonkim/.local/bin/sg
+
+/Users/haewonkim/.local/bin/sg: is not an object file

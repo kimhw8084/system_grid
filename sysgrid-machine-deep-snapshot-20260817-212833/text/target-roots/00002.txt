@@ -1,0 +1,27 @@
+ORIGINAL_PATH: /Users/haewonkim/.local/share/sysgrid-delivery-v1.3.0/PACKAGE_IDENTITY.json
+ORIGINAL_SHA256: 81ec4359adf8139d31fb091a5e66949dd436ddd728e4819af2b6b0015b1b5dd6
+================================================================================
+{
+  "candidate": "1.3.0-rc4",
+  "classification": "SYSGRID_PRODUCT_FIRST_MIGRATION_IDENTITY",
+  "files": {
+    "install_product_first_v1.3.0_rc4.sh": "fd835ad6018a38b9ed16c09974dd01d11d00eb36a5ffbc2ea71cba3075fa87d8",
+    "sg": "8568fbb49e3664076d4f3c4871bfa520c675f6cc80f4be54dc9649d3a69b9360",
+    "sg_cli.py": "377bf5ddc09212c39217f7d0323a5f9c878aae2bd91323ef8c2333de4368e404",
+    "sg_git_credential.py": "9cc8c902eeca3903c80383e85b623f8576b4e17be531632a92c4d9a5a365837f",
+    "sg_runner.py": "12a03b9f5f95f8640b3cf8e80ac18aa93bae3dbe3de61193ce04eb756718b244",
+    "tests/test_product_first_core.py": "ddec043f181c006b5b75a4728b0d1d055271d85c952e7e3f6c2d7177102c34b8"
+  },
+  "isolated_core_tests": "35/35 PASS",
+  "law_manifest_sha256": "ca1204aace1cadb1617d9405609b0ba29fa5a36028ae27ec048c79eb165e4b36",
+  "machine_audit_result_sha256": "8a691fb933c354b82f4be526ff37990b51576326300ec63a83a67af7a427337a",
+  "package_content_identity_rule": "SHA256(sorted path\\0sha256\\0size\\n; excluding PACKAGE_MANIFEST.json and machine/PACKAGE_IDENTITY.json and __pycache__)",
+  "package_content_sha256": "714ec3be1ab034a165e9635b008509e9900100af407cacda84e60aec5db7f58c",
+  "pinned_github_cli": {
+    "macos_arm64_archive_sha256": "4f9bc1a5e77500737290a307b40b4c396a4d23729f55340f2a83f414410165a1",
+    "version": "2.94.0"
+  },
+  "schema_version": "1.3.0",
+  "status": "QUALIFICATION_CANDIDATE_NOT_ACTIVE",
+  "tdre_overlay_sha256": "addbeda746f3c2891197b82e05afef2efdf5ab2f0a26f3a2fddb399870af2a23"
+}

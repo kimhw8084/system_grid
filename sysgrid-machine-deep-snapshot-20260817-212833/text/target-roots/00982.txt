@@ -1,0 +1,439 @@
+ORIGINAL_PATH: /Users/haewonkim/.local/state/sysgrid-supervisor/runs/20260804T214512Z-86863-442000/patch.diff
+ORIGINAL_SHA256: d5d7c0193219e67a2aa1a6c74c1a7c4fef287a07812ddf5a55ba1980ba02c544
+================================================================================
+diff --git a/backend/app/api/tenants.py b/backend/app/api/tenants.py
+index 5d7e8a09c1572ae0ccc93875a1edb9b7e2507fb6..1e473a9c5a3570026bc501250046e67eecf214b9 100644
+--- a/backend/app/api/tenants.py
++++ b/backend/app/api/tenants.py
+@@ -423,6 +423,11 @@ async def ensure_tenant_runtime_schema(db_url: str) -> None:
+                     await conn.execute(text(f"ALTER TABLE {table_name} ADD COLUMN {column_name} {column_ddl} DEFAULT 1"))
+ 
+         await conn.execute(text("UPDATE far_failure_modes SET version = 1 WHERE version IS NULL"))
++        await conn.execute(text(
++            "UPDATE far_failure_modes "
++            "SET rpn = severity * occurrence * detection "
++            "WHERE rpn IS NULL OR rpn != severity * occurrence * detection"
++        ))
+         await conn.execute(text("UPDATE rca_records SET version = 1 WHERE version IS NULL"))
+ 
+ @router.post("/admin/create", response_model=TenantResponse)
+@@ -658,7 +663,11 @@ async def select_tenant(selection: UserTenantSelection, db: AsyncSession = Depen
+     if not access:
+         raise HTTPException(status_code=403, detail="Access denied to this tenant")
+ 
+-    # Update selection
++    tenant_url_result = await db.execute(select(Tenant.db_url).where(Tenant.id == selection.tenant_id))
++    tenant_url = tenant_url_result.scalar_one()
++    await ensure_tenant_runtime_schema(tenant_url)
++
++    # Update selection only after the tenant's runtime invariants are repaired.
+     await set_user_selected_tenant(db, user_id, selection.tenant_id)
+     await db.commit()
+     
+diff --git a/backend/app/services/far_service.py b/backend/app/services/far_service.py
+index da2d64dce2623889acfd880bf056865799b575a2..a3d8fec4f03883aca792bd4f687d3bbbbfed34e4 100644
+--- a/backend/app/services/far_service.py
++++ b/backend/app/services/far_service.py
+@@ -8,7 +8,7 @@ from typing import Any, Iterable, Sequence
+ from uuid import uuid4
+ 
+ from fastapi import HTTPException, Request, status
+-from sqlalchemy import delete, insert, select
++from sqlalchemy import delete, insert, or_, select, update
+ from sqlalchemy.ext.asyncio import AsyncSession
+ from sqlalchemy.orm import selectinload
+ 
+@@ -106,6 +106,29 @@ def risk_band(rpn: int) -> str:
+     return "Low"
+ 
+ 
++async def repair_mode_rpn_integrity(db: AsyncSession) -> int:
++    """Repair stale stored derived scores before FAR records leave the service boundary."""
++    canonical_rpn = (
++        models.FarFailureMode.severity
++        * models.FarFailureMode.occurrence
++        * models.FarFailureMode.detection
++    )
++    result = await db.execute(
++        update(models.FarFailureMode)
++        .where(
++            or_(
++                models.FarFailureMode.rpn.is_(None),
++                models.FarFailureMode.rpn != canonical_rpn,
++            )
++        )
++        .values(rpn=canonical_rpn)
++    )
++    repaired = int(result.rowcount or 0)
++    if repaired:
++        await db.commit()
++    return repaired
++
++
+ def canonical_status(value: str) -> str:
+     normalized = " ".join(str(value or "").split()).strip()
+     if normalized in FAR_STATUSES:
+@@ -278,6 +301,7 @@ def serialize_mode(mode: models.FarFailureMode, *, include_retired_nested: bool
+     causes = mode.causes if include_retired_nested else [x for x in mode.causes if not x.is_retired]
+     mitigations = mode.mitigations if include_retired_nested else [x for x in mode.mitigations if not x.is_retired]
+     prevention = mode.prevention_actions if include_retired_nested else [x for x in mode.prevention_actions if not x.is_retired]
++    canonical_rpn = calculate_rpn(mode.severity, mode.occurrence, mode.detection)
+     return {
+         "id": mode.id,
+         "system_name": mode.system_name,
+@@ -287,8 +311,8 @@ def serialize_mode(mode: models.FarFailureMode, *, include_retired_nested: bool
+         "severity": mode.severity,
+         "occurrence": mode.occurrence,
+         "detection": mode.detection,
+-        "rpn": mode.rpn,
+-        "risk_band": risk_band(mode.rpn),
++        "rpn": canonical_rpn,
++        "risk_band": risk_band(canonical_rpn),
+         "maturity_level": maturity_level(mode),
+         "status": canonical_status(mode.status),
+         "owner_user_id": mode.owner_user_id,
+@@ -498,7 +522,13 @@ async def save_executed_receipt(
+ 
+ 
+ async def list_modes(db: AsyncSession, *, system: str | None = None, include_retired: bool = False) -> list[dict[str, Any]]:
+-    stmt = mode_query(include_retired=include_retired).order_by(models.FarFailureMode.rpn.desc(), models.FarFailureMode.id.asc())
++    await repair_mode_rpn_integrity(db)
++    canonical_rpn = (
++        models.FarFailureMode.severity
++        * models.FarFailureMode.occurrence
++        * models.FarFailureMode.detection
++    )
++    stmt = mode_query(include_retired=include_retired).order_by(canonical_rpn.desc(), models.FarFailureMode.id.asc())
+     if system:
+         stmt = stmt.where(models.FarFailureMode.system_name == system)
+     result = await db.execute(stmt)
+diff --git a/backend/test_far_workflows.py b/backend/test_far_workflows.py
+index c5953f5ace1446c0fdd377f153489762c39e20ac..7456a6033e1b5c6ade707986d648926085f6e395 100644
+--- a/backend/test_far_workflows.py
++++ b/backend/test_far_workflows.py
+@@ -3,6 +3,10 @@ from __future__ import annotations
+ import uuid
+ 
+ import pytest
++from sqlalchemy import select, text
++from sqlalchemy.ext.asyncio import create_async_engine
++
++from app.models.config import Tenant
+ 
+ 
+ def idem(label: str) -> str:
+@@ -78,6 +82,45 @@ async def nested_preview_execute(
+     return execute.json()
+ 
+ 
++
++
++@pytest.mark.anyio
++async def test_far_list_repairs_stale_derived_rpn_before_serving_the_registry(seeded_admin_tenant, setup_db):
++    client = seeded_admin_tenant["client"]
++    headers = headers_for(seeded_admin_tenant)
++    mode = await create_mode(client, headers, title="Stale derived score repair")
++    expected_rpn = mode["severity"] * mode["occurrence"] * mode["detection"]
++
++    _config_engine, config_session_local = setup_db
++    async with config_session_local() as config_session:
++        db_url = (await config_session.execute(
++            select(Tenant.db_url).where(Tenant.id == seeded_admin_tenant["tenant_id"])
++        )).scalar_one()
++
++    repair_engine = create_async_engine(db_url)
++    try:
++        async with repair_engine.begin() as connection:
++            await connection.execute(
++                text("UPDATE far_failure_modes SET rpn = 1 WHERE id = :mode_id"),
++                {"mode_id": mode["id"]},
++            )
++
++        response = await client.get("/api/v1/far/modes", headers=headers)
++        assert response.status_code == 200, response.text
++        repaired = next(item for item in response.json() if item["id"] == mode["id"])
++        assert repaired["rpn"] == expected_rpn
++        assert repaired["risk_band"] == "Low"
++
++        async with repair_engine.connect() as connection:
++            stored_rpn = (await connection.execute(
++                text("SELECT rpn FROM far_failure_modes WHERE id = :mode_id"),
++                {"mode_id": mode["id"]},
++            )).scalar_one()
++        assert stored_rpn == expected_rpn
++    finally:
++        await repair_engine.dispose()
++
++
+ @pytest.mark.anyio
+ async def test_far_nested_lifecycle_preserves_history_and_requires_preview(seeded_admin_tenant):
+     client = seeded_admin_tenant["client"]
+diff --git a/frontend/src/components/FAR.tsx b/frontend/src/components/FAR.tsx
+index 819f61b4bde7bec292b1096a69ce9c476abb487b..2465cd8a4fa9015fc1b97eb7303a6ada604decef 100644
+--- a/frontend/src/components/FAR.tsx
++++ b/frontend/src/components/FAR.tsx
+@@ -271,7 +271,7 @@ export default function FAR() {
+   const [riskBandFilter, setRiskBandFilter] = useState('all')
+   const [ownerFilter, setOwnerFilter] = useState('all')
+   const [retirementReason, setRetirementReason] = useState('')
+-  const [retirementPreflight, setRetirementPreflight] = useState<{ id: number; title: string } | null>(null)
++  const [retirementPreflight, setRetirementPreflight] = useState<{ ids: number[]; title: string } | null>(null)
+   const [showMaturityHelp, setShowMaturityHelp] = useState(false)
+   const [showRpnHelp, setShowRpnHelp] = useState(false)
+   const [activeMetricHelp, setActiveMetricHelp] = useState<string | null>(null)
+@@ -600,10 +600,24 @@ export default function FAR() {
+     const id = Number(mode.id)
+     node?.setSelected?.(true)
+     setRetirementReason('')
+-    setRetirementPreflight({ id, title: String(mode.title || `Failure mode ${id}`) })
++    setRetirementPreflight({ ids: [id], title: String(mode.title || `Failure mode ${id}`) })
+     toast('Review the selected failure vector and enter a retirement reason before preview.')
+   }, [mutationBlocked])
+ 
++  const openSelectedRetirementPreflight = useCallback(() => {
++    if (mutationBlocked || selectedIds.length === 0) return
++    const selected = (modes || []).filter((mode) => selectedIds.includes(Number(mode.id)))
++    if (selected.length !== selectedIds.length) {
++      toast.error('One or more selected failure vectors are no longer available. Refresh and select them again.')
++      return
++    }
++    setRetirementReason('')
++    setRetirementPreflight({
++      ids: [...selectedIds],
++      title: selected.length === 1 ? String(selected[0].title || `Failure mode ${selectedIds[0]}`) : `${selected.length} selected failure vectors`,
++    })
++  }, [modes, mutationBlocked, selectedIds])
++
+   const columnDefs = useMemo(() => [
+     { 
+       colId: "selection",
+@@ -856,19 +870,21 @@ export default function FAR() {
+         )
+       }
+     },
+-    ...(workspaceMode === 'failure_modes' ? [] : [{
++    {
+       colId: 'analytical_focus',
+-      headerName: workspaceMode === 'causes' ? 'Causes' : workspaceMode === 'mitigations' ? 'Mitigations' : 'Prevention',
++      headerName: workspaceMode === 'causes' ? 'Causes' : workspaceMode === 'mitigations' ? 'Mitigations' : workspaceMode === 'prevention' ? 'Prevention' : 'Analytical Focus',
+       minWidth: 240,
+       flex: 1,
++      hide: workspaceMode === 'failure_modes',
++      lockVisible: workspaceMode !== 'failure_modes',
+       valueGetter: (p: any) => {
+-        const items = workspaceMode === 'causes' ? p.data?.causes : workspaceMode === 'mitigations' ? p.data?.mitigations : p.data?.prevention_actions
++        const items = workspaceMode === 'causes' ? p.data?.causes : workspaceMode === 'mitigations' ? p.data?.mitigations : workspaceMode === 'prevention' ? p.data?.prevention_actions : []
+         return (items || []).map((item: any) => item?.cause_text || item?.description || item?.action_text || item?.title || item?.id).filter(Boolean).join(' · ') || 'None'
+       },
+       cellClass: 'text-left text-slate-300',
+       headerClass: 'text-left',
+       filter: 'agTextColumnFilter',
+-    }]),
++    },
+     {
+       field: "linked_rcas",
+       headerName: "Incidents",
+@@ -1013,10 +1029,22 @@ export default function FAR() {
+     })
+   }, [canonicalColumnLayoutState])
+ 
++  const synchronizeAnalyticalFocus = useCallback((api: any = gridRef.current?.api) => {
++    if (!api) return false
++    const active = workspaceMode !== 'failure_modes'
++    const column = api.getColumn?.('analytical_focus')
++    if (!column) return false
++    if (column.isVisible?.() !== active) api.setColumnsVisible?.(['analytical_focus'], active)
++    if (active) api.ensureColumnVisible?.('analytical_focus', 'end')
++    api.refreshHeader?.()
++    return true
++  }, [workspaceMode])
++
+   const farGridRuntime = useMemo(() => ({
+     preserveExplicitColumnWidths: true,
+     handleGridReady: (event: any) => {
+       applyInitialColumnLayout(event.api)
++      synchronizeAnalyticalFocus(event.api)
+     },
+     handleColumnResized: captureColumnState,
+     handleColumnMoved: captureColumnState,
+@@ -1024,34 +1052,13 @@ export default function FAR() {
+     handleColumnPinned: captureColumnState,
+     handleColumnVisible: captureColumnState,
+     handleSortChanged: captureColumnState,
+-  }), [applyInitialColumnLayout, captureColumnState])
++  }), [applyInitialColumnLayout, captureColumnState, synchronizeAnalyticalFocus])
+ 
+   useEffect(() => {
+-    if (workspaceMode === 'failure_modes') return
+-    let cancelled = false
+-    let frame = 0
+-    let attempts = 0
+-    const revealAnalyticalFocus = () => {
+-      if (cancelled) return
+-      const api = gridRef.current?.api
+-      const gridColumns = api?.getAllGridColumns?.()
+-      const analyticalColumnReady = !Array.isArray(gridColumns)
+-        || gridColumns.some((column: any) => column?.getColId?.() === 'analytical_focus')
+-      if (api?.ensureColumnVisible && analyticalColumnReady) {
+-        api.ensureColumnVisible('analytical_focus', 'end')
+-        api.refreshHeader?.()
+-      }
+-      attempts += 1
+-      if (attempts < 36) frame = window.requestAnimationFrame(revealAnalyticalFocus)
+-    }
+-    frame = window.requestAnimationFrame(revealAnalyticalFocus)
+-    const fallback = window.setTimeout(revealAnalyticalFocus, 650)
+-    return () => {
+-      cancelled = true
+-      window.cancelAnimationFrame(frame)
+-      window.clearTimeout(fallback)
+-    }
+-  }, [columnDefs, workspaceMode])
++    synchronizeAnalyticalFocus()
++    const frame = window.requestAnimationFrame(() => synchronizeAnalyticalFocus())
++    return () => window.cancelAnimationFrame(frame)
++  }, [columnLayoutState, synchronizeAnalyticalFocus])
+ 
+   // Advanced Metrics Calculation
+   const metrics = useMemo(() => {
+@@ -1135,7 +1142,6 @@ export default function FAR() {
+     <OperationalWorkspaceShell
+       archetype="analytical"
+       workspace="far"
+-      className="min-w-0 overflow-hidden [contain:inline-size]"
+       header={{
+         eyebrow: 'Analysis',
+         title: (
+@@ -1182,9 +1188,9 @@ export default function FAR() {
+           <ToolbarButton disabled={mutationBlocked} onClick={() => !mutationBlocked && setShowImportModal(true)} title={mutationBlocked ? "Read-only offline/degraded mode" : "Import Bulk Risk Data"}><Upload size={14} /> Import</ToolbarButton>
+           <ToolbarButton
+             variant="danger"
+-            disabled={mutationBlocked || selectedIds.length === 0 || retirementReason.trim().length < 3}
+-            onClick={() => requestBulkPreview({ action: 'delete', payload: { reason: retirementReason.trim() } })}
+-            title="Preview retirement of selected failure vectors"
++            disabled={mutationBlocked || selectedIds.length === 0}
++            onClick={openSelectedRetirementPreflight}
++            title={mutationBlocked ? "Read-only offline/degraded mode" : "Review selected failure vectors before retirement preview"}
+           ><Trash2 size={14} /> Retire Selected{selectedIds.length ? ` (${selectedIds.length})` : ''}</ToolbarButton>
+           <ToolbarButton variant="danger" disabled={mutationBlocked} onClick={() => { if (mutationBlocked) return; selectMode(null); setShowWizard(true); }}><ShieldAlert size={14} /> Add Failure Mode</ToolbarButton>
+         </ToolbarGroup>
+@@ -1249,17 +1255,6 @@ export default function FAR() {
+               </div>
+             </div>
+           ) : null}
+-          {selectedIds.length ? (
+-            <label className="flex shrink-0 items-center gap-2 rounded-lg border border-rose-500/20 bg-rose-500/5 px-3 py-1">
+-              <span className="text-[9px] font-bold uppercase tracking-wider text-rose-300">Retirement reason</span>
+-              <input
+-                value={retirementReason}
+-                onChange={(event) => setRetirementReason(event.target.value)}
+-                placeholder="Required before preview"
+-                className="h-7 w-56 rounded-lg border border-white/10 bg-slate-950 px-2 text-[10px] text-white outline-none focus:border-rose-500"
+-              />
+-            </label>
+-          ) : null}
+         </div>
+       )}
+     >
+@@ -1381,6 +1376,8 @@ export default function FAR() {
+           rows={filteredModes || []}
+           columnDefs={columnDefs as any}
+           runtime={farGridRuntime}
++          onFirstDataRendered={(event) => synchronizeAnalyticalFocus(event.api)}
++          onRowDataUpdated={(event) => synchronizeAnalyticalFocus(event.api)}
+           quickFilterText={searchTerm}
+           fontSize={fontSize}
+           rowDensity={rowDensity}
+@@ -1634,7 +1631,7 @@ export default function FAR() {
+ 
+       <WorkspaceModal
+         isOpen={Boolean(retirementPreflight)}
+-        onClose={() => setRetirementPreflight(null)}
++        onClose={() => { setRetirementPreflight(null); setRetirementReason('') }}
+         size="standard"
+         icon={<ShieldAlert size={17} className="text-rose-300" />}
+         title="FAR bulk preview"
+@@ -1648,7 +1645,7 @@ export default function FAR() {
+         )}
+         footerRight={(
+           <>
+-            <ToolbarButton onClick={() => setRetirementPreflight(null)}>Cancel</ToolbarButton>
++            <ToolbarButton onClick={() => { setRetirementPreflight(null); setRetirementReason('') }}>Cancel</ToolbarButton>
+             <ToolbarButton
+               variant="danger"
+               disabled={!retirementPreflight || retirementReason.trim().length < 3}
+@@ -1657,7 +1654,7 @@ export default function FAR() {
+                 if (!retirementPreflight) return
+                 requestBulkPreview({
+                   action: 'delete',
+-                  ids: [retirementPreflight.id],
++                  ids: retirementPreflight.ids,
+                   payload: { reason: retirementReason.trim() },
+                 })
+                 setRetirementPreflight(null)
+@@ -1673,6 +1670,7 @@ export default function FAR() {
+             <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-slate-500">Requested action</p>
+             <p className="mt-2 text-sm font-semibold text-slate-100">Retire failure vectors</p>
+             <p className="pt-1 text-xs text-slate-400">{retirementPreflight?.title || 'Selected failure vector'}</p>
++            <p className="pt-1 text-[10px] font-semibold uppercase tracking-wider text-slate-500">{retirementPreflight?.ids.length || 0} failure vector{retirementPreflight?.ids.length === 1 ? '' : 's'} staged</p>
+           </div>
+           <label htmlFor="far-retirement-preflight-reason" className="block space-y-2">
+             <span className="text-[10px] font-bold uppercase tracking-[0.16em] text-slate-500">Retirement reason</span>
+diff --git a/frontend/tests/far-golden-workspace.spec.ts b/frontend/tests/far-golden-workspace.spec.ts
+index 768962b1a9e5ca4c0011dd9935288f460dc4c083..b1180d8aaa667b0c937e4d1113510cef27198abb 100644
+--- a/frontend/tests/far-golden-workspace.spec.ts
++++ b/frontend/tests/far-golden-workspace.spec.ts
+@@ -47,21 +47,19 @@ async function collectReachableHeaders(page: any, grid: any, required: string[])
+     await firstCell.click()
+     await page.keyboard.press('Home')
+     const observedScrollPositions: number[] = []
+-    for (let index = 0; index < 32; index += 1) {
++    const maximumKeyboardSteps = Math.min(512, Math.max(96, Math.ceil(metrics.maxScrollLeft / 10) + 32))
++    for (let index = 0; index < maximumKeyboardSteps; index += 1) {
+       await page.evaluate(() => new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve()))))
+       await collectInstantiatedHeaders()
+-      observedScrollPositions.push(await centerViewport.evaluate((element: HTMLElement) => element.scrollLeft))
+-      if (findMissingHeaders([...headers], required).length === 0 && Math.max(...observedScrollPositions) >= metrics.maxScrollLeft - 2) break
++      const position = await centerViewport.evaluate((element: HTMLElement) => element.scrollLeft)
++      observedScrollPositions.push(position)
++      if (position >= metrics.maxScrollLeft - 2 && findMissingHeaders([...headers], required).length === 0) break
+       await page.keyboard.press('ArrowRight')
+     }
+-    if (Math.max(...observedScrollPositions) < metrics.maxScrollLeft - 2) {
+-      await page.keyboard.press('End')
+-      await expect.poll(async () => Math.round(await centerViewport.evaluate((element: HTMLElement) => element.scrollLeft))).toBeGreaterThanOrEqual(metrics.maxScrollLeft - 2)
+-      await page.evaluate(() => new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve()))))
+-      await collectInstantiatedHeaders()
+-      observedScrollPositions.push(await centerViewport.evaluate((element: HTMLElement) => element.scrollLeft))
+-    }
+-    expect(Math.max(...observedScrollPositions)).toBeGreaterThanOrEqual(metrics.maxScrollLeft - 2)
++    expect(
++      Math.max(...observedScrollPositions),
++      `Keyboard traversal must reach the measured FAR maximum ${metrics.maxScrollLeft}. Observed: ${observedScrollPositions.join(', ')}`,
++    ).toBeGreaterThanOrEqual(metrics.maxScrollLeft - 2)
+     await page.keyboard.press('Home')
+     await expect.poll(async () => Math.round(await centerViewport.evaluate((element: HTMLElement) => element.scrollLeft))).toBeLessThanOrEqual(2)
+   }
+@@ -83,6 +81,7 @@ test.describe('FAR whole-view golden workspace', () => {
+     const workspace = await waitForFAR(page)
+ 
+     await expect(workspace.locator('[data-golden-command-bar="true"]')).toBeVisible()
++    await expect(workspace.getByRole('button', { name: 'Add Failure Mode' })).toBeEnabled()
+     await expect(workspace.locator('[data-far-summary="true"]')).toHaveCount(0)
+     await expect(workspace.locator('[data-far-mode-control="true"]')).toBeVisible()
+ 
+diff --git a/frontend/tests/far-workflows.spec.ts b/frontend/tests/far-workflows.spec.ts
+index 05f508ae791761ba43e6a861f9fe136b2bec71c8..e0036d85583396cb0d329635d4800bfada648c4a 100644
+--- a/frontend/tests/far-workflows.spec.ts
++++ b/frontend/tests/far-workflows.spec.ts
+@@ -77,7 +77,9 @@ test.describe('FAR workflows', () => {
+ 
+     await expect(page.getByRole('heading', { name: 'FAR bulk preview' })).toBeVisible()
+     await expect(page.getByText('Retire failure vectors', { exact: true })).toBeVisible()
+-    await page.getByRole('textbox', { name: 'Retirement reason' }).fill('Superseded failure vector retained for audit evidence')
++    const retirementReason = page.getByRole('textbox', { name: 'Retirement reason' })
++    await expect(retirementReason).toHaveCount(1)
++    await retirementReason.fill('Superseded failure vector retained for audit evidence')
+     await clickResilientButton(page, 'Prepare retirement preview')
+     await expect(page.getByRole('heading', { name: 'FAR bulk preview' })).toBeVisible()
+     await expect(page.getByText('Retire failure vectors', { exact: true })).toBeVisible()

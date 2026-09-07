@@ -1,0 +1,405 @@
+ORIGINAL_PATH: /Users/haewonkim/.local/state/sysgrid-supervisor/runs/20260801T191324Z-2710-594000/patch.diff
+ORIGINAL_SHA256: 5f1488ade16e5f6f09844cb987532d52b5a8ab32647dbe5ed1ac69048e5a19e6
+================================================================================
+diff --git a/backend/app/api/workspaces.py b/backend/app/api/workspaces.py
+index 4597a826d1b2d692f2aa1d6b4892abc8d1793093..bad7aabc0e80bac8fdd3fdec3fe67de48f1a5ebe 100644
+--- a/backend/app/api/workspaces.py
++++ b/backend/app/api/workspaces.py
+@@ -347,7 +347,7 @@ def sanitize_definition(workspace_key: str, raw: Any) -> dict[str, Any]:
+     if not isinstance(raw, dict):
+         raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Saved view definition must be an object.")
+     if len(json.dumps(raw, default=str, separators=(",", ":")).encode("utf-8")) > MAX_VIEW_DEFINITION_BYTES:
+-        raise HTTPException(status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE, detail="Saved view definition is too large.")
++        raise HTTPException(status_code=status.HTTP_413_CONTENT_TOO_LARGE, detail="Saved view definition is too large.")
+ 
+     schema = definition.state_schema
+     allowed_keys = set(schema.allowed_keys)
+diff --git a/frontend/src/components/shared/GoldenWorkspaceGeometryContract.test.ts b/frontend/src/components/shared/GoldenWorkspaceGeometryContract.test.ts
+index 33ddef957553e579a5346e59b68865858db142dc..43bb1a974185c4da6f5f6a5d9d052275f84c027a 100644
+--- a/frontend/src/components/shared/GoldenWorkspaceGeometryContract.test.ts
++++ b/frontend/src/components/shared/GoldenWorkspaceGeometryContract.test.ts
+@@ -22,8 +22,11 @@ describe('Golden workspace geometry contract', () => {
+     const layout = read('shared/LayoutPrimitives.tsx')
+     const commandBar = read('shared/WorkspaceCommandBar.tsx')
+ 
+-    expect(shell).toContain("GOLDEN_WORKSPACE_GEOMETRY_VERSION = '1'")
+-    expect(shell).toContain("GOLDEN_WORKSPACE_FRAME_CLASS = 'h-full min-h-0 min-w-0 w-full flex flex-col space-y-4 overflow-hidden'")
++    expect(shell).toContain("GOLDEN_WORKSPACE_GEOMETRY_VERSION = '2'")
++    expect(shell).toContain("GOLDEN_WORKSPACE_FRAME_CLASS = 'h-full min-h-0 min-w-0 w-full flex flex-col items-stretch space-y-4 overflow-hidden [&>*]:min-w-0 [&>*]:max-w-full'")
++    expect(shell).toContain("GOLDEN_GRID_BASE_CLASS = 'operational-grid-shell operational-grid flex flex-1 w-full max-w-full min-w-0 min-h-0 flex-col glass-panel overflow-hidden ag-theme-alpine-dark relative'")
++    expect(shell).toContain("GOLDEN_GRID_CONTENT_CLASS = 'flex min-h-0 min-w-0 w-full max-w-full flex-1 overflow-hidden [&>*]:min-h-0 [&>*]:min-w-0 [&>*]:max-w-full [&>*]:w-full'")
++    expect(shell).toContain('data-golden-grid-content="true"')
+     expect(shell).toContain("golden: 'rounded-lg'")
+     expect(shell).toContain("'attached-panel': 'rounded-t-none border-x border-b border-white/5'")
+     expect(shell).toContain('data-golden-geometry-version={GOLDEN_WORKSPACE_GEOMETRY_VERSION}')
+@@ -33,7 +36,7 @@ describe('Golden workspace geometry contract', () => {
+     expect(layout).toContain('data-golden-page-header="true"')
+     expect(layout).toContain('data-golden-page-toolbar="true"')
+ 
+-    expect(commandBar).toContain("GOLDEN_COMMAND_BAR_STACK_CLASS = 'space-y-4 min-w-0 w-full'")
++    expect(commandBar).toContain("GOLDEN_COMMAND_BAR_STACK_CLASS = 'space-y-4 min-w-0 w-full max-w-full self-stretch'")
+     expect(commandBar).toContain("GOLDEN_COMMAND_BAR_SECONDARY_CLASS = 'px-4 py-3'")
+     expect(commandBar).toContain("GOLDEN_FILTER_CHIP_ROW_CLASS = 'flex flex-wrap items-center gap-2'")
+     expect(commandBar).toContain('data-golden-command-bar="true"')
+@@ -41,7 +44,7 @@ describe('Golden workspace geometry contract', () => {
+ 
+   it.each(views)('%s cannot locally reconstruct fundamental shell geometry', (file) => {
+     const source = read(file)
+-    expect(source).not.toContain('h-full min-h-0 min-w-0 w-full flex flex-col space-y-4 overflow-hidden')
++    expect(source).not.toContain('h-full min-h-0 min-w-0 w-full flex flex-col items-stretch space-y-4 overflow-hidden')
+     expect(source).not.toContain('flex flex-wrap items-start justify-between gap-6')
+     expect(source).not.toContain('overflow-x-auto rounded-lg border border-white/5 bg-black/20 px-4 py-3')
+     expect(source).not.toContain('rounded-t-none border-x border-b border-white/5')
+diff --git a/frontend/src/components/shared/OperationalSavedViewsPanel.test.tsx b/frontend/src/components/shared/OperationalSavedViewsPanel.test.tsx
+index f63f50370f4950238abf6eab0b69bb46eeb7fc82..6ae302ab7ae78981e1f77aa9ec52cd9a08beda7c 100644
+--- a/frontend/src/components/shared/OperationalSavedViewsPanel.test.tsx
++++ b/frontend/src/components/shared/OperationalSavedViewsPanel.test.tsx
+@@ -308,10 +308,14 @@ describe('Operational anchored-panel interaction continuity', () => {
+       await waitFor(() => expect(panel).toHaveStyle({ visibility: 'visible' }))
+       const callsAfterInitialPosition = rectSpy.mock.calls.length
+ 
+-      panel.dispatchEvent(new Event('scroll', { bubbles: false }))
++      await act(async () => {
++        panel.dispatchEvent(new Event('scroll', { bubbles: false }))
++      })
+       expect(rectSpy.mock.calls.length).toBe(callsAfterInitialPosition)
+ 
+-      window.dispatchEvent(new Event('scroll'))
++      await act(async () => {
++        window.dispatchEvent(new Event('scroll'))
++      })
+       expect(rectSpy.mock.calls.length).toBeGreaterThan(callsAfterInitialPosition)
+     } finally {
+       rectSpy.mockRestore()
+diff --git a/frontend/src/components/shared/OperationalWorkspaceShells.tsx b/frontend/src/components/shared/OperationalWorkspaceShells.tsx
+index f1e707ea7297b5f9e78046f3021d38abdb995e34..472b52ac53435b9ae1ec81072490b05810d683a1 100644
+--- a/frontend/src/components/shared/OperationalWorkspaceShells.tsx
++++ b/frontend/src/components/shared/OperationalWorkspaceShells.tsx
+@@ -11,14 +11,16 @@ type WorkspaceFilterChip = { id: string; label: string; onRemove: () => void }
+ export type GoldenWorkspaceKey = 'monitoring' | 'assets' | 'services' | 'external' | 'network' | 'far' | 'research' | 'vendors'
+ export type GoldenWorkspaceArchetype = 'table' | 'hybrid' | 'analytical'
+ 
+-export const GOLDEN_WORKSPACE_GEOMETRY_VERSION = '1'
+-export const GOLDEN_WORKSPACE_FRAME_CLASS = 'h-full min-h-0 min-w-0 w-full flex flex-col space-y-4 overflow-hidden'
+-export const GOLDEN_GRID_BASE_CLASS = 'operational-grid-shell operational-grid flex flex-1 w-full min-w-0 min-h-0 flex-col glass-panel overflow-hidden ag-theme-alpine-dark relative'
++export const GOLDEN_WORKSPACE_GEOMETRY_VERSION = '2'
++export const GOLDEN_WORKSPACE_FRAME_CLASS = 'h-full min-h-0 min-w-0 w-full flex flex-col items-stretch space-y-4 overflow-hidden [&>*]:min-w-0 [&>*]:max-w-full'
++export const GOLDEN_GRID_BASE_CLASS = 'operational-grid-shell operational-grid flex flex-1 w-full max-w-full min-w-0 min-h-0 flex-col glass-panel overflow-hidden ag-theme-alpine-dark relative'
+ export const GOLDEN_GRID_VARIANT_CLASS = {
+   golden: 'rounded-lg',
+   'attached-panel': 'rounded-t-none border-x border-b border-white/5',
+ } as const
+ 
++export const GOLDEN_GRID_CONTENT_CLASS = 'flex min-h-0 min-w-0 w-full max-w-full flex-1 overflow-hidden [&>*]:min-h-0 [&>*]:min-w-0 [&>*]:max-w-full [&>*]:w-full'
++
+ export const getOperationalGridSurfaceStyle = (
+   fontSize: number,
+   height?: string
+@@ -136,7 +138,9 @@ export function OperationalGridSurface({
+           {loadingLabel}
+         </div>
+       ) : null}
+-      {children}
++      <div className={GOLDEN_GRID_CONTENT_CLASS} data-golden-grid-content="true">
++        {children}
++      </div>
+     </div>
+   )
+ }
+diff --git a/frontend/src/components/shared/WorkspaceCommandBar.tsx b/frontend/src/components/shared/WorkspaceCommandBar.tsx
+index b9e3b336e32012dae3448fed2388b0903f5d47ab..73d0a3bda86c4c6e1065e3682716c94523290b11 100644
+--- a/frontend/src/components/shared/WorkspaceCommandBar.tsx
++++ b/frontend/src/components/shared/WorkspaceCommandBar.tsx
+@@ -2,7 +2,7 @@ import React from 'react'
+ import { AnimatePresence, motion } from 'framer-motion'
+ import { PageToolbar } from './LayoutPrimitives'
+ 
+-export const GOLDEN_COMMAND_BAR_STACK_CLASS = 'space-y-4 min-w-0 w-full'
++export const GOLDEN_COMMAND_BAR_STACK_CLASS = 'space-y-4 min-w-0 w-full max-w-full self-stretch'
+ export const GOLDEN_COMMAND_BAR_SECONDARY_CLASS = 'px-4 py-3'
+ export const GOLDEN_FILTER_CHIP_ROW_CLASS = 'flex flex-wrap items-center gap-2'
+ 
+diff --git a/frontend/tests/golden-eight-seeded-visual-matrix.spec.ts b/frontend/tests/golden-eight-seeded-visual-matrix.spec.ts
+index 103f8e9a4730d17252dd8cc8d7c076bffcb88d75..b2de2ffd404c560d895f54b162708216545599a1 100644
+--- a/frontend/tests/golden-eight-seeded-visual-matrix.spec.ts
++++ b/frontend/tests/golden-eight-seeded-visual-matrix.spec.ts
+@@ -67,6 +67,11 @@ async function paintedPixelEvidence(locator: any) {
+   return locator.evaluate((element: HTMLElement) => {
+     const rect = element.getBoundingClientRect()
+     const style = getComputedStyle(element)
++    const intersects = (box: DOMRect) => box.bottom > rect.top && box.top < rect.bottom && box.right > rect.left && box.left < rect.right
++    const isPaintable = (node: HTMLElement, box: DOMRect) => {
++      const nodeStyle = getComputedStyle(node)
++      return intersects(box) && box.width > 1 && box.height > 1 && Number(nodeStyle.opacity || '1') > 0 && nodeStyle.visibility !== 'hidden' && nodeStyle.display !== 'none'
++    }
+     const rows = [...element.querySelectorAll<HTMLElement>('.ag-center-cols-container .ag-row')]
+       .map((row) => {
+         const box = row.getBoundingClientRect()
+@@ -81,19 +86,53 @@ async function paintedPixelEvidence(locator: any) {
+           opacity: Number(rowStyle.opacity || '1'),
+           visibility: rowStyle.visibility,
+           display: rowStyle.display,
+-          intersectsViewport: box.bottom > rect.top && box.top < rect.bottom && box.right > rect.left && box.left < rect.right,
++          intersectsViewport: intersects(box),
+         }
+       })
+     const headers = [...element.querySelectorAll<HTMLElement>('.ag-header-cell')].map((header) => {
+       const box = header.getBoundingClientRect()
+-      return { width: box.width, height: box.height, intersectsViewport: box.bottom > rect.top && box.top < rect.bottom }
++      return { text: header.textContent?.trim() || '', width: box.width, height: box.height, intersectsViewport: intersects(box), paintable: isPaintable(header, box) }
++    })
++    const cells = [...element.querySelectorAll<HTMLElement>('.ag-cell[role="gridcell"]')].map((cell) => {
++      const box = cell.getBoundingClientRect()
++      const text = cell.textContent?.replace(/\s+/g, ' ').trim() || ''
++      const visibleLeft = Math.max(box.left, rect.left)
++      const visibleRight = Math.min(box.right, rect.right)
++      const visibleTop = Math.max(box.top, rect.top)
++      const visibleBottom = Math.min(box.bottom, rect.bottom)
++      const sampleX = (visibleLeft + visibleRight) / 2
++      const sampleY = (visibleTop + visibleBottom) / 2
++      const hit = visibleRight > visibleLeft && visibleBottom > visibleTop
++        ? document.elementFromPoint(sampleX, sampleY)
++        : null
++      return {
++        colId: cell.getAttribute('col-id'),
++        text: text.slice(0, 160),
++        width: box.width,
++        height: box.height,
++        intersectsViewport: intersects(box),
++        paintable: isPaintable(cell, box),
++        hitTested: !!hit && (hit === cell || cell.contains(hit)),
++      }
+     })
++    const centerViewport = element.querySelector<HTMLElement>('.ag-center-cols-viewport')
++    const centerContainer = element.querySelector<HTMLElement>('.ag-center-cols-container')
++    const centerViewportWidth = centerViewport?.getBoundingClientRect().width || 0
++    const centerContentWidth = centerContainer?.getBoundingClientRect().width || 0
++    const visiblePopulatedCells = cells.filter((cell) => cell.text.length > 0 && cell.paintable && cell.hitTested).length
++    const paintedHeaderLabels = headers.filter((header) => header.text.length > 0 && header.paintable).length
+     return {
+       box: { left: rect.left, right: rect.right, top: rect.top, bottom: rect.bottom, width: rect.width, height: rect.height },
+       style: { display: style.display, visibility: style.visibility, opacity: Number(style.opacity || '1'), overflowX: style.overflowX, overflowY: style.overflowY },
+       rowCount: rows.length,
+       paintedRows: rows.filter((row) => row.intersectsViewport && row.width > 1 && row.height > 1 && row.opacity > 0 && row.visibility !== 'hidden' && row.display !== 'none').length,
+-      paintedHeaders: headers.filter((header) => header.intersectsViewport && header.width > 1 && header.height > 1).length,
++      paintedHeaders: headers.filter((header) => header.paintable).length,
++      paintedHeaderLabels,
++      visiblePopulatedCells,
++      centerViewportWidth,
++      centerContentWidth,
++      centerWidthRatio: centerViewportWidth > 0 ? centerContentWidth / centerViewportWidth : null,
++      cells: cells.slice(0, 80),
+       rows,
+     }
+   })
+@@ -159,12 +198,15 @@ test.describe.parallel('Golden Eight non-short-circuit populated validation matr
+ 
+         const paint = await paintedPixelEvidence(grid)
+         if (paint.paintedHeaders < 1) failures.push('no painted header cells in grid viewport')
++        if (paint.paintedHeaderLabels < 1) failures.push('no visible labeled header in grid viewport')
+         if (paint.paintedRows < 1) failures.push('no painted rows in grid viewport')
++        if (paint.visiblePopulatedCells < 1) failures.push('no visible populated cell survives viewport hit testing')
++        if (paint.centerWidthRatio !== null && paint.centerWidthRatio > 8) failures.push(`pathological center-column width ratio ${paint.centerWidthRatio}`)
+         if (paint.box.width < 100 || paint.box.height < 100) failures.push(`invalid grid viewport ${paint.box.width}x${paint.box.height}`)
+         if (paint.style.opacity <= 0 || paint.style.visibility === 'hidden' || paint.style.display === 'none') failures.push('grid hidden by computed style')
+ 
+         const result = {
+-          schemaVersion: 1,
++          schemaVersion: 2,
+           workspace: route.key,
+           route: route.path,
+           tenantName,
+diff --git a/frontend/tests/helpers/sentinel.ts b/frontend/tests/helpers/sentinel.ts
+index e25b40326651b7458ceb060585a2a941dc0f88a5..edcf7e641e1d1aea16880029f96f4ea2c14edb77 100644
+--- a/frontend/tests/helpers/sentinel.ts
++++ b/frontend/tests/helpers/sentinel.ts
+@@ -4,19 +4,18 @@ const KNOWN_BENIGN_BROWSER_DIAGNOSTICS = new Set([
+   'ResizeObserver loop completed with undelivered notifications.',
+ ])
+ 
+-export type StrictAppMonitoringFailures = string[] & { diagnostics: string[] }
++export type StrictAppMonitoring = { failures: string[]; diagnostics: string[] }
+ 
+ function isKnownBenignBrowserDiagnostic(message: string) {
+   return KNOWN_BENIGN_BROWSER_DIAGNOSTICS.has(message.trim())
+ }
+ 
+ export function installStrictAppMonitoring(page: Page) {
+-  const failures = [] as StrictAppMonitoringFailures
+-  failures.diagnostics = []
++  const monitoring: StrictAppMonitoring = { failures: [], diagnostics: [] }
+ 
+   const recordKnownDiagnostic = (source: 'console.error' | 'pageerror', message: string) => {
+     const diagnostic = `${source}: ${message.trim()}`
+-    failures.diagnostics.push(diagnostic)
++    monitoring.diagnostics.push(diagnostic)
+     console.info(`[known-browser-diagnostic] ${diagnostic}`)
+   }
+ 
+@@ -36,7 +35,7 @@ export function installStrictAppMonitoring(page: Page) {
+         }),
+       ).then((serializedArgs) => {
+         const details = serializedArgs.filter(Boolean).join(' | ')
+-        failures.push(`console.error: ${msg.text()}${details ? ` :: args=${details}` : ''}`)
++        monitoring.failures.push(`console.error: ${msg.text()}${details ? ` :: args=${details}` : ''}`)
+       })
+     }
+   })
+@@ -46,7 +45,7 @@ export function installStrictAppMonitoring(page: Page) {
+       recordKnownDiagnostic('pageerror', err.message)
+       return
+     }
+-    failures.push(`pageerror: ${err.message}`)
++    monitoring.failures.push(`pageerror: ${err.message}`)
+   })
+ 
+   page.on('response', async (response) => {
+@@ -57,16 +56,16 @@ export function installStrictAppMonitoring(page: Page) {
+     } catch {
+       details = ''
+     }
+-    failures.push(`api.${response.status()}: ${response.url()}${details ? ` :: ${details}` : ''}`)
++    monitoring.failures.push(`api.${response.status()}: ${response.url()}${details ? ` :: ${details}` : ''}`)
+   })
+ 
+-  return failures
++  return monitoring
+ }
+ 
+-export async function expectNoAppFailures(failures: StrictAppMonitoringFailures, context: string) {
++export async function expectNoAppFailures(monitoring: StrictAppMonitoring, context: string) {
+   expect(
+-    failures,
+-    `${context} emitted app failures:\n${failures.join('\n')}`,
++    monitoring.failures,
++    `${context} emitted app failures:\n${monitoring.failures.join('\n')}`,
+   ).toEqual([])
+ }
+ 
+diff --git a/frontend/tests/sentinel_comprehensive.spec.ts b/frontend/tests/sentinel_comprehensive.spec.ts
+index 4209f16b5025cc66187c6a9ab974a56d9b3bca54..b94a3e6cd920f8cf0cc978a9ba3ff58228b0f9d5 100644
+--- a/frontend/tests/sentinel_comprehensive.spec.ts
++++ b/frontend/tests/sentinel_comprehensive.spec.ts
+@@ -13,7 +13,7 @@ import { expectNoAppFailures, installStrictAppMonitoring } from './helpers/senti
+ 
+ test.describe('System Sentinel (Zero-Tolerance Coverage - Comprehensive)', () => {
+   test('proves the canonical gate is bound to the isolated frontend, API, and tenant', async ({ page, sysApi }, testInfo) => {
+-    const failures = installStrictAppMonitoring(page)
++    const appMonitoring = installStrictAppMonitoring(page)
+     const observedApiOrigins = new Set<string>()
+     const observedTenantIds = new Set<string>()
+     const browserTenantHeaders: string[] = []
+@@ -57,7 +57,7 @@ test.describe('System Sentinel (Zero-Tolerance Coverage - Comprehensive)', () =>
+     expect([...observedApiOrigins]).toEqual([new URL(testApiBase).origin])
+     expect([...observedTenantIds]).toEqual([testTenantId])
+     expect(browserTenantHeaders).toEqual([])
+-    await expectNoAppFailures(failures, 'canonical runtime binding')
++    await expectNoAppFailures(appMonitoring, 'canonical runtime binding')
+ 
+     await writeFile(testInfo.outputPath('canonical-runtime-binding.json'), `${JSON.stringify({
+       frontendOrigin: testFrontendOrigin,
+@@ -82,7 +82,7 @@ test.describe('System Sentinel (Zero-Tolerance Coverage - Comprehensive)', () =>
+ 
+   for (const view of views) {
+     test(`Comprehensive Check: ${view.name} loads the intended route`, async ({ page }) => {
+-      const failures = installStrictAppMonitoring(page)
++      const appMonitoring = installStrictAppMonitoring(page)
+       await resetBrowserState(page)
+       await page.goto(view.path)
+       await waitForAppIdle(page)
+@@ -92,7 +92,7 @@ test.describe('System Sentinel (Zero-Tolerance Coverage - Comprehensive)', () =>
+       } else {
+         await expect(page.locator('h1').first()).toBeVisible()
+       }
+-      await expectNoAppFailures(failures, `${view.name} route sentinel`)
++      await expectNoAppFailures(appMonitoring, `${view.name} route sentinel`)
+     })
+   }
+ })
+diff --git a/frontend/tests/shell-and-search.spec.ts b/frontend/tests/shell-and-search.spec.ts
+index 29fc06e363cce57cb0f71213ec59bbb30cf7b308..201518cc183497ddfabfe0d71adf10d8275e22dd 100644
+--- a/frontend/tests/shell-and-search.spec.ts
++++ b/frontend/tests/shell-and-search.spec.ts
+@@ -232,7 +232,7 @@ test.describe('Golden Eight rendered geometry', () => {
+       await waitForAppIdle(page)
+       const { shell, boxes } = await readGoldenGeometry(page)
+ 
+-      await expect(shell).toHaveAttribute('data-golden-geometry-version', '1')
++      await expect(shell).toHaveAttribute('data-golden-geometry-version', '2')
+       await expect(shell).toHaveAttribute('data-golden-archetype', route.archetype)
+       expect(boxes.header.y).toBeLessThan(boxes.commandBar.y)
+       expect(boxes.commandBar.bottom).toBeLessThanOrEqual(boxes.grid.y + 1)
+@@ -276,7 +276,7 @@ test.describe('Golden Eight rendered geometry', () => {
+       await waitForAppIdle(page)
+       const { shell, boxes } = await readGoldenGeometry(page)
+ 
+-      await expect(shell).toHaveAttribute('data-golden-geometry-version', '1')
++      await expect(shell).toHaveAttribute('data-golden-geometry-version', '2')
+       await expect(shell).toHaveAttribute('data-golden-archetype', route.archetype)
+       expect(boxes.header.y).toBeLessThan(boxes.commandBar.y)
+       expect(boxes.commandBar.bottom).toBeLessThanOrEqual(boxes.grid.y + 1)
+@@ -291,6 +291,11 @@ test.describe('Golden Eight rendered geometry', () => {
+       const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)
+       expect(overflow).toBeLessThanOrEqual(2)
+ 
++      const slug = route.path.slice(1)
++      await page.screenshot({
++        path: testInfo.outputPath(`${slug}-default-narrow.png`),
++        fullPage: true,
++      })
+     }
+   })
+ })
+diff --git a/frontend/tests/view-deeplink-matrix.spec.ts b/frontend/tests/view-deeplink-matrix.spec.ts
+index 8745075c52d5d91620e33742387d44f5661ff235..163a8ac5d6e5435e65508f9891297b2972b950fd 100644
+--- a/frontend/tests/view-deeplink-matrix.spec.ts
++++ b/frontend/tests/view-deeplink-matrix.spec.ts
+@@ -11,7 +11,7 @@ import { expectHealthyShell, expectNoAppFailures, installStrictAppMonitoring } f
+ test.describe('View deep-link matrix', () => {
+   test('opens critical deep links without crashing and resolves the targeted record', async ({ page, sysApi: request }) => {
+     await resetBrowserState(page)
+-    const failures = installStrictAppMonitoring(page)
++    const appMonitoring = installStrictAppMonitoring(page)
+     const { primary, secondary, service, knowledge, monitoring, far } = await seedOperationalScenario(request)
+     const project = await createProject(request, {
+       name: `PW-PROJ-DEEPLINK-${Date.now()}`,
+@@ -38,8 +38,8 @@ test.describe('View deep-link matrix', () => {
+     await page.keyboard.press('Enter')
+     await expect(page.getByRole('treegrid')).toContainText(primary.name)
+     await expectHealthyShell(page)
+-    await expectNoAppFailures(failures, 'asset deep link')
+-    failures.splice(0)
++    await expectNoAppFailures(appMonitoring, 'asset deep link')
++    appMonitoring.failures.splice(0)
+ 
+     await page.goto(`/services?id=${service.id}`)
+     await expect(page.getByRole('heading', { level: 3, name: service.name })).toBeVisible()
+@@ -71,6 +71,6 @@ test.describe('View deep-link matrix', () => {
+     await expect(page.getByText('Identity Sync Pipeline')).toBeVisible()
+ 
+     await expectHealthyShell(page)
+-    await expectNoAppFailures(failures, 'deep-link matrix')
++    await expectNoAppFailures(appMonitoring, 'deep-link matrix')
+   })
+ })
+diff --git a/frontend/tests/view-empty-states.spec.ts b/frontend/tests/view-empty-states.spec.ts
+index 2ce5dc6a5c7afa1ee2565bc858e3c9c0fe0ea7e3..bc1959f1e1740799e0b31f878b8f1ad16bf00480 100644
+--- a/frontend/tests/view-empty-states.spec.ts
++++ b/frontend/tests/view-empty-states.spec.ts
+@@ -6,7 +6,7 @@ import { expectHealthyShell, expectNoAppFailures, installStrictAppMonitoring } f
+ test.describe('View empty states', () => {
+   test('renders explicit empty-state guidance for deterministic no-result filters', async ({ page }) => {
+     await resetBrowserState(page)
+-    const failures = installStrictAppMonitoring(page)
++    const appMonitoring = installStrictAppMonitoring(page)
+     const impossibleTerm = `PW-NO-MATCH-${Date.now()}`
+ 
+     const expectations = [
+@@ -23,6 +23,6 @@ test.describe('View empty states', () => {
+       await expectHealthyShell(page)
+     }
+ 
+-    await expectNoAppFailures(failures, 'empty-state matrix')
++    await expectNoAppFailures(appMonitoring, 'empty-state matrix')
+   })
+ })

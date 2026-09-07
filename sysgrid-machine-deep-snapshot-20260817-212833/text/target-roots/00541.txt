@@ -1,0 +1,13 @@
+ORIGINAL_PATH: /Users/haewonkim/.local/state/sysgrid-supervisor/runs/20260803T141636Z-47121-836000/diagnostic/TRACEBACK.txt
+ORIGINAL_SHA256: 4d7ee009a10ab1284585b4b3491bc66e72a550c0b68aaa73c639257f8b79e16d
+================================================================================
+Traceback (most recent call last):
+  File "/Users/haewonkim/.local/share/sysgrid-campaign-platform/v1.1.1/payload/sysgrid_supervisor.py", line 2791, in run_supervised
+    capsule = inspect_capsule(original)
+              ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/haewonkim/.local/share/sysgrid-campaign-platform/v1.1.1/payload/sysgrid_supervisor.py", line 473, in inspect_capsule
+    run = validate_run_minimal(json.loads(read_zip_member(zf, "RUN.json").decode("utf-8", "strict")))
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/haewonkim/.local/share/sysgrid-campaign-platform/v1.1.1/payload/sysgrid_supervisor.py", line 396, in validate_run_minimal
+    raise SupervisorError("CAPSULE_SCHEMA_FAILURE", f"unsupported schema_version: {run.get('schema_version')!r}", 65)
+SupervisorError: unsupported schema_version: '1.0'

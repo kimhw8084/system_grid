@@ -1,0 +1,3262 @@
+ORIGINAL_PATH=/Users/haewonkim/.local/bin/sgd
+e2da4a773bfe7684de88c60f037130c4625ea82591d351a819e5955f09247478  /Users/haewonkim/.local/bin/sgd
+================================================================
+#!/usr/bin/env python3
+"""SysGrid Development Control.
+
+Repository-external development control for exact source awareness, deterministic
+local runtime, compact API diagnosis, persistent visual/programmatic audits,
+fresh evidence packaging, and phone-safe continuation.
+
+It never applies product patches, edits product source, stages, commits, pushes,
+or replaces the qualified ``sg`` delivery path.
+"""
+from __future__ import annotations
+
+import argparse
+import contextlib
+import datetime as dt
+import hashlib
+import io
+import json
+import os
+import re
+import shlex
+import shutil
+import signal
+import socket
+import subprocess
+import sys
+import tempfile
+import time
+import urllib.error
+import urllib.request
+import zipfile
+from collections import Counter, defaultdict
+from dataclasses import dataclass, field
+from pathlib import Path
+from typing import Any, Iterable, Sequence
+
+VERSION = "1.3.0"
+SCHEMA_VERSION = 3
+RUNTIME_SESSION = "sysgrid-dev-runtime"
+AUDIT_SESSION = "sysgrid-dev-audit"
+DEFAULT_BACKEND_HOST = "127.0.0.1"
+DEFAULT_BACKEND_PORT = 8000
+DEFAULT_FRONTEND_HOST = "127.0.0.1"
+DEFAULT_FRONTEND_PORT = 5173
+DEFAULT_USER_ID = "haewon.kim"
+MAX_SOURCE_FILE_BYTES = 4 * 1024 * 1024
+MAX_HTTP_BODY_BYTES = 4 * 1024 * 1024
+MAX_EVIDENCE_FILE_BYTES = 250 * 1024 * 1024
+
+EXCLUDED_DIR_NAMES = {
+    ".git", ".hg", ".svn", "node_modules", "venv", ".venv", "dist", "build",
+    "coverage", "playwright-report", "blob-report", "test-results", ".vite",
+    ".cache", "__pycache__", ".pytest_cache", ".mypy_cache", ".ruff_cache",
+    ".next", ".turbo",
+}
+EXCLUDED_FILE_SUFFIXES = {
+    ".db", ".sqlite", ".sqlite3", ".pem", ".key", ".p12", ".pfx", ".crt",
+    ".cer", ".der", ".zip", ".tar", ".gz", ".tgz", ".bz2", ".7z", ".dmg",
+    ".iso", ".pyc", ".pyo", ".class", ".o", ".a", ".so", ".dylib", ".dll",
+    ".exe",
+}
+SECRET_BASENAMES = [REDACTED]
+    ".env", ".env.local", ".env.local.runtime", ".env.production",
+    ".env.development", "id_rsa", "id_ed25519", "credentials.json",
+    "secrets.json",
+}
+SOURCE_EXTENSIONS = {
+    ".py", ".pyi", ".ts", ".tsx", ".js", ".jsx", ".mjs", ".cjs", ".json",
+    ".jsonc", ".yaml", ".yml", ".toml", ".ini", ".cfg", ".md", ".txt", ".rst",
+    ".css", ".scss", ".sass", ".less", ".html", ".htm", ".svg", ".sql", ".sh",
+    ".bash", ".zsh", ".fish", ".ps1", ".go", ".rs", ".java", ".kt", ".kts",
+    ".rb", ".php", ".c", ".h", ".cc", ".cpp", ".hpp", ".proto", ".graphql",
+    ".gql", ".lock", ".csv", ".xml", ".properties",
+}
+SOURCE_BASENAMES = {
+    "Dockerfile", "Makefile", "Procfile", "Pipfile", "Gemfile",
+    "package-lock.json", "pnpm-lock.yaml", "yarn.lock", "requirements.txt",
+    "pyproject.toml", "poetry.lock", "alembic.ini", "tsconfig.json",
+}
+AUXILIARY_ROLES = {"historical_evidence", "temporary_artifact"}
+
+
+def utc_now() -> dt.datetime:
+    return dt.datetime.now(dt.timezone.utc)
+
+
+def timestamp() -> str:
+    return utc_now().strftime("%Y%m%dT%H%M%SZ")
+
+
+def json_dump(data: Any) -> str:
+    return json.dumps(data, indent=2, sort_keys=True, ensure_ascii=False) + "\n"
+
+
+def state_root() -> Path:
+    override = os.environ.get("SYSGRID_DEV_STATE_DIR")
+    if override:
+        root = Path(override).expanduser()
+    elif sys.platform == "darwin":
+        root = Path.home() / "Library" / "Application Support" / "SysGridDev"
+    else:
+        root = Path.home() / ".local" / "state" / "sysgrid-dev"
+    root.mkdir(parents=True, exist_ok=True)
+    return root
+
+
+def outbox_root() -> Path:
+    override = os.environ.get("SYSGRID_DEV_OUTBOX")
+    if override:
+        root = Path(override).expanduser()
+    else:
+        icloud = Path.home() / "Library" / "Mobile Documents" / "com~apple~CloudDocs"
+        root = (icloud / "SysGrid" / "Outbox") if icloud.exists() else (Path.home() / "Desktop" / "SysGrid-Outbox")
+    root.mkdir(parents=True, exist_ok=True)
+    return root
+
+
+def metadata_path(name: str) -> Path:
+    return state_root() / f"{name}.json"
+
+
+def write_metadata(name: str, data: Any) -> None:
+    path = metadata_path(name)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    temp = path.with_suffix(path.suffix + ".tmp")
+    temp.write_text(json_dump(data), encoding="utf-8")
+    temp.replace(path)
+
+
+def read_metadata(name: str) -> dict[str, Any] | None:
+    path = metadata_path(name)
+    if not path.is_file():
+        return None
+    try:
+        value = json.loads(path.read_text(encoding="utf-8"))
+        return value if isinstance(value, dict) else None
+    except (json.JSONDecodeError, OSError):
+        return None
+
+
+def run(
+    command: Sequence[str],
+    *,
+    cwd: Path | None = None,
+    check: bool = False,
+    text: bool = True,
+    capture_output: bool = True,
+    env: dict[str, str] | None = None,
+    timeout: float | None = None,
+) -> subprocess.CompletedProcess:
+    return subprocess.run(
+        list(command),
+        cwd=str(cwd) if cwd else None,
+        check=check,
+        text=text,
+        capture_output=capture_output,
+        env=env,
+        timeout=timeout,
+    )
+
+
+def command_exists(name: str) -> bool:
+    return shutil.which(name) is not None
+
+
+def sha256_file(path: Path) -> str:
+    digest = hashlib.sha256()
+    with path.open("rb") as stream:
+        for chunk in iter(lambda: stream.read(1024 * 1024), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
+def git_output(repo: Path, *args: str, default: str = "") -> str:
+    result = run(["git", *args], cwd=repo)
+    return result.stdout.strip() if result.returncode == 0 else default
+
+
+def valid_repo(candidate: Path) -> Path | None:
+    try:
+        candidate = candidate.expanduser().resolve()
+    except OSError:
+        return None
+    for current in [candidate, *candidate.parents]:
+        if (current / "backend").is_dir() and (current / "frontend").is_dir():
+            result = run(["git", "-C", str(current), "rev-parse", "--show-toplevel"])
+            if result.returncode == 0:
+                root = Path(result.stdout.strip()).resolve()
+                if (root / "backend").is_dir() and (root / "frontend").is_dir():
+                    return root
+    return None
+
+
+def remembered_repo() -> Path | None:
+    direct = read_metadata("repo")
+    if direct and isinstance(direct.get("repo"), str):
+        resolved = valid_repo(Path(direct["repo"]))
+        if resolved:
+            return resolved
+    # Automatic v1.0 migration from existing state.
+    for name in ("doctor-latest", "start-latest", "status-latest"):
+        data = read_metadata(name) or {}
+        candidates = [
+            data.get("repo"),
+            (data.get("identity") or {}).get("repo") if isinstance(data.get("identity"), dict) else None,
+            (data.get("repo") or {}).get("repo") if isinstance(data.get("repo"), dict) else None,
+        ]
+        for value in candidates:
+            if isinstance(value, str):
+                resolved = valid_repo(Path(value))
+                if resolved:
+                    return resolved
+    return None
+
+
+def remember_repo(repo: Path) -> None:
+    write_metadata("repo", {
+        "schema_version": SCHEMA_VERSION,
+        "repo": str(repo.resolve()),
+        "recorded_utc": utc_now().isoformat(),
+        "head": git_output(repo, "rev-parse", "HEAD"),
+    })
+
+
+def discover_repo(explicit: str | None = None) -> Path:
+    candidates: list[Path] = []
+    if explicit:
+        candidates.append(Path(explicit))
+    env_repo = os.environ.get("SYSGRID_REPO")
+    if env_repo:
+        candidates.append(Path(env_repo))
+    candidates.append(Path.cwd())
+    remembered = remembered_repo()
+    if remembered:
+        candidates.append(remembered)
+    seen: set[Path] = set()
+    for candidate in candidates:
+        with contextlib.suppress(OSError):
+            resolved_candidate = candidate.expanduser().resolve()
+            if resolved_candidate in seen:
+                continue
+            seen.add(resolved_candidate)
+            repo = valid_repo(resolved_candidate)
+            if repo:
+                remember_repo(repo)
+                return repo
+    raise SystemExit(
+        "SysGrid repository not found. Run `sgd use /absolute/path/to/sysgrid` once, "
+        "run inside the repository, or set SYSGRID_REPO."
+    )
+
+
+def session_exists(name: str) -> bool:
+    return command_exists("tmux") and run(["tmux", "has-session", "-t", name]).returncode == 0
+
+
+def kill_session(name: str) -> bool:
+    return session_exists(name) and run(["tmux", "kill-session", "-t", name]).returncode == 0
+
+
+def listener_pids(port: int) -> list[int]:
+    if not command_exists("lsof"):
+        return []
+    result = run(["lsof", f"-tiTCP:{port}", "-sTCP:LISTEN"])
+    if result.returncode not in (0, 1):
+        return []
+    pids: list[int] = []
+    for token in result.stdout.split():
+        with contextlib.suppress(ValueError):
+            pids.append(int(token))
+    return sorted(set(pids))
+
+
+def terminate_pid(pid: int) -> None:
+    with contextlib.suppress(ProcessLookupError, PermissionError):
+        os.kill(pid, signal.SIGTERM)
+    deadline = time.monotonic() + 2.0
+    while time.monotonic() < deadline:
+        try:
+            os.kill(pid, 0)
+        except ProcessLookupError:
+            return
+        except PermissionError:
+            return
+        time.sleep(0.1)
+    with contextlib.suppress(ProcessLookupError, PermissionError):
+        os.kill(pid, signal.SIGKILL)
+
+
+def stop_runtime_ports(ports: Iterable[int]) -> dict[str, Any]:
+    stopped: dict[str, list[int]] = {}
+    for port in ports:
+        pids = listener_pids(port)
+        for pid in pids:
+            terminate_pid(pid)
+        stopped[str(port)] = pids
+    return {"stopped": stopped, "remaining": {str(port): listener_pids(port) for port in ports}}
+
+
+@dataclass
+class ProbeResult:
+    name: str
+    url: str
+    status: int
+    ok: bool
+    duration_ms: int
+    request_id: str | None
+    tenant_id: str | None
+    content_type: str | None
+    body_sha256: str | None
+    body_bytes: int
+    body_truncated: bool
+    json_type: str | None
+    record_count: int | None
+    sample_keys: list[str]
+    error_preview: str
+    error: str | None
+    raw_text: str = field(default="", repr=False)
+
+    def public(self) -> dict[str, Any]:
+        return {
+            "name": self.name,
+            "url": self.url,
+            "status": self.status,
+            "ok": self.ok,
+            "duration_ms": self.duration_ms,
+            "request_id": self.request_id,
+            "tenant_id": self.tenant_id,
+            "content_type": self.content_type,
+            "body_sha256": self.body_sha256,
+            "body_bytes": self.body_bytes,
+            "body_truncated": self.body_truncated,
+            "json_type": self.json_type,
+            "record_count": self.record_count,
+            "sample_keys": self.sample_keys,
+            "error_preview": self.error_preview,
+            "error": self.error,
+        }
+
+
+def summarize_json(value: Any) -> tuple[str | None, int | None, list[str]]:
+    if isinstance(value, list):
+        keys: list[str] = []
+        if value and isinstance(value[0], dict):
+            keys = sorted(str(key) for key in value[0].keys())[:24]
+        return "array", len(value), keys
+    if isinstance(value, dict):
+        keys = sorted(str(key) for key in value.keys())[:24]
+        count: int | None = None
+        for key in ("definitions", "items", "results", "data"):
+            candidate = value.get(key)
+            if isinstance(candidate, list):
+                count = len(candidate)
+                break
+        return "object", count, keys
+    if value is None:
+        return "null", None, []
+    return type(value).__name__, None, []
+
+
+def http_get(url: str, headers: dict[str, str] | None = None, timeout_seconds: float = 8.0) -> ProbeResult:
+    started = time.monotonic()
+    request = urllib.request.Request(url, headers=headers or {}, method="GET")
+    body = b""
+    status = 0
+    response_headers: Any = {}
+    error: str | None = None
+    try:
+        with urllib.request.urlopen(request, timeout=timeout_seconds) as response:
+            body = response.read(MAX_HTTP_BODY_BYTES + 1)
+            status = int(response.status)
+            response_headers = response.headers
+    except urllib.error.HTTPError as exc:
+        body = exc.read(MAX_HTTP_BODY_BYTES + 1)
+        status = int(exc.code)
+        response_headers = exc.headers
+        error = f"HTTP {exc.code}"
+    except (urllib.error.URLError, TimeoutError, socket.timeout, ConnectionError, OSError) as exc:
+        return ProbeResult(
+            name="", url=url, status=0, ok=False,
+            duration_ms=int((time.monotonic() - started) * 1000),
+            request_id=None, tenant_id=None, content_type=None,
+            body_sha256=None, body_bytes=0, body_truncated=False,
+            json_type=None, record_count=None, sample_keys=[],
+            error_preview="", error=f"{type(exc).__name__}: {exc}", raw_text="",
+        )
+    truncated = len(body) > MAX_HTTP_BODY_BYTES
+    if truncated:
+        body = body[:MAX_HTTP_BODY_BYTES]
+    text = body.decode("utf-8", errors="replace")
+    parsed: Any = None
+    json_type: str | None = None
+    record_count: int | None = None
+    sample_keys: list[str] = []
+    try:
+        parsed = json.loads(text)
+    except json.JSONDecodeError:
+        pass
+    else:
+        json_type, record_count, sample_keys = summarize_json(parsed)
+    ok = 200 <= status < 300
+    preview = ""
+    if not ok:
+        preview = re.sub(r"\s+", " ", text).strip()[:1200]
+    return ProbeResult(
+        name="", url=url, status=status, ok=ok,
+        duration_ms=int((time.monotonic() - started) * 1000),
+        request_id=response_headers.get("x-request-id"),
+        tenant_id=response_headers.get("x-sysgrid-tenant-id"),
+        content_type=response_headers.get("content-type"),
+        body_sha256=hashlib.sha256(body).hexdigest(),
+        body_bytes=len(body),
+        body_truncated=truncated,
+        json_type=json_type,
+        record_count=record_count,
+        sample_keys=sample_keys,
+        error_preview=preview,
+        error=error,
+        raw_text=text,
+    )
+
+
+def selected_tenant_id(probe: ProbeResult) -> str | None:
+    try:
+        value = json.loads(probe.raw_text)
+    except json.JSONDecodeError:
+        return None
+    if not isinstance(value, list):
+        return None
+    selected = [row for row in value if isinstance(row, dict) and row.get("is_selected")]
+    candidate = selected[0] if selected else (value[0] if value else None)
+    return str(candidate["id"]) if isinstance(candidate, dict) and candidate.get("id") is not None else None
+
+
+def classify_smoke(probes: list[ProbeResult]) -> str:
+    if not probes:
+        return "NO_PROBES"
+    if probes[0].status == 0:
+        return "BACKEND_UNAVAILABLE"
+    if not probes[0].ok:
+        return "BACKEND_HEALTH_FAILURE"
+    failures = [probe for probe in probes[1:] if not probe.ok]
+    if not failures:
+        return "PASS"
+    if any(probe.status == 0 for probe in failures):
+        return "NETWORK_OR_PROCESS_FAILURE"
+    if any(probe.status >= 500 for probe in failures):
+        return "BACKEND_ENDPOINT_FAILURE"
+    if any(probe.status in (401, 403) for probe in failures):
+        return "IDENTITY_OR_PERMISSION_FAILURE"
+    if any(probe.status == 404 for probe in failures):
+        return "API_CONTRACT_ROUTE_MISSING"
+    return "API_CONTRACT_FAILURE"
+
+
+def runtime_log_path() -> Path:
+    return state_root() / "runtime" / "latest.log"
+
+
+def audit_log_path() -> Path:
+    return state_root() / "audit" / "latest.log"
+
+
+def audit_exit_path() -> Path:
+    return state_root() / "audit" / "exit-code"
+
+
+def classify_repo_path(relative: Path) -> str:
+    path = relative.as_posix()
+    name = relative.name.lower()
+    if path.startswith("backend/app/") or path.startswith("backend/alembic/") or path in {"seed.py", "start_backend_fixed.py"}:
+        return "product_source_backend"
+    if path.startswith("frontend/src/"):
+        if re.search(r"(?:^|/)(?:tests?|__tests__)(?:/|$)", path) or re.search(r"\.(?:test|spec)\.[^.]+$", name):
+            return "tests"
+        return "product_source_frontend"
+    if path.startswith("backend/test") or "/test_" in path or path.startswith("frontend/tests/") or re.search(r"\.(?:test|spec)\.[^.]+$", name):
+        return "tests"
+    if path.startswith("scripts/") or path.startswith("frontend/scripts/") or path.startswith(".github/"):
+        return "verification_or_tooling"
+    if path.startswith("COMMAND_OUTPUTS/") or path.startswith("RUN_ARTIFACTS/") or path.startswith("REVIEW_ARTIFACTS/"):
+        return "historical_evidence"
+    if path.startswith("patches/") or path.endswith(".patch") or path.endswith(".diff"):
+        return "temporary_artifact"
+    if relative.suffix.lower() in {".md", ".rst"} or path.startswith("docs/"):
+        return "documentation"
+    if relative.name in SOURCE_BASENAMES or relative.suffix.lower() in {".json", ".yaml", ".yml", ".toml", ".ini", ".cfg", ".lock"}:
+        return "configuration_or_contract"
+    return "repository_support"
+
+
+def git_status_entries(repo: Path) -> list[dict[str, Any]]:
+    result = run(
+        ["git", "status", "--porcelain=v1", "-z", "--untracked-files=all"],
+        cwd=repo, text=False,
+    )
+    if result.returncode != 0:
+        return []
+    raw = result.stdout if isinstance(result.stdout, bytes) else bytes(result.stdout)
+    tokens = [REDACTED]
+    entries: list[dict[str, Any]] = []
+    index = 0
+    while index < len(tokens):
+        token = [REDACTED]
+        index += 1
+        if not token:
+            continue
+        decoded = token.decode("utf-8", errors="surrogateescape")
+        if len(decoded) < 4:
+            continue
+        status = decoded[:2]
+        path_text = decoded[3:]
+        old_path: str | None = None
+        if status[0] in {"R", "C"} or status[1] in {"R", "C"}:
+            if index < len(tokens) and tokens[index]:
+                old_path = tokens[index].decode("utf-8", errors="surrogateescape")
+                index += 1
+        relative = Path(path_text)
+        entries.append({
+            "status": status,
+            "path": path_text,
+            "old_path": old_path,
+            "classification": classify_repo_path(relative),
+        })
+    return entries
+
+
+def nested_git_dirs(repo: Path) -> list[str]:
+    found: list[str] = []
+    for root, dirs, _files in os.walk(repo):
+        root_path = Path(root)
+        relative_parts = root_path.parts[len(repo.parts):]
+        if ".git" in relative_parts:
+            dirs[:] = []
+            continue
+        if ".git" in dirs:
+            if root_path != repo:
+                found.append(root_path.relative_to(repo).as_posix())
+            dirs.remove(".git")
+        dirs[:] = [name for name in dirs if name not in EXCLUDED_DIR_NAMES]
+    return sorted(set(found))
+
+
+def repo_identity(repo: Path) -> dict[str, Any]:
+    dirty_entries = git_status_entries(repo)
+    counts: dict[str, int] = {}
+    for entry in dirty_entries:
+        role = str(entry["classification"])
+        counts[role] = counts.get(role, 0) + 1
+    return {
+        "schema_version": SCHEMA_VERSION,
+        "captured_utc": utc_now().isoformat(),
+        "repo": str(repo),
+        "git_root": git_output(repo, "rev-parse", "--show-toplevel"),
+        "branch": git_output(repo, "branch", "--show-current"),
+        "head": git_output(repo, "rev-parse", "HEAD"),
+        "remote_origin": git_output(repo, "remote", "get-url", "origin"),
+        "upstream": git_output(repo, "rev-parse", "--abbrev-ref", "--symbolic-full-name", "@{u}"),
+        "dirty_count": len(dirty_entries),
+        "dirty_summary": dict(sorted(counts.items())),
+        "dirty_entries": dirty_entries,
+        "status_lines": [
+            f"{entry['status']} {entry['path']}" + (f" <- {entry['old_path']}" if entry.get("old_path") else "")
+            for entry in dirty_entries
+        ],
+        "nested_git_directories": nested_git_dirs(repo),
+        "start_local_sha256": sha256_file(repo / "scripts" / "start-local.sh") if (repo / "scripts" / "start-local.sh").is_file() else None,
+        "verify_app_sha256": sha256_file(repo / "scripts" / "verify-app.sh") if (repo / "scripts" / "verify-app.sh").is_file() else None,
+    }
+
+
+def runtime_status(repo: Path | None = None) -> dict[str, Any]:
+    health = http_get(
+        f"http://{DEFAULT_BACKEND_HOST}:{DEFAULT_BACKEND_PORT}/api/v1/health",
+        {"X-User-Id": DEFAULT_USER_ID},
+        timeout_seconds=2.0,
+    )
+    return {
+        "captured_utc": utc_now().isoformat(),
+        "runtime_session": session_exists(RUNTIME_SESSION),
+        "audit_session": session_exists(AUDIT_SESSION),
+        "listeners": {
+            str(DEFAULT_BACKEND_PORT): listener_pids(DEFAULT_BACKEND_PORT),
+            str(DEFAULT_FRONTEND_PORT): listener_pids(DEFAULT_FRONTEND_PORT),
+        },
+        "health": health.public(),
+        "repo": str(repo) if repo else None,
+    }
+
+
+def doctor_report(repo: Path) -> dict[str, Any]:
+    checks = {
+        "git": command_exists("git"),
+        "python3": command_exists("python3"),
+        "tmux": command_exists("tmux"),
+        "curl": command_exists("curl"),
+        "lsof": command_exists("lsof"),
+        "npm": command_exists("npm"),
+        "start_local": (repo / "scripts" / "start-local.sh").is_file(),
+        "verify_app": (repo / "scripts" / "verify-app.sh").is_file(),
+        "backend_python": (repo / "backend" / "venv" / "bin" / "python").is_file(),
+        "frontend_node_modules": (repo / "frontend" / "node_modules").is_dir(),
+        "playwright_runner": (repo / "frontend" / "node_modules" / ".bin" / "playwright").is_file(),
+    }
+    required = [
+        "git", "python3", "tmux", "curl", "lsof", "npm", "start_local",
+        "verify_app", "backend_python", "frontend_node_modules", "playwright_runner",
+    ]
+    missing = [name for name in required if not checks[name]]
+    identity = repo_identity(repo)
+    return {
+        "schema_version": SCHEMA_VERSION,
+        "result": "PASS" if not missing else "FAIL",
+        "checks": checks,
+        "missing": missing,
+        "identity": identity,
+        "runtime": runtime_status(repo),
+        "delivery_blockers": (
+            [{"classification": "NESTED_GIT_DIRECTORY", "path": path} for path in identity["nested_git_directories"]]
+        ),
+    }
+
+
+def should_skip_source_path(relative: Path) -> tuple[bool, str | None]:
+    parts = relative.parts
+    if any(part in EXCLUDED_DIR_NAMES for part in parts[:-1]):
+        return True, "excluded-directory"
+    name = relative.name
+    lower_name = name.lower()
+    # Exact runtime/secret files are excluded. Source filenames containing
+    # "secret" or "credential" are not excluded; those names are common in
+    # legitimate schemas, migrations, clients, and tests.
+    if name in SECRET_BASENAMES or lower_name.startswith(".env."):
+        if lower_name.endswith((".example", ".sample", ".template")):
+            return False, None
+        return True, "secret-or-runtime-env"
+    if relative.suffix.lower() in EXCLUDED_FILE_SUFFIXES:
+        return True, "binary-or-sensitive-suffix"
+    return False, None
+
+
+def is_probably_text(path: Path) -> bool:
+    if path.suffix.lower() in SOURCE_EXTENSIONS or path.name in SOURCE_BASENAMES:
+        return True
+    try:
+        sample = path.read_bytes()[:8192]
+    except OSError:
+        return False
+    if b"\x00" in sample:
+        return False
+    try:
+        sample.decode("utf-8")
+        return True
+    except UnicodeDecodeError:
+        return False
+
+
+def git_candidate_paths(repo: Path) -> list[Path]:
+    result = run(
+        ["git", "ls-files", "--cached", "--others", "--exclude-standard", "-z"],
+        cwd=repo, text=False,
+    )
+    if result.returncode != 0:
+        stderr = result.stderr.decode("utf-8", errors="replace") if isinstance(result.stderr, bytes) else str(result.stderr)
+        raise RuntimeError(stderr)
+    raw = result.stdout if isinstance(result.stdout, bytes) else bytes(result.stdout)
+    candidates: list[Path] = []
+    for token in raw.split(b"\0"):
+        if not token:
+            continue
+        relative = Path(token.decode("utf-8", errors="surrogateescape"))
+        absolute = repo / relative
+        if absolute.is_dir():
+            for root, dirs, files in os.walk(absolute):
+                root_path = Path(root)
+                dirs[:] = [name for name in dirs if name not in EXCLUDED_DIR_NAMES]
+                for file_name in files:
+                    candidates.append((root_path / file_name).relative_to(repo))
+        else:
+            candidates.append(relative)
+    return sorted(set(candidates), key=lambda path: path.as_posix())
+
+
+def source_inventory(repo: Path) -> dict[str, Any]:
+    included: list[dict[str, Any]] = []
+    skipped: list[dict[str, Any]] = []
+    role_counts: dict[str, int] = {}
+    fingerprint_lines: list[str] = []
+    for relative in git_candidate_paths(repo):
+        absolute = repo / relative
+        reason: str | None = None
+        if absolute.is_symlink():
+            reason = "symlink"
+        elif not absolute.is_file():
+            reason = "not-regular-file"
+        else:
+            skip, skip_reason = should_skip_source_path(relative)
+            if skip:
+                reason = skip_reason
+            else:
+                try:
+                    size = absolute.stat().st_size
+                except OSError:
+                    reason = "stat-failed"
+                else:
+                    if size > MAX_SOURCE_FILE_BYTES:
+                        reason = f"larger-than-{MAX_SOURCE_FILE_BYTES}"
+                    elif not is_probably_text(absolute):
+                        reason = "non-text"
+        role = classify_repo_path(relative)
+        if reason:
+            skipped.append({"path": relative.as_posix(), "classification": role, "reason": reason})
+            continue
+        data = absolute.read_bytes()
+        digest = hashlib.sha256(data).hexdigest()
+        entry = {
+            "path": relative.as_posix(),
+            "classification": role,
+            "size": len(data),
+            "sha256": digest,
+        }
+        included.append(entry)
+        role_counts[role] = role_counts.get(role, 0) + 1
+        fingerprint_lines.append(f"{digest}  {relative.as_posix()}")
+    fingerprint = hashlib.sha256(("\n".join(sorted(fingerprint_lines)) + "\n").encode()).hexdigest()
+    return {
+        "included": included,
+        "skipped": skipped,
+        "role_counts": dict(sorted(role_counts.items())),
+        "source_fingerprint": fingerprint,
+        "included_bytes": sum(int(item["size"]) for item in included),
+    }
+
+
+def zip_write_bytes(archive: zipfile.ZipFile, name: str, data: bytes, when: dt.datetime) -> None:
+    info = zipfile.ZipInfo(name)
+    safe_year = min(max(when.year, 1980), 2107)
+    info.date_time = (safe_year, when.month, when.day, when.hour, when.minute, when.second)
+    info.compress_type = zipfile.ZIP_DEFLATED
+    info.external_attr = 0o100644 << 16
+    archive.writestr(info, data)
+
+
+def create_source_snapshot(repo: Path, destination: Path) -> dict[str, Any]:
+    captured = utc_now()
+    identity = repo_identity(repo)
+    inventory = source_inventory(repo)
+    included = inventory["included"]
+    skipped = inventory["skipped"]
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    temp_destination = destination.with_suffix(destination.suffix + ".tmp")
+    manifest_lines: list[str] = []
+    authoritative_count = 0
+    auxiliary_count = 0
+    with zipfile.ZipFile(temp_destination, "w", compression=zipfile.ZIP_DEFLATED, compresslevel=9) as archive:
+        for entry in included:
+            relative = Path(str(entry["path"]))
+            data = (repo / relative).read_bytes()
+            role = str(entry["classification"])
+            if role in AUXILIARY_ROLES:
+                archive_name = f"AUXILIARY/{relative.as_posix()}"
+                auxiliary_count += 1
+            else:
+                archive_name = f"SOURCE/{relative.as_posix()}"
+                authoritative_count += 1
+            zip_write_bytes(archive, archive_name, data, captured)
+            manifest_lines.append(f"{entry['sha256']}  {archive_name}")
+        metadata = {
+            "schema_version": SCHEMA_VERSION,
+            "artifact_type": "SYSGRID_AUTHORITATIVE_SOURCE_SNAPSHOT",
+            "tool_version": VERSION,
+            "captured_utc": captured.isoformat(),
+            "identity": identity,
+            "source_fingerprint": inventory["source_fingerprint"],
+            "included_file_count": len(included),
+            "authoritative_code_file_count": authoritative_count,
+            "auxiliary_file_count": auxiliary_count,
+            "included_bytes": inventory["included_bytes"],
+            "skipped_file_count": len(skipped),
+            "classification_counts": inventory["role_counts"],
+            "exclusion_policy": {
+                "excluded_directories": sorted(EXCLUDED_DIR_NAMES),
+                "max_source_file_bytes": MAX_SOURCE_FILE_BYTES,
+                "exact_runtime_envs_and_key_material_excluded": True,
+                "legitimate_source_names_containing_secret_or_credential_included": True,
+                "binaries_and_generated_artifacts_excluded": True,
+            },
+        }
+        supplemental = {
+            "META/SOURCE_IDENTITY.json": json_dump(metadata).encode(),
+            "META/INCLUDED_FILES.json": json_dump(included).encode(),
+            "META/SKIPPED_FILES.json": json_dump(skipped).encode(),
+            "META/WORKTREE_CLASSIFICATION.json": json_dump({
+                "dirty_entries": identity["dirty_entries"],
+                "dirty_summary": identity["dirty_summary"],
+                "source_classification_counts": inventory["role_counts"],
+            }).encode(),
+            "META/FILE_MANIFEST.sha256": ("\n".join(manifest_lines) + "\n").encode(),
+            "META/GIT_STATUS.txt": (
+                "\n".join(identity["status_lines"]) + ("\n" if identity["status_lines"] else "")
+            ).encode(),
+            "META/GIT_DIFF.patch": run(["git", "diff", "--binary", "--no-ext-diff"], cwd=repo).stdout.encode(),
+            "META/GIT_DIFF_CACHED.patch": run(["git", "diff", "--cached", "--binary", "--no-ext-diff"], cwd=repo).stdout.encode(),
+            "META/GIT_LOG.txt": (
+                git_output(repo, "log", "-20", "--date=iso-strict", "--pretty=format:%H%x09%ad%x09%an%x09%s") + "\n"
+            ).encode(),
+            "META/RUNTIME_STATUS.json": json_dump(runtime_status(repo)).encode(),
+        }
+        for name, data in supplemental.items():
+            zip_write_bytes(archive, name, data, captured)
+    temp_destination.replace(destination)
+    result = {
+        **metadata,
+        "path": str(destination),
+        "size": destination.stat().st_size,
+        "sha256": sha256_file(destination),
+    }
+    return result
+
+
+def cmd_use(args: argparse.Namespace) -> int:
+    repo = valid_repo(Path(args.path))
+    if not repo:
+        print(f"Not a SysGrid repository: {args.path}", file=sys.stderr)
+        return 2
+    remember_repo(repo)
+    print(f"SysGrid repository remembered: {repo}")
+    return 0
+
+
+def cmd_where(args: argparse.Namespace) -> int:
+    repo = discover_repo(args.repo)
+    if args.json:
+        print(json_dump({"repo": str(repo), "identity": repo_identity(repo)}), end="")
+    else:
+        print(repo)
+    return 0
+
+
+def cmd_doctor(args: argparse.Namespace) -> int:
+    repo = discover_repo(args.repo)
+    result = doctor_report(repo)
+    write_metadata("doctor-latest", result)
+    if args.json:
+        print(json_dump(result), end="")
+    else:
+        identity = result["identity"]
+        print(f"Doctor: {result['result']}")
+        print(f"Repo: {repo}")
+        print(f"HEAD: {identity['head'][:12] if identity['head'] else '<unknown>'} branch={identity['branch'] or '<detached>'}")
+        print(f"Dirty: {identity['dirty_count']} {identity['dirty_summary']}")
+        if result["missing"]:
+            print("Missing: " + ", ".join(result["missing"]))
+        if result["delivery_blockers"]:
+            for blocker in result["delivery_blockers"]:
+                print(f"BLOCKER {blocker['classification']}: {blocker['path']}")
+    return 0 if result["result"] == "PASS" else 2
+
+
+def cmd_stop(args: argparse.Namespace) -> int:
+    _repo = discover_repo(args.repo)
+    sessions = {
+        RUNTIME_SESSION: kill_session(RUNTIME_SESSION),
+        AUDIT_SESSION: kill_session(AUDIT_SESSION) if args.include_audit else False,
+    }
+    ports = stop_runtime_ports([DEFAULT_BACKEND_PORT, DEFAULT_FRONTEND_PORT])
+    result = {"result": "PASS", "sessions_killed": sessions, **ports}
+    write_metadata("stop-latest", result)
+    if args.json:
+        print(json_dump(result), end="")
+    else:
+        print(f"Stopped runtime session={sessions[RUNTIME_SESSION]} ports={ports['stopped']}")
+        if args.include_audit:
+            print(f"Stopped audit session={sessions[AUDIT_SESSION]}")
+    return 1 if any(ports["remaining"].values()) else 0
+
+
+def wait_for_backend(timeout_seconds: int, log_path: Path) -> ProbeResult:
+    deadline = time.monotonic() + timeout_seconds
+    url = f"http://{DEFAULT_BACKEND_HOST}:{DEFAULT_BACKEND_PORT}/api/v1/health"
+    last = http_get(url, {"X-User-Id": DEFAULT_USER_ID}, timeout_seconds=2.0)
+    while time.monotonic() < deadline:
+        last = http_get(url, {"X-User-Id": DEFAULT_USER_ID}, timeout_seconds=2.0)
+        if last.ok:
+            return last
+        if not session_exists(RUNTIME_SESSION):
+            break
+        time.sleep(1)
+    if log_path.exists():
+        tail = "\n".join(log_path.read_text(encoding="utf-8", errors="replace").splitlines()[-80:])
+        last.error_preview = (last.error_preview + "\n--- runtime log tail ---\n" + tail)[-8000:]
+    return last
+
+
+def start_runtime(repo: Path, *, fast: bool, seed_data: bool, timeout: int) -> dict[str, Any]:
+    doctor = doctor_report(repo)
+    write_metadata("doctor-latest", doctor)
+    if doctor["result"] != "PASS":
+        return {
+            "result": "FAIL",
+            "classification": "DOCTOR_FAILURE",
+            "doctor": doctor,
+            "repo": str(repo),
+        }
+    kill_session(RUNTIME_SESSION)
+    stop_runtime_ports([DEFAULT_BACKEND_PORT, DEFAULT_FRONTEND_PORT])
+    log_path = runtime_log_path()
+    log_path.parent.mkdir(parents=True, exist_ok=True)
+    if log_path.exists():
+        shutil.copy2(log_path, log_path.with_name(f"runtime-{timestamp()}.log"))
+    log_path.write_text("", encoding="utf-8")
+    exit_path = state_root() / "runtime" / "exit-code"
+    exit_path.parent.mkdir(parents=True, exist_ok=True)
+    with contextlib.suppress(FileNotFoundError):
+        exit_path.unlink()
+
+    launcher = repo / "scripts" / "start-local.sh"
+    command = [str(launcher)]
+    if fast:
+        command.append("--skip-typecheck")
+    if not seed_data:
+        command.append("--no-seed-data")
+    tmux_shell = (
+        "set -o pipefail; "
+        f"cd {shlex.quote(str(repo))}; "
+        f"{shlex.join(command)} 2>&1 | tee {shlex.quote(str(log_path))}; "
+        "status=${PIPESTATUS[0]}; "
+        f"printf '%s\\n' \"$status\" > {shlex.quote(str(exit_path))}; "
+        "exit \"$status\""
+    )
+    started = run(["tmux", "new-session", "-d", "-s", RUNTIME_SESSION, "bash", "-lc", tmux_shell])
+    if started.returncode != 0:
+        return {
+            "result": "FAIL",
+            "classification": "TMUX_START_FAILURE",
+            "message": started.stderr or "Failed to start tmux runtime session",
+            "repo": str(repo),
+        }
+    health = wait_for_backend(timeout, log_path)
+    result = {
+        "schema_version": SCHEMA_VERSION,
+        "captured_utc": utc_now().isoformat(),
+        "result": "PASS" if health.ok else "FAIL",
+        "classification": "RUNTIME_READY" if health.ok else "RUNTIME_START_FAILURE",
+        "repo": str(repo),
+        "session": RUNTIME_SESSION,
+        "log": str(log_path),
+        "health": health.public(),
+        "fast": fast,
+        "seed_data": seed_data,
+    }
+    write_metadata("start-latest", result)
+    return result
+
+
+def cmd_start(args: argparse.Namespace) -> int:
+    repo = discover_repo(args.repo)
+    result = start_runtime(repo, fast=args.fast, seed_data=not args.no_seed_data, timeout=args.timeout)
+    if args.json:
+        print(json_dump(result), end="")
+    else:
+        print(f"Runtime: {result['result']} ({result['classification']})")
+        print(f"Repo: {repo}")
+        if result.get("health"):
+            health = result["health"]
+            print(f"Backend: status={health['status']} request_id={health['request_id'] or '-'}")
+        print(f"Log: {result.get('log', runtime_log_path())}")
+    return 0 if result["result"] == "PASS" else 1
+
+
+def smoke_probe_matrix(
+    api_origin: str,
+    user_id: str,
+    tenant_override: str | None = None,
+) -> tuple[list[ProbeResult], str | None]:
+    api_base = api_origin.rstrip("/") + "/api/v1"
+    probes: list[ProbeResult] = []
+    health = http_get(f"{api_base}/health", {"X-User-Id": user_id})
+    health.name = "health"
+    probes.append(health)
+    if not health.ok:
+        return probes, tenant_override
+    tenants = http_get(f"{api_base}/tenants/me", {"X-User-Id": user_id})
+    tenants.name = "tenants"
+    probes.append(tenants)
+    tenant_id = tenant_override or (selected_tenant_id(tenants) if tenants.ok else None)
+    headers = {"X-User-Id": user_id}
+    if tenant_id:
+        headers["X-Tenant-Id"] = tenant_id
+    endpoints = [
+        ("monitoring", "/monitoring?include_deleted=true"),
+        ("assets", "/devices?include_deleted=true"),
+        ("services", "/logical-services?include_deleted=true"),
+        ("external", "/intelligence/entities?include_deleted=true"),
+        ("network", "/networks/connections?include_deleted=true"),
+        ("far", "/far/modes"),
+        ("research", "/investigations?include_deleted=true"),
+        ("vendors", "/vendors?include_deleted=true"),
+        ("settings-options", "/settings/options"),
+        ("workspace-definitions", "/workspaces/definitions"),
+    ]
+    for name, path in endpoints:
+        probe = http_get(f"{api_base}{path}", headers)
+        probe.name = name
+        probes.append(probe)
+    return probes, tenant_id
+
+
+def build_smoke_result(
+    repo: Path,
+    api_origin: str,
+    user_id: str,
+    tenant_id: str | None,
+) -> dict[str, Any]:
+    probes, resolved_tenant = smoke_probe_matrix(api_origin, user_id, tenant_id)
+    classification = classify_smoke(probes)
+    inventory = source_inventory(repo)
+    result = {
+        "schema_version": SCHEMA_VERSION,
+        "captured_utc": utc_now().isoformat(),
+        "result": "PASS" if classification == "PASS" else "FAIL",
+        "classification": classification,
+        "repo_identity": repo_identity(repo),
+        "source_fingerprint": inventory["source_fingerprint"],
+        "api_origin": api_origin,
+        "user_id": user_id,
+        "tenant_id": resolved_tenant,
+        "probe_count": len(probes),
+        "passed_probe_count": sum(1 for probe in probes if probe.ok),
+        "probes": [probe.public() for probe in probes],
+    }
+    write_metadata("smoke-latest", result)
+    smoke_path = state_root() / "smoke" / "latest.json"
+    smoke_path.parent.mkdir(parents=True, exist_ok=True)
+    smoke_path.write_text(json_dump(result), encoding="utf-8")
+    return result
+
+
+def print_smoke_compact(result: dict[str, Any]) -> None:
+    print(
+        f"API smoke: {result['result']} ({result['classification']}) "
+        f"{result['passed_probe_count']}/{result['probe_count']} tenant={result.get('tenant_id') or '-'}"
+    )
+    for probe in result["probes"]:
+        shape = probe.get("json_type") or "-"
+        count = probe.get("record_count")
+        shape_text = f"{shape}" + (f"[{count}]" if count is not None else "")
+        marker = "PASS" if probe["ok"] else "FAIL"
+        line = (
+            f"{marker:4} {probe['name']:<22} status={probe['status']:<3} "
+            f"{probe['duration_ms']:>4}ms {shape_text}"
+        )
+        if not probe["ok"]:
+            line += f" request_id={probe.get('request_id') or '-'} {probe.get('error') or ''}"
+        print(line.rstrip())
+        if not probe["ok"] and probe.get("error_preview"):
+            print(f"     {probe['error_preview'][:500]}")
+
+
+def cmd_smoke(args: argparse.Namespace) -> int:
+    repo = discover_repo(args.repo)
+    result = build_smoke_result(repo, args.api_origin, args.user_id, args.tenant_id)
+    if args.json:
+        print(json_dump(result), end="")
+    else:
+        print_smoke_compact(result)
+    return 0 if result["result"] == "PASS" else 1
+
+
+def cmd_status(args: argparse.Namespace) -> int:
+    repo = discover_repo(args.repo)
+    smoke = build_smoke_result(repo, args.api_origin, args.user_id, args.tenant_id)
+    identity = repo_identity(repo)
+    runtime = runtime_status(repo)
+    audit = read_metadata("audit-latest")
+    status = {
+        "schema_version": SCHEMA_VERSION,
+        "result": smoke["result"],
+        "classification": smoke["classification"],
+        "repo": identity,
+        "runtime": runtime,
+        "smoke": smoke,
+        "audit": audit,
+    }
+    write_metadata("status-latest", status)
+    if args.phone:
+        print(f"SysGrid: {status['classification']}")
+        print(
+            f"HEAD {identity['head'][:12] if identity['head'] else '<unknown>'} "
+            f"dirty={identity['dirty_count']} product="
+            f"{identity['dirty_summary'].get('product_source_backend', 0) + identity['dirty_summary'].get('product_source_frontend', 0)}"
+        )
+        print(
+            f"Runtime tmux={runtime['runtime_session']} "
+            f"8000={bool(runtime['listeners'][str(DEFAULT_BACKEND_PORT)])} "
+            f"5173={bool(runtime['listeners'][str(DEFAULT_FRONTEND_PORT)])}"
+        )
+        failures = [probe for probe in smoke["probes"] if not probe["ok"]]
+        for probe in failures[:4]:
+            print(
+                f"FAIL {probe['name']}: status={probe['status']} "
+                f"request_id={probe.get('request_id') or '-'} {probe.get('error') or ''}"
+            )
+        if audit:
+            print(f"Audit: {audit.get('result', audit.get('classification', 'UNKNOWN'))}")
+        print(f"Runtime log: {runtime_log_path()}")
+    elif args.json:
+        print(json_dump(status), end="")
+    else:
+        print_smoke_compact(smoke)
+        print(f"Source dirty: {identity['dirty_count']} {identity['dirty_summary']}")
+        print(f"Audit: {(audit or {}).get('classification', 'NOT_RUN')}")
+    return 0 if status["result"] == "PASS" else 1
+
+
+def cmd_snapshot(args: argparse.Namespace) -> int:
+    repo = discover_repo(args.repo)
+    identity = repo_identity(repo)
+    short_head = identity["head"][:12] if identity["head"] else "nohead"
+    destination = (
+        Path(args.output).expanduser()
+        if args.output
+        else outbox_root() / f"SYSGRID_AUTHORITATIVE_SOURCE__{timestamp()}__{short_head}.zip"
+    )
+    result = create_source_snapshot(repo, destination)
+    write_metadata("snapshot-latest", result)
+    if args.json:
+        print(json_dump(result), end="")
+    else:
+        print(
+            f"Source snapshot: {result['authoritative_code_file_count']} code + "
+            f"{result['auxiliary_file_count']} auxiliary files"
+        )
+        print(f"Fingerprint: {result['source_fingerprint']}")
+        print(f"Path: {result['path']}")
+    return 0
+
+
+def parse_verify_specs(verify_script: Path) -> list[str]:
+    if not verify_script.is_file():
+        return []
+    text = verify_script.read_text(encoding="utf-8", errors="replace")
+    match = re.search(r"PLAYWRIGHT_SPECS=\(\s*(.*?)\s*\)", text, re.DOTALL)
+    if not match:
+        return []
+    specs: list[str] = []
+    for line in match.group(1).splitlines():
+        value = line.strip()
+        if not value or value.startswith("#"):
+            continue
+        value = value.split("#", 1)[0].strip().strip("'\"")
+        if value:
+            specs.append(value)
+    return specs
+
+
+def parse_route_matrix(route_matrix: Path) -> dict[str, list[dict[str, str]]]:
+    result: dict[str, list[dict[str, str]]] = {"golden": [], "all": []}
+    if not route_matrix.is_file():
+        return result
+    text = route_matrix.read_text(encoding="utf-8", errors="replace")
+    golden_block = re.search(r"goldenWorkspaceRouteMatrix\s*=\s*\[(.*?)\]\s*as const", text, re.DOTALL)
+    app_block = re.search(r"appRouteMatrix\s*=\s*\[(.*?)\]\s*as const", text, re.DOTALL)
+    if golden_block:
+        for key, path, name in re.findall(
+            r"\{\s*key:\s*'([^']+)'\s*,\s*path:\s*'([^']+)'\s*,\s*name:\s*'([^']+)'",
+            golden_block.group(1),
+        ):
+            result["golden"].append({"key": key, "path": path, "name": name})
+    if app_block:
+        for path, name in re.findall(
+            r"\{\s*path:\s*'([^']+)'\s*,\s*name:\s*'([^']+)'",
+            app_block.group(1),
+        ):
+            result["all"].append({"path": path, "name": name})
+    return result
+
+
+def coverage_inventory(repo: Path) -> dict[str, Any]:
+    frontend = repo / "frontend"
+    verify_script = repo / "scripts" / "verify-app.sh"
+    canonical_specs = parse_verify_specs(verify_script)
+    all_specs = sorted(
+        path.relative_to(frontend).as_posix()
+        for path in (frontend / "tests").glob("*.spec.ts")
+        if path.is_file()
+    )
+    canonical_set = set(canonical_specs)
+    noncanonical = [spec for spec in all_specs if spec not in canonical_set]
+    route_matrix = parse_route_matrix(frontend / "tests" / "helpers" / "routeMatrix.ts")
+    spec_text: dict[str, str] = {}
+    for spec in canonical_specs:
+        path = frontend / spec
+        if path.is_file():
+            spec_text[spec] = path.read_text(encoding="utf-8", errors="replace")
+    routes: list[dict[str, Any]] = []
+    for route in route_matrix["all"]:
+        refs: list[str] = []
+        for spec, text in spec_text.items():
+            if route["path"] in text or route["name"] in text:
+                refs.append(spec)
+            elif "appRouteMatrix" in text:
+                refs.append(spec)
+        routes.append({**route, "canonical_references": sorted(set(refs))})
+    dedicated_gaps: list[dict[str, str]] = []
+    for golden in route_matrix["golden"]:
+        candidates = [
+            spec for spec in all_specs
+            if golden["key"] in Path(spec).name.lower() and spec not in canonical_set
+        ]
+        for spec in candidates:
+            dedicated_gaps.append({
+                "workspace": golden["key"],
+                "spec": spec,
+                "reason": "dedicated-spec-not-in-promotion-playwright-list",
+            })
+    return {
+        "schema_version": SCHEMA_VERSION,
+        "captured_utc": utc_now().isoformat(),
+        "verification_script": str(verify_script),
+        "verification_script_sha256": sha256_file(verify_script) if verify_script.is_file() else None,
+        "canonical_playwright_specs": canonical_specs,
+        "all_top_level_playwright_specs": all_specs,
+        "noncanonical_top_level_specs": noncanonical,
+        "routes": routes,
+        "golden_workspaces": route_matrix["golden"],
+        "dedicated_coverage_gaps": dedicated_gaps,
+        "interpretation": (
+            "Static inventory only. A referenced route or spec is not proof that every control, "
+            "state, breakpoint, or destructive/recovery path is covered."
+        ),
+    }
+
+
+HISTORICAL_EVIDENCE_SPEC_PATTERNS = (
+    re.compile(r"tests/assets-stage\d+-evidence\.spec\.ts$"),
+    re.compile(r"tests/assets-golden-evidence\.spec\.ts$"),
+)
+EXPLORATORY_DEEP_SPEC_NAMES = {
+    "tests/universal-crawler.spec.ts",
+    "tests/debug.spec.ts",
+    "tests/pre-test-check.spec.ts",
+    "tests/smoke.spec.ts",
+    "tests/sentinel_smoke.spec.ts",
+}
+WORKSPACE_SPEC_TOKENS = [REDACTED]
+    "monitoring": ("monitoring", "sentinel", "shell-and-search", "golden-eight", "blank-slate", "view-"),
+    "assets": ("asset", "golden-eight", "shell-and-search", "blank-slate", "view-"),
+    "services": ("service", "golden-eight", "shell-and-search", "blank-slate", "view-"),
+    "external": ("external", "golden-eight", "shell-and-search", "blank-slate", "view-"),
+    "network": ("network", "golden-eight", "shell-and-search", "blank-slate", "view-"),
+    "far": ("far", "golden-eight", "shell-and-search", "blank-slate", "view-"),
+    "research": ("research", "golden-eight", "shell-and-search", "blank-slate", "view-"),
+    "vendors": ("vendor", "golden-eight", "shell-and-search", "blank-slate", "view-"),
+    "projects": ("project",),
+    "architecture": ("architecture",),
+    "racks": ("rack",),
+    "knowledge": ("knowledge",),
+    "settings": ("setting", "audit"),
+    "dashboard": ("dashboard",),
+}
+
+
+def classify_playwright_spec(spec: str) -> str:
+    if any(pattern.search(spec) for pattern in HISTORICAL_EVIDENCE_SPEC_PATTERNS):
+        return "historical_evidence"
+    if spec in EXPLORATORY_DEEP_SPEC_NAMES:
+        return "exploratory_or_overlap"
+    return "current_extended"
+
+
+def changed_workspace_keys(repo: Path) -> tuple[list[str], bool]:
+    identity = repo_identity(repo)
+    workspaces: set[str] = set()
+    shared_blast_radius = False
+    for entry in identity.get("dirty_entries", []):
+        path = str(entry.get("path", "")).lower()
+        if not path:
+            continue
+        if any(token in path for token in (
+            "frontend/src/api/", "frontend/src/app.", "components/shared/",
+            "scripts/verify-app.sh", "playwright.config", "backend/app/main.py",
+        )):
+            shared_blast_radius = True
+        mapping = {
+            "monitoring": ("monitoring",),
+            "assets": ("/asset", "assets/", "devices.py"),
+            "services": ("service", "logical_services"),
+            "external": ("external", "intelligence.py"),
+            "network": ("network",),
+            "far": ("/far", "far/", "far.py"),
+            "research": ("research", "investigation"),
+            "vendors": ("vendor",),
+            "projects": ("project",),
+            "architecture": ("architecture", "data_flow"),
+            "racks": ("rack",),
+            "knowledge": ("knowledge",),
+            "settings": ("setting", "tenant"),
+            "dashboard": ("dashboard",),
+        }
+        for workspace, tokens in mapping.items():
+            if any(token in path for token in tokens):
+                workspaces.add(workspace)
+    return sorted(workspaces), shared_blast_radius
+
+
+def audit_plan(repo: Path) -> dict[str, Any]:
+    coverage = coverage_inventory(repo)
+    canonical = list(coverage["canonical_playwright_specs"])
+    noncanonical = list(coverage["noncanonical_top_level_specs"])
+    classified = [
+        {"spec": spec, "classification": classify_playwright_spec(spec)}
+        for spec in noncanonical
+    ]
+    current_extended = [row["spec"] for row in classified if row["classification"] == "current_extended"]
+    historical = [row["spec"] for row in classified if row["classification"] == "historical_evidence"]
+    exploratory = [row["spec"] for row in classified if row["classification"] == "exploratory_or_overlap"]
+    changed_keys, shared_blast_radius = changed_workspace_keys(repo)
+    if shared_blast_radius:
+        changed = list(current_extended)
+    else:
+        selected: set[str] = set()
+        for spec in current_extended:
+            name = Path(spec).name.lower()
+            for key in changed_keys:
+                if any(token in name for token in WORKSPACE_SPEC_TOKENS.get(key, (key,))):
+                    selected.add(spec)
+            if "crud-api-contracts" in name and any(key in changed_keys for key in ("assets", "services", "external", "network", "far", "research", "vendors")):
+                selected.add(spec)
+            if "workspace-collaborative-views" in name and any(key in changed_keys for key in ("monitoring", "assets", "services", "external", "network", "far", "research", "vendors")):
+                selected.add(spec)
+        changed = sorted(selected)
+    return {
+        "schema_version": SCHEMA_VERSION,
+        "captured_utc": utc_now().isoformat(),
+        "canonical_specs": canonical,
+        "current_extended_specs": current_extended,
+        "historical_evidence_specs": historical,
+        "exploratory_or_overlap_specs": exploratory,
+        "deep_extended_specs": noncanonical,
+        "changed_workspace_keys": changed_keys,
+        "changed_shared_blast_radius": shared_blast_radius,
+        "changed_extended_specs": changed,
+        "profiles": {
+            "changed": {
+                "extended_specs": changed,
+                "then_canonical": True,
+                "purpose": "Fast source-aware verification of changed product areas plus canonical regression protection.",
+            },
+            "full": {
+                "extended_specs": current_extended,
+                "then_canonical": True,
+                "purpose": "Current product workflows plus canonical promotion gate; excludes historical collectors and broad exploration.",
+            },
+            "deep": {
+                "extended_specs": noncanonical,
+                "then_canonical": True,
+                "purpose": "Exhaustive historical and exploratory sweep plus canonical gate; intentionally expensive.",
+            },
+            "canonical": {
+                "extended_specs": [],
+                "then_canonical": True,
+                "purpose": "Canonical production qualification only.",
+            },
+            "far": {
+                "extended_specs": ["tests/far-golden-workspace.spec.ts"],
+                "then_canonical": False,
+                "purpose": "Focused FAR + Monitoring development campaign.",
+            },
+        },
+        "policy": {
+            "routine_full_excludes_historical_evidence": True,
+            "routine_full_excludes_exploratory_overlap": True,
+            "deep_profile_is_explicit": True,
+            "canonical_gate_unchanged": True,
+        },
+    }
+
+
+def cmd_audit_plan(args: argparse.Namespace) -> int:
+    repo = discover_repo(args.repo)
+    result = audit_plan(repo)
+    write_metadata("audit-plan-latest", result)
+    if args.json:
+        print(json_dump(result), end="")
+    else:
+        print(f"Changed profile: {len(result['changed_extended_specs'])} extended + canonical")
+        print(f"Full profile: {len(result['current_extended_specs'])} current extended + canonical")
+        print(f"Deep profile: {len(result['deep_extended_specs'])} all extended + canonical")
+        print(f"Historical evidence moved to deep: {len(result['historical_evidence_specs'])}")
+        print(f"Exploratory/overlap moved to deep: {len(result['exploratory_or_overlap_specs'])}")
+        if result["changed_workspace_keys"]:
+            print("Changed workspaces: " + ", ".join(result["changed_workspace_keys"]))
+        print("No tests are weakened or deleted; only routine profile selection changes.")
+    return 0
+
+
+def cmd_coverage(args: argparse.Namespace) -> int:
+    repo = discover_repo(args.repo)
+    result = coverage_inventory(repo)
+    write_metadata("coverage-latest", result)
+    if args.json:
+        print(json_dump(result), end="")
+    else:
+        print(f"Canonical Playwright specs: {len(result['canonical_playwright_specs'])}")
+        print(f"Top-level specs outside canonical list: {len(result['noncanonical_top_level_specs'])}")
+        if result["dedicated_coverage_gaps"]:
+            print("Dedicated coverage gaps:")
+            for gap in result["dedicated_coverage_gaps"]:
+                print(f"  {gap['workspace']}: {gap['spec']}")
+        routes_without_refs = [row for row in result["routes"] if not row["canonical_references"]]
+        print(f"Routes without static canonical references: {len(routes_without_refs)}")
+        for route in routes_without_refs:
+            print(f"  {route['path']} ({route['name']})")
+    return 0
+
+
+def evidence_roots(repo: Path) -> list[tuple[Path, str]]:
+    return [
+        (repo / "backend" / "test-results", "backend/test-results"),
+        (repo / "frontend" / "test-results", "frontend/test-results"),
+        (repo / "frontend" / "playwright-report", "frontend/playwright-report"),
+        (repo / "frontend" / "blob-report", "frontend/blob-report"),
+    ]
+
+
+def fresh_evidence_files(repo: Path, since_epoch: float) -> list[tuple[Path, str]]:
+    rows: list[tuple[Path, str]] = []
+    threshold = since_epoch - 5.0
+    for root, archive_root in evidence_roots(repo):
+        if not root.is_dir():
+            continue
+        for path in sorted(root.rglob("*")):
+            if path.is_symlink() or not path.is_file():
+                continue
+            with contextlib.suppress(OSError):
+                stat = path.stat()
+                if stat.st_mtime < threshold or stat.st_size > MAX_EVIDENCE_FILE_BYTES:
+                    continue
+                relative = path.relative_to(root).as_posix()
+                rows.append((path, f"{archive_root}/{relative}"))
+    for path, archive_name in [
+        (repo / "frontend" / "llm-report.json", "frontend/llm-report.json"),
+        (audit_log_path(), "controller/audit.log"),
+    ]:
+        if path.is_file():
+            with contextlib.suppress(OSError):
+                stat = path.stat()
+                if stat.st_mtime >= threshold and stat.st_size <= MAX_EVIDENCE_FILE_BYTES:
+                    rows.append((path, archive_name))
+    dedup: dict[str, Path] = {}
+    for path, name in rows:
+        dedup[name] = path
+    return [(path, name) for name, path in sorted(dedup.items())]
+
+
+def parse_llm_failures(repo: Path, since_epoch: float) -> list[dict[str, Any]]:
+    path = repo / "frontend" / "llm-report.json"
+    if not path.is_file():
+        return []
+    try:
+        if path.stat().st_mtime < since_epoch - 5.0:
+            return []
+        value = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return []
+    failures = value.get("failures") if isinstance(value, dict) else None
+    return failures if isinstance(failures, list) else []
+
+
+def create_evidence_archive(repo: Path, destination: Path, since_epoch: float, run_id: str) -> dict[str, Any]:
+    captured = utc_now()
+    files = fresh_evidence_files(repo, since_epoch)
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    temp = destination.with_suffix(destination.suffix + ".tmp")
+    manifest: list[dict[str, Any]] = []
+    with zipfile.ZipFile(temp, "w", compression=zipfile.ZIP_DEFLATED, compresslevel=9) as archive:
+        for path, name in files:
+            data = path.read_bytes()
+            digest = hashlib.sha256(data).hexdigest()
+            zip_write_bytes(archive, f"EVIDENCE/{name}", data, captured)
+            manifest.append({
+                "path": f"EVIDENCE/{name}",
+                "sha256": digest,
+                "size": len(data),
+                "mtime": path.stat().st_mtime,
+            })
+        metadata = {
+            "schema_version": SCHEMA_VERSION,
+            "artifact_type": "SYSGRID_CURRENT_AUDIT_EVIDENCE",
+            "run_id": run_id,
+            "captured_utc": captured.isoformat(),
+            "freshness_threshold_epoch": since_epoch - 5.0,
+            "file_count": len(manifest),
+            "files": manifest,
+        }
+        zip_write_bytes(archive, "EVIDENCE_MANIFEST.json", json_dump(metadata).encode(), captured)
+    temp.replace(destination)
+    return {
+        "path": str(destination),
+        "sha256": sha256_file(destination),
+        "size": destination.stat().st_size,
+        "file_count": len(manifest),
+        "run_id": run_id,
+    }
+
+
+def current_audit_for_source(repo: Path, source_fingerprint: str) -> tuple[dict[str, Any] | None, str]:
+    audit = read_metadata("audit-latest")
+    if not audit:
+        return None, "NOT_RUN"
+    if audit.get("post_source_fingerprint") != source_fingerprint:
+        return audit, "SOURCE_MISMATCH"
+    evidence = audit.get("evidence_archive")
+    if not isinstance(evidence, dict) or not Path(str(evidence.get("path", ""))).is_file():
+        return audit, "EVIDENCE_MISSING"
+    return audit, "CURRENT"
+
+
+def readiness_report(repo: Path) -> dict[str, Any]:
+    inventory = source_inventory(repo)
+    fingerprint = inventory["source_fingerprint"]
+    smoke = read_metadata("smoke-latest")
+    coverage = coverage_inventory(repo)
+    audit, audit_status = current_audit_for_source(repo, fingerprint)
+    identity = repo_identity(repo)
+    reasons: list[str] = []
+    if not smoke or smoke.get("source_fingerprint") != fingerprint:
+        reasons.append("API smoke is missing or belongs to different source bytes.")
+    elif smoke.get("result") != "PASS":
+        reasons.append(f"API smoke failed: {smoke.get('classification')}.")
+    if audit_status != "CURRENT":
+        reasons.append(f"Current-source visual/programmatic audit unavailable: {audit_status}.")
+    elif audit and audit.get("result") != "PASS":
+        reasons.append(f"Current-source audit failed: {audit.get('classification')}.")
+    product_dirty = (
+        identity["dirty_summary"].get("product_source_backend", 0)
+        + identity["dirty_summary"].get("product_source_frontend", 0)
+    )
+    if product_dirty:
+        reasons.append(f"{product_dirty} dirty product-source paths remain unaccepted.")
+    if coverage["dedicated_coverage_gaps"]:
+        reasons.append(
+            f"{len(coverage['dedicated_coverage_gaps'])} dedicated Playwright specs are outside the promotion list."
+        )
+    reasons.append("Independent product acceptance and Linear lock remain manual qualified-delivery gates.")
+    automated_pass = (
+        smoke is not None
+        and smoke.get("source_fingerprint") == fingerprint
+        and smoke.get("result") == "PASS"
+        and audit_status == "CURRENT"
+        and audit is not None
+        and audit.get("result") == "PASS"
+    )
+    return {
+        "schema_version": SCHEMA_VERSION,
+        "captured_utc": utc_now().isoformat(),
+        "result": "AUTOMATED_GATES_PASS_MANUAL_ACCEPTANCE_REQUIRED" if automated_pass else "NOT_READY",
+        "source_fingerprint": fingerprint,
+        "source_identity": identity,
+        "smoke": {
+            "status": "CURRENT" if smoke and smoke.get("source_fingerprint") == fingerprint else "STALE_OR_MISSING",
+            "result": smoke.get("result") if smoke else None,
+            "classification": smoke.get("classification") if smoke else None,
+        },
+        "audit": {
+            "status": audit_status,
+            "result": audit.get("result") if audit else None,
+            "classification": audit.get("classification") if audit else None,
+            "run_id": audit.get("run_id") if audit else None,
+        },
+        "coverage": {
+            "canonical_spec_count": len(coverage["canonical_playwright_specs"]),
+            "noncanonical_spec_count": len(coverage["noncanonical_top_level_specs"]),
+            "dedicated_gap_count": len(coverage["dedicated_coverage_gaps"]),
+        },
+        "reasons": reasons,
+        "claim_boundary": (
+            "This report never claims unknown defects are impossible. Production acceptance requires "
+            "current source, passing runtime/API and rendered/programmatic evidence, risk closure, "
+            "independent review, and qualified delivery."
+        ),
+    }
+
+
+def cmd_readiness(args: argparse.Namespace) -> int:
+    repo = discover_repo(args.repo)
+    result = readiness_report(repo)
+    write_metadata("readiness-latest", result)
+    if args.json:
+        print(json_dump(result), end="")
+    else:
+        print(f"Readiness: {result['result']}")
+        print(f"Source: {result['source_fingerprint'][:16]}")
+        print(
+            f"Smoke: {result['smoke']['status']} {result['smoke']['result'] or '-'} "
+            f"Audit: {result['audit']['status']} {result['audit']['result'] or '-'}"
+        )
+        for reason in result["reasons"]:
+            print(f"- {reason}")
+    return 0 if result["result"].startswith("AUTOMATED_GATES_PASS") else 1
+
+
+def add_file_to_zip(
+    archive: zipfile.ZipFile,
+    source: Path,
+    name: str,
+    when: dt.datetime,
+    manifest: list[str],
+) -> None:
+    if not source.is_file():
+        return
+    data = source.read_bytes()
+    zip_write_bytes(archive, name, data, when)
+    manifest.append(f"{hashlib.sha256(data).hexdigest()}  {name}")
+
+
+def create_review_package(
+    repo: Path,
+    destination: Path,
+    *,
+    create_fresh_snapshot: bool = True,
+    explicit_audit: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    captured = utc_now()
+    identity = repo_identity(repo)
+    temp_dir = Path(tempfile.mkdtemp(prefix="sysgrid-dev-review-"))
+    try:
+        if create_fresh_snapshot:
+            snapshot_path = temp_dir / f"SYSGRID_AUTHORITATIVE_SOURCE__{timestamp()}__{identity['head'][:12] if identity['head'] else 'nohead'}.zip"
+            snapshot = create_source_snapshot(repo, snapshot_path)
+        else:
+            latest = read_metadata("snapshot-latest")
+            if not latest or not Path(str(latest.get("path", ""))).is_file():
+                raise RuntimeError("No prior source snapshot is available")
+            snapshot = latest
+            snapshot_path = Path(str(latest["path"]))
+        coverage = coverage_inventory(repo)
+        readiness = readiness_report(repo)
+        audit = explicit_audit
+        evidence_status = "NOT_RUN"
+        evidence_path: Path | None = None
+        if audit is None:
+            audit, evidence_status = current_audit_for_source(repo, snapshot["source_fingerprint"])
+        else:
+            if audit.get("post_source_fingerprint") == snapshot["source_fingerprint"]:
+                evidence = audit.get("evidence_archive")
+                if isinstance(evidence, dict) and Path(str(evidence.get("path", ""))).is_file():
+                    evidence_status = "CURRENT"
+                    evidence_path = Path(str(evidence["path"]))
+                else:
+                    evidence_status = "EVIDENCE_MISSING"
+            else:
+                evidence_status = "SOURCE_MISMATCH"
+        if evidence_path is None and evidence_status == "CURRENT" and audit:
+            evidence = audit.get("evidence_archive")
+            if isinstance(evidence, dict):
+                candidate = Path(str(evidence.get("path", "")))
+                if candidate.is_file():
+                    evidence_path = candidate
+        summary = {
+            "schema_version": SCHEMA_VERSION,
+            "artifact_type": "SYSGRID_DEVELOPMENT_REVIEW",
+            "tool_version": VERSION,
+            "captured_utc": captured.isoformat(),
+            "source_identity": identity,
+            "snapshot": snapshot,
+            "runtime": runtime_status(repo),
+            "smoke": read_metadata("smoke-latest"),
+            "start": read_metadata("start-latest"),
+            "audit": audit,
+            "audit_evidence_status": evidence_status,
+            "coverage": coverage,
+            "readiness": readiness,
+            "doctor": read_metadata("doctor-latest"),
+            "work_class": "PLATFORM_AND_ENVIRONMENT_OBSERVABILITY",
+            "product_attempt_increment": False,
+            "product_source_mutation": False,
+            "qualified_delivery_replacement": False,
+        }
+        destination.parent.mkdir(parents=True, exist_ok=True)
+        temp_destination = destination.with_suffix(destination.suffix + ".tmp")
+        manifest: list[str] = []
+        with zipfile.ZipFile(temp_destination, "w", compression=zipfile.ZIP_DEFLATED, compresslevel=9) as archive:
+            members = [
+                ("REVIEW_ME_FIRST.json", json_dump(summary).encode()),
+                ("SOURCE_SNAPSHOT.zip", snapshot_path.read_bytes()),
+                ("COVERAGE_INVENTORY.json", json_dump(coverage).encode()),
+                ("READINESS.json", json_dump(readiness).encode()),
+            ]
+            if evidence_path:
+                members.append(("CURRENT_AUDIT_EVIDENCE.zip", evidence_path.read_bytes()))
+            for state_file in sorted(state_root().glob("*.json")):
+                members.append((f"STATE/{state_file.name}", state_file.read_bytes()))
+            for name, data in sorted(members):
+                zip_write_bytes(archive, name, data, captured)
+                manifest.append(f"{hashlib.sha256(data).hexdigest()}  {name}")
+            add_file_to_zip(archive, runtime_log_path(), "LOGS/runtime.log", captured, manifest)
+            add_file_to_zip(archive, audit_log_path(), "LOGS/audit.log", captured, manifest)
+            zip_write_bytes(archive, "MANIFEST.sha256", ("\n".join(sorted(manifest)) + "\n").encode(), captured)
+        temp_destination.replace(destination)
+        return {
+            "path": str(destination),
+            "size": destination.stat().st_size,
+            "sha256": sha256_file(destination),
+            "source_snapshot_sha256": snapshot["sha256"],
+            "source_fingerprint": snapshot["source_fingerprint"],
+            "audit_evidence_status": evidence_status,
+            "classification": (
+                audit.get("classification")
+                if audit and evidence_status == "CURRENT"
+                else (summary.get("smoke") or {}).get("classification", "NO_SMOKE_RESULT")
+            ),
+        }
+    finally:
+        shutil.rmtree(temp_dir, ignore_errors=True)
+
+
+def cmd_collect(args: argparse.Namespace) -> int:
+    repo = discover_repo(args.repo)
+    destination = (
+        Path(args.output).expanduser()
+        if args.output
+        else outbox_root() / f"UPLOAD_THIS_TO_CHATGPT_DEV__{timestamp()}.zip"
+    )
+    result = create_review_package(
+        repo,
+        destination,
+        create_fresh_snapshot=not args.use_existing_snapshot,
+    )
+    write_metadata("collect-latest", result)
+    if args.json:
+        print(json_dump(result), end="")
+    else:
+        print(f"Review package: {result['path']}")
+        print(f"SHA-256: {result['sha256']}")
+        print(f"Source: {result['source_fingerprint']}")
+        print(f"Audit evidence: {result['audit_evidence_status']}")
+    return 0
+
+
+def audit_profile_env(profile: str) -> dict[str, str]:
+    if profile in {"full", "canonical"}:
+        return {"SYSGRID_EXECUTION_PROFILE": "promotion_qualification"}
+    if profile == "far":
+        return {
+            "SYSGRID_EXECUTION_PROFILE": "development_campaign",
+            "SYSGRID_TARGETED_TESTS_JSON": json.dumps([
+                "playwright:golden-seeded",
+                "playwright:shell-geometry",
+                "playwright:far-golden",
+            ]),
+            "SYSGRID_TARGETED_VIEWS_JSON": json.dumps(["far", "monitoring"]),
+        }
+    raise ValueError(f"Unsupported audit profile: {profile}")
+
+
+def audit_stage_metadata_name(run_id: str, stage: str) -> str:
+    safe_run = re.sub(r"[^A-Za-z0-9_.-]+", "-", run_id)
+    safe_stage = re.sub(r"[^A-Za-z0-9_.-]+", "-", stage)
+    return f"audit-stage-{safe_run}-{safe_stage}"
+
+
+def create_combined_evidence_archive(
+    destination: Path,
+    run_id: str,
+    stages: list[dict[str, Any]],
+) -> dict[str, Any]:
+    captured = utc_now()
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    temp = destination.with_suffix(destination.suffix + ".tmp")
+    manifest: list[dict[str, Any]] = []
+    with zipfile.ZipFile(temp, "w", compression=zipfile.ZIP_DEFLATED, compresslevel=9) as archive:
+        for stage in stages:
+            evidence = stage.get("evidence_archive")
+            if not isinstance(evidence, dict):
+                continue
+            path = Path(str(evidence.get("path", "")))
+            if not path.is_file():
+                continue
+            data = path.read_bytes()
+            name = f"STAGES/{stage.get('stage', 'unknown')}.zip"
+            zip_write_bytes(archive, name, data, captured)
+            manifest.append({
+                "path": name,
+                "sha256": hashlib.sha256(data).hexdigest(),
+                "size": len(data),
+                "stage_exit_code": stage.get("exit_code"),
+            })
+        summary = {
+            "schema_version": SCHEMA_VERSION,
+            "artifact_type": "SYSGRID_MULTI_STAGE_AUDIT_EVIDENCE",
+            "run_id": run_id,
+            "captured_utc": captured.isoformat(),
+            "stages": stages,
+            "stage_archive_manifest": manifest,
+        }
+        zip_write_bytes(archive, "AUDIT_STAGE_SUMMARY.json", json_dump(summary).encode(), captured)
+    temp.replace(destination)
+    return {
+        "path": str(destination),
+        "sha256": sha256_file(destination),
+        "size": destination.stat().st_size,
+        "file_count": sum(int((stage.get("evidence_archive") or {}).get("file_count", 0)) for stage in stages),
+        "stage_count": len(stages),
+        "run_id": run_id,
+    }
+
+
+def cmd_capture_stage_evidence(args: argparse.Namespace) -> int:
+    repo = discover_repo(args.repo)
+    current = read_metadata("audit-current") or {}
+    if current.get("run_id") != args.run_id:
+        print(
+            f"Audit run mismatch: expected {current.get('run_id')}, got {args.run_id}",
+            file=sys.stderr,
+        )
+        return 2
+    destination = state_root() / "audit" / f"{args.run_id}-{args.stage}-evidence.zip"
+    evidence = create_evidence_archive(
+        repo,
+        destination,
+        float(args.since_epoch),
+        f"{args.run_id}:{args.stage}",
+    )
+    failures = parse_llm_failures(repo, float(args.since_epoch))
+    stage = {
+        "schema_version": SCHEMA_VERSION,
+        "run_id": args.run_id,
+        "stage": args.stage,
+        "exit_code": args.stage_exit_code,
+        "result": "PASS" if args.stage_exit_code == 0 else "FAIL",
+        "captured_utc": utc_now().isoformat(),
+        "since_epoch": float(args.since_epoch),
+        "evidence_archive": evidence,
+        "failure_count": len(failures),
+        "failures": failures[:100],
+    }
+    write_metadata(audit_stage_metadata_name(args.run_id, args.stage), stage)
+    print(json_dump(stage), end="")
+    return 0
+
+def start_audit(repo: Path, profile: str) -> dict[str, Any]:
+    doctor = doctor_report(repo)
+    write_metadata("doctor-latest", doctor)
+    if doctor["result"] != "PASS":
+        return {
+            "result": "FAIL",
+            "classification": "DOCTOR_FAILURE",
+            "doctor": doctor,
+            "repo": str(repo),
+        }
+    if profile not in {"changed", "full", "deep", "canonical", "far"}:
+        return {
+            "result": "FAIL",
+            "classification": "UNSUPPORTED_AUDIT_PROFILE",
+            "profile": profile,
+        }
+    kill_session(AUDIT_SESSION)
+    log_path = audit_log_path()
+    log_path.parent.mkdir(parents=True, exist_ok=True)
+    if log_path.exists():
+        shutil.copy2(log_path, log_path.with_name(f"audit-{timestamp()}.log"))
+    log_path.write_text("", encoding="utf-8")
+    with contextlib.suppress(FileNotFoundError):
+        audit_exit_path().unlink()
+
+    inventory = source_inventory(repo)
+    coverage = coverage_inventory(repo)
+    plan = audit_plan(repo)
+    run_id = f"audit-{timestamp()}-{inventory['source_fingerprint'][:12]}"
+    started = utc_now()
+    if profile in {"changed", "full", "deep"}:
+        stage_name = {"changed": "changed", "full": "extended", "deep": "deep"}[profile]
+        expected_stages = [stage_name, "canonical"]
+    else:
+        stage_name = profile
+        expected_stages = [profile]
+    current = {
+        "schema_version": SCHEMA_VERSION,
+        "run_id": run_id,
+        "result": "RUNNING",
+        "classification": "AUDIT_RUNNING",
+        "profile": profile,
+        "expected_stages": expected_stages,
+        "extended_spec_count": len(plan["profiles"].get(profile, {}).get("extended_specs", [])),
+        "repo": str(repo),
+        "started_utc": started.isoformat(),
+        "started_epoch": started.timestamp(),
+        "pre_source_fingerprint": inventory["source_fingerprint"],
+        "source_identity": repo_identity(repo),
+        "coverage_inventory": coverage,
+        "audit_plan": plan,
+        "log": str(log_path),
+    }
+    write_metadata("audit-current", current)
+
+    sgd_executable = Path(__file__).resolve()
+    verify = repo / "scripts" / "verify-app.sh"
+    finalize = [
+        str(sgd_executable),
+        "_finalize-audit",
+        "--repo",
+        str(repo),
+        "--run-id",
+        run_id,
+    ]
+
+    def capture_command(stage: str, status_var: str, started_var: str) -> str:
+        command = [
+            str(sgd_executable),
+            "_capture-stage-evidence",
+            "--repo",
+            str(repo),
+            "--run-id",
+            run_id,
+            "--stage",
+            stage,
+            "--stage-exit-code",
+            f"${status_var}",
+            "--since-epoch",
+            f"${started_var}",
+        ]
+        rendered: list[str] = []
+        for token in command:
+            if token.startswith("$"):
+                rendered.append(f'"{token}"')
+            else:
+                rendered.append(shlex.quote(token))
+        return " ".join(rendered)
+
+    shell_parts = [
+        "set -o pipefail",
+        f"cd {shlex.quote(str(repo))}",
+        f"printf '%s\\n' {shlex.quote('SysGrid audit run ' + run_id + ' profile=' + profile)} | tee -a {shlex.quote(str(log_path))}",
+    ]
+
+    if profile in {"changed", "full", "deep"}:
+        extended_specs = list(plan["profiles"][profile]["extended_specs"])
+        start_command = [str(sgd_executable), "start", "--repo", str(repo), "--fast", "--json"]
+        runner = repo / "frontend" / "node_modules" / ".bin" / "playwright"
+        extended_env = [
+            "env",
+            "SYSGRID_CANONICAL_GATE=0",
+            f"PLAYWRIGHT_BASE_URL=http://{DEFAULT_FRONTEND_HOST}:{DEFAULT_FRONTEND_PORT}",
+            f"PW_API_BASE=http://{DEFAULT_BACKEND_HOST}:{DEFAULT_BACKEND_PORT}/api/v1",
+            "PW_TENANT_ID=1",
+            f"USER_ID={DEFAULT_USER_ID}",
+        ]
+        extended_command = extended_env + [str(runner), "test", *extended_specs, "--workers=1"]
+        if extended_specs:
+            extended_execution = (
+                "if [ \"$runtime_start_status\" -eq 0 ]; then "
+                f"(cd {shlex.quote(str(repo / 'frontend'))} && {shlex.join(extended_command)}) "
+                f"2>&1 | tee -a {shlex.quote(str(log_path))}; "
+                "extended_status=${PIPESTATUS[0]}; "
+                "else extended_status=90; "
+                f"printf '%s\\n' 'Extended audit runtime failed to start.' | tee -a {shlex.quote(str(log_path))}; "
+                "fi"
+            )
+        else:
+            extended_execution = (
+                "extended_status=0; "
+                f"printf '%s\\n' 'No changed-area extended specs selected; proceeding to canonical gate.' | tee -a {shlex.quote(str(log_path))}"
+            )
+        shell_parts.extend([
+            "extended_started=$(date +%s)",
+            f"{shlex.join(start_command)} >> {shlex.quote(str(log_path))} 2>&1",
+            "runtime_start_status=$?",
+            extended_execution,
+            capture_command(stage_name, "extended_status", "extended_started") + f" >> {shlex.quote(str(log_path))} 2>&1 || true",
+        ])
+
+        canonical_env = audit_profile_env("canonical")
+        canonical_command = ["env", *[f"{key}={value}" for key, value in canonical_env.items()], str(verify)]
+        shell_parts.extend([
+            "canonical_started=$(date +%s)",
+            f"{shlex.join(canonical_command)} 2>&1 | tee -a {shlex.quote(str(log_path))}",
+            "canonical_status=${PIPESTATUS[0]}",
+            capture_command("canonical", "canonical_status", "canonical_started") + f" >> {shlex.quote(str(log_path))} 2>&1 || true",
+            "if [ \"$extended_status\" -eq 0 ] && [ \"$canonical_status\" -eq 0 ]; then status=0; else status=1; fi",
+        ])
+    else:
+        env_assignments = audit_profile_env(profile)
+        stage_command = ["env", *[f"{key}={value}" for key, value in env_assignments.items()], str(verify)]
+        shell_parts.extend([
+            "stage_started=$(date +%s)",
+            f"{shlex.join(stage_command)} 2>&1 | tee -a {shlex.quote(str(log_path))}",
+            "stage_status=${PIPESTATUS[0]}",
+            capture_command(profile, "stage_status", "stage_started") + f" >> {shlex.quote(str(log_path))} 2>&1 || true",
+            "status=$stage_status",
+        ])
+
+    shell_parts.extend([
+        f"printf '%s\\n' \"$status\" > {shlex.quote(str(audit_exit_path()))}",
+        f"{shlex.join(finalize)} --exit-code \"$status\" >> {shlex.quote(str(log_path))} 2>&1 || true",
+        "exit \"$status\"",
+    ])
+    tmux_shell = "; ".join(shell_parts)
+
+    started_process = run(["tmux", "new-session", "-d", "-s", AUDIT_SESSION, "bash", "-lc", tmux_shell])
+    if started_process.returncode != 0:
+        failure = {
+            **current,
+            "result": "FAIL",
+            "classification": "TMUX_AUDIT_START_FAILURE",
+            "message": started_process.stderr or "Failed to start audit tmux session",
+        }
+        write_metadata("audit-latest", failure)
+        return failure
+    return {**current, "session": AUDIT_SESSION, "status_command": "sgd audit-status --phone", "result": "STARTED"}
+
+def cmd_audit(args: argparse.Namespace) -> int:
+    repo = discover_repo(args.repo)
+    result = start_audit(repo, args.profile)
+    if args.json:
+        print(json_dump(result), end="")
+    else:
+        print(f"Audit: {result['result']} profile={args.profile}")
+        print(f"Run: {result.get('run_id', '-')}")
+        print(f"Source: {result.get('pre_source_fingerprint', '-')}")
+        print(f"Log: {result.get('log', audit_log_path())}")
+        if result["result"] == "STARTED":
+            print("Reconnect-safe status: sgd audit-status --phone")
+    return 0 if result["result"] == "STARTED" else 1
+
+
+def cmd_finalize_audit(args: argparse.Namespace) -> int:
+    repo = discover_repo(args.repo)
+    current = read_metadata("audit-current") or {}
+    if current.get("run_id") != args.run_id:
+        print(
+            f"Audit run mismatch: expected {current.get('run_id')}, got {args.run_id}",
+            file=sys.stderr,
+        )
+        return 2
+
+    pre_fingerprint = str(current.get("pre_source_fingerprint", ""))
+    post_inventory = source_inventory(repo)
+    post_fingerprint = post_inventory["source_fingerprint"]
+    expected_stages = [str(stage) for stage in current.get("expected_stages", [])]
+    stages: list[dict[str, Any]] = []
+    missing_stages: list[str] = []
+    for stage_name in expected_stages:
+        stage = read_metadata(audit_stage_metadata_name(args.run_id, stage_name))
+        if not stage:
+            missing_stages.append(stage_name)
+            continue
+        stages.append(stage)
+
+    if not stages:
+        # Fail-safe fallback: preserve whatever current evidence exists, but mark
+        # that the stage capture contract was not satisfied.
+        started_epoch = float(current.get("started_epoch", time.time()))
+        fallback_path = state_root() / "audit" / f"{args.run_id}-fallback-evidence.zip"
+        fallback = create_evidence_archive(repo, fallback_path, started_epoch, f"{args.run_id}:fallback")
+        stages.append({
+            "schema_version": SCHEMA_VERSION,
+            "run_id": args.run_id,
+            "stage": "fallback",
+            "exit_code": args.exit_code,
+            "result": "PASS" if args.exit_code == 0 else "FAIL",
+            "captured_utc": utc_now().isoformat(),
+            "since_epoch": started_epoch,
+            "evidence_archive": fallback,
+            "failure_count": 0,
+            "failures": [],
+        })
+
+    combined_path = state_root() / "audit" / f"{args.run_id}-evidence.zip"
+    evidence = create_combined_evidence_archive(combined_path, args.run_id, stages)
+    failures: list[dict[str, Any]] = []
+    for stage in stages:
+        for failure in stage.get("failures") or []:
+            row = dict(failure) if isinstance(failure, dict) else {"error": str(failure)}
+            row["stage"] = stage.get("stage")
+            failures.append(row)
+
+    if pre_fingerprint != post_fingerprint:
+        result = "FAIL"
+        classification = "SOURCE_CHANGED_DURING_AUDIT"
+    elif missing_stages:
+        result = "FAIL"
+        classification = "EVIDENCE_CAPTURE_FAILURE"
+    elif args.exit_code == 0 and all(stage.get("result") == "PASS" for stage in stages):
+        result = "PASS"
+        classification = "PASS"
+    else:
+        result = "FAIL"
+        classification = "VERIFICATION_FAILURE"
+
+    audit = {
+        **current,
+        "completed_utc": utc_now().isoformat(),
+        "exit_code": args.exit_code,
+        "result": result,
+        "classification": classification,
+        "post_source_fingerprint": post_fingerprint,
+        "source_changed": pre_fingerprint != post_fingerprint,
+        "missing_stages": missing_stages,
+        "stages": stages,
+        "evidence_archive": evidence,
+        "failure_count": len(failures),
+        "failures": failures[:100],
+    }
+
+    destination = outbox_root() / f"UPLOAD_THIS_TO_CHATGPT_AUDIT__{args.run_id}.zip"
+    package = create_review_package(
+        repo,
+        destination,
+        create_fresh_snapshot=True,
+        explicit_audit=audit,
+    )
+    audit["review_package"] = package
+    write_metadata("audit-latest", audit)
+    write_metadata("verify-latest", audit)
+    write_metadata("verify-status-latest", audit)
+    print(json_dump(audit), end="")
+    return 0 if result == "PASS" else 1
+
+def audit_status_result() -> dict[str, Any]:
+    current = read_metadata("audit-current")
+    latest = read_metadata("audit-latest")
+    running = session_exists(AUDIT_SESSION)
+    if running and current:
+        return {**current, "running": True, "progress": audit_log_progress(audit_log_path())}
+    if latest:
+        return {**latest, "running": False}
+    return {
+        "schema_version": SCHEMA_VERSION,
+        "result": "UNKNOWN",
+        "classification": "NOT_RUN",
+        "running": False,
+    }
+
+def cmd_audit_status(args: argparse.Namespace) -> int:
+    result = audit_status_result()
+    if args.phone:
+        print(f"Audit: {result.get('result', 'UNKNOWN')} {result.get('classification', '')} profile={result.get('profile', '-')}")
+        print(f"Run: {result.get('run_id', '-')}")
+        print(f"Source: {result.get('post_source_fingerprint') or result.get('pre_source_fingerprint') or '-'}")
+        progress = result.get("progress") or {}
+        if result.get("running"):
+            print(f"Progress: pass={progress.get('passed', 0)} fail={progress.get('failed', 0)} skip={progress.get('skipped', 0)}")
+            if progress.get("current"):
+                print(f"Current: {progress['current']}")
+        if result.get("failure_count"):
+            print(f"Failures: {result['failure_count']}")
+            for failure in (result.get("failures") or [])[:5]:
+                print(f"- {failure.get('test', '<unknown>')}: {failure.get('error', '')[:180]}")
+        package = result.get("review_package")
+        if isinstance(package, dict):
+            print(f"Package: {package.get('path', '-')}")
+        print(f"Log: {result.get('log', audit_log_path())}")
+    elif args.json:
+        print(json_dump(result), end="")
+    else:
+        print(f"Audit: {result.get('result')} ({result.get('classification')})")
+        if result.get("review_package"):
+            print(f"Package: {result['review_package'].get('path')}")
+    if result.get("running"):
+        return 0
+    return 0 if result.get("result") == "PASS" else 1
+
+def cmd_cycle(args: argparse.Namespace) -> int:
+    repo = discover_repo(args.repo)
+    start = start_runtime(
+        repo,
+        fast=args.fast,
+        seed_data=not args.no_seed_data,
+        timeout=args.timeout,
+    )
+    if start["result"] == "PASS":
+        smoke = build_smoke_result(repo, args.api_origin, args.user_id, args.tenant_id)
+    else:
+        inventory = source_inventory(repo)
+        smoke = {
+            "schema_version": SCHEMA_VERSION,
+            "captured_utc": utc_now().isoformat(),
+            "result": "FAIL",
+            "classification": "RUNTIME_START_FAILURE",
+            "source_fingerprint": inventory["source_fingerprint"],
+            "repo_identity": repo_identity(repo),
+            "probes": [],
+            "probe_count": 0,
+            "passed_probe_count": 0,
+        }
+        write_metadata("smoke-latest", smoke)
+    destination = outbox_root() / f"UPLOAD_THIS_TO_CHATGPT_DEV__{timestamp()}.zip"
+    package = create_review_package(repo, destination, create_fresh_snapshot=True)
+    result = {
+        "schema_version": SCHEMA_VERSION,
+        "result": "PASS" if start["result"] == "PASS" and smoke["result"] == "PASS" else "FAIL",
+        "start": start,
+        "smoke": smoke,
+        "review_package": package,
+        "next_action": "Upload the review package to ChatGPT or start `sgd audit --profile full`.",
+    }
+    write_metadata("cycle-latest", result)
+    if args.json:
+        print(json_dump(result), end="")
+    else:
+        print(f"Runtime: {start['result']} ({start['classification']})")
+        print_smoke_compact(smoke)
+        print(f"Source fingerprint: {package['source_fingerprint']}")
+        print(f"Review package: {package['path']}")
+        print("Full current-source audit: sgd audit --profile full")
+    return 0 if result["result"] == "PASS" else 1
+
+
+def cmd_logs(args: argparse.Namespace) -> int:
+    path = audit_log_path() if args.which in {"audit", "verify"} else runtime_log_path()
+    if not path.exists():
+        print(f"No {args.which} log exists at {path}", file=sys.stderr)
+        return 1
+    lines = path.read_text(encoding="utf-8", errors="replace").splitlines()
+    print("\n".join(lines[-args.lines:]))
+    return 0
+
+
+def cmd_self_test(_args: argparse.Namespace) -> int:
+    failures: list[str] = []
+    with tempfile.TemporaryDirectory(prefix="sgd-self-test-") as tmp:
+        temp = Path(tmp)
+        repo = temp / "repo"
+        (repo / "backend" / "venv" / "bin").mkdir(parents=True)
+        (repo / "backend" / "alembic" / "versions").mkdir(parents=True)
+        (repo / "frontend" / "src").mkdir(parents=True)
+        (repo / "frontend" / "tests" / "helpers").mkdir(parents=True)
+        (repo / "frontend" / "node_modules" / ".bin").mkdir(parents=True)
+        (repo / "scripts").mkdir(parents=True)
+        (repo / "patches").mkdir(parents=True)
+        files = {
+            "backend/venv/bin/python": "#!/bin/sh\n",
+            "backend/alembic/versions/001_add_external_entity_secrets.py": "def upgrade():\n    pass\n",
+            "frontend/src/app.ts": "export const value = 1\n",
+            "frontend/tests/far-golden-workspace.spec.ts": "test('far', () => {})\n",
+            "frontend/tests/helpers/routeMatrix.ts": (
+                "export const goldenWorkspaceRouteMatrix = ["
+                "{ key: 'far', path: '/far', name: 'FAR', archetype: 'analytical', definitionArchetype: 'investigation' }"
+                "] as const\n"
+                "export const appRouteMatrix = [{ path: '/far', name: 'FAR' }] as const\n"
+            ),
+            "frontend/node_modules/.bin/playwright": "#!/bin/sh\n",
+            "scripts/start-local.sh": "#!/bin/sh\n",
+            "scripts/verify-app.sh": (
+                "#!/bin/sh\nPLAYWRIGHT_SPECS=(\n  tests/sentinel_comprehensive.spec.ts\n)\n"
+            ),
+            "patches/old.patch": "diff --git a/a b/a\n",
+            ".env.local": "SECRET=should-not-ship\n",
+        }
+        for relative, content in files.items():
+            path = repo / relative
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text(content, encoding="utf-8")
+        for executable in [
+            repo / "backend" / "venv" / "bin" / "python",
+            repo / "frontend" / "node_modules" / ".bin" / "playwright",
+            repo / "scripts" / "start-local.sh",
+            repo / "scripts" / "verify-app.sh",
+        ]:
+            executable.chmod(0o755)
+        run(["git", "init", "-q"], cwd=repo)
+        run(["git", "config", "user.email", "selftest@example.invalid"], cwd=repo)
+        run(["git", "config", "user.name", "Self Test"], cwd=repo)
+        run(["git", "add", "."], cwd=repo)
+        run(["git", "commit", "-qm", "fixture"], cwd=repo)
+        snapshot = temp / "snapshot.zip"
+        result = create_source_snapshot(repo, snapshot)
+        with zipfile.ZipFile(snapshot) as archive:
+            names = set(archive.namelist())
+        if "SOURCE/backend/alembic/versions/001_add_external_entity_secrets.py" not in names:
+            failures.append("legitimate migration containing 'secrets' was omitted")
+        if "SOURCE/.env.local" in names or "AUXILIARY/.env.local" in names:
+            failures.append("runtime env included")
+        if "AUXILIARY/patches/old.patch" not in names:
+            failures.append("temporary artifact was not separated into AUXILIARY")
+        if result["source_fingerprint"] != source_inventory(repo)["source_fingerprint"]:
+            failures.append("source fingerprint mismatch")
+        coverage = coverage_inventory(repo)
+        if not any(gap.get("workspace") == "far" for gap in coverage["dedicated_coverage_gaps"]):
+            failures.append("dedicated FAR coverage gap not detected")
+        # Repository memory must work outside the repository.
+        remember_repo(repo)
+        if remembered_repo() != repo.resolve():
+            failures.append("repository memory failed")
+        (repo / "frontend/tests/assets-stage36-evidence.spec.ts").write_text("test('history', () => {})\n", encoding="utf-8")
+        (repo / "frontend/tests/debug.spec.ts").write_text("test('debug', () => {})\n", encoding="utf-8")
+        (repo / "frontend/tests/far-workflows.spec.ts").write_text("test('current', () => {})\n", encoding="utf-8")
+        plan = audit_plan(repo)
+        if "tests/assets-stage36-evidence.spec.ts" in plan["current_extended_specs"]:
+            failures.append("routine full retained historical evidence spec")
+        if "tests/debug.spec.ts" in plan["current_extended_specs"]:
+            failures.append("routine full retained exploratory debug spec")
+        if "tests/far-workflows.spec.ts" not in plan["current_extended_specs"]:
+            failures.append("routine full omitted current FAR workflow")
+        if "tests/assets-stage36-evidence.spec.ts" not in plan["deep_extended_specs"]:
+            failures.append("deep profile omitted historical evidence spec")
+        log = temp / "audit.log"
+        log.write_text("  ✓   1 tests/a.spec.ts:1 pass\n  ✘   2 tests/b.spec.ts:2 fail\n", encoding="utf-8")
+        progress = audit_log_progress(log)
+        if progress["passed"] != 1 or progress["failed"] != 1:
+            failures.append("audit progress parser failed")
+    output = {"result": "PASS" if not failures else "FAIL", "failures": failures, "version": VERSION}
+    print(json_dump(output), end="")
+    return 0 if not failures else 1
+
+
+FAILURE_CLASS_RULES = [
+    ("SOURCE_OR_EVIDENCE_INTEGRITY", re.compile(r"source changed|evidence.*missing|manifest|baseline mismatch", re.I)),
+    ("BACKEND_OR_NETWORK", re.compile(r"failed to fetch|status\s*500|internal server error|requestfailed|connection refused|net::", re.I)),
+    ("SEED_OR_FIXTURE", re.compile(r"seed|fixture|tenant.*contract|missing code-managed reference", re.I)),
+    ("TEST_TIMEOUT_OR_HANG", re.compile(r"timeout|timed out|exceeded.*ms|test timeout", re.I)),
+    ("SELECTOR_OR_INTERACTION_CONTRACT", re.compile(r"locator|strict mode violation|not visible|not found|waiting for|getbyrole|getbytext", re.I)),
+    ("VISUAL_OR_GEOMETRY", re.compile(r"screenshot|visual|bounding|geometry|width|height|overflow|clipped|pixel", re.I)),
+    ("ACCESSIBILITY_OR_SEMANTICS", re.compile(r"accessible|aria|role=|keyboard|focus", re.I)),
+    ("ASSERTION_OR_PRODUCT_CONTRACT", re.compile(r"expected|received|tobetruthy|tocontain|tomatch|assert", re.I)),
+]
+RISK_BY_FAILURE_CLASS = {
+    "SOURCE_OR_EVIDENCE_INTEGRITY": ["persistence/migration", "destructive/recovery"],
+    "BACKEND_OR_NETWORK": ["offline/network", "retry/idempotency"],
+    "SEED_OR_FIXTURE": ["empty/null", "persistence/migration"],
+    "TEST_TIMEOUT_OR_HANG": ["performance/resource", "retry/idempotency"],
+    "SELECTOR_OR_INTERACTION_CONTRACT": ["accessibility/interaction", "responsive/visual"],
+    "VISUAL_OR_GEOMETRY": ["responsive/visual", "accessibility/interaction"],
+    "ACCESSIBILITY_OR_SEMANTICS": ["accessibility/interaction"],
+    "ASSERTION_OR_PRODUCT_CONTRACT": ["nominal", "boundary"],
+    "UNCLASSIFIED": ["nominal"],
+}
+LANE_TOKENS = [REDACTED]
+    "monitoring": ("monitoring",),
+    "assets": ("asset", "devices"),
+    "services": ("service", "logical-service"),
+    "external": ("external", "intelligence"),
+    "network": ("network",),
+    "far": ("far", "failure mode"),
+    "research": ("research", "investigation"),
+    "vendors": ("vendor",),
+    "projects": ("project",),
+    "architecture": ("architecture", "data-flow"),
+    "racks": ("rack",),
+    "knowledge": ("knowledge",),
+    "settings": ("setting", "audit-log"),
+    "platform": ("verify-app", "playwright.config", "evidence", "manifest", "source changed"),
+}
+
+
+def safe_zip_name(name: str) -> bool:
+    path = Path(name)
+    return bool(name) and not path.is_absolute() and ".." not in path.parts and "\x00" not in name
+
+
+def zip_member_is_symlink(info: zipfile.ZipInfo) -> bool:
+    return ((info.external_attr >> 16) & 0o170000) == 0o120000
+
+
+def validate_zip(archive: zipfile.ZipFile) -> list[str]:
+    errors: list[str] = []
+    seen: set[str] = set()
+    for info in archive.infolist():
+        if not safe_zip_name(info.filename):
+            errors.append(f"unsafe member path: {info.filename}")
+        if zip_member_is_symlink(info):
+            errors.append(f"symlink member prohibited: {info.filename}")
+        if info.filename in seen:
+            errors.append(f"duplicate member: {info.filename}")
+        seen.add(info.filename)
+    return errors
+
+
+def verify_manifest_bytes(archive: zipfile.ZipFile, manifest_name: str = "MANIFEST.sha256") -> dict[str, Any]:
+    if manifest_name not in archive.namelist():
+        return {"present": False, "valid": False, "checked": 0, "errors": ["manifest missing"]}
+    errors: list[str] = []
+    checked = 0
+    text = archive.read(manifest_name).decode("utf-8", errors="replace")
+    for raw in text.splitlines():
+        line = raw.strip()
+        if not line:
+            continue
+        match = re.fullmatch(r"([0-9a-fA-F]{64})\s{2}(.+)", line)
+        if not match:
+            errors.append(f"malformed manifest line: {line[:160]}")
+            continue
+        expected, name = match.group(1).lower(), match.group(2)
+        if name not in archive.namelist():
+            errors.append(f"manifest member missing: {name}")
+            continue
+        actual = hashlib.sha256(archive.read(name)).hexdigest()
+        checked += 1
+        if actual != expected:
+            errors.append(f"hash mismatch: {name}")
+    return {"present": True, "valid": not errors, "checked": checked, "errors": errors}
+
+
+def json_member(archive: zipfile.ZipFile, name: str) -> Any:
+    if name not in archive.namelist():
+        return None
+    try:
+        return json.loads(archive.read(name).decode("utf-8"))
+    except (json.JSONDecodeError, UnicodeDecodeError):
+        return None
+
+
+def normalize_failure_signature(error: str) -> str:
+    value = re.sub(r"\x1b\[[0-9;]*m", "", error or "")
+    value = re.sub(r"\b\d{4,}\b", "#", value)
+    value = re.sub(r"[0-9a-f]{8}-[0-9a-f-]{27,}", "<uuid>", value, flags=re.I)
+    value = re.sub(r"/Users/[^/]+/", "/Users/<user>/", value)
+    value = re.sub(r"\s+", " ", value).strip().lower()
+    return value[:280]
+
+
+def infer_failure_class(error: str) -> str:
+    for name, pattern in FAILURE_CLASS_RULES:
+        if pattern.search(error or ""):
+            return name
+    return "UNCLASSIFIED"
+
+
+def infer_lane(file_name: str, test_name: str, error: str) -> str:
+    haystack = f"{file_name} {test_name} {error}".lower()
+    scores: dict[str, int] = {}
+    for lane, tokens in LANE_TOKENS.items():
+        score = sum(1 for token in tokens if token in haystack)
+        if score:
+            scores[lane] = score
+    if not scores:
+        return "cross-cutting"
+    return sorted(scores, key=lambda key: (-scores[key], key))[0]
+
+
+def source_candidates_for_lane(source_names: set[str], lane: str, failure_class: str) -> list[str]:
+    patterns = {
+        "monitoring": ("MonitoringGrid", "/monitoring/", "api/monitoring.py"),
+        "assets": ("components/assets/", "components/Assets.tsx", "api/devices.py"),
+        "services": ("ServicesReal", "logical_services.py"),
+        "external": ("External.tsx", "api/intelligence.py"),
+        "network": ("NetworkReal", "api/networks.py"),
+        "far": ("components/far/", "components/FAR.tsx", "api/far.py", "api/workspaces.py"),
+        "research": ("Research.tsx", "api/investigations.py"),
+        "vendors": ("VendorsReal", "api/vendors.py"),
+        "projects": ("Projects.tsx", "api/projects.py"),
+        "architecture": ("DataFlowDesigner", "api/data_flows.py"),
+        "racks": ("Racks.tsx", "api/racks.py"),
+        "knowledge": ("Knowledge.tsx", "api/knowledge.py"),
+        "settings": ("Settings", "api/settings.py"),
+        "platform": ("scripts/verify-app.sh", "playwright.config", "llm-reporter", "tests/helpers/"),
+        "cross-cutting": ("components/shared/", "api/apiClient.ts", "scripts/verify-app.sh"),
+    }
+    selected: list[str] = []
+    for name in sorted(source_names):
+        if not name.startswith(("SOURCE/", "AUXILIARY/")):
+            continue
+        clean = name.split("/", 1)[1]
+        if any(token.lower() in clean.lower() for token in patterns.get(lane, patterns["cross-cutting"])):
+            selected.append(clean)
+    if failure_class in {"SELECTOR_OR_INTERACTION_CONTRACT", "VISUAL_OR_GEOMETRY", "ACCESSIBILITY_OR_SEMANTICS"}:
+        for token in ("frontend/src/components/shared/OperationalWorkspaceShells.tsx", "frontend/src/components/shared/WorkspaceCommandBar.tsx", "frontend/src/components/shared/OperationalDataGrid.tsx"):
+            if f"SOURCE/{token}" in source_names and token not in selected:
+                selected.append(token)
+    if failure_class == "BACKEND_OR_NETWORK":
+        token = [REDACTED]
+        if f"SOURCE/{token}" in source_names and token not in selected:
+            selected.append(token)
+    return selected[:30]
+
+
+def triage_disposition(lane: str, failure_class: str, spec: str) -> tuple[str, str]:
+    spec_class = classify_playwright_spec(spec) if spec.startswith("tests/") else "current_extended"
+    if spec_class == "historical_evidence":
+        return "REJECT_WITH_REASON", "Historical evidence collector failure must not trigger a blind product change; confirm with current route evidence or move repair to test debt."
+    if spec_class == "exploratory_or_overlap" and failure_class == "TEST_TIMEOUT_OR_HANG":
+        return "DEFER_MATERIAL", "Broad exploratory timeout is not a product verdict until the focused route reproduces it."
+    if lane in {"projects", "architecture"}:
+        return "DEFER_OUT_OF_SCOPE", "Current OUT-31 stage prohibits new Projects/Architecture product work unless this is proven to be a shared regression."
+    if failure_class in {"SOURCE_OR_EVIDENCE_INTEGRITY", "SEED_OR_FIXTURE"}:
+        return "ACT_NOW", "This blocks trustworthy product evaluation and should be repaired without incrementing the Product Attempt."
+    return "ACT_NOW", "Evidence affects a current product or verification path and must be resolved or explicitly disproven before acceptance."
+
+
+def collect_audit_failures(review_path: Path) -> dict[str, Any]:
+    outer_bytes = review_path.read_bytes()
+    with zipfile.ZipFile(review_path) as outer:
+        validation_errors = validate_zip(outer)
+        manifest = verify_manifest_bytes(outer)
+        summary = json_member(outer, "REVIEW_ME_FIRST.json") or {}
+        coverage = json_member(outer, "COVERAGE_INVENTORY.json") or {}
+        source_names: set[str] = set()
+        source_identity: dict[str, Any] = {}
+        if "SOURCE_SNAPSHOT.zip" in outer.namelist():
+            with zipfile.ZipFile(io.BytesIO(outer.read("SOURCE_SNAPSHOT.zip"))) as source_archive:
+                validation_errors.extend(f"source: {error}" for error in validate_zip(source_archive))
+                source_names = set(source_archive.namelist())
+                source_identity = json_member(source_archive, "META/SOURCE_IDENTITY.json") or {}
+        failures: list[dict[str, Any]] = []
+        evidence_index: list[dict[str, Any]] = []
+        stage_summary: dict[str, Any] = {}
+        if "CURRENT_AUDIT_EVIDENCE.zip" in outer.namelist():
+            with zipfile.ZipFile(io.BytesIO(outer.read("CURRENT_AUDIT_EVIDENCE.zip"))) as evidence:
+                validation_errors.extend(f"evidence: {error}" for error in validate_zip(evidence))
+                stage_summary = json_member(evidence, "AUDIT_STAGE_SUMMARY.json") or {}
+                for stage in stage_summary.get("stages") or []:
+                    stage_name = str(stage.get("stage", "unknown"))
+                    for row in stage.get("failures") or []:
+                        item = dict(row) if isinstance(row, dict) else {"error": str(row)}
+                        item["stage"] = stage_name
+                        failures.append(item)
+                for stage_member in sorted(name for name in evidence.namelist() if name.startswith("STAGES/") and name.endswith(".zip")):
+                    stage_name = Path(stage_member).stem
+                    with zipfile.ZipFile(io.BytesIO(evidence.read(stage_member))) as stage_zip:
+                        validation_errors.extend(f"{stage_name}: {error}" for error in validate_zip(stage_zip))
+                        for name in stage_zip.namelist():
+                            info = stage_zip.getinfo(name)
+                            evidence_index.append({"stage": stage_name, "path": name, "size": info.file_size})
+                            if name.endswith("llm-report.json"):
+                                payload = json_member(stage_zip, name) or {}
+                                for row in payload.get("failures") or []:
+                                    item = dict(row) if isinstance(row, dict) else {"error": str(row)}
+                                    item["stage"] = stage_name
+                                    failures.append(item)
+                            elif name.endswith("error-context.md"):
+                                text = stage_zip.read(name).decode("utf-8", errors="replace")
+                                evidence_index[-1]["preview"] = re.sub(r"\s+", " ", text)[:500]
+        audit = summary.get("audit") if isinstance(summary, dict) else None
+        if isinstance(audit, dict):
+            for row in audit.get("failures") or []:
+                failures.append(dict(row) if isinstance(row, dict) else {"error": str(row)})
+
+    dedup: dict[tuple[str, str, str, str], dict[str, Any]] = {}
+    for row in failures:
+        file_name = str(row.get("file") or row.get("spec") or "")
+        match = re.search(r"(?:^|/)(tests/[^:]+\.spec\.ts)", file_name)
+        if match:
+            file_name = match.group(1)
+        test_name = str(row.get("test") or row.get("title") or "<unknown test>")
+        error = str(row.get("error") or row.get("message") or "")
+        stage = str(row.get("stage") or "unknown")
+        signature = normalize_failure_signature(error)
+        key = (stage, file_name, test_name, signature)
+        if key in dedup:
+            dedup[key]["occurrences"] += 1
+            continue
+        failure_class = infer_failure_class(error)
+        lane = infer_lane(file_name, test_name, error)
+        disposition, reason = triage_disposition(lane, failure_class, file_name)
+        dedup[key] = {
+            "stage": stage,
+            "file": file_name,
+            "test": test_name,
+            "line": row.get("line"),
+            "status": row.get("status"),
+            "error": error[:2000],
+            "signature": signature,
+            "failure_class": failure_class,
+            "lane": lane,
+            "risk_categories": RISK_BY_FAILURE_CLASS.get(failure_class, ["nominal"]),
+            "disposition": disposition,
+            "disposition_reason": reason,
+            "source_candidates": source_candidates_for_lane(source_names, lane, failure_class),
+            "occurrences": 1,
+        }
+    normalized = list(dedup.values())
+    groups: dict[tuple[str, str, str], list[dict[str, Any]]] = defaultdict(list)
+    for row in normalized:
+        groups[(row["lane"], row["failure_class"], row["signature"])].append(row)
+    clusters: list[dict[str, Any]] = []
+    for index, ((lane, failure_class, signature), rows) in enumerate(
+        sorted(groups.items(), key=lambda item: (-sum(r["occurrences"] for r in item[1]), item[0])), start=1
+    ):
+        dispositions = Counter(row["disposition"] for row in rows)
+        source_candidates: list[str] = []
+        for row in rows:
+            for candidate in row["source_candidates"]:
+                if candidate not in source_candidates:
+                    source_candidates.append(candidate)
+        clusters.append({
+            "cluster_id": f"F{index:03d}",
+            "lane": lane,
+            "failure_class": failure_class,
+            "signature": signature,
+            "failure_count": len(rows),
+            "occurrence_count": sum(row["occurrences"] for row in rows),
+            "tests": sorted({f"{row['file']} :: {row['test']}" for row in rows}),
+            "risk_categories": sorted({risk for row in rows for risk in row["risk_categories"]}),
+            "disposition": dispositions.most_common(1)[0][0],
+            "source_candidates": source_candidates[:40],
+        })
+    return {
+        "schema_version": SCHEMA_VERSION,
+        "artifact_type": "SYSGRID_AUDIT_TRIAGE",
+        "tool_version": VERSION,
+        "captured_utc": utc_now().isoformat(),
+        "input": {"path": str(review_path), "size": len(outer_bytes), "sha256": hashlib.sha256(outer_bytes).hexdigest()},
+        "integrity": {"outer_manifest": manifest, "validation_errors": validation_errors, "valid": manifest.get("valid", False) and not validation_errors},
+        "review_summary": summary,
+        "source_identity": source_identity,
+        "coverage_inventory": coverage,
+        "stage_summary": stage_summary,
+        "failure_count_raw": len(failures),
+        "failure_count_unique": len(normalized),
+        "failures": normalized,
+        "clusters": clusters,
+        "evidence_index": evidence_index,
+    }
+
+
+def triage_markdown(result: dict[str, Any]) -> str:
+    lines = [
+        "# SysGrid Audit Triage", "",
+        f"- Input SHA-256: `{result['input']['sha256']}`",
+        f"- Integrity: `{'PASS' if result['integrity']['valid'] else 'FAIL'}`",
+        f"- Raw failures: {result['failure_count_raw']}",
+        f"- Unique failures: {result['failure_count_unique']}",
+        f"- Clusters: {len(result['clusters'])}", "",
+        "## Ranked Failure Clusters", "",
+    ]
+    if not result["clusters"]:
+        lines.append("No failure clusters were found in the supplied audit evidence.")
+    for cluster in result["clusters"]:
+        lines.extend([
+            f"### {cluster['cluster_id']} — {cluster['lane']} / {cluster['failure_class']}", "",
+            f"- Disposition: `{cluster['disposition']}`",
+            f"- Failures: {cluster['failure_count']} unique / {cluster['occurrence_count']} occurrences",
+            f"- Risks: {', '.join(cluster['risk_categories'])}",
+            f"- Signature: `{cluster['signature'][:240]}`",
+            "- Tests:", *[f"  - `{test}`" for test in cluster["tests"]],
+            "- Candidate source owners:",
+            *([f"  - `{path}`" for path in cluster["source_candidates"]] or ["  - Evidence does not yet identify a source owner."]), "",
+        ])
+    lines.extend(["## Improvement Ledger", ""])
+    for disposition in ("ACT_NOW", "DEFER_MATERIAL", "DEFER_OUT_OF_SCOPE", "REJECT_WITH_REASON"):
+        rows = [cluster for cluster in result["clusters"] if cluster["disposition"] == disposition]
+        lines.append(f"### {disposition}")
+        lines.extend([f"- {row['cluster_id']}: {row['lane']} / {row['failure_class']}" for row in rows] or ["- None"])
+        lines.append("")
+    lines.extend([
+        "## Patch Sequencing Rule", "",
+        "1. Repair source/evidence integrity and seed/runtime blockers first without incrementing the Product Attempt.",
+        "2. Fix shared cross-workspace defects before domain-local symptoms when evidence proves a shared owner.",
+        "3. Apply all evidence-supported, in-scope, non-material ACT_NOW findings cumulatively.",
+        "4. Validate focused routes and changed risks, then run the unchanged canonical gate.",
+        "5. Do not convert historical evidence timeouts into product changes without a current focused reproduction.", "",
+    ])
+    return "\n".join(lines)
+
+
+def create_triage_package(result: dict[str, Any], destination: Path) -> dict[str, Any]:
+    captured = utc_now()
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    temp = destination.with_suffix(destination.suffix + ".tmp")
+    ledger = {disposition: [cluster for cluster in result["clusters"] if cluster["disposition"] == disposition] for disposition in ("ACT_NOW", "DEFER_MATERIAL", "DEFER_OUT_OF_SCOPE", "REJECT_WITH_REASON")}
+    risk_matrix: dict[str, list[str]] = defaultdict(list)
+    for cluster in result["clusters"]:
+        for risk in cluster["risk_categories"]:
+            risk_matrix[risk].append(cluster["cluster_id"])
+    members = {
+        "TRIAGE_SUMMARY.md": triage_markdown(result).encode(),
+        "TRIAGE.json": json_dump(result).encode(),
+        "FAILURE_CLUSTERS.json": json_dump(result["clusters"]).encode(),
+        "IMPROVEMENT_LEDGER.json": json_dump(ledger).encode(),
+        "RISK_MATRIX.json": json_dump(dict(sorted(risk_matrix.items()))).encode(),
+        "EVIDENCE_INDEX.json": json_dump(result["evidence_index"]).encode(),
+    }
+    manifest: list[str] = []
+    with zipfile.ZipFile(temp, "w", compression=zipfile.ZIP_DEFLATED, compresslevel=9) as archive:
+        for name, data in sorted(members.items()):
+            zip_write_bytes(archive, name, data, captured)
+            manifest.append(f"{hashlib.sha256(data).hexdigest()}  {name}")
+        zip_write_bytes(archive, "MANIFEST.sha256", ("\n".join(sorted(manifest)) + "\n").encode(), captured)
+    temp.replace(destination)
+    return {"path": str(destination), "sha256": sha256_file(destination), "size": destination.stat().st_size}
+
+
+def cmd_triage(args: argparse.Namespace) -> int:
+    artifact = Path(args.artifact).expanduser().resolve()
+    if not artifact.is_file():
+        print(f"Audit review package not found: {artifact}", file=sys.stderr)
+        return 2
+    result = collect_audit_failures(artifact)
+    destination = Path(args.output).expanduser() if args.output else outbox_root() / f"UPLOAD_THIS_TO_CHATGPT_TRIAGE__{timestamp()}__{result['input']['sha256'][:12]}.zip"
+    package = create_triage_package(result, destination)
+    result["triage_package"] = package
+    write_metadata("triage-latest", result)
+    if args.json:
+        print(json_dump(result), end="")
+    else:
+        print(f"Integrity: {'PASS' if result['integrity']['valid'] else 'FAIL'}")
+        print(f"Failures: {result['failure_count_unique']} unique in {len(result['clusters'])} clusters")
+        for cluster in result["clusters"][:10]:
+            print(f"{cluster['cluster_id']} {cluster['disposition']} {cluster['lane']} {cluster['failure_class']} ({cluster['occurrence_count']})")
+        print(f"Triage package: {package['path']}")
+        print(f"SHA-256: {package['sha256']}")
+    return 0 if result["integrity"]["valid"] else 1
+
+
+
+CAPSULE_TOP_LEVEL_KEYS = {
+    "schema_version", "capsule_version", "project", "master_context", "issue",
+    "iteration", "attempt", "lane", "mode", "stage", "title", "baseline",
+    "engine", "patch", "state", "recipes", "delivery", "evidence", "acceptance",
+}
+CAPSULE_ACCEPTANCE_KEYS = {"behavior", "proof", "protection", "forbidden"}
+CAPSULE_BASELINE_KEYS = {"branch", "head", "upstream"}
+CAPSULE_ENGINE_KEYS = {"required_version"}
+CAPSULE_PATCH_KEYS = {"path", "sha256"}
+CAPSULE_STATE_KEYS = {
+    "pre_expected_dirty_paths", "pre_hashes", "post_expected_dirty_paths",
+    "post_hashes", "protected_hashes",
+}
+CAPSULE_RECIPE_KEYS = {"id", "params", "required"}
+CAPSULE_DELIVERY_KEYS = {"branch", "commit_message", "commit_push", "remote"}
+CAPSULE_EVIDENCE_KEYS = {
+    "canonical_upload_path", "capture", "monitoring_visual_delta_expected",
+    "capture_success_artifacts", "success_artifact_roots",
+    "require_success_artifact_suffixes",
+}
+
+
+def parse_hash_ledger(text: str, *, label: str) -> list[tuple[str, str]]:
+    rows: list[tuple[str, str]] = []
+    seen: set[str] = set()
+    for index, raw in enumerate(text.splitlines(), 1):
+        if not raw.strip():
+            continue
+        if "  " not in raw:
+            raise ValueError(f"{label} line {index} is not '<sha256>  <path>'")
+        digest, relative = raw.split("  ", 1)
+        if not re.fullmatch(r"[0-9a-f]{64}", digest):
+            raise ValueError(f"{label} line {index} has invalid SHA-256")
+        if not relative or relative.startswith("/") or ".." in Path(relative).parts:
+            raise ValueError(f"{label} line {index} has unsafe path: {relative!r}")
+        if relative in seen:
+            raise ValueError(f"{label} repeats path: {relative}")
+        seen.add(relative)
+        rows.append((digest, relative))
+    if not rows:
+        raise ValueError(f"{label} is empty")
+    return rows
+
+
+def parse_dirty_path_file(text: str, *, label: str) -> list[str]:
+    values: list[str] = []
+    seen: set[str] = set()
+    for index, raw in enumerate(text.splitlines(), 1):
+        value = raw.strip()
+        if not value:
+            continue
+        if value.startswith("/") or ".." in Path(value).parts:
+            raise ValueError(f"{label} line {index} has unsafe path: {value!r}")
+        if value in seen:
+            raise ValueError(f"{label} repeats path: {value}")
+        seen.add(value)
+        values.append(value)
+    if values != sorted(values):
+        raise ValueError(f"{label} must be sorted lexically")
+    return values
+
+
+def git_status_paths(repo: Path) -> list[str]:
+    result = run(
+        ["git", "-c", "core.quotepath=false", "status", "--porcelain=v1", "--untracked-files=normal"],
+        cwd=repo,
+    )
+    if result.returncode != 0:
+        raise RuntimeError(result.stderr.strip() or "git status failed")
+    paths: list[str] = []
+    for raw in result.stdout.splitlines():
+        if len(raw) < 4:
+            continue
+        value = raw[3:]
+        if " -> " in value:
+            value = value.split(" -> ", 1)[1]
+        paths.append(value)
+    return sorted(paths)
+
+
+def verify_path_hashes(root: Path, rows: Sequence[tuple[str, str]], *, label: str) -> list[dict[str, str]]:
+    verified: list[dict[str, str]] = []
+    for expected, relative in rows:
+        path = root / relative
+        if not path.is_file():
+            raise ValueError(f"{label} missing file: {relative}")
+        actual = sha256_file(path)
+        if actual != expected:
+            raise ValueError(f"{label} hash mismatch for {relative}: expected {expected}, got {actual}")
+        verified.append({"path": relative, "sha256": actual})
+    return verified
+
+
+def validate_capsule_schema(run_data: dict[str, Any]) -> None:
+    if set(run_data) != CAPSULE_TOP_LEVEL_KEYS:
+        raise ValueError(
+            "RUN.json top-level schema mismatch: "
+            f"missing={sorted(CAPSULE_TOP_LEVEL_KEYS - set(run_data))} "
+            f"extra={sorted(set(run_data) - CAPSULE_TOP_LEVEL_KEYS)}"
+        )
+    sections = [
+        ("baseline", CAPSULE_BASELINE_KEYS),
+        ("engine", CAPSULE_ENGINE_KEYS),
+        ("patch", CAPSULE_PATCH_KEYS),
+        ("state", CAPSULE_STATE_KEYS),
+        ("delivery", CAPSULE_DELIVERY_KEYS),
+        ("evidence", CAPSULE_EVIDENCE_KEYS),
+        ("acceptance", CAPSULE_ACCEPTANCE_KEYS),
+    ]
+    for name, expected in sections:
+        value = run_data.get(name)
+        if not isinstance(value, dict):
+            raise ValueError(f"RUN.json {name} must be an object")
+        if set(value) != expected:
+            raise ValueError(
+                f"RUN.json {name} schema mismatch: "
+                f"missing={sorted(expected - set(value))} extra={sorted(set(value) - expected)}"
+            )
+    recipes = run_data.get("recipes")
+    if not isinstance(recipes, list) or not recipes:
+        raise ValueError("RUN.json recipes must be a non-empty array")
+    for index, recipe in enumerate(recipes):
+        if not isinstance(recipe, dict) or set(recipe) != CAPSULE_RECIPE_KEYS:
+            raise ValueError(f"RUN.json recipe {index} has unsupported schema")
+    if run_data.get("schema_version") != "1.0" or run_data.get("capsule_version") != "1.0":
+        raise ValueError("Stable Engine v1.0.4 requires schema_version and capsule_version 1.0")
+    if run_data["engine"].get("required_version") != "1.0.4":
+        raise ValueError("capsule must target Stable Engine v1.0.4")
+
+
+def capsule_archive_members(archive: zipfile.ZipFile) -> list[str]:
+    names = archive.namelist()
+    if len(names) != len(set(names)):
+        raise ValueError("capsule contains duplicate ZIP members")
+    for info in archive.infolist():
+        path = Path(info.filename)
+        if info.filename.startswith("/") or ".." in path.parts:
+            raise ValueError(f"capsule contains unsafe ZIP member: {info.filename}")
+        mode = (info.external_attr >> 16) & 0o170000
+        if mode == 0o120000:
+            raise ValueError(f"capsule contains symlink member: {info.filename}")
+    if len(names) != 8:
+        raise ValueError(f"capsule must contain exactly 8 canonical members, got {len(names)}")
+    if "MANIFEST.sha256" not in names or "RUN.json" not in names:
+        raise ValueError("capsule is missing MANIFEST.sha256 or RUN.json")
+    return names
+
+
+def verify_capsule_manifest(archive: zipfile.ZipFile, names: Sequence[str]) -> list[dict[str, str]]:
+    rows = parse_hash_ledger(archive.read("MANIFEST.sha256").decode("utf-8"), label="MANIFEST.sha256")
+    declared = [relative for _digest, relative in rows]
+    expected = sorted(name for name in names if name != "MANIFEST.sha256")
+    if sorted(declared) != expected:
+        raise ValueError(
+            "capsule manifest membership mismatch: "
+            f"missing={sorted(set(expected) - set(declared))} extra={sorted(set(declared) - set(expected))}"
+        )
+    verified: list[dict[str, str]] = []
+    for expected_hash, relative in rows:
+        actual = hashlib.sha256(archive.read(relative)).hexdigest()
+        if actual != expected_hash:
+            raise ValueError(f"capsule manifest hash mismatch for {relative}")
+        verified.append({"path": relative, "sha256": actual})
+    return verified
+
+
+def copy_ledger_files(source_root: Path, target_root: Path, rows: Sequence[tuple[str, str]]) -> None:
+    for _digest, relative in rows:
+        source = source_root / relative
+        target = target_root / relative
+        if not source.is_file():
+            raise ValueError(f"cannot reproduce shadow baseline; missing live file: {relative}")
+        target.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(source, target)
+
+
+def certify_capsule(repo: Path, capsule: Path, *, install: bool = False, inbox: Path | None = None) -> dict[str, Any]:
+    repo = discover_repo(str(repo))
+    capsule = capsule.expanduser().resolve()
+    if not capsule.is_file():
+        raise FileNotFoundError(f"capsule not found: {capsule}")
+    before_head = git_output(repo, "rev-parse", "HEAD")
+    before_status = run(
+        ["git", "-c", "core.quotepath=false", "status", "--porcelain=v1", "--untracked-files=all"],
+        cwd=repo,
+    ).stdout
+    report: dict[str, Any] = {
+        "result": "FAIL",
+        "version": VERSION,
+        "repo": str(repo),
+        "capsule": str(capsule),
+        "capsule_sha256": sha256_file(capsule),
+        "live_head": before_head,
+        "checks": [],
+        "installed": False,
+    }
+    def passed(name: str, **details: Any) -> None:
+        report["checks"].append({"name": name, "result": "PASS", **details})
+
+    with zipfile.ZipFile(capsule) as archive:
+        if archive.testzip() is not None:
+            raise ValueError(f"capsule CRC failure: {archive.testzip()}")
+        names = capsule_archive_members(archive)
+        passed("zip_structure", member_count=len(names))
+        manifest_rows = verify_capsule_manifest(archive, names)
+        passed("manifest", entry_count=len(manifest_rows))
+        run_data = json.loads(archive.read("RUN.json"))
+        if not isinstance(run_data, dict):
+            raise ValueError("RUN.json must be an object")
+        validate_capsule_schema(run_data)
+        passed("stable_engine_schema", required_version=run_data["engine"]["required_version"])
+        baseline = run_data["baseline"]
+        live_branch = git_output(repo, "branch", "--show-current")
+        live_upstream = git_output(repo, "rev-parse", "--abbrev-ref", "--symbolic-full-name", "@{u}")
+        if baseline["head"] != before_head or baseline["branch"] != live_branch or baseline["upstream"] != live_upstream:
+            raise ValueError(
+                "capsule baseline identity mismatch: "
+                f"expected branch/head/upstream={baseline['branch']}/{baseline['head']}/{baseline['upstream']} "
+                f"got {live_branch}/{before_head}/{live_upstream}"
+            )
+        passed("baseline_identity", branch=live_branch, head=before_head, upstream=live_upstream)
+        state = run_data["state"]
+        pre_expected = parse_dirty_path_file(
+            archive.read(state["pre_expected_dirty_paths"]).decode("utf-8"),
+            label="pre_expected_dirty_paths",
+        )
+        post_expected = parse_dirty_path_file(
+            archive.read(state["post_expected_dirty_paths"]).decode("utf-8"),
+            label="post_expected_dirty_paths",
+        )
+        pre_rows = parse_hash_ledger(archive.read(state["pre_hashes"]).decode("utf-8"), label="pre_hashes")
+        post_rows = parse_hash_ledger(archive.read(state["post_hashes"]).decode("utf-8"), label="post_hashes")
+        protected_rows = parse_hash_ledger(
+            archive.read(state["protected_hashes"]).decode("utf-8"), label="protected_hashes"
+        )
+        live_dirty = git_status_paths(repo)
+        if live_dirty != pre_expected:
+            raise ValueError(
+                "engine-normalized dirty-path mismatch: "
+                f"missing={sorted(set(pre_expected) - set(live_dirty))} "
+                f"extra={sorted(set(live_dirty) - set(pre_expected))}"
+            )
+        passed("engine_normalized_pre_dirty_paths", count=len(live_dirty))
+        verify_path_hashes(repo, pre_rows, label="live pre-state")
+        verify_path_hashes(repo, protected_rows, label="live protected-state")
+        passed("live_pre_hashes", count=len(pre_rows))
+        passed("live_protected_hashes", count=len(protected_rows))
+        patch_info = run_data["patch"]
+        patch_bytes = archive.read(patch_info["path"])
+        patch_hash = hashlib.sha256(patch_bytes).hexdigest()
+        if patch_hash != patch_info["sha256"]:
+            raise ValueError("RUN.json patch SHA-256 does not match capsule patch bytes")
+        passed("patch_identity", sha256=patch_hash)
+        with tempfile.TemporaryDirectory(prefix="sysgrid-capsule-certify-") as temp_dir:
+            shadow = Path(temp_dir) / "shadow"
+            add = run(["git", "worktree", "add", "--detach", str(shadow), before_head], cwd=repo)
+            if add.returncode != 0:
+                raise RuntimeError(add.stderr.strip() or "failed to create isolated Git worktree")
+            try:
+                copy_ledger_files(repo, shadow, pre_rows)
+                shadow_pre_dirty = git_status_paths(shadow)
+                if shadow_pre_dirty != pre_expected:
+                    raise ValueError(
+                        "shadow pre-state does not reproduce Stable Engine path semantics: "
+                        f"expected={pre_expected} got={shadow_pre_dirty}"
+                    )
+                verify_path_hashes(shadow, pre_rows, label="shadow pre-state")
+                verify_path_hashes(shadow, protected_rows, label="shadow protected-state")
+                passed("shadow_pre_state", dirty_count=len(shadow_pre_dirty))
+                patch_path = Path(temp_dir) / "payload.patch"
+                patch_path.write_bytes(patch_bytes)
+                check_apply = run(["git", "apply", "--check", str(patch_path)], cwd=shadow)
+                if check_apply.returncode != 0:
+                    raise ValueError(check_apply.stderr.strip() or "git apply --check failed in shadow")
+                apply_result = run(["git", "apply", str(patch_path)], cwd=shadow)
+                if apply_result.returncode != 0:
+                    raise ValueError(apply_result.stderr.strip() or "git apply failed in shadow")
+                verify_path_hashes(shadow, post_rows, label="shadow post-state")
+                verify_path_hashes(shadow, protected_rows, label="shadow protected post-state")
+                shadow_post_dirty = git_status_paths(shadow)
+                if shadow_post_dirty != post_expected:
+                    raise ValueError(
+                        "shadow post-state does not match capsule declaration: "
+                        f"missing={sorted(set(post_expected) - set(shadow_post_dirty))} "
+                        f"extra={sorted(set(shadow_post_dirty) - set(post_expected))}"
+                    )
+                passed("shadow_post_state", dirty_count=len(shadow_post_dirty), hash_count=len(post_rows))
+                reverse_check = run(["git", "apply", "--reverse", "--check", str(patch_path)], cwd=shadow)
+                if reverse_check.returncode != 0:
+                    raise ValueError(reverse_check.stderr.strip() or "reverse patch check failed in shadow")
+                reverse_apply = run(["git", "apply", "--reverse", str(patch_path)], cwd=shadow)
+                if reverse_apply.returncode != 0:
+                    raise ValueError(reverse_apply.stderr.strip() or "reverse patch failed in shadow")
+                verify_path_hashes(shadow, pre_rows, label="shadow restored pre-state")
+                if git_status_paths(shadow) != pre_expected:
+                    raise ValueError("shadow reverse application did not restore exact pre-state")
+                passed("shadow_round_trip")
+            finally:
+                run(["git", "worktree", "remove", "--force", str(shadow)], cwd=repo)
+                run(["git", "worktree", "prune"], cwd=repo)
+
+    after_head = git_output(repo, "rev-parse", "HEAD")
+    after_status = run(
+        ["git", "-c", "core.quotepath=false", "status", "--porcelain=v1", "--untracked-files=all"],
+        cwd=repo,
+    ).stdout
+    if before_head != after_head or before_status != after_status:
+        raise RuntimeError("live repository changed during shadow certification")
+    passed("live_repository_unchanged")
+    if install:
+        destination = inbox or (
+            Path.home() / "Library" / "Mobile Documents" / "com~apple~CloudDocs" /
+            "SysGrid-Control" / "Inbox"
+        )
+        destination.mkdir(parents=True, exist_ok=True)
+        for child in destination.iterdir():
+            if child.is_dir() and not child.is_symlink():
+                shutil.rmtree(child)
+            else:
+                child.unlink()
+        installed_path = destination / capsule.name
+        shutil.copy2(capsule, installed_path)
+        if sha256_file(installed_path) != report["capsule_sha256"]:
+            raise RuntimeError("installed capsule checksum mismatch")
+        report["installed"] = True
+        report["installed_path"] = str(installed_path)
+        passed("sole_inbox_install", path=str(installed_path))
+    report["result"] = "PASS"
+    report["run"] = {
+        "project": run_data["project"],
+        "issue": run_data["issue"],
+        "attempt": run_data["attempt"],
+        "stage": run_data["stage"],
+        "title": run_data["title"],
+    }
+    write_metadata("capsule-certify-latest", report)
+    return report
+
+
+def cmd_capsule_certify(args: argparse.Namespace) -> int:
+    try:
+        repo = discover_repo(args.repo)
+        report = certify_capsule(
+            repo,
+            Path(args.capsule),
+            install=args.install,
+            inbox=Path(args.inbox).expanduser() if args.inbox else None,
+        )
+    except Exception as exc:
+        failure = {
+            "result": "FAIL",
+            "classification": "CAPSULE_SHADOW_CERTIFICATION_FAILURE",
+            "error_type": type(exc).__name__,
+            "message": str(exc),
+            "live_product_repository_changed": False,
+        }
+        print(json_dump(failure), file=sys.stderr, end="")
+        return 1
+    if args.json:
+        print(json_dump(report), end="")
+    else:
+        print(f"Capsule shadow certification: {report['result']}")
+        print(f"Capsule: {report['capsule']}")
+        print(f"SHA-256: {report['capsule_sha256']}")
+        for check in report["checks"]:
+            print(f"  {check['name']}: {check['result']}")
+        if report.get("installed"):
+            print(f"Sole Inbox capsule: {report['installed_path']}")
+        print("Live product repository: UNCHANGED")
+    return 0
+
+def audit_log_progress(path: Path) -> dict[str, Any]:
+    if not path.is_file():
+        return {"passed": 0, "failed": 0, "skipped": 0, "current": None, "last_line": None, "mtime": None}
+    lines = path.read_text(encoding="utf-8", errors="replace").splitlines()[-3000:]
+    passed = sum(1 for line in lines if re.search(r"\s[✓✔]\s+\d+\s+tests/", line))
+    failed = sum(1 for line in lines if re.search(r"\s[✘✗]\s+\d+\s+tests/", line))
+    skipped = sum(1 for line in lines if re.search(r"\s[-–]\s+\d+\s+tests/", line))
+    current = None
+    for line in reversed(lines):
+        clean = re.sub(r"\x1b\[[0-9;]*m", "", line).strip()
+        if "tests/" in clean or clean.startswith("=== Capture ["):
+            current = clean[:300]
+            break
+    last_line = next((line.strip()[:300] for line in reversed(lines) if line.strip()), None)
+    return {"passed": passed, "failed": failed, "skipped": skipped, "current": current, "last_line": last_line, "mtime": path.stat().st_mtime, "log_bytes": path.stat().st_size}
+
+
+def add_repo_argument(parser: argparse.ArgumentParser) -> None:
+    parser.add_argument("--repo", help="SysGrid repository root; otherwise use cwd, SYSGRID_REPO, or remembered path")
+
+
+def build_parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(
+        prog="sgd",
+        description=(
+            "SysGrid development control: exact source awareness, deterministic local runtime, "
+            "compact API diagnosis, source-aware audit planning, failure clustering, evidence, and phone continuity."
+        ),
+    )
+    parser.add_argument("--version", action="version", version=f"%(prog)s {VERSION}")
+    sub = parser.add_subparsers(dest="command", required=True)
+
+    use = sub.add_parser("use", help="Remember the SysGrid repository for future commands from any directory")
+    use.add_argument("path")
+    use.set_defaults(func=cmd_use)
+
+    where = sub.add_parser("where", help="Show the active remembered/discovered repository")
+    add_repo_argument(where)
+    where.add_argument("--json", action="store_true")
+    where.set_defaults(func=cmd_where)
+
+    doctor = sub.add_parser("doctor", help="Validate source identity, prerequisites, nested Git, and runtime ownership")
+    add_repo_argument(doctor)
+    doctor.add_argument("--json", action="store_true")
+    doctor.set_defaults(func=cmd_doctor)
+
+    stop = sub.add_parser("stop", help="Stop the managed local runtime and ports 8000/5173")
+    add_repo_argument(stop)
+    stop.add_argument("--include-audit", action="store_true", help="Also stop the persistent audit session")
+    stop.add_argument("--json", action="store_true")
+    stop.set_defaults(func=cmd_stop)
+
+    start = sub.add_parser("start", help="Start scripts/start-local.sh in persistent tmux")
+    add_repo_argument(start)
+    start.add_argument("--fast", action="store_true", help="Skip only startup typecheck")
+    start.add_argument("--no-seed-data", action="store_true")
+    start.add_argument("--timeout", type=int, default=240)
+    start.add_argument("--json", action="store_true")
+    start.set_defaults(func=cmd_start)
+
+    for name, help_text, func in [
+        ("status", "Show source/runtime/API/audit status", cmd_status),
+        ("smoke", "Probe health and every primary workspace endpoint", cmd_smoke),
+    ]:
+        command = sub.add_parser(name, help=help_text)
+        add_repo_argument(command)
+        command.add_argument("--api-origin", default=f"http://{DEFAULT_BACKEND_HOST}:{DEFAULT_BACKEND_PORT}")
+        command.add_argument("--user-id", default=DEFAULT_USER_ID)
+        command.add_argument("--tenant-id")
+        command.add_argument("--json", action="store_true")
+        if name == "status":
+            command.add_argument("--phone", action="store_true")
+        command.set_defaults(func=func)
+
+    snapshot = sub.add_parser("snapshot", help="Create the authoritative classified source snapshot")
+    add_repo_argument(snapshot)
+    snapshot.add_argument("--output")
+    snapshot.add_argument("--json", action="store_true")
+    snapshot.set_defaults(func=cmd_snapshot)
+
+    coverage = sub.add_parser("coverage", help="Inventory routes, canonical specs, and unpromoted dedicated specs")
+    add_repo_argument(coverage)
+    coverage.add_argument("--json", action="store_true")
+    coverage.set_defaults(func=cmd_coverage)
+
+    audit_plan_parser = sub.add_parser("audit-plan", help="Show changed, routine full, deep, and canonical audit contents")
+    add_repo_argument(audit_plan_parser)
+    audit_plan_parser.add_argument("--json", action="store_true")
+    audit_plan_parser.set_defaults(func=cmd_audit_plan)
+
+    readiness = sub.add_parser("readiness", help="Evaluate current-source automated readiness and manual gates")
+    add_repo_argument(readiness)
+    readiness.add_argument("--json", action="store_true")
+    readiness.set_defaults(func=cmd_readiness)
+
+    collect = sub.add_parser("collect", help="Create one source/runtime/current-evidence review ZIP")
+    add_repo_argument(collect)
+    collect.add_argument("--output")
+    collect.add_argument("--use-existing-snapshot", action="store_true")
+    collect.add_argument("--json", action="store_true")
+    collect.set_defaults(func=cmd_collect)
+
+    cycle = sub.add_parser("cycle", help="Clean start, compact API smoke, authoritative source, and review ZIP")
+    add_repo_argument(cycle)
+    cycle.add_argument("--fast", action="store_true")
+    cycle.add_argument("--no-seed-data", action="store_true")
+    cycle.add_argument("--timeout", type=int, default=240)
+    cycle.add_argument("--api-origin", default=f"http://{DEFAULT_BACKEND_HOST}:{DEFAULT_BACKEND_PORT}")
+    cycle.add_argument("--user-id", default=DEFAULT_USER_ID)
+    cycle.add_argument("--tenant-id")
+    cycle.add_argument("--json", action="store_true")
+    cycle.set_defaults(func=cmd_cycle)
+
+    for name in ("audit", "verify"):
+        audit = sub.add_parser(name, help="Run canonical visual/programmatic verification persistently and auto-package evidence")
+        add_repo_argument(audit)
+        audit.add_argument("--profile", choices=["changed", "full", "deep", "canonical", "far"], default="changed")
+        audit.add_argument("--json", action="store_true")
+        audit.set_defaults(func=cmd_audit)
+
+    for name in ("audit-status", "verify-status"):
+        audit_status = sub.add_parser(name, help="Show persistent audit progress, failures, and review package")
+        audit_status.add_argument("--phone", action="store_true")
+        audit_status.add_argument("--json", action="store_true")
+        audit_status.set_defaults(func=cmd_audit_status)
+
+    capture = sub.add_parser("_capture-stage-evidence", help=argparse.SUPPRESS)
+    add_repo_argument(capture)
+    capture.add_argument("--run-id", required=True)
+    capture.add_argument("--stage", required=True)
+    capture.add_argument("--stage-exit-code", required=True, type=int)
+    capture.add_argument("--since-epoch", required=True, type=float)
+    capture.set_defaults(func=cmd_capture_stage_evidence)
+
+    finalize = sub.add_parser("_finalize-audit", help=argparse.SUPPRESS)
+    add_repo_argument(finalize)
+    finalize.add_argument("--run-id", required=True)
+    finalize.add_argument("--exit-code", required=True, type=int)
+    finalize.set_defaults(func=cmd_finalize_audit)
+
+    triage_parser = sub.add_parser("triage", help="Validate and cluster a completed SysGrid audit review ZIP")
+    triage_parser.add_argument("artifact", help="Path to UPLOAD_THIS_TO_CHATGPT_AUDIT__*.zip")
+    triage_parser.add_argument("--output")
+    triage_parser.add_argument("--json", action="store_true")
+    triage_parser.set_defaults(func=cmd_triage)
+
+    certify = sub.add_parser(
+        "capsule-certify",
+        help="Shadow-certify a capsule against live Stable Engine schema and Git semantics without mutating product source",
+    )
+    add_repo_argument(certify)
+    certify.add_argument("capsule", help="Path to the declarative .sgcap artifact")
+    certify.add_argument("--install", action="store_true", help="After PASS, install it as the sole Stable Engine Inbox artifact")
+    certify.add_argument("--inbox", help="Override the Stable Engine Inbox directory")
+    certify.add_argument("--json", action="store_true")
+    certify.set_defaults(func=cmd_capsule_certify)
+
+    logs = sub.add_parser("logs", help="Tail managed runtime or audit logs")
+    logs.add_argument("which", choices=["runtime", "audit", "verify"], nargs="?", default="runtime")
+    logs.add_argument("--lines", type=int, default=120)
+    logs.set_defaults(func=cmd_logs)
+
+    self_test = sub.add_parser("self-test", help="Run immutable package self-tests")
+    self_test.set_defaults(func=cmd_self_test)
+    return parser
+
+
+def main(argv: Sequence[str] | None = None) -> int:
+    parser = build_parser()
+    args = parser.parse_args(argv)
+    try:
+        return int(args.func(args))
+    except KeyboardInterrupt:
+        print("Interrupted.", file=sys.stderr)
+        return 130
+    except subprocess.TimeoutExpired as exc:
+        print(f"Timed out: {exc}", file=sys.stderr)
+        return 124
+    except Exception as exc:
+        error = {
+            "result": "FAIL",
+            "classification": "SGD_INTERNAL_ERROR",
+            "error_type": type(exc).__name__,
+            "message": str(exc),
+        }
+        print(json_dump(error), file=sys.stderr, end="")
+        return 70
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

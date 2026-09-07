@@ -1,0 +1,134 @@
+ORIGINAL_PATH: /Users/haewonkim/.local/share/sysgrid-runner/backups/20260730T012229Z-pre-continuity-v1051/sg
+ORIGINAL_SHA256: 94b734f9473cb20b1c44f0244632beea40d0e6af440645aae7b7c8592ca6bcc1
+================================================================================
+#!/usr/bin/env bash
+set -Eeuo pipefail
+IFS=$'\n\t'
+
+VERSION="1.0.5"
+PAYLOAD_DIR="${SYSGRID_CONTINUITY_PAYLOAD_DIR:-$HOME/.local/share/sysgrid-runner/continuity-v1.0.5}"
+CORE_DIR="${SYSGRID_CONTINUITY_CORE_DIR:-$HOME/.local/share/sysgrid-runner/core-v1.0.3}"
+CORE_SG="$CORE_DIR/sg"
+CORE_SGWATCH="$CORE_DIR/sgwatch"
+PACKAGER="$PAYLOAD_DIR/continuity_packager.py"
+WATCHER="$PAYLOAD_DIR/continuity_watcher.py"
+CONTROL_ROOT="${SYSGRID_CONTROL_ROOT:-$HOME/Library/Mobile Documents/com~apple~CloudDocs/SysGrid-Control}"
+LOCK_DIR="$CONTROL_ROOT/State/continuity-active.lock"
+LOCK_STALE_SECONDS="${SYSGRID_CONTINUITY_LOCK_STALE_SECONDS:-15000}"
+
+sha256_file() {
+  if command -v shasum >/dev/null 2>&1; then shasum -a 256 "$1" | awk '{print $1}'
+  else sha256sum "$1" | awk '{print $1}'
+  fi
+}
+
+case "${1:-}" in
+  --continuity-version)
+    printf 'SysGrid continuity wrapper %s\n' "$VERSION"
+    exit 0
+    ;;
+  --help-continuity)
+    cat <<EOF_HELP
+SysGrid continuity wrapper $VERSION
+Delegates execution to qualified Stable Engine v1.0.3, serializes sg launches, and prelaunches an independent continuity watcher before every run.
+EOF_HELP
+    exit 0
+    ;;
+esac
+
+[[ -x "$CORE_SG" ]] || { printf 'FAIL: missing qualified core sg: %s\n' "$CORE_SG" >&2; exit 2; }
+[[ -x "$CORE_SGWATCH" ]] || { printf 'FAIL: missing qualified core sgwatch: %s\n' "$CORE_SGWATCH" >&2; exit 2; }
+[[ -x "$PACKAGER" && -x "$WATCHER" ]] || { printf 'FAIL: continuity payload incomplete\n' >&2; exit 2; }
+
+# Utility invocations never create run state or continuity watchers.
+case "${1:-}" in
+  --help|-h|--version)
+    exec "$CORE_SG" "$@"
+    ;;
+esac
+
+if repo="$(git rev-parse --show-toplevel 2>/dev/null)"; then
+  pre_head="$(git -C "$repo" rev-parse HEAD 2>/dev/null || printf unknown)"
+else
+  repo="$PWD"
+  pre_head="unknown"
+fi
+
+foreground=0
+for arg in "$@"; do
+  [[ "$arg" == "--foreground" ]] && foreground=1
+done
+
+mkdir -p "$CONTROL_ROOT/State" "$CONTROL_ROOT/Outbox" "$CONTROL_ROOT/Continuity"
+launch_id="$(date -u +%Y%m%dT%H%M%SZ)-$$-$RANDOM"
+launch_json="$CONTROL_ROOT/State/continuity-launch-$launch_id.json"
+started_epoch="$(date +%s)"
+watcher_log="$CONTROL_ROOT/State/continuity-launcher-$launch_id.log"
+core_exit_json="$CONTROL_ROOT/State/continuity-core-exit-$launch_id.json"
+
+# Serialize complete sg lifecycles so a watcher can never attach to another run.
+waiting_announced=0
+while ! mkdir "$LOCK_DIR" 2>/dev/null; do
+  now="$(date +%s)"
+  lock_mtime="$(stat -f %m "$LOCK_DIR" 2>/dev/null || stat -c %Y "$LOCK_DIR" 2>/dev/null || printf 0)"
+  if [[ "$lock_mtime" =~ ^[0-9]+$ ]] && (( now - lock_mtime > LOCK_STALE_SECONDS )); then
+    rm -rf "$LOCK_DIR" 2>/dev/null || true
+    continue
+  fi
+  if [[ "$waiting_announced" == "0" ]]; then
+    printf 'Another SysGrid run is still completing continuity packaging; waiting for its handoff.\n' >&2
+    waiting_announced=1
+  fi
+  sleep 2
+done
+printf '%s\n' "$launch_id" > "$LOCK_DIR/launch_id"
+lock_transferred=0
+cleanup_lock() {
+  if [[ "$lock_transferred" == "0" ]]; then
+    rm -rf "$LOCK_DIR" 2>/dev/null || true
+  fi
+}
+trap cleanup_lock EXIT
+
+outbox_pre_sha="missing"
+if [[ -f "$CONTROL_ROOT/Outbox/UPLOAD_THIS_TO_CHATGPT.zip" ]]; then
+  outbox_pre_sha="$(sha256_file "$CONTROL_ROOT/Outbox/UPLOAD_THIS_TO_CHATGPT.zip" 2>/dev/null || printf unknown)"
+fi
+
+# Start the watcher in its own session before invoking the core. The watcher creates
+# the launch record itself, so synchronous Python startup cannot delay protection.
+nohup /bin/sh -c 'trap "" HUP INT TERM; exec python3 "$@"' sh \
+  "$WATCHER" "$launch_json" \
+  --initialize \
+  --launch-id "$launch_id" \
+  --repo "$repo" \
+  --pre-head "$pre_head" \
+  --started-epoch "$started_epoch" \
+  --control-root "$CONTROL_ROOT" \
+  --core-sgwatch "$CORE_SGWATCH" \
+  --packager "$PACKAGER" \
+  --payload-dir "$PAYLOAD_DIR" \
+  --foreground "$foreground" \
+  --argument-count "$#" \
+  --outbox-pre-sha256 "$outbox_pre_sha" \
+  --lock-dir "$LOCK_DIR" \
+  --wrapper-pid "$$" \
+  --core-exit-json "$core_exit_json" \
+  --launch-reason prelaunched-before-core \
+  >"$watcher_log" 2>&1 </dev/null &
+watcher_pid=$!
+lock_transferred=1
+trap - EXIT
+printf 'Continuity watcher: %s\n' "$watcher_pid"
+printf 'Final handoff: %s\n' "$CONTROL_ROOT/Outbox/UPLOAD_THIS_TO_CHATGPT.zip"
+
+set +e
+"$CORE_SG" "$@"
+core_rc=$?
+set -e
+core_finished_epoch="$(date +%s)"
+tmp_exit="$core_exit_json.$$.tmp"
+printf '{"launch_id":"%s","core_exit_code":%s,"finished_epoch":%s}\n' \
+  "$launch_id" "$core_rc" "$core_finished_epoch" > "$tmp_exit"
+mv -f "$tmp_exit" "$core_exit_json"
+exit "$core_rc"

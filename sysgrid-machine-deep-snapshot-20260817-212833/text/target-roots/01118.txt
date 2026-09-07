@@ -1,0 +1,13 @@
+ORIGINAL_PATH: /Users/haewonkim/.local/state/sysgrid-supervisor/runs/20260801T002845Z-21272-348000/launch.json
+ORIGINAL_SHA256: 034169d7456c5ddeddc4ccc2c0f7129ff9886cc1c99360927abf3a05f834836e
+================================================================================
+{
+  "capsule_path": "/Users/haewonkim/.local/state/sysgrid-supervisor/runs/20260801T002845Z-21272-348000/input/OUT-31_Golden-Eight_Iteration-36-Attempt-01_Superseding-Exact-Preimage-Full-Matrix-Physical-Closure.sgcap",
+  "capsule_sha256": "fcc467a092e894a632bfd8e683bad609bc424853156155a8c328b8eb4621a0a7",
+  "command_sha256": "354cf4863898002f79ac427880ff50e0ab20e299384d2435eff61f82f5755026",
+  "engine_path": "/Users/haewonkim/.local/lib/sysgrid-runner/1.0.4/sysgrid_runner.py",
+  "engine_sha256": "ab63bb20c0de32771e20b0159475205f685f28910a0956c217fb3693c02f96e1",
+  "launched_utc": "2026-08-01T00:28:46Z",
+  "repo": "/Users/haewonkim/home/development/sysgrid",
+  "run_id": "20260801T002845Z-21272-348000"
+}

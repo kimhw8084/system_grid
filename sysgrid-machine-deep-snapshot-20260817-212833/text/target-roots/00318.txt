@@ -1,0 +1,38 @@
+ORIGINAL_PATH: /Users/haewonkim/.local/share/sysgrid-campaign-platform/v1.0.0/IMPROVEMENT_LEDGER.json
+ORIGINAL_SHA256: 8e3e96ad592eccc8100831e31261ba163a1f757f2e7be704a746aa038216a7d1
+================================================================================
+{
+  "schema_version": "1.0",
+  "items": [
+    {
+      "id": "PLAT-001",
+      "finding": "Engine collapsed untracked directories",
+      "disposition": "ACT_NOW",
+      "resolution": "Canonical shared per-file identity implemented"
+    },
+    {
+      "id": "PLAT-002",
+      "finding": "First recipe failure truncated evidence",
+      "disposition": "ACT_NOW",
+      "resolution": "Independent recipe aggregation implemented"
+    },
+    {
+      "id": "PLAT-003",
+      "finding": "Incomplete source capture",
+      "disposition": "ACT_NOW",
+      "resolution": "Safe source authority and manifests implemented"
+    },
+    {
+      "id": "PLAT-004",
+      "finding": "No detailed approval lock",
+      "disposition": "ACT_NOW",
+      "resolution": "64+ questionnaire and cross-file hash lock implemented"
+    },
+    {
+      "id": "PLAT-005",
+      "finding": "Resume FAR product attempt",
+      "disposition": "DEFER_MATERIAL",
+      "resolution": "Blocked until platform installation and independent PASS"
+    }
+  ]
+}

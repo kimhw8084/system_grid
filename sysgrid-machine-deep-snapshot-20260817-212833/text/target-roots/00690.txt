@@ -1,0 +1,25 @@
+ORIGINAL_PATH: /Users/haewonkim/.local/state/sysgrid-supervisor/runs/20260805T131930Z-84523-076000/patch.diff
+ORIGINAL_SHA256: 5ddcc33ea848f8cdab70ef6ce8bc436fa37836838b8df6cbafe1673ad1c3683a
+================================================================================
+diff --git a/frontend/src/components/shared/OperationalWorkspacePrimitives.tsx b/frontend/src/components/shared/OperationalWorkspacePrimitives.tsx
+index 8d0f091..788f425 100644
+--- a/frontend/src/components/shared/OperationalWorkspacePrimitives.tsx
++++ b/frontend/src/components/shared/OperationalWorkspacePrimitives.tsx
+@@ -193,6 +193,8 @@ export function useWorkspaceAnchoredLayer(isOpen: boolean, options?: { offset?:
+       return
+     }
+ 
++    const trigger = triggerRef.current
++
+     const handleViewportChange = (event?: Event) => {
+       if (shouldIgnoreWorkspaceAnchoredScroll(event?.target ?? null, panelRef.current)) return
+       schedulePositionUpdate()
+@@ -205,7 +207,7 @@ export function useWorkspaceAnchoredLayer(isOpen: boolean, options?: { offset?:
+ 
+     let observer: ResizeObserver | null = null
+     let observerFrame: number | null = null
+-    if (typeof ResizeObserver !== 'undefined') {
++    if (typeof ResizeObserver !== 'undefined' && trigger) {
+       observer = new ResizeObserver(() => schedulePositionUpdate())
+       observer.observe(trigger)
+       observerFrame = window.requestAnimationFrame(() => {

@@ -1,0 +1,164 @@
+ORIGINAL_PATH: /Users/haewonkim/.local/share/sysgrid-supervisor/v2.0.1/RELEASE_SOURCE.json
+ORIGINAL_SHA256: 399e0a6fd0b76b5f620690104cec922db222d040a7076ebb4e6db01d92d9eaa3
+================================================================================
+{
+  "engine": {
+    "sha256": "ab63bb20c0de32771e20b0159475205f685f28910a0956c217fb3693c02f96e1",
+    "version": "1.0.4"
+  },
+  "notification": {
+    "heartbeat_seconds": 120,
+    "postlaunch_retries": 3,
+    "prelaunch_retries": 4,
+    "retry_base_seconds": 0.5
+  },
+  "package": {
+    "canonical_artifact": "UPLOAD_THIS_TO_CHATGPT.zip",
+    "deterministic_timestamp": "2026-07-31T00:00:00Z",
+    "name": "SYSGRID_EXECUTION_SUPERVISOR"
+  },
+  "progress_events": [
+    {
+      "id": "capsule_selected",
+      "phase": "platform",
+      "required_before_launch": true
+    },
+    {
+      "id": "capsule_verified",
+      "phase": "platform",
+      "required_before_launch": true
+    },
+    {
+      "id": "preflight_started",
+      "phase": "platform",
+      "required_before_launch": true
+    },
+    {
+      "id": "preflight_completed",
+      "phase": "platform",
+      "required_before_launch": true
+    },
+    {
+      "id": "engine_launch",
+      "phase": "platform",
+      "required_before_launch": true
+    },
+    {
+      "id": "static_started",
+      "phase": "product",
+      "required_before_launch": false
+    },
+    {
+      "id": "backend_started",
+      "phase": "product",
+      "required_before_launch": false
+    },
+    {
+      "id": "frontend_started",
+      "phase": "product",
+      "required_before_launch": false
+    },
+    {
+      "id": "static_completed",
+      "phase": "product",
+      "required_before_launch": false
+    },
+    {
+      "id": "backend_completed",
+      "phase": "product",
+      "required_before_launch": false
+    },
+    {
+      "id": "frontend_completed",
+      "phase": "product",
+      "required_before_launch": false
+    },
+    {
+      "id": "build_completed",
+      "phase": "product",
+      "required_before_launch": false
+    },
+    {
+      "id": "runtime_ready",
+      "phase": "product",
+      "required_before_launch": false
+    },
+    {
+      "id": "playwright_started",
+      "phase": "product",
+      "required_before_launch": false
+    },
+    {
+      "id": "playwright_completed",
+      "phase": "product",
+      "required_before_launch": false
+    },
+    {
+      "id": "delivery_completed",
+      "phase": "product",
+      "required_before_launch": false
+    },
+    {
+      "id": "recovery_reattached",
+      "phase": "platform",
+      "required_before_launch": false
+    },
+    {
+      "id": "recovery_evidence_recovered",
+      "phase": "platform",
+      "required_before_launch": false
+    },
+    {
+      "id": "recovery_retry_authorized",
+      "phase": "platform",
+      "required_before_launch": false
+    },
+    {
+      "id": "engine_completed",
+      "phase": "platform",
+      "required_before_launch": false
+    },
+    {
+      "id": "evidence_verified",
+      "phase": "platform",
+      "required_before_launch": false
+    },
+    {
+      "id": "publication_started",
+      "phase": "platform",
+      "required_before_launch": false
+    },
+    {
+      "id": "publication_completed",
+      "phase": "platform",
+      "required_before_launch": false
+    },
+    {
+      "id": "run_failed",
+      "phase": "platform",
+      "required_before_launch": false
+    }
+  ],
+  "qualification_contract": [
+    "complete deterministic package identity",
+    "exact Stable Engine identity and self-test",
+    "capsule cross-ledger consistency before mutation",
+    "exact repository state and patch-state proof",
+    "one authorized engine invocation with replay refusal",
+    "durable Telegram event outbox and two-minute heartbeat",
+    "machine-readable resource and runtime telemetry",
+    "verified evidence publication and deterministic rebuild"
+  ],
+  "resource_policy": {
+    "backend_worker_cap": 4,
+    "e2e_worker_cap": 2,
+    "frontend_worker_cap": 4,
+    "memory_per_backend_worker_bytes": 1073741824,
+    "memory_per_e2e_worker_bytes": 1610612736,
+    "memory_per_frontend_worker_bytes": 805306368,
+    "preflight_worker_cap": 32,
+    "reserve_memory_bytes": 2147483648
+  },
+  "schema_version": "2.0",
+  "supervisor_version": "2.0.1"
+}

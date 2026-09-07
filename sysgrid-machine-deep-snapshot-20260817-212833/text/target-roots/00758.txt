@@ -1,0 +1,179 @@
+ORIGINAL_PATH: /Users/haewonkim/.local/state/sysgrid-supervisor/runs/20260805T011602Z-53481-037000/patch.diff
+ORIGINAL_SHA256: 3b1d8540edc0ee348f6871dd9a569aace684c5595fc9ab5dffa3a7775cb344bd
+================================================================================
+diff --git a/scripts/verify-app.sh b/scripts/verify-app.sh
+index c1c419c..734e402 100644
+--- a/scripts/verify-app.sh
++++ b/scripts/verify-app.sh
+@@ -12,6 +12,9 @@ BACKEND_ORIGIN="http://$BACKEND_HOST:$BACKEND_PORT"
+ FRONTEND_ORIGIN="http://$FRONTEND_HOST:$FRONTEND_PORT"
+ BACKEND_URL="$BACKEND_ORIGIN/api/v1/health"
+ FRONTEND_URL="$FRONTEND_ORIGIN"
++BACKEND_LOG="$BACKEND_DIR/test-results/verify-backend.log"
++FRONTEND_LOG="$FRONTEND_DIR/test-results/verify-frontend.log"
++LOOPBACK_NO_PROXY="127.0.0.1,localhost,::1"
+ TEST_USER_ID="${SYSGRID_VERIFY_USER_ID:-haewon.kim}"
+ TEST_TENANT_ID="1"
+ RUNTIME_TAG="verify-${$}-${RANDOM}"
+@@ -144,21 +147,89 @@ reset_generated_evidence() {
+ 
+ reset_generated_evidence
+ 
+-wait_for_url() {
++readiness_diagnostics() {
++  local label="$1"
++  local url="$2"
++  local pid="$3"
++  local port="$4"
++  local log_file="$5"
++  local probe_error_file="${6:-}"
++
++  echo "--- $label readiness diagnostics ---" >&2
++  echo "URL: $url" >&2
++  echo "Tracked PID: $pid" >&2
++  ps -o pid=,ppid=,state=,etime=,command= -p "$pid" >&2 2>/dev/null || true
++  pgrep -P "$pid" 2>/dev/null | while read -r child; do
++    [[ -n "$child" ]] && ps -o pid=,ppid=,state=,etime=,command= -p "$child" >&2 2>/dev/null || true
++  done
++  echo "Listeners on TCP $port:" >&2
++  lsof -nP -iTCP:"$port" -sTCP:LISTEN >&2 2>/dev/null || true
++  if [[ -n "$probe_error_file" && -s "$probe_error_file" ]]; then
++    echo "Last HTTP probe error:" >&2
++    tail -n 20 "$probe_error_file" >&2 || true
++  fi
++  if [[ -f "$log_file" ]]; then
++    echo "Last 80 lines of $log_file:" >&2
++    tail -n 80 "$log_file" >&2 || true
++  fi
++  echo "--- end $label readiness diagnostics ---" >&2
++}
++
++wait_for_listener() {
++  local port="$1"
++  local label="$2"
++  local pid="$3"
++  local log_file="$4"
++  local attempts="${5:-120}"
++  local listeners
++
++  for ((attempt = 1; attempt <= attempts; attempt++)); do
++    listeners="$(lsof -tiTCP:"$port" -sTCP:LISTEN 2>/dev/null || true)"
++    if grep -qx "$pid" <<<"$listeners"; then
++      return 0
++    fi
++    if [[ -n "$listeners" ]]; then
++      echo "$label port $port is owned by unexpected PID(s): $listeners" >&2
++      readiness_diagnostics "$label" "tcp://127.0.0.1:$port" "$pid" "$port" "$log_file"
++      return 1
++    fi
++    if ! kill -0 "$pid" 2>/dev/null; then
++      echo "$label process exited before opening TCP $port" >&2
++      readiness_diagnostics "$label" "tcp://127.0.0.1:$port" "$pid" "$port" "$log_file"
++      return 1
++    fi
++    sleep 0.25
++  done
++
++  echo "Timed out waiting for $label listener on TCP $port" >&2
++  readiness_diagnostics "$label" "tcp://127.0.0.1:$port" "$pid" "$port" "$log_file"
++  return 1
++}
++
++wait_for_http() {
+   local url="$1"
+   local label="$2"
+   local pid="$3"
+-  for _ in {1..240}; do
+-    if curl -fsS "$url" >/dev/null 2>&1; then
++  local port="$4"
++  local log_file="$5"
++  local attempts="${6:-120}"
++  local probe_error_file="$LANE_DIR/${label//[^A-Za-z0-9_.-]/_}.curl-error.log"
++
++  : > "$probe_error_file"
++  for ((attempt = 1; attempt <= attempts; attempt++)); do
++    if curl --noproxy '*' --connect-timeout 1 --max-time 3 -fsS "$url" >/dev/null 2>"$probe_error_file"; then
+       return 0
+     fi
+     if ! kill -0 "$pid" 2>/dev/null; then
+-      echo "$label process exited before readiness at $url" >&2
++      echo "$label process exited before HTTP readiness at $url" >&2
++      readiness_diagnostics "$label" "$url" "$pid" "$port" "$log_file" "$probe_error_file"
+       return 1
+     fi
+     sleep 0.25
+   done
+-  echo "Timed out waiting for $label at $url" >&2
++
++  echo "Timed out waiting for $label HTTP readiness at $url" >&2
++  readiness_diagnostics "$label" "$url" "$pid" "$port" "$log_file" "$probe_error_file"
+   return 1
+ }
+ 
+@@ -201,20 +272,49 @@ launch_backend() {
+   assert_port_free "$BACKEND_PORT" "backend"
+   (
+     cd "$BACKEND_DIR"
+-    exec "${RUNTIME_ENV_COMMAND[@]}" ./venv/bin/python -m uvicorn app.main:app --host "$BACKEND_HOST" --port "$BACKEND_PORT"
+-  ) > "$BACKEND_DIR/test-results/verify-backend.log" 2>&1 &
++    exec env NO_PROXY="$LOOPBACK_NO_PROXY" no_proxy="$LOOPBACK_NO_PROXY" \
++      "${RUNTIME_ENV_COMMAND[@]}" ./venv/bin/python -m uvicorn app.main:app --host "$BACKEND_HOST" --port "$BACKEND_PORT"
++  ) > "$BACKEND_LOG" 2>&1 &
+   BACKEND_PID=$!
+ }
+ 
+ launch_frontend() {
++  local vite_bin="$FRONTEND_DIR/node_modules/.bin/vite"
++  [[ -x "$vite_bin" ]] || {
++    echo "Canonical Vite binary is missing or not executable: $vite_bin" >&2
++    return 1
++  }
+   assert_port_free "$FRONTEND_PORT" "frontend"
++  : > "$FRONTEND_LOG"
+   (
+     cd "$FRONTEND_DIR"
+-    exec npm run preview -- --host "$FRONTEND_HOST" --port "$FRONTEND_PORT" --strictPort
+-  ) > "$FRONTEND_DIR/test-results/verify-frontend.log" 2>&1 &
++    exec env NO_PROXY="$LOOPBACK_NO_PROXY" no_proxy="$LOOPBACK_NO_PROXY" \
++      "$vite_bin" preview --host "$FRONTEND_HOST" --port "$FRONTEND_PORT" --strictPort
++  ) > "$FRONTEND_LOG" 2>&1 &
+   FRONTEND_PID=$!
+ }
+ 
++launch_frontend_with_readiness() {
++  local startup_attempt
++  for startup_attempt in 1 2; do
++    launch_frontend
++    if wait_for_listener "$FRONTEND_PORT" "isolated production frontend" "$FRONTEND_PID" "$FRONTEND_LOG" 80 \
++      && wait_for_http "$FRONTEND_URL" "isolated production frontend" "$FRONTEND_PID" "$FRONTEND_PORT" "$FRONTEND_LOG" 80; then
++      return 0
++    fi
++    if [[ "$startup_attempt" -eq 1 ]]; then
++      echo "Isolated production frontend did not become ready; relaunching its process once without rerunning product verification." >&2
++      if kill -0 "$FRONTEND_PID" 2>/dev/null; then
++        terminate_process_tree "$FRONTEND_PID"
++      fi
++      FRONTEND_PID=""
++      sleep 0.5
++    fi
++  done
++  echo "Isolated production frontend failed both bounded startup attempts." >&2
++  return 1
++}
++
+ assert_seeded_fixture_contract() {
+   local headers=(-H "X-User-Id: $TEST_USER_ID" -H "X-Tenant-Id: $TEST_TENANT_ID")
+   local tenants devices services external network far research monitoring vendors reference_options
+@@ -607,9 +707,9 @@ fi
+ 
+ prepare_disposable_runtime
+ launch_backend
+-launch_frontend
+-wait_for_url "$BACKEND_URL" "isolated backend" "$BACKEND_PID"
+-wait_for_url "$FRONTEND_URL" "isolated production frontend" "$FRONTEND_PID"
++wait_for_listener "$BACKEND_PORT" "isolated backend" "$BACKEND_PID" "$BACKEND_LOG" 240
++wait_for_http "$BACKEND_URL" "isolated backend" "$BACKEND_PID" "$BACKEND_PORT" "$BACKEND_LOG" 240
++launch_frontend_with_readiness
+ assert_seeded_fixture_contract
+ emit_progress runtime_ready passed "Disposable tenant, backend, and exact production frontend are ready."
+ 

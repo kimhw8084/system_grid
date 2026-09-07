@@ -1,0 +1,4 @@
+#!/usr/bin/env bash
+set -euo pipefail
+ROOT="$HOME/.local/share/sysgrid-delivery-v1.3.0"
+exec env PYTHONUNBUFFERED=1 python3 "$ROOT/sg_cli.py" "$@"

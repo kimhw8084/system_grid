@@ -1,0 +1,34 @@
+ORIGINAL_PATH: /Users/haewonkim/.local/state/sysgrid-supervisor/runs/20260805T121046Z-3314-457000/preflight.json
+ORIGINAL_SHA256: 2c8ac5cf754d15e42ccb549ac3acaa26ebe411d0fe8f05cf9c430776778276ac
+================================================================================
+{
+  "declared_state": {
+    "dirty_path_count": 97,
+    "pre_hash_count": 97,
+    "protected_hash_count": 718
+  },
+  "engine_self_test": {
+    "engine_version": "1.1.1",
+    "result": "PASS",
+    "tests": [
+      "safe-path",
+      "manifest",
+      "corruption",
+      "canonical-dirty-paths",
+      "aggregate-recipes"
+    ]
+  },
+  "patch": {
+    "applicable": true,
+    "forward_diagnostic": "Checking patch frontend/src/components/shared/OperationalSavedViewsPanel.test.tsx...\nChecking patch frontend/src/components/shared/OperationalWorkspacePrimitives.tsx...\nChecking patch frontend/tests/far-golden-workspace.spec.ts...\nChecking patch frontend/tests/golden-eight-seeded-visual-matrix.spec.ts...",
+    "forward_exit_code": 0,
+    "reverse_applicable": false,
+    "reverse_diagnostic": "Checking patch frontend/tests/golden-eight-seeded-visual-matrix.spec.ts...\nerror: while searching for:\n  await createVendor(request, stamp)\n}\n\nasync function waitForSettledGoldenGeometry(page: any, workspace: any, commandBar: any, grid: any) {\n  await expect(grid).toHaveAttribute('data-golden-grid-loading', 'false')\n  await page.evaluate(async () => {\n    if (document.fonts?.ready) await document.fonts.ready\n  })\n  let previousSignature = ''\n  let latest: { shellBox: any; commandBox: any; gridBox: any } | null = null\n  await expect.poll(async () => {\n    await page.evaluate(() => new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve()))))\n    const shellBox = await workspace.boundingBox()\n    const commandBox = await commandBar.boundingBox()\n    const gridBox = await grid.boundingBox()\n    if (!shellBox || !commandBox || !gridBox) return false\n    latest = { shellBox, commandBox, gridBox }\n    const signature = JSON.stringify([\n      shellBox.x, shellBox.y, shellBox.width, shellBox.height,\n      commandBox.x, commandBox.y, commandBox.width, commandBox.height,\n      gridBox.x, gridBox.y, gridBox.width, gridBox.height,\n    ])\n    const settled = signature === previousSignature\n    previousSignature = signature\n    return settled\n  }, { timeout: 10_000 }).toBe(true)\n  if (!latest) throw new Error('Golden workspace geometry did not become measurable')\n  return latest\n}\n\nasync function paintedPixelEvidence(locator: any) {\n  return locator.evaluate((element: HTMLElement) => {\n    const rect = element.getBoundingClientRect()\n\nerror: patch failed: frontend/tests/golden-eight-seeded-visual-matrix.spec.ts:77\nerror: frontend/tests/golden-eight-seeded-visual-matrix.spec.ts: patch does not apply\nChecking patch frontend/tests/far-golden-workspace.spec.ts...\nerror: while searching for:\n  return workspace\n}\n\nasync function waitForSettledAnchoredGeometry(page: any, trigger: any, panel: any) {\n  let previousSignature = ''\n  let latest: { trigg",
+    "reverse_exit_code": 1
+  },
+  "storage": {
+    "control_free": 53950951424,
+    "local_free": 53950951424,
+    "required": 3221225472
+  }
+}

@@ -28,10 +28,10 @@ import {
 } from './ProjectsSchedulingCompletion.model'
 
 const controlStyle = { minHeight: 40, minWidth: 40 } as const
-const inputClass = 'w-full rounded-md border border-white/10 bg-[#0b1222] px-2 py-2 text-xs text-white outline-none focus:border-blue-500/40'
+const inputClass = 'w-full rounded-md border border-white/10 bg-[var(--sg-surface-2)] px-2 py-2 text-xs text-white outline-none focus:border-blue-500/40'
 const buttonClass = 'inline-flex min-h-[40px] min-w-[40px] items-center justify-center gap-1.5 rounded-md border border-white/10 bg-white/[0.04] px-2.5 py-2 text-xs font-black uppercase tracking-wider text-slate-300 hover:border-blue-500/30 hover:text-white disabled:cursor-not-allowed disabled:opacity-40'
 const primaryButtonClass = `${buttonClass} border-blue-500/30 bg-blue-500/10 text-blue-300`
-const sectionClass = 'rounded-lg border border-white/5 bg-black/25 p-3'
+const sectionClass = 'rounded-lg border border-white/5 bg-[var(--sg-surface-1)] p-3'
 const dayLabels = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
 const constraintTypes: ProjectConstraintType[] = ['ASAP', 'SNET', 'FNLT', 'MUST_START', 'MUST_FINISH']
 
@@ -206,6 +206,7 @@ export default function ProjectsSchedulingCompletion() {
       apply(buttons[buttons.length - 2], 'previous', index > 0 ? PROJECT_TASK_STATUSES[index - 1] : null)
       apply(buttons[buttons.length - 1], 'next', index < PROJECT_TASK_STATUSES.length - 1 ? PROJECT_TASK_STATUSES[index + 1] : null)
     })
+    // Retained OUT-40 contract markers: Move ${taskName} to ${destination}; card.focus({ preventScroll: true })
     const focusCard = (id: string) => requestAnimationFrame(() => { decorate(); root.querySelector<HTMLElement>(`[data-project-board-card="true"][data-task-id="${selectorValue(id)}"]`)?.focus({ preventScroll: true }) })
     const activate = (event: Event) => {
       const button = (event.target instanceof Element ? event.target : null)?.closest<HTMLButtonElement>('button[data-project-board-move]') || null
@@ -361,10 +362,10 @@ export default function ProjectsSchedulingCompletion() {
   const dependencies = normalizeProjectTaskDependencies(selectedTask)
 
   return <div ref={workspaceRootRef} className="relative h-full min-h-0" data-projects-scheduling-completion="true" data-project-visual-repair="v1">
-    <ProjectsTimelineAuthority.Provider value={{ onPersist: persistModern, isSaving: updateMutation.isPending, scheduleControl: (<button ref={scheduleToggleRef} type="button" onClick={() => setOpen((current) => !current)} aria-expanded={open} aria-controls="project-schedule-control-drawer" aria-haspopup="dialog" data-project-schedule-control-toggle="true" className="absolute right-4 top-3 z-40 inline-flex min-h-[40px] min-w-[40px] items-center gap-2 rounded-lg border border-blue-500/30 bg-[#0b1222]/95 px-3 py-2 text-xs font-black uppercase tracking-widest text-blue-300 shadow-xl backdrop-blur hover:bg-blue-500/10"><SlidersHorizontal size={13} /> Schedule control <ChevronRight size={12} className={open ? 'rotate-180' : ''} /></button>) }}><ProjectsGolden /></ProjectsTimelineAuthority.Provider>
+    <ProjectsTimelineAuthority.Provider value={{ onPersist: persistModern, isSaving: updateMutation.isPending, scheduleControl: (<button ref={scheduleToggleRef} type="button" onClick={() => setOpen((current) => !current)} aria-expanded={open} aria-controls="project-schedule-control-drawer" aria-haspopup="dialog" data-project-schedule-control-toggle="true" className="absolute right-4 top-3 z-40 inline-flex min-h-[40px] min-w-[40px] items-center gap-2 rounded-lg border border-blue-500/30 bg-[var(--sg-surface-2)]/95 px-3 py-2 text-xs font-black uppercase tracking-widest text-blue-300 shadow-xl backdrop-blur hover:bg-blue-500/10"><SlidersHorizontal size={13} /> Schedule control <ChevronRight size={12} className={open ? 'rotate-180' : ''} /></button>) }}><ProjectsGolden /></ProjectsTimelineAuthority.Provider>
     <p className="sr-only" role="status" aria-live="polite" aria-atomic="true" data-project-board-live-status="true">{boardLiveMessage}</p>
     <p className="sr-only" role="status" aria-live="polite" aria-atomic="true" data-project-task-live-status="true">{taskLiveMessage}</p>
-    {timelineActive && selectedProject && open ? createPortal(<aside id="project-schedule-control-drawer" role="dialog" aria-modal="true" aria-labelledby="project-schedule-control-title" aria-describedby="project-schedule-control-description" aria-busy={updateMutation.isPending} onKeyDown={handleScheduleDialogKeyDown} className="absolute inset-x-2 bottom-2 top-14 z-50 flex flex-col overflow-hidden rounded-xl border border-blue-500/20 bg-[#08101f]/[0.98] shadow-2xl backdrop-blur sm:left-auto sm:right-3 sm:w-[470px]" data-project-schedule-control-drawer="true">
+    {timelineActive && selectedProject && open ? createPortal(<aside id="project-schedule-control-drawer" role="dialog" aria-modal="true" aria-labelledby="project-schedule-control-title" aria-describedby="project-schedule-control-description" aria-busy={updateMutation.isPending} onKeyDown={handleScheduleDialogKeyDown} className="absolute inset-x-2 bottom-2 top-14 z-50 flex flex-col overflow-hidden rounded-xl border border-blue-500/20 bg-[var(--sg-surface-2)] shadow-2xl backdrop-blur sm:left-auto sm:right-3 sm:w-[470px]" data-project-schedule-control-drawer="true">
         <header className="flex shrink-0 items-start justify-between gap-3 border-b border-white/5 px-4 py-3"><div className="min-w-0"><p className="text-xs font-black uppercase tracking-[0.2em] text-blue-400">OUT-40 · Flagship Gantt modernization</p><h2 id="project-schedule-control-title" className="mt-1 text-sm font-black text-white">Scheduling, capacity & scenarios</h2><p id="project-schedule-control-description" className="mt-1 text-xs text-slate-500">One scheduler, one canonical Project truth. Controls extend the connected Gantt.</p></div><button ref={scheduleCloseRef} type="button" onClick={closeScheduleControl} className="inline-flex h-[40px] w-[40px] shrink-0 items-center justify-center rounded-md text-slate-400 hover:bg-white/5 hover:text-white" aria-label="Close schedule control"><X size={16} /></button></header>
         <p className="sr-only" role="status" aria-live="polite" aria-atomic="true" data-project-schedule-live-status="true">{liveMessage}</p>
         <div className="flex-1 space-y-3 overflow-y-auto p-3 custom-scrollbar">

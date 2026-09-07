@@ -1,0 +1,4 @@
+ORIGINAL_PATH: /Users/haewonkim/.local/state/sysgrid-supervisor/runs/20260801T205642Z-22445-763000/product-progress.jsonl
+ORIGINAL_SHA256: 4415888e71846ff6b38bb75f622ed145412f7f80b6b93e3548c6ac59cf772f66
+================================================================================
+{"event_id": "static_started", "message": "Campaign static and changed-area verification started.", "run_id": "20260801T205642Z-22445-763000", "sequence": 1, "status": "started"}

@@ -1,0 +1,30 @@
+ORIGINAL_PATH: /Users/haewonkim/.local/state/sysgrid-supervisor/runs/20260803T232835Z-9788-288000/preflight.json
+ORIGINAL_SHA256: c8949640cc9d300e33c58b7919d1daf777d6c6ad7a65d834b80df23a502a5c5e
+================================================================================
+{
+  "declared_state": {
+    "dirty_path_count": 95,
+    "pre_hash_count": 95,
+    "protected_hash_count": 95
+  },
+  "engine_self_test": {
+    "engine_version": "1.1.1",
+    "result": "PASS",
+    "tests": [
+      "safe-path",
+      "manifest",
+      "corruption",
+      "canonical-dirty-paths",
+      "aggregate-recipes"
+    ]
+  },
+  "patch": {
+    "applicable": null,
+    "reverse_applicable": null
+  },
+  "storage": {
+    "control_free": 56345550848,
+    "local_free": 56345550848,
+    "required": 3221225472
+  }
+}

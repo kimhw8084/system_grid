@@ -1,0 +1,13 @@
+ORIGINAL_PATH: /Users/haewonkim/.local/state/sysgrid-supervisor/runs/20260805T121046Z-3314-457000/launch.json
+ORIGINAL_SHA256: d9e8907f6e7e22ad966c3ccf9d3de3d86927ca885787fb09067fae235e85924d
+================================================================================
+{
+  "capsule_path": "/Users/haewonkim/.local/state/sysgrid-supervisor/runs/20260805T121046Z-3314-457000/input/SYSGRID_OUT31_PA15_PS1_OUTER_ANCHOR_CONTAINMENT_AND_SETTLED_GEOMETRY_PRODUCT_SOURCE_CORRECTION_v1.0.0.sgcap",
+  "capsule_sha256": "57bb4c6fab85a7c6200030b313d6a60a55415a898ca585767ad12072314a8133",
+  "command_sha256": "604f3b02cdaf0ac924a4a4545bd6158f49973a6f92c8d8764abbef5d559e81c9",
+  "engine_path": "/Users/haewonkim/.local/share/sysgrid-runner/engine-v1.1.1/sysgrid_runner.py",
+  "engine_sha256": "66b082fec1e9f6c49152e5ecb4cbb3f998e60ce27d53a2325e5f658634a8d032",
+  "launched_utc": "2026-08-05T12:10:49Z",
+  "repo": "/Users/haewonkim/home/development/sysgrid",
+  "run_id": "20260805T121046Z-3314-457000"
+}

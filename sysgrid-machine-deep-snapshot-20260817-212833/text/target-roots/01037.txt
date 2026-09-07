@@ -1,0 +1,123 @@
+ORIGINAL_PATH: /Users/haewonkim/.local/state/sysgrid-supervisor/runs/20260804T125100Z-37958-624000/patch.diff
+ORIGINAL_SHA256: 5244dcb6fc8053526c0040a56e1ea5ed4af9e61b1d3247244d97b8e91288b64a
+================================================================================
+diff --git a/frontend/tests/far-golden-workspace.spec.ts b/frontend/tests/far-golden-workspace.spec.ts
+index 83735a7..3aec221 100644
+--- a/frontend/tests/far-golden-workspace.spec.ts
++++ b/frontend/tests/far-golden-workspace.spec.ts
+@@ -10,6 +10,55 @@ async function waitForFAR(page: any) {
+   return workspace
+ }
+ 
++function findMissingHeaders(available: string[], required: string[]) {
++  const normalized = new Set(available.map((label) => label.replace(/\s+/g, ' ').trim()).filter(Boolean))
++  return required.filter((label) => !normalized.has(label))
++}
++
++async function collectReachableHeaders(page: any, grid: any) {
++  const horizontalViewport = grid.locator('.ag-body-horizontal-scroll-viewport')
++  await expect(horizontalViewport).toBeAttached()
++
++  const metrics = await horizontalViewport.evaluate((element: HTMLElement) => ({
++    clientWidth: element.clientWidth,
++    maxScrollLeft: Math.max(0, element.scrollWidth - element.clientWidth),
++  }))
++  const step = Math.max(80, Math.floor(Math.max(metrics.clientWidth, 1) * 0.7))
++  const positions = Array.from(
++    new Set([
++      0,
++      ...Array.from({ length: Math.ceil(metrics.maxScrollLeft / step) }, (_, index) => Math.min(metrics.maxScrollLeft, (index + 1) * step)),
++      metrics.maxScrollLeft,
++    ]),
++  ).sort((a, b) => a - b)
++  const headers = new Set<string>()
++
++  for (const left of positions) {
++    await horizontalViewport.evaluate((element: HTMLElement, nextLeft: number) => {
++      element.scrollLeft = nextLeft
++    }, left)
++    await expect.poll(async () => Math.round(await horizontalViewport.evaluate((element: HTMLElement) => element.scrollLeft))).toBeGreaterThanOrEqual(Math.max(0, Math.round(left) - 2))
++    await page.evaluate(() => new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve()))))
++    for (const text of await grid.locator('.ag-header-cell').allTextContents()) {
++      const normalized = text.replace(/\s+/g, ' ').trim()
++      if (normalized) headers.add(normalized)
++    }
++  }
++
++  await horizontalViewport.evaluate((element: HTMLElement) => {
++    element.scrollLeft = 0
++  })
++  await expect.poll(async () => Math.round(await horizontalViewport.evaluate((element: HTMLElement) => element.scrollLeft))).toBeLessThanOrEqual(2)
++  await page.evaluate(() => new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve()))))
++  return [...headers]
++}
++
++async function expectReachableHeaders(page: any, grid: any, required: string[]) {
++  const available = await collectReachableHeaders(page, grid)
++  expect(findMissingHeaders(available, required), `Missing reachable FAR headers. Available: ${available.join(', ')}`).toEqual([])
++  return available
++}
++
+ test.describe('FAR whole-view golden workspace', () => {
+   test('retains the detailed FAR runtime inside the Monitoring-protected shell', async ({ page }, testInfo) => {
+     await resetBrowserState(page)
+@@ -23,18 +72,19 @@ test.describe('FAR whole-view golden workspace', () => {
+ 
+     const grid = workspace.locator('[data-far-grid="true"]')
+     await expect(grid).toBeVisible()
+-    for (const label of ['Failure Mode', 'Risk', 'Status', 'Owner', 'System', 'Type', 'Effect', 'Affected Scope', 'RPN']) {
+-      await expect(grid.locator('.ag-header-cell').filter({ hasText: label }).first(), `Missing FAR header ${label}`).toBeVisible()
+-    }
++    const canonicalHeaders = ['Failure Mode', 'Risk', 'Status', 'Owner', 'System', 'Type', 'Effect', 'Affected Scope', 'RPN']
++    const failureModeHeaders = await expectReachableHeaders(page, grid, canonicalHeaders)
++    expect(findMissingHeaders(['Failure Mode', 'Risk'], ['Failure Mode', 'RPN'])).toEqual(['RPN'])
++    expect(findMissingHeaders(failureModeHeaders, canonicalHeaders)).toEqual([])
+ 
+     await workspace.getByRole('tab', { name: 'Causes' }).click()
+-    await expect(grid.locator('.ag-header-cell').filter({ hasText: /^Causes$/ }).first()).toBeVisible()
++    await expectReachableHeaders(page, grid, [...canonicalHeaders, 'Causes'])
+     await workspace.getByRole('tab', { name: 'Mitigations' }).click()
+-    await expect(grid.locator('.ag-header-cell').filter({ hasText: /^Mitigations$/ }).first()).toBeVisible()
++    await expectReachableHeaders(page, grid, [...canonicalHeaders, 'Mitigations'])
+     await workspace.getByRole('tab', { name: 'Prevention' }).click()
+-    await expect(grid.locator('.ag-header-cell').filter({ hasText: /^Prevention$/ }).first()).toBeVisible()
++    await expectReachableHeaders(page, grid, [...canonicalHeaders, 'Prevention'])
+     await workspace.getByRole('tab', { name: 'Failure Modes' }).click()
+-    await expect(grid.locator('.ag-header-cell').filter({ hasText: /^Risk$/ }).first()).toBeVisible()
++    await expectReachableHeaders(page, grid, canonicalHeaders)
+ 
+     const gridBoxBeforeInsights = await grid.boundingBox()
+     await clickResilientButton(page, 'Insights')
+@@ -122,13 +172,15 @@ test.describe('FAR whole-view golden workspace', () => {
+       expect(Math.abs((gridBox.x + gridBox.width) - (workspaceBox.x + workspaceBox.width))).toBeLessThanOrEqual(2)
+     }
+ 
+-    await expect(page.getByLabel('Search FAR failure modes')).toBeVisible()
++    const search = page.getByRole('textbox', { name: 'Search FAR failure modes' })
++    await expect(search).toBeVisible()
++    await expect(search).toHaveAttribute('placeholder', 'Scan failure modes, causes, controls, owners...')
+     const firstMode = workspace.getByRole('tab', { name: 'Failure Modes' })
+     await firstMode.focus()
+     await page.keyboard.press('ArrowRight')
+     await expect(workspace.getByRole('tab', { name: 'Causes' })).toHaveAttribute('aria-selected', 'true')
+     await expect(workspace.locator('[data-far-summary="true"]')).toHaveCount(0)
+-    await expect(workspace.locator('.ag-header-cell').filter({ hasText: 'Failure Mode' }).first()).toBeVisible()
++    await expectReachableHeaders(page, workspace.locator('[data-far-grid="true"]'), ['Failure Mode', 'Causes'])
+ 
+     await page.screenshot({ path: testInfo.outputPath('far-whole-view-golden-narrow.png'), fullPage: false, animations: 'disabled' })
+   })
+diff --git a/frontend/tests/far-workflows.spec.ts b/frontend/tests/far-workflows.spec.ts
+index cf4548d..8776b33 100644
+--- a/frontend/tests/far-workflows.spec.ts
++++ b/frontend/tests/far-workflows.spec.ts
+@@ -61,7 +61,9 @@ test.describe('FAR workflows', () => {
+     await expect(workspace.getByText('Failure Inventory Maturity Profile')).toBeVisible()
+     await workspace.getByRole('button', { name: /Insights/i }).click()
+     await expect(workspace.getByText('Failure Inventory Maturity Profile')).not.toBeVisible()
+-    await page.getByPlaceholder('Search FAR failure modes').fill(far.title)
++    const farSearch = page.getByRole('textbox', { name: 'Search FAR failure modes' })
++    await expect(farSearch).toHaveAttribute('placeholder', 'Scan failure modes, causes, controls, owners...')
++    await farSearch.fill(far.title)
+     const centerRow = workspace.locator('.ag-center-cols-container .ag-row').filter({ hasText: far.title })
+     await expect(centerRow).toBeVisible()
+     const rowIndex = await centerRow.getAttribute('row-index')

@@ -1,0 +1,18 @@
+ORIGINAL_PATH: /Users/haewonkim/.local/state/sysgrid-supervisor/runs/20260806T024223Z-30686-377000/patch.diff
+ORIGINAL_SHA256: fb2d5b9f1cbc6ffc2efe8815390c9de5213bf7c206c059a67ba50a2fc3b22391
+================================================================================
+diff --git a/frontend/src/components/shared/CanonicalVerificationContract.test.ts b/frontend/src/components/shared/CanonicalVerificationContract.test.ts
+index a39aac3..a5925c0 100644
+--- a/frontend/src/components/shared/CanonicalVerificationContract.test.ts
++++ b/frontend/src/components/shared/CanonicalVerificationContract.test.ts
+@@ -12,7 +12,9 @@ describe('canonical verification contract', () => {
+     expect(script).toContain('"SYSGRID_CANONICAL_GATE=1"')
+     expect(script).toContain('"SYSGRID_EXPECTED_FRONTEND_ORIGIN=$FRONTEND_ORIGIN"')
+     expect(script).toContain('"SYSGRID_EXPECTED_API_BASE=$BACKEND_ORIGIN/api/v1"')
+-    expect(script).toContain('"${PLAYWRIGHT_ENV_COMMAND[@]}" "$FRONTEND_DIR/node_modules/.bin/playwright" test "${PLAYWRIGHT_SPECS[@]}"')
++    expect(script).toContain('"${PLAYWRIGHT_ENV_COMMAND[@]}" "$FRONTEND_DIR/node_modules/.bin/playwright" test "${specs[@]}" --workers="$PLAYWRIGHT_WORKERS"')
++    expect(script).toContain('run_playwright_group affected_browser_promotion "${PROMOTION_SPECS[@]}"')
++    expect(script).toContain('run_playwright_group remaining_canonical_playwright "${REMAINING_SPECS[@]}"')
+     expect(script).not.toContain('npx playwright')
+     expect(script).toContain('run_validation_lanes')
+     expect(script).toContain('local vite_bin="$FRONTEND_DIR/node_modules/.bin/vite"')

@@ -1,0 +1,1701 @@
+ORIGINAL_PATH: /Users/haewonkim/.local/share/sysgrid-runner/engine-v1.1.0/sysgrid_runner.py
+ORIGINAL_SHA256: 490b3e9f2313f3b912be1b1c77d096fdb06542acf75aa0a5a737b277118dcc0b
+================================================================================
+#!/usr/bin/env python3
+"""SysGrid stable execution engine v1.1.0.
+
+Standard-library-only reference implementation. Capsules are declarative ZIPs;
+trusted commands live in this engine distribution.
+"""
+from __future__ import annotations
+
+import argparse
+import dataclasses
+import datetime as dt
+import hashlib
+import json
+import os
+import re
+import shutil
+import signal
+import stat
+import subprocess
+import sys
+import tempfile
+import threading
+import time
+import traceback
+import zipfile
+import uuid
+from pathlib import Path, PurePosixPath
+from typing import Any, Iterable
+
+from sysgrid_state_identity import canonical_dirty_paths, all_repository_files, StateIdentityError
+
+ENGINE_VERSION = "1.1.0"
+SCHEMA_VERSION = "1.1"
+CANONICAL_ZIP = "UPLOAD_THIS_TO_CHATGPT.zip"
+MAX_CAPSULE_BYTES = 50 * 1024 * 1024
+MAX_TIMEOUT_SECONDS = 3600
+MAX_FAILURE_EVIDENCE_BYTES = 40 * 1024 * 1024
+MAX_SINGLE_EVIDENCE_FILE_BYTES = 20 * 1024 * 1024
+SOURCE_SUFFIXES = {".py", ".pyi", ".ts", ".tsx", ".js", ".jsx", ".mjs", ".cjs", ".sh", ".bash", ".zsh", ".json", ".jsonc", ".md", ".txt", ".csv", ".yaml", ".yml", ".toml", ".ini", ".cfg", ".html", ".css", ".scss", ".svg", ".sql", ".xml", ".lock", ".graphql", ".gql", ".properties"}
+SOURCE_EXCLUDED_DIRS = {".git", "node_modules", "venv", ".venv", "dist", "build", "coverage", "playwright-report", "test-results", ".cache", "__pycache__", ".pytest_cache", ".mypy_cache", ".ruff_cache"}
+SOURCE_SECRET_BASENAMES = [REDACTED]
+MAX_SOURCE_AUTHORITY_BYTES = 1536 * 1024 * 1024
+MAX_SOURCE_AUTHORITY_FILE_BYTES = 32 * 1024 * 1024
+CAMPAIGN_METADATA_FILES = ("QUESTIONNAIRE.json", "QUESTIONNAIRE_CLOSURE.json", "APPROVAL_LOCK.json", "CHANGE_SPEC.json", "RISK_MATRIX.json", "TEST_PLAN.json", "VISUAL_MATRIX.json", "IMPROVEMENT_LEDGER.json", "NEXT_CAMPAIGN_SEED.json")
+SAFE_ID = re.compile(r"^[A-Za-z0-9_.:/+-]{1,200}$")
+SHA256_RE = re.compile(r"^[0-9a-f]{64}$")
+PROHIBITED_CAPSULE_SUFFIXES = {".sh", ".bash", ".zsh", ".py", ".pyc", ".js", ".mjs", ".cjs", ".ts", ".tsx", ".exe", ".command"}
+
+
+class EngineError(RuntimeError):
+    def __init__(self, classification: str, message: str, exit_code: int = 1):
+        super().__init__(message)
+        self.classification = classification
+        self.exit_code = exit_code
+
+
+def reap_process_async(proc: subprocess.Popen[Any]) -> None:
+    """Reap an intentionally detached child without blocking the operator command."""
+    def wait_for_child() -> None:
+        try:
+            proc.wait()
+        except Exception:
+            pass
+
+    threading.Thread(target=wait_for_child, name=f"sysgrid-reap-{proc.pid}", daemon=True).start()
+
+
+class NotificationManager:
+    """Best-effort bridge to the existing operator-owned sgnotify command.
+
+    The stable engine never reads Telegram credentials. It only queues sanitized,
+    bounded messages to the pre-existing notifier executable. Notification failure
+    cannot change product execution success or evidence integrity.
+    """
+
+    def __init__(self, state_dir: Path, run_id: str):
+        self.state_dir = state_dir
+        self.run_id = run_id
+        self.sent: set[str] = set()
+        configured = os.environ.get("SYSGRID_NOTIFY_CMD")
+        candidate = Path(configured).expanduser() if configured else Path.home() / ".local/bin/sgnotify"
+        disabled = os.environ.get("SYSGRID_NOTIFY_DISABLE", "").lower() in {"1", "true", "yes"}
+        self.command = None if disabled or not candidate.is_file() or not os.access(candidate, os.X_OK) else candidate
+        self.log_path = state_dir / f"notifications-{run_id}.jsonl"
+
+    @property
+    def status(self) -> str:
+        return "READY" if self.command else "UNAVAILABLE"
+
+    def _record(self, record: dict[str, Any]) -> None:
+        self.state_dir.mkdir(parents=True, exist_ok=True)
+        with self.log_path.open("a", encoding="utf-8") as f:
+            f.write(json.dumps(record, sort_keys=True) + "\n")
+
+    def send(self, event: str, message: str) -> None:
+        if event in self.sent:
+            return
+        self.sent.add(event)
+        safe_message, redactions = redact_text(message)
+        safe_message = safe_message[:1800]
+        record: dict[str, Any] = {
+            "event": event,
+            "queued_utc": now_utc(),
+            "status": self.status,
+            "message_sha256": hashlib.sha256(safe_message.encode("utf-8")).hexdigest(),
+            "message_preview": safe_message[:240],
+            "redactions": redactions,
+        }
+        if not self.command:
+            self._record(record)
+            return
+        try:
+            completed = subprocess.run(
+                [str(self.command), safe_message],
+                stdin=subprocess.DEVNULL,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                text=True,
+                timeout=8,
+                check=False,
+            )
+            if completed.returncode == 0:
+                record.update({"status": "DELIVERED", "exit_code": 0, "completed_utc": now_utc()})
+            else:
+                stderr, stderr_redactions = redact_text(completed.stderr or "")
+                record.update({
+                    "status": "DELIVERY_FAILURE",
+                    "exit_code": completed.returncode,
+                    "stderr": stderr[:300],
+                    "redactions": redactions + stderr_redactions,
+                    "completed_utc": now_utc(),
+                })
+        except subprocess.TimeoutExpired:
+            record.update({"status": "DELIVERY_TIMEOUT", "completed_utc": now_utc()})
+        except Exception as exc:
+            record.update({"status": "QUEUE_FAILURE", "error": f"{type(exc).__name__}: {exc}"[:300], "completed_utc": now_utc()})
+        self._record(record)
+
+
+TERMINAL_STATES = {"SUCCEEDED", "FAILED_REVIEW_READY", "FAILED_NO_ARTIFACT", "BLOCKED", "ABORTED"}
+
+
+def now_utc() -> str:
+    return dt.datetime.now(dt.timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z")
+
+
+def sha256_file(path: Path) -> str:
+    h = hashlib.sha256()
+    with path.open("rb") as f:
+        for chunk in iter(lambda: f.read(1024 * 1024), b""):
+            h.update(chunk)
+    return h.hexdigest()
+
+
+def write_json_atomic(path: Path, value: Any) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    tmp = path.with_name(path.name + ".tmp")
+    tmp.write_text(json.dumps(value, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    os.replace(tmp, path)
+
+
+def write_text_atomic(path: Path, text: str) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    tmp = path.with_name(path.name + ".tmp")
+    tmp.write_text(text, encoding="utf-8")
+    os.replace(tmp, path)
+
+
+def safe_member(name: str) -> PurePosixPath:
+    p = PurePosixPath(name)
+    if not name or name.startswith("/") or "\\" in name:
+        raise EngineError("CAPSULE_SAFETY_FAILURE", f"unsafe capsule path: {name!r}")
+    if any(part in ("", ".", "..") for part in p.parts):
+        raise EngineError("CAPSULE_SAFETY_FAILURE", f"unsafe capsule path: {name!r}")
+    return p
+
+
+def extract_capsule(path: Path, dest: Path, *, allow_source: bool = False) -> None:
+    if path.stat().st_size > MAX_CAPSULE_BYTES:
+        raise EngineError("CAPSULE_SAFETY_FAILURE", "capsule exceeds size limit")
+    with zipfile.ZipFile(path) as zf:
+        seen: set[str] = set()
+        for info in zf.infolist():
+            p = safe_member(info.filename.rstrip("/")) if not info.is_dir() else safe_member(info.filename.rstrip("/"))
+            if str(p) in seen:
+                raise EngineError("CAPSULE_SAFETY_FAILURE", f"duplicate capsule path: {p}")
+            seen.add(str(p))
+            mode = (info.external_attr >> 16) & 0o170000
+            if mode == stat.S_IFLNK:
+                raise EngineError("CAPSULE_SAFETY_FAILURE", f"symlink prohibited: {p}")
+            if mode not in (0, stat.S_IFREG, stat.S_IFDIR):
+                raise EngineError("CAPSULE_SAFETY_FAILURE", f"special capsule member prohibited: {p}")
+            executable = ((info.external_attr >> 16) & 0o111) != 0
+            if executable and not info.is_dir():
+                raise EngineError("CAPSULE_SAFETY_FAILURE", f"executable capsule file prohibited: {p}")
+            if not allow_source and not info.is_dir() and p.suffix.lower() in PROHIBITED_CAPSULE_SUFFIXES:
+                raise EngineError("CAPSULE_SAFETY_FAILURE", f"run-specific executable/source file prohibited: {p}")
+        zf.extractall(dest)
+
+
+def parse_manifest(path: Path) -> dict[str, str]:
+    if not path.exists():
+        raise EngineError("CAPSULE_MANIFEST_FAILURE", "MANIFEST.sha256 missing")
+    result: dict[str, str] = {}
+    for line in path.read_text(encoding="utf-8").splitlines():
+        if not line.strip():
+            continue
+        try:
+            digest, rel = line.split("  ", 1)
+        except ValueError as exc:
+            raise EngineError("CAPSULE_MANIFEST_FAILURE", f"invalid manifest line: {line!r}") from exc
+        if not SHA256_RE.fullmatch(digest) or str(safe_member(rel)) != rel:
+            raise EngineError("CAPSULE_MANIFEST_FAILURE", f"invalid manifest entry: {line!r}")
+        if rel == "MANIFEST.sha256":
+            raise EngineError("CAPSULE_MANIFEST_FAILURE", "manifest must not list itself")
+        if rel in result:
+            raise EngineError("CAPSULE_MANIFEST_FAILURE", f"duplicate manifest entry: {rel}")
+        result[rel] = digest
+    return result
+
+
+def verify_manifest(root: Path) -> dict[str, str]:
+    expected = parse_manifest(root / "MANIFEST.sha256")
+    actual_files = sorted(
+        p.relative_to(root).as_posix()
+        for p in root.rglob("*")
+        if p.is_file() and p.name != "MANIFEST.sha256"
+    )
+    if sorted(expected) != actual_files:
+        missing = sorted(set(expected) - set(actual_files))
+        extra = sorted(set(actual_files) - set(expected))
+        raise EngineError("CAPSULE_MANIFEST_FAILURE", f"manifest path mismatch missing={missing} extra={extra}")
+    for rel, digest in expected.items():
+        got = sha256_file(root / rel)
+        if got != digest:
+            raise EngineError("CAPSULE_MANIFEST_FAILURE", f"digest mismatch for {rel}: expected {digest}, got {got}")
+    return expected
+
+
+def require_dict(value: Any, name: str) -> dict[str, Any]:
+    if not isinstance(value, dict):
+        raise EngineError("CAPSULE_SCHEMA_FAILURE", f"{name} must be an object")
+    return value
+
+
+def require_str(value: Any, name: str, pattern: re.Pattern[str] | None = SAFE_ID) -> str:
+    if not isinstance(value, str) or not value:
+        raise EngineError("CAPSULE_SCHEMA_FAILURE", f"{name} must be a non-empty string")
+    if pattern and not pattern.fullmatch(value):
+        raise EngineError("CAPSULE_SCHEMA_FAILURE", f"{name} contains unsupported characters")
+    return value
+
+
+def validate_run(run: dict[str, Any]) -> None:
+    allowed = {
+        "schema_version", "capsule_version", "project", "master_context", "issue", "stage",
+        "iteration", "attempt", "title", "lane", "mode", "engine", "baseline", "state",
+        "patch", "recipes", "acceptance", "delivery", "evidence"
+    }
+    unknown = sorted(set(run) - allowed)
+    if unknown:
+        raise EngineError("CAPSULE_SCHEMA_FAILURE", f"unknown RUN.json fields: {unknown}")
+    if run.get("schema_version") != SCHEMA_VERSION:
+        raise EngineError("CAPSULE_SCHEMA_FAILURE", f"unsupported schema_version: {run.get('schema_version')!r}")
+    for field in ("project", "master_context", "issue", "stage", "title", "lane", "mode"):
+        require_str(run.get(field), field, None if field in ("stage", "title") else SAFE_ID)
+    for field in ("iteration", "attempt"):
+        if not isinstance(run.get(field), int) or isinstance(run.get(field), bool) or run[field] < 0:
+            raise EngineError("CAPSULE_SCHEMA_FAILURE", f"{field} must be a non-negative integer")
+    if run["project"] != "SysGrid":
+        raise EngineError("PROJECT_SCOPE_FAILURE", "capsule project must be SysGrid")
+    if run["lane"] not in {"product", "execution_platform", "read_only"}:
+        raise EngineError("CAPSULE_SCHEMA_FAILURE", "invalid lane")
+    if run["mode"] not in {"read_only", "mutation", "resume_verify", "qualification"}:
+        raise EngineError("CAPSULE_SCHEMA_FAILURE", "invalid mode")
+    if run["lane"] == "product" and run["mode"] == "qualification":
+        raise EngineError("CAPSULE_SCHEMA_FAILURE", "product lane cannot use qualification mode")
+    engine = require_dict(run.get("engine"), "engine")
+    if engine.get("required_version") != ENGINE_VERSION:
+        raise EngineError("ENGINE_VERSION_FAILURE", f"capsule requires engine {engine.get('required_version')}, installed {ENGINE_VERSION}")
+    baseline = require_dict(run.get("baseline"), "baseline")
+    for field in ("branch", "head", "upstream"):
+        require_str(baseline.get(field), f"baseline.{field}", None)
+    # Git commit identity is a 40-character lowercase SHA-1 in this repository.
+    if not re.fullmatch(r"[0-9a-f]{40}", baseline["head"]):
+        raise EngineError("CAPSULE_SCHEMA_FAILURE", "baseline.head must be a 40-character lowercase git SHA")
+    state = require_dict(run.get("state"), "state")
+    for field in ("pre_expected_dirty_paths", "post_expected_dirty_paths", "pre_hashes", "post_hashes", "protected_hashes"):
+        require_str(state.get(field), f"state.{field}", None)
+        safe_member(state[field])
+    recipes = run.get("recipes")
+    if not isinstance(recipes, list) or not recipes:
+        raise EngineError("CAPSULE_SCHEMA_FAILURE", "recipes must be a non-empty list")
+    for i, item in enumerate(recipes):
+        obj = require_dict(item, f"recipes[{i}]")
+        if set(obj) - {"id", "params", "required", "lane", "depends_on"}:
+            raise EngineError("CAPSULE_SCHEMA_FAILURE", f"unknown recipe fields at index {i}")
+        require_str(obj.get("id"), f"recipes[{i}].id")
+        if not isinstance(obj.get("params", {}), dict):
+            raise EngineError("CAPSULE_SCHEMA_FAILURE", f"recipes[{i}].params must be an object")
+        if not isinstance(obj.get("required", True), bool):
+            raise EngineError("CAPSULE_SCHEMA_FAILURE", f"recipes[{i}].required must be boolean")
+        lane = obj.get("lane", "general")
+        if lane not in {"structural", "backend", "frontend", "integration", "routed", "visual", "accessibility", "performance", "full", "general"}:
+            raise EngineError("CAPSULE_SCHEMA_FAILURE", f"recipes[{i}].lane invalid")
+        depends_on = obj.get("depends_on", [])
+        if not isinstance(depends_on, list) or any(not isinstance(value, str) for value in depends_on):
+            raise EngineError("CAPSULE_SCHEMA_FAILURE", f"recipes[{i}].depends_on must be a string array")
+        prior_ids = {value.get("id") for value in recipes[:i] if isinstance(value, dict)}
+        if obj.get("id") in prior_ids:
+            raise EngineError("CAPSULE_SCHEMA_FAILURE", f"duplicate recipe id: {obj.get('id')}")
+        missing_dependencies = [value for value in depends_on if value not in prior_ids]
+        if missing_dependencies:
+            raise EngineError("CAPSULE_SCHEMA_FAILURE", f"recipes[{i}] dependencies must reference earlier recipes: {missing_dependencies}")
+    patch = run.get("patch")
+    if run["mode"] == "mutation":
+        patch = require_dict(patch, "patch")
+        path = require_str(patch.get("path"), "patch.path", None)
+        safe_member(path)
+        digest = require_str(patch.get("sha256"), "patch.sha256", None)
+        if not SHA256_RE.fullmatch(digest):
+            raise EngineError("CAPSULE_SCHEMA_FAILURE", "patch.sha256 invalid")
+    elif patch not in (None, {}):
+        raise EngineError("CAPSULE_SCHEMA_FAILURE", "non-mutation capsule must not carry a patch")
+    require_dict(run.get("acceptance"), "acceptance")
+    require_dict(run.get("evidence"), "evidence")
+    delivery = require_dict(run.get("delivery"), "delivery")
+    if set(delivery) - {"commit_push", "commit_message", "remote", "branch"}:
+        raise EngineError("CAPSULE_SCHEMA_FAILURE", "unknown delivery fields")
+    if not isinstance(delivery.get("commit_push"), bool):
+        raise EngineError("CAPSULE_SCHEMA_FAILURE", "delivery.commit_push must be boolean")
+    if delivery["commit_push"]:
+        require_str(delivery.get("commit_message"), "delivery.commit_message", None)
+        require_str(delivery.get("remote"), "delivery.remote")
+        require_str(delivery.get("branch"), "delivery.branch")
+
+
+def load_run(root: Path) -> dict[str, Any]:
+    path = root / "RUN.json"
+    if not path.exists():
+        raise EngineError("CAPSULE_SCHEMA_FAILURE", "RUN.json missing")
+    try:
+        run = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        raise EngineError("CAPSULE_SCHEMA_FAILURE", f"RUN.json invalid: {exc}") from exc
+    run = require_dict(run, "RUN.json")
+    validate_run(run)
+    return run
+
+
+def parse_hash_file(path: Path) -> dict[str, str]:
+    result: dict[str, str] = {}
+    if not path.exists():
+        raise EngineError("CAPSULE_SCHEMA_FAILURE", f"missing hash file: {path.name}")
+    for line in path.read_text(encoding="utf-8").splitlines():
+        if not line.strip():
+            continue
+        parts = line.split(None, 1)
+        if len(parts) != 2 or not SHA256_RE.fullmatch(parts[0]):
+            raise EngineError("CAPSULE_SCHEMA_FAILURE", f"invalid hash line: {line!r}")
+        rel = parts[1].lstrip("* ")
+        safe_member(rel)
+        result[rel] = parts[0]
+    return result
+
+
+def parse_paths(path: Path) -> list[str]:
+    if not path.exists():
+        raise EngineError("CAPSULE_SCHEMA_FAILURE", f"missing paths file: {path.name}")
+    paths: list[str] = []
+    for line in path.read_text(encoding="utf-8").splitlines():
+        rel = line.strip()
+        if not rel:
+            continue
+        safe_member(rel)
+        paths.append(rel)
+    if paths != sorted(set(paths)):
+        raise EngineError("CAPSULE_SCHEMA_FAILURE", "expected dirty paths must be unique and sorted")
+    return paths
+
+
+def git(repo: Path, *args: str, check: bool = True) -> subprocess.CompletedProcess[str]:
+    cp = subprocess.run(["git", *args], cwd=repo, text=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    if check and cp.returncode:
+        raise EngineError("GIT_FAILURE", f"git {' '.join(args)} failed: {cp.stderr.strip()}")
+    return cp
+
+
+def dirty_paths(repo: Path) -> list[str]:
+    try:
+        return list(canonical_dirty_paths(repo))
+    except StateIdentityError as exc:
+        raise EngineError("GIT_FAILURE", str(exc)) from exc
+
+
+def verify_hashes(repo: Path, expected: dict[str, str], classification: str) -> None:
+    mismatches: list[str] = []
+    for rel, digest in expected.items():
+        p = repo / rel
+        if not p.is_file():
+            mismatches.append(f"{rel}: missing")
+            continue
+        got = sha256_file(p)
+        if got != digest:
+            mismatches.append(f"{rel}: expected {digest}, got {got}")
+    if mismatches:
+        raise EngineError(classification, "hash mismatch: " + "; ".join(mismatches[:20]))
+
+
+def verify_repo_state(repo: Path, run: dict[str, Any], capsule: Path, phase: str) -> None:
+    baseline = run["baseline"]
+    branch = git(repo, "branch", "--show-current").stdout.strip()
+    head = git(repo, "rev-parse", "HEAD").stdout.strip()
+    upstream = git(repo, "rev-parse", "--abbrev-ref", "--symbolic-full-name", "@{u}").stdout.strip()
+    staged = git(repo, "diff", "--cached", "--name-only").stdout.strip()
+    if branch != baseline["branch"]:
+        raise EngineError("BASELINE_MISMATCH", f"branch expected {baseline['branch']}, got {branch}")
+    if head != baseline["head"]:
+        raise EngineError("BASELINE_MISMATCH", f"HEAD expected {baseline['head']}, got {head}")
+    if upstream != baseline["upstream"]:
+        raise EngineError("BASELINE_MISMATCH", f"upstream expected {baseline['upstream']}, got {upstream}")
+    if staged:
+        raise EngineError("BASELINE_MISMATCH", f"staging must be empty, found: {staged}")
+    path_field = "pre_expected_dirty_paths" if phase == "pre" else "post_expected_dirty_paths"
+    expected_paths = parse_paths(capsule / run["state"][path_field])
+    actual_paths = dirty_paths(repo)
+    if actual_paths != expected_paths:
+        raise EngineError("BASELINE_MISMATCH", f"dirty paths expected {expected_paths}, got {actual_paths}")
+    protected = parse_hash_file(capsule / run["state"]["protected_hashes"])
+    verify_hashes(repo, protected, "PROTECTED_HASH_MISMATCH")
+    if phase == "pre" and run["mode"] == "mutation":
+        verify_hashes(repo, parse_hash_file(capsule / run["state"]["pre_hashes"]), "PRE_STATE_HASH_MISMATCH")
+    else:
+        verify_hashes(repo, parse_hash_file(capsule / run["state"]["post_hashes"]), "POST_STATE_HASH_MISMATCH")
+
+
+@dataclasses.dataclass(frozen=True)
+class Recipe:
+    id: str
+    command: list[str]
+    cwd: str = "."
+    timeout: int = 300
+
+
+def resolve_python(repo: Path) -> str:
+    candidates = [
+        repo / "backend/venv/bin/python",
+        Path("/opt/anaconda3/bin/python3.11"),
+        Path(sys.executable),
+    ]
+    for p in candidates:
+        if p.is_file() and os.access(p, os.X_OK):
+            return str(p)
+    raise EngineError("ENVIRONMENT_MISSING_DEPENDENCY", "no supported Python executable found")
+
+
+def resolve_node_tool(repo: Path, rel: str) -> str:
+    p = repo / "frontend/node_modules/.bin" / rel
+    if p.is_file() and os.access(p, os.X_OK):
+        return str(p)
+    found = shutil.which(rel)
+    if found:
+        return found
+    raise EngineError("ENVIRONMENT_MISSING_DEPENDENCY", f"missing frontend tool: {rel}")
+
+
+def build_recipe(repo: Path, item: dict[str, Any]) -> Recipe:
+    rid = item["id"]
+    params = item.get("params", {})
+    timeout = int(params.get("timeout", 300))
+    if timeout < 1 or timeout > MAX_TIMEOUT_SECONDS:
+        raise EngineError("CAPSULE_SCHEMA_FAILURE", f"invalid timeout for {rid}")
+
+    # Resolve only the dependencies required by the selected trusted recipe.
+    # Unknown recipe IDs must fail before any ambient environment probing.
+    if rid == "shell-syntax":
+        return Recipe(rid, ["/bin/bash", "-n", "scripts/start-local.sh"], timeout=min(timeout, 60))
+    if rid == "runtime-origin-tests":
+        py = resolve_python(repo)
+        return Recipe(rid, [py, "-m", "pytest", "scripts/tests/test_runtime_origin_config.py", "backend/test_main.py"], timeout=timeout)
+    if rid == "frontend-test-linter":
+        return Recipe(rid, [resolve_node_tool(repo, "npm"), "run", "test:lint"], cwd="frontend", timeout=timeout)
+    if rid == "frontend-typecheck":
+        return Recipe(rid, [resolve_node_tool(repo, "npm"), "run", "typecheck"], cwd="frontend", timeout=timeout)
+    if rid == "frontend-diagnostics":
+        return Recipe(rid, [resolve_node_tool(repo, "vitest"), "run", "src/api/apiClient.test.ts", "src/api/bootstrapDiagnostics.test.ts"], cwd="frontend", timeout=timeout)
+    if rid == "frontend-build":
+        return Recipe(rid, [resolve_node_tool(repo, "npm"), "run", "build"], cwd="frontend", timeout=timeout)
+    if rid == "full-app-gate":
+        return Recipe(rid, ["/bin/bash", "scripts/verify-app.sh"], timeout=timeout)
+    if rid == "forwarded-config-proof":
+        api = params.get("api_base_url", "http://8000.vscode.company.example/")
+        ui = params.get("frontend_origin", "http://5173.vscode.company.example/")
+        for name, value in (("api_base_url", api), ("frontend_origin", ui)):
+            if not isinstance(value, str) or len(value) > 500 or any(c in value for c in "\n\r\0"):
+                raise EngineError("CAPSULE_SCHEMA_FAILURE", f"invalid {name}")
+        return Recipe(rid, ["/bin/bash", "scripts/start-local.sh", "--api-base-url", api, "--frontend-origin", ui, "--user-id-env-var", "AccessKey", "--skip-typecheck", "--print-runtime-config"], timeout=timeout)
+    def safe_test_paths(values: Any, *, prefix: str, suffixes: tuple[str, ...]) -> list[str]:
+        if not isinstance(values, list) or not values:
+            raise EngineError("CAPSULE_SCHEMA_FAILURE", f"{rid}.paths must be a non-empty array")
+        result: list[str] = []
+        for value in values:
+            if not isinstance(value, str) or value.startswith("/") or ".." in Path(value).parts or "\\" in value:
+                raise EngineError("CAPSULE_SCHEMA_FAILURE", f"unsafe test path for {rid}: {value!r}")
+            normalized = Path(value).as_posix()
+            if not normalized.startswith(prefix) or not normalized.endswith(suffixes):
+                raise EngineError("CAPSULE_SCHEMA_FAILURE", f"test path outside trusted scope for {rid}: {normalized}")
+            if not (repo / normalized).is_file():
+                raise EngineError("ENVIRONMENT_MISSING_DEPENDENCY", f"declared test file missing: {normalized}")
+            result.append(normalized)
+        return result
+    if rid == "backend-pytest":
+        paths = safe_test_paths(params.get("paths"), prefix="backend/", suffixes=(".py",))
+        py = resolve_python(repo)
+        return Recipe(rid, [py, "-m", "pytest", "-q", *paths], timeout=timeout)
+    if rid == "frontend-vitest":
+        paths = safe_test_paths(params.get("paths"), prefix="frontend/", suffixes=(".test.ts", ".test.tsx", ".spec.ts", ".spec.tsx"))
+        relative = [str(Path(value).relative_to("frontend")) for value in paths]
+        return Recipe(rid, [resolve_node_tool(repo, "vitest"), "run", *relative], cwd="frontend", timeout=timeout)
+    if rid == "playwright-specs":
+        paths = safe_test_paths(params.get("paths"), prefix="frontend/", suffixes=(".spec.ts", ".spec.tsx"))
+        relative = [str(Path(value).relative_to("frontend")) for value in paths]
+        return Recipe(rid, [resolve_node_tool(repo, "playwright"), "test", *relative], cwd="frontend", timeout=timeout)
+    if rid == "frontend-lint":
+        return Recipe(rid, [resolve_node_tool(repo, "npm"), "run", "lint"], cwd="frontend", timeout=timeout)
+    raise EngineError("RECIPE_NOT_TRUSTED", f"unknown trusted recipe: {rid}")
+
+
+SENSITIVE_NAME_RE = re.compile(r"(?i)(authorization|api[_-]?key|token|password|secret|access[_-]?key|private[_-]?key)")
+
+
+def redact_text(text: str) -> tuple[str, int]:
+    count = 0
+    redacted = text
+    sensitive_values = sorted(
+        {value for key, value in os.environ.items() if value and len(value) >= 4 and SENSITIVE_NAME_RE.search(key)},
+        key=len,
+        reverse=True,
+    )
+    for value in sensitive_values:
+        occurrences = redacted.count(value)
+        if occurrences:
+            redacted = redacted.replace(value, "[REDACTED]")
+            count += occurrences
+    patterns = [
+        re.compile(r"(?i)(authorization\s*[:=]\s*)(?:bearer\s+)?[^\s,;]+"),
+        re.compile(r"(?i)((?:api[_-]?key|token|password|secret|access[_-]?key|private[_-]?key)\s*[:=]\s*)[^\s,;]+"),
+        re.compile(r"(?i)([?&](?:api[_-]?key|token|password|secret|access[_-]?key)=)[^&#\s]+"),
+    ]
+    for pattern in patterns:
+        redacted, changed = pattern.subn(r"\1[REDACTED]", redacted)
+        count += changed
+    return redacted, count
+
+
+def run_command(recipe: Recipe, repo: Path, logs: Path) -> dict[str, Any]:
+    log_path = logs / f"{recipe.id}.log"
+    cwd = (repo / recipe.cwd).resolve()
+    start = time.monotonic()
+    started = now_utc()
+    with log_path.open("wb") as out:
+        try:
+            proc = subprocess.Popen(
+                recipe.command,
+                cwd=cwd,
+                stdout=out,
+                stderr=subprocess.STDOUT,
+                start_new_session=True,
+                env={**os.environ, "PYTHONDONTWRITEBYTECODE": "1", "NO_COLOR": "1"},
+            )
+            try:
+                rc = proc.wait(timeout=recipe.timeout)
+                timed_out = False
+            except subprocess.TimeoutExpired:
+                timed_out = True
+                os.killpg(proc.pid, signal.SIGTERM)
+                try:
+                    proc.wait(timeout=5)
+                except subprocess.TimeoutExpired:
+                    os.killpg(proc.pid, signal.SIGKILL)
+                    proc.wait(timeout=5)
+                rc = 124
+        except OSError as exc:
+            out.write((f"launcher error: {exc}\n").encode())
+            rc = 127
+            timed_out = False
+    ended = now_utc()
+    duration = round(time.monotonic() - start, 3)
+    redaction_count = 0
+    try:
+        raw_log = log_path.read_text(encoding="utf-8", errors="replace")
+        safe_log, redaction_count = redact_text(raw_log)
+        log_path.write_text(safe_log, encoding="utf-8")
+    except OSError:
+        pass
+    record = {
+        "recipe_id": recipe.id,
+        "command": recipe.command,
+        "cwd": str(cwd),
+        "started_utc": started,
+        "ended_utc": ended,
+        "duration_seconds": duration,
+        "exit_code": rc,
+        "timed_out": timed_out,
+        "classification": "PASS" if rc == 0 else ("COMMAND_TIMEOUT" if timed_out else "TEST_OR_RECIPE_FAILURE"),
+        "log": log_path.name,
+        "redactions": redaction_count,
+    }
+    return record
+
+
+def run_recipe_plan(repo: Path, items: list[dict[str, Any]], logs: Path, evidence: Path) -> dict[str, Any]:
+    records: list[dict[str, Any]]=[]; statuses: dict[str,str]={}
+    for item in items:
+        rid=item["id"]; dependencies=list(item.get("depends_on",[])); required=bool(item.get("required",True)); lane=item.get("lane","general")
+        failed_deps=[dep for dep in dependencies if statuses.get(dep) not in {"PASS","WARNING"}]
+        if failed_deps:
+            record={"recipe_id":rid,"lane":lane,"required":required,"status":"BLOCKED","classification":"DEPENDENCY_BLOCKED","blocked_by":failed_deps,"exit_code":None}
+        else:
+            try:
+                recipe=build_recipe(repo,item); record=run_command(recipe,repo,logs)
+                record.update({"lane":lane,"required":required,"status":"PASS" if record["exit_code"]==0 else ("FAIL" if required else "WARNING")})
+            except EngineError as exc:
+                record={"recipe_id":rid,"lane":lane,"required":required,"status":"FAIL" if required else "WARNING","classification":exc.classification,"message":str(exc),"exit_code":exc.exit_code}
+        statuses[rid]=record["status"]; records.append(record)
+    counts={status:sum(1 for record in records if record["status"]==status) for status in ("PASS","FAIL","WARNING","BLOCKED")}
+    required_failures=[r for r in records if r["required"] and r["status"] in {"FAIL","BLOCKED"}]
+    summary={"records":records,"counts":counts,"required_failure_count":len(required_failures),"required_failures":[r["recipe_id"] for r in required_failures]}
+    write_json_atomic(evidence/"TEST_RESULTS.json",summary)
+    lines=["# Warning and failure summary","",f"PASS: {counts['PASS']}",f"FAIL: {counts['FAIL']}",f"WARNING: {counts['WARNING']}",f"BLOCKED: {counts['BLOCKED']}",""]
+    for record in records:
+        if record["status"]!="PASS": lines.append(f"- {record['status']} `{record['recipe_id']}`: {record.get('classification','UNKNOWN')} {record.get('message','')}")
+    (evidence/"WARNING_AND_FAILURE_SUMMARY.md").write_text("\n".join(lines)+"\n",encoding="utf-8")
+    return summary
+
+
+def make_manifest(root: Path) -> None:
+    lines = []
+    for p in sorted(root.rglob("*")):
+        if p.is_file() and p.name != "MANIFEST.sha256":
+            lines.append(f"{sha256_file(p)}  {p.relative_to(root).as_posix()}")
+    (root / "MANIFEST.sha256").write_text("\n".join(lines) + "\n", encoding="utf-8")
+
+
+def zip_tree(root: Path, output: Path) -> None:
+    make_manifest(root)
+    tmp = output.with_suffix(output.suffix + ".partial")
+    with zipfile.ZipFile(tmp, "w", compression=zipfile.ZIP_DEFLATED, compresslevel=9) as zf:
+        for p in sorted(root.rglob("*")):
+            if p.is_file():
+                info = zipfile.ZipInfo(p.relative_to(root).as_posix())
+                info.date_time = (2026, 1, 1, 0, 0, 0)
+                info.external_attr = 0o100600 << 16
+                zf.writestr(info, p.read_bytes())
+    with zipfile.ZipFile(tmp) as zf:
+        for info in zf.infolist():
+            safe_member(info.filename)
+            if (info.external_attr >> 16) & 0o170000 == stat.S_IFLNK:
+                raise EngineError("EVIDENCE_PACKAGING_FAILURE", "symlink in evidence ZIP")
+    os.replace(tmp, output)
+
+
+def zip_tree_fallback(root: Path, output: Path) -> None:
+    """Independent minimal evidence packager used only after primary packaging fails."""
+    make_manifest(root)
+    tmp = output.with_suffix(output.suffix + ".fallback.partial")
+    if tmp.exists():
+        tmp.unlink()
+    with zipfile.ZipFile(tmp, "w", compression=zipfile.ZIP_DEFLATED, compresslevel=9) as zf:
+        for p in sorted(root.rglob("*")):
+            if p.is_file():
+                info = zipfile.ZipInfo(p.relative_to(root).as_posix())
+                info.date_time = (2026, 1, 1, 0, 0, 0)
+                info.external_attr = 0o100600 << 16
+                zf.writestr(info, p.read_bytes())
+    os.replace(tmp, output)
+
+
+def capture_state(repo: Path, out: Path, prefix: str) -> None:
+    (out / "STATE").mkdir(parents=True, exist_ok=True)
+    data = {
+        "branch": git(repo, "branch", "--show-current").stdout.strip(),
+        "head": git(repo, "rev-parse", "HEAD").stdout.strip(),
+        "upstream": git(repo, "rev-parse", "--abbrev-ref", "--symbolic-full-name", "@{u}").stdout.strip(),
+        "status": git(repo, "status", "--porcelain=v1", "--untracked-files=all").stdout,
+        "dirty_paths": dirty_paths(repo),
+    }
+    write_json_atomic(out / "STATE" / f"{prefix}.json", data)
+    (out / "DIFF").mkdir(parents=True, exist_ok=True)
+    (out / "DIFF" / f"{prefix}_working.patch").write_text(git(repo, "diff", "--binary").stdout, encoding="utf-8")
+    (out / "DIFF" / f"{prefix}_staged.patch").write_text(git(repo, "diff", "--cached", "--binary").stdout, encoding="utf-8")
+
+
+def _source_role(rel: str) -> str:
+    path = Path(rel)
+    lowered = rel.lower()
+    if "test" in path.name.lower() or any(part in {"tests", "test", "e2e"} for part in path.parts):
+        return "test"
+    if "migration" in lowered or "alembic" in lowered:
+        return "migration"
+    if path.name in {"package.json", "package-lock.json", "pyproject.toml", "requirements.txt", "tsconfig.json"} or path.suffix == ".lock":
+        return "dependency_configuration"
+    if any(part in {"scripts", ".github"} for part in path.parts):
+        return "automation"
+    if path.suffix in {".md", ".rst"}:
+        return "documentation"
+    return "product_source"
+
+
+def _source_allowed(rel: str, path: Path) -> tuple[bool, str]:
+    parts=set(Path(rel).parts)
+    if parts & SOURCE_EXCLUDED_DIRS: return False, "excluded_directory"
+    if path.name in SOURCE_SECRET_BASENAMES or path.name.startswith(".env"): return False, "secret_basename"
+    if path.is_symlink() or not path.is_file(): return False, "unsupported_path_type"
+    size=path.stat().st_size
+    if size > MAX_SOURCE_AUTHORITY_FILE_BYTES: return False, "file_size_limit"
+    if path.suffix.lower() not in SOURCE_SUFFIXES and path.name not in {"Dockerfile", "Makefile", "Procfile", "Pipfile", "Gemfile", "package.json", "requirements.txt", "pyproject.toml", "tsconfig.json"}:
+        return False, "non_source_file"
+    return True, "included"
+
+
+def _build_ownership_graph(repo: Path, included: list[dict[str, Any]]) -> dict[str, Any]:
+    entry_by_path={entry["path"]:entry for entry in included}
+    paths=[entry["path"] for entry in included]
+    shared=[p for p in paths if any(token in p.lower() for token in ("shared", "operationalworkspace", "workspace", "api/client", "shell"))]
+    tests=[p for p in paths if entry_by_path[p]["role"]=="test"]
+    routes=[]; apis=[]
+    route_re=re.compile(r"(?:path|route)\s*[:=]\s*['\"]([^'\"]+)")
+    api_re=re.compile(r"@(router|app)\.(get|post|put|patch|delete)\(['\"]([^'\"]+)")
+    for rel in paths:
+        p=repo/rel
+        if p.stat().st_size > 2*1024*1024: continue
+        try: text=p.read_text(encoding="utf-8")
+        except (UnicodeDecodeError,OSError): continue
+        for match in route_re.finditer(text): routes.append({"route":match.group(1),"owner":rel})
+        for match in api_re.finditer(text): apis.append({"method":match.group(2).upper(),"path":match.group(3),"owner":rel})
+    return {"shared_high_blast_radius":sorted(shared),"routes":routes[:5000],"api_endpoints":apis[:5000],"tests":sorted(tests)}
+
+
+def capture_source(repo: Path, capsule: Path, run: dict[str, Any], evidence: Path) -> None:
+    authority=evidence/"SOURCE_AUTHORITY"; files_root=authority/"files"; files_root.mkdir(parents=True,exist_ok=True)
+    included=[]; excluded=[]; total=0
+    try: paths=all_repository_files(repo)
+    except StateIdentityError as exc: raise EngineError("SOURCE_AUTHORITY_FAILURE",str(exc)) from exc
+    entry_by_path={}
+    for rel in paths:
+        src=repo/rel
+        allowed,reason=_source_allowed(rel,src)
+        entry={"path":rel,"role":_source_role(rel),"size":src.stat().st_size if src.exists() else None,"reason":reason}
+        if src.is_file(): entry["sha256"]=sha256_file(src)
+        if not allowed:
+            excluded.append(entry); continue
+        if total+int(entry["size"])>MAX_SOURCE_AUTHORITY_BYTES:
+            entry["reason"]="total_size_limit"; excluded.append(entry); continue
+        dst=files_root/rel; dst.parent.mkdir(parents=True,exist_ok=True); shutil.copy2(src,dst)
+        total+=int(entry["size"]); included.append(entry); entry_by_path[rel]=entry
+    manifest_lines=[f'{entry["sha256"]}  {entry["path"]}' for entry in included]
+    (authority/"SOURCE_MANIFEST.sha256").write_text("\n".join(manifest_lines)+"\n",encoding="utf-8")
+    write_json_atomic(authority/"SOURCE_IDENTITY.json",{
+        "branch":git(repo,"branch","--show-current").stdout.strip(),"head":git(repo,"rev-parse","HEAD").stdout.strip(),
+        "upstream":git(repo,"rev-parse","--abbrev-ref","--symbolic-full-name","@{u}").stdout.strip(),
+        "dirty_paths":dirty_paths(repo),"included":included,"excluded":excluded,"included_bytes":total,
+    })
+    write_json_atomic(authority/"OWNERSHIP_GRAPH.json",_build_ownership_graph(repo,included))
+    dependency={}
+    for rel in ("frontend/package.json","frontend/package-lock.json","backend/requirements.txt","backend/pyproject.toml","pyproject.toml"):
+        p=repo/rel
+        if p.is_file() and p.stat().st_size<8*1024*1024:
+            dependency[rel]={"sha256":sha256_file(p),"content":p.read_text(encoding="utf-8",errors="replace")}
+    write_json_atomic(authority/"DEPENDENCY_INVENTORY.json",dependency)
+    changed=evidence/"SOURCE"; changed.mkdir(parents=True,exist_ok=True)
+    expected=parse_hash_file(capsule/run["state"]["post_hashes"])
+    for rel in sorted(expected):
+        src=repo/rel
+        if src.is_file():
+            dst=changed/rel; dst.parent.mkdir(parents=True,exist_ok=True); shutil.copy2(src,dst)
+    campaign_dir=evidence/"CAMPAIGN"; campaign_dir.mkdir(parents=True,exist_ok=True)
+    for rel in CAMPAIGN_METADATA_FILES:
+        src=capsule/rel
+        if src.is_file(): shutil.copy2(src,campaign_dir/rel)
+
+
+def _copy_bounded_evidence(src: Path, dst: Path, budget: dict[str, int], captured: list[dict[str, Any]], skipped: list[dict[str, Any]]) -> None:
+    try:
+        if not src.is_file() or src.is_symlink():
+            return
+        size = src.stat().st_size
+        if size > MAX_SINGLE_EVIDENCE_FILE_BYTES or size > budget["remaining"]:
+            skipped.append({"path": str(src), "size": size, "reason": "evidence size bound"})
+            return
+        dst.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(src, dst)
+        budget["remaining"] -= size
+        captured.append({"source": str(src), "evidence": str(dst), "size": size, "sha256": sha256_file(dst)})
+    except Exception as exc:
+        skipped.append({"path": str(src), "reason": f"{type(exc).__name__}: {exc}"[:300]})
+
+
+def capture_operator_evidence(evidence: Path, context: dict[str, Any], notifier: NotificationManager | None) -> dict[str, Any]:
+    operator = evidence / "OPERATOR"
+    operator.mkdir(parents=True, exist_ok=True)
+    budget = {"remaining": MAX_FAILURE_EVIDENCE_BYTES}
+    captured: list[dict[str, Any]] = []
+    skipped: list[dict[str, Any]] = []
+    notification_path = notifier.log_path if notifier else Path(str(context.get("notification_log", "")))
+    worker_value = context.get("worker_log")
+    if notification_path and str(notification_path) not in {"", "."}:
+        _copy_bounded_evidence(notification_path, operator / "notifications.jsonl", budget, captured, skipped)
+    if worker_value:
+        _copy_bounded_evidence(Path(str(worker_value)), operator / "worker.log", budget, captured, skipped)
+    summary: dict[str, Any] = {"captured": captured, "skipped": skipped, "events": [], "status_counts": {}}
+    copied_notifications = operator / "notifications.jsonl"
+    if copied_notifications.is_file():
+        for line in copied_notifications.read_text(encoding="utf-8", errors="replace").splitlines():
+            try:
+                record = json.loads(line)
+            except json.JSONDecodeError:
+                continue
+            event = str(record.get("event", "unknown"))
+            status = str(record.get("status", "UNKNOWN"))
+            summary["events"].append({"event": event, "status": status, "message_preview": record.get("message_preview", "")})
+            summary["status_counts"][status] = summary["status_counts"].get(status, 0) + 1
+    write_json_atomic(operator / "SUMMARY.json", summary)
+    return summary
+
+
+def _repo_relative(repo: Path, candidate: Path) -> Path | None:
+    try:
+        resolved = candidate.resolve()
+        return resolved.relative_to(repo.resolve())
+    except (OSError, ValueError):
+        return None
+
+
+def capture_failure_evidence(repo: Path, evidence: Path, commands: list[dict[str, Any]], failed_stage: str) -> None:
+    target = evidence / "FAILURE"
+    source_root = target / "SOURCE"
+    artifact_root = target / "ARTIFACTS"
+    budget = {"remaining": MAX_FAILURE_EVIDENCE_BYTES}
+    captured: list[dict[str, Any]] = []
+    skipped: list[dict[str, Any]] = []
+    candidates: set[Path] = set()
+    failed = next((record for record in reversed(commands) if record.get("exit_code")), None)
+    log_text = ""
+    cwd = repo
+    if failed:
+        cwd = Path(str(failed.get("cwd", repo)))
+        log_name = failed.get("log")
+        if log_name:
+            log_path = evidence / "LOGS" / str(log_name)
+            if log_path.is_file():
+                log_text = log_path.read_text(encoding="utf-8", errors="replace")
+        for arg in failed.get("command", []):
+            value = str(arg)
+            path = Path(value)
+            if not path.is_absolute():
+                path = cwd / path
+            rel = _repo_relative(repo, path)
+            if rel and (repo / rel).is_file():
+                candidates.add(repo / rel)
+    suffix_pattern = "|".join(sorted((re.escape(s.lstrip(".")) for s in SOURCE_SUFFIXES), key=len, reverse=True))
+    absolute_re = re.compile(re.escape(str(repo.resolve())) + rf"/([A-Za-z0-9_./+\-]+\.(?:{suffix_pattern}))")
+    relative_re = re.compile(rf"(?<![A-Za-z0-9_.-])((?:frontend|backend|scripts|tests|src|app)/[A-Za-z0-9_./+\-]+\.(?:{suffix_pattern}))")
+    cwd_relative_re = re.compile(rf"(?<![A-Za-z0-9_.-])((?:tests|src|app)/[A-Za-z0-9_./+\-]+\.(?:{suffix_pattern}))")
+    for match in absolute_re.finditer(log_text):
+        candidates.add(repo / match.group(1))
+    for match in relative_re.finditer(log_text):
+        candidates.add(repo / match.group(1))
+    for match in cwd_relative_re.finditer(log_text):
+        candidates.add(cwd / match.group(1))
+    if failed_stage == "full-app-gate":
+        for rel in ("scripts/verify-app.sh", "frontend/playwright.config.ts", "frontend/llm-report.json"):
+            path = repo / rel
+            if path.is_file():
+                candidates.add(path)
+    for candidate in sorted(candidates, key=lambda x: str(x)):
+        rel = _repo_relative(repo, candidate)
+        if rel is None or not candidate.is_file() or candidate.suffix.lower() not in SOURCE_SUFFIXES:
+            continue
+        _copy_bounded_evidence(candidate, source_root / rel, budget, captured, skipped)
+    for rel_root in ("frontend/test-results", "frontend/playwright-report"):
+        root = repo / rel_root
+        if not root.is_dir() or root.is_symlink():
+            continue
+        for item in sorted(root.rglob("*")):
+            if item.is_file() and not item.is_symlink():
+                rel = item.relative_to(repo)
+                _copy_bounded_evidence(item, artifact_root / rel, budget, captured, skipped)
+    report = {"failed_stage": failed_stage, "captured": captured, "skipped": skipped, "budget_remaining": budget["remaining"]}
+    write_json_atomic(target / "CAPTURE.json", report)
+
+
+
+def capture_success_evidence(repo: Path, evidence: Path, run: dict[str, Any]) -> dict[str, Any]:
+    """Capture declared successful-run artifacts before delivery."""
+    cfg = require_dict(run.get("evidence"), "evidence")
+    if cfg.get("capture_success_artifacts") is not True:
+        return {"captured": [], "skipped": [], "required_suffixes": [], "status": "not_requested"}
+    roots = cfg.get("success_artifact_roots", ["frontend/test-results", "frontend/playwright-report"])
+    if not isinstance(roots, list) or not roots or not all(isinstance(x, str) and x for x in roots):
+        raise EngineError("CAPSULE_SCHEMA_FAILURE", "evidence.success_artifact_roots must be a non-empty string list")
+    required = cfg.get("require_success_artifact_suffixes", [])
+    if not isinstance(required, list) or not all(isinstance(x, str) and x.startswith(".") for x in required):
+        raise EngineError("CAPSULE_SCHEMA_FAILURE", "evidence.require_success_artifact_suffixes must be a suffix list")
+    target = evidence / "SUCCESS" / "ARTIFACTS"
+    budget = {"remaining": MAX_FAILURE_EVIDENCE_BYTES}
+    captured: list[dict[str, Any]] = []
+    skipped: list[dict[str, Any]] = []
+    for rel_root in roots:
+        rel = safe_member(rel_root)
+        root = repo.joinpath(*rel.parts)
+        if not root.is_dir() or root.is_symlink():
+            skipped.append({"path": rel_root, "reason": "missing or unsafe artifact root"})
+            continue
+        for item in sorted(root.rglob("*")):
+            if item.is_file() and not item.is_symlink():
+                rel_item = item.relative_to(repo)
+                _copy_bounded_evidence(item, target / rel_item, budget, captured, skipped)
+    suffix_counts = {suffix: sum(1 for row in captured if str(row.get("evidence", "")).lower().endswith(suffix.lower())) for suffix in required}
+    report = {"captured": captured, "skipped": skipped, "required_suffixes": required, "required_suffix_counts": suffix_counts, "budget_remaining": budget["remaining"], "status": "PASS"}
+    missing = [suffix for suffix, count in suffix_counts.items() if count == 0]
+    if missing:
+        report["status"] = "FAIL"
+        write_json_atomic(evidence / "SUCCESS" / "CAPTURE.json", report)
+        raise EngineError("SUCCESS_EVIDENCE_MISSING", "required successful-run artifacts missing: " + ", ".join(missing))
+    write_json_atomic(evidence / "SUCCESS" / "CAPTURE.json", report)
+    return report
+
+def apply_patch(repo: Path, capsule: Path, run: dict[str, Any]) -> None:
+    patch = capsule / run["patch"]["path"]
+    if sha256_file(patch) != run["patch"]["sha256"]:
+        raise EngineError("PATCH_IDENTITY_FAILURE", "patch digest mismatch")
+    check = git(repo, "apply", "--check", str(patch), check=False)
+    reverse = git(repo, "apply", "--check", "--reverse", str(patch), check=False)
+    if check.returncode == 0 and reverse.returncode != 0:
+        git(repo, "apply", str(patch))
+    elif check.returncode != 0 and reverse.returncode == 0:
+        raise EngineError("PATCH_STATE_FAILURE", "patch is already applied; use resume_verify")
+    else:
+        raise EngineError("PATCH_STATE_FAILURE", "patch state is ambiguous or partially applied")
+    reverse_after = git(repo, "apply", "--check", "--reverse", str(patch), check=False)
+    if reverse_after.returncode != 0:
+        raise EngineError("PATCH_STATE_FAILURE", "applied patch does not reverse-check")
+
+
+def commit_push(repo: Path, run: dict[str, Any], evidence: Path) -> None:
+    delivery = run["delivery"]
+    if not delivery["commit_push"]:
+        return
+    git(repo, "add", "--all")
+    git(repo, "commit", "-m", delivery["commit_message"])
+    local = git(repo, "rev-parse", "HEAD").stdout.strip()
+    push = git(repo, "push", delivery["remote"], f"HEAD:{delivery['branch']}", check=False)
+    (evidence / "GIT").mkdir(parents=True, exist_ok=True)
+    (evidence / "GIT" / "push.stdout.txt").write_text(push.stdout, encoding="utf-8")
+    (evidence / "GIT" / "push.stderr.txt").write_text(push.stderr, encoding="utf-8")
+    if push.returncode:
+        raise EngineError("PUSH_FAILURE", f"push failed with exit {push.returncode}")
+    remote = git(repo, "ls-remote", "--heads", delivery["remote"], delivery["branch"]).stdout.split()[0]
+    if remote != local:
+        raise EngineError("REMOTE_VERIFICATION_FAILURE", f"local {local} != remote {remote}")
+    if dirty_paths(repo) or git(repo, "diff", "--cached", "--name-only").stdout.strip():
+        raise EngineError("FINAL_STATE_FAILURE", "worktree not clean after push")
+    write_json_atomic(evidence / "GIT" / "delivery.json", {"local_sha": local, "remote_sha": remote})
+
+
+def archive_consumed_capsule(capsule_zip: Path, control_root: Path, capsule_sha256: str) -> Path:
+    """Move a completed input capsule out of Inbox into the cloud-backed audit archive.
+
+    The exact bytes are preserved. The source is removed only after the destination
+    exists and its SHA-256 matches. Cross-device moves use verified copy-then-unlink.
+    """
+    archive_root = control_root / "Archive" / "Processed-Capsules"
+    archive_root.mkdir(parents=True, exist_ok=True)
+    stamp = dt.datetime.now(dt.timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+    safe_name = re.sub(r"[^A-Za-z0-9_.+-]", "_", capsule_zip.name)
+    candidate = archive_root / f"{stamp}__{capsule_sha256[:12]}__{safe_name}"
+    counter = 1
+    while candidate.exists():
+        candidate = archive_root / f"{stamp}__{capsule_sha256[:12]}__{counter}__{safe_name}"
+        counter += 1
+    partial = candidate.with_name(candidate.name + ".partial")
+    try:
+        try:
+            os.replace(capsule_zip, candidate)
+        except OSError as exc:
+            if exc.errno != getattr(os, "EXDEV", 18):
+                raise
+            shutil.copy2(capsule_zip, partial)
+            if sha256_file(partial) != capsule_sha256:
+                raise OSError("copied capsule digest mismatch")
+            os.replace(partial, candidate)
+            if sha256_file(candidate) != capsule_sha256:
+                raise OSError("archived capsule digest mismatch")
+            capsule_zip.unlink()
+        if not candidate.is_file() or capsule_zip.exists():
+            raise OSError("capsule archive transition incomplete")
+        got = sha256_file(candidate)
+        if got != capsule_sha256:
+            raise OSError(f"archived capsule digest mismatch: expected {capsule_sha256}, got {got}")
+        return candidate
+    except Exception as exc:
+        if partial.exists():
+            partial.unlink(missing_ok=True)
+        if candidate.exists() and capsule_zip.exists():
+            candidate.unlink(missing_ok=True)
+        raise EngineError("INPUT_ARCHIVE_FAILURE", f"could not archive completed capsule: {type(exc).__name__}: {exc}", 75) from exc
+
+
+def execute(
+    capsule_zip: Path,
+    repo: Path,
+    outbox: Path,
+    state_file: Path | None = None,
+    *,
+    archive_consumed: bool = False,
+    control_root: Path | None = None,
+    state_context: dict[str, Any] | None = None,
+    notifier: NotificationManager | None = None,
+) -> int:
+    outbox.mkdir(parents=True, exist_ok=True)
+    final_zip = outbox / CANONICAL_ZIP
+    if final_zip.exists():
+        archive = outbox.parent / "Archive" / "Review-ZIPs"
+        archive.mkdir(parents=True, exist_ok=True)
+        stamp = dt.datetime.now(dt.timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+        os.replace(final_zip, archive / f"{stamp}__{CANONICAL_ZIP}")
+    capsule_name = capsule_zip.name
+    capsule_sha = sha256_file(capsule_zip)
+    context = dict(state_context or {})
+    if notifier:
+        context["notification_status"] = notifier.status
+        context["notification_log"] = str(notifier.log_path)
+    result: dict[str, Any] = {
+        "engine_version": ENGINE_VERSION,
+        "started_utc": now_utc(),
+        "result": "failure",
+        "classification": "UNCLASSIFIED",
+        "message": "not completed",
+        "exit_code": 1,
+        "capsule_file": capsule_name,
+        "capsule_sha256": capsule_sha,
+        **context,
+    }
+    current_stage = "initializing"
+
+    def write_state(state: str, stage: str, **extra: Any) -> None:
+        if state_file:
+            write_json_atomic(
+                state_file,
+                {
+                    **result,
+                    **context,
+                    **extra,
+                    "state": state,
+                    "stage": stage,
+                    "updated_utc": now_utc(),
+                },
+            )
+
+    def identity_line() -> str:
+        issue = result.get("issue", "unknown issue")
+        iteration = result.get("iteration", "?")
+        attempt = result.get("attempt", "?")
+        return f"{issue} · Iteration {iteration} / Attempt {attempt}"
+
+    with tempfile.TemporaryDirectory(prefix="sysgrid-engine-") as td:
+        work = Path(td)
+        capsule = work / "capsule"
+        evidence = work / "evidence"
+        capsule.mkdir()
+        evidence.mkdir()
+        logs = evidence / "LOGS"
+        logs.mkdir()
+        commands: list[dict[str, Any]] = []
+        run: dict[str, Any] | None = None
+        provenance: dict[str, Any] = {}
+
+        def refresh_evidence_files() -> None:
+            write_json_atomic(evidence / "RESULT.json", result)
+            write_json_atomic(evidence / "COMMANDS.json", commands)
+            provenance.update({
+                "engine_version": ENGINE_VERSION,
+                "engine_sha256": sha256_file(Path(__file__).resolve()),
+                "capsule_file": capsule_name,
+                "capsule_sha256": capsule_sha,
+                "python": sys.executable,
+                "platform": sys.platform,
+                "created_utc": now_utc(),
+            })
+            write_json_atomic(evidence / "PROVENANCE.json", provenance)
+            review = [
+                "# SysGrid Stable Engine Review", "",
+                f"- Result: {result['result']}",
+                f"- Classification: {result['classification']}",
+                f"- Exit code: {result['exit_code']}",
+                f"- Engine: {ENGINE_VERSION}",
+                f"- Capsule SHA-256: {capsule_sha}",
+                f"- Capsule archive: {result.get('capsule_archive', 'pending')}",
+                f"- Message: {result['message']}",
+                "", "Review RESULT.json, PROVENANCE.json, COMMANDS.json, STATE, DIFF, LOGS, and MANIFEST.sha256.", ""
+            ]
+            (evidence / "REVIEW_ME_FIRST.md").write_text("\n".join(review), encoding="utf-8")
+
+        def package_current_evidence() -> bool:
+            refresh_evidence_files()
+            try:
+                if final_zip.exists():
+                    final_zip.unlink()
+                zip_tree(evidence, final_zip)
+                verify_dir = work / f"verify-{time.time_ns()}"
+                verify_dir.mkdir()
+                extract_capsule(final_zip, verify_dir, allow_source=True)
+                verify_manifest(verify_dir)
+                return True
+            except Exception as exc:
+                result.update({
+                    "result": "failure",
+                    "classification": "EVIDENCE_PACKAGING_FAILURE",
+                    "message": f"primary evidence packaging failed: {type(exc).__name__}: {exc}",
+                    "exit_code": 74,
+                })
+                (evidence / "PACKAGING_ERROR.txt").write_text(traceback.format_exc(), encoding="utf-8")
+                refresh_evidence_files()
+                try:
+                    if final_zip.exists():
+                        final_zip.unlink()
+                    zip_tree_fallback(evidence, final_zip)
+                    fallback_verify = work / f"fallback-verify-{time.time_ns()}"
+                    fallback_verify.mkdir()
+                    extract_capsule(final_zip, fallback_verify, allow_source=True)
+                    verify_manifest(fallback_verify)
+                    return True
+                except Exception:
+                    if final_zip.exists():
+                        final_zip.unlink()
+                    return False
+
+        try:
+            current_stage = "capsule"
+            write_state("RUNNING", current_stage)
+            extract_capsule(capsule_zip, capsule)
+            verify_manifest(capsule)
+            run = load_run(capsule)
+            result.update({
+                "project": run["project"], "issue": run["issue"], "stage": run["stage"],
+                "iteration": run["iteration"], "attempt": run["attempt"], "title": run["title"],
+                "mode": run["mode"], "lane": run["lane"],
+            })
+            if notifier:
+                operator_mode = context.get("operator_mode", "managed")
+                notifier.send(
+                    "start",
+                    "▶️ SysGrid run started\n"
+                    f"{identity_line()}\n"
+                    f"{run['title']}\n"
+                    f"{run['stage']}\n"
+                    f"Engine {ENGINE_VERSION} · {operator_mode}\n"
+                    "Status: run sgs",
+                )
+            current_stage = "baseline"
+            write_state("RUNNING", current_stage)
+            capture_state(repo, evidence, "pre")
+            verify_repo_state(repo, run, capsule, "pre")
+            if run["mode"] == "mutation":
+                apply_patch(repo, capsule, run)
+                verify_repo_state(repo, run, capsule, "post")
+            elif run["mode"] == "resume_verify":
+                verify_repo_state(repo, run, capsule, "post")
+            elif run["mode"] not in {"read_only", "qualification"}:
+                raise EngineError("CAPSULE_SCHEMA_FAILURE", f"unsupported mode {run['mode']}")
+            if notifier:
+                notifier.send(
+                    "baseline",
+                    "✅ SysGrid baseline accepted\n"
+                    f"{identity_line()}\n"
+                    "Repository, hashes, and patch-state transition are verified.\n"
+                    "Fast verification is running.",
+                )
+            current_stage = "verification-plan"
+            write_state("RUNNING", current_stage)
+            recipe_summary = run_recipe_plan(repo, run["recipes"], logs, evidence)
+            commands.extend(recipe_summary["records"])
+            verify_repo_state(repo, run, capsule, "post" if run["mode"] in {"mutation", "resume_verify"} else "pre")
+            capture_state(repo, evidence, "post_tests")
+            capture_source(repo, capsule, run, evidence)
+            if recipe_summary["required_failure_count"]:
+                raise EngineError("AGGREGATE_VERIFICATION_FAILURE", f"required recipes failed or blocked: {recipe_summary['required_failures']}")
+            current_stage = "success-evidence"
+            write_state("RUNNING", current_stage)
+            capture_success_evidence(repo, evidence, run)
+            if run["delivery"]["commit_push"] and notifier:
+                notifier.send(
+                    "delivery",
+                    "🚀 SysGrid delivery started\n"
+                    f"{identity_line()}\n"
+                    "Every declared test gate passed.\n"
+                    "Creating the authorized commit, pushing, and verifying remote equality.",
+                )
+            current_stage = "delivery"
+            write_state("RUNNING", current_stage)
+            commit_push(repo, run, evidence)
+            capture_state(repo, evidence, "final")
+            result.update({"result": "success", "classification": "PASS", "message": "all declared gates passed", "exit_code": 0})
+        except EngineError as exc:
+            result.update({"classification": exc.classification, "message": str(exc), "exit_code": exc.exit_code, "failed_stage": current_stage})
+            (evidence / "ERROR.txt").write_text(f"{exc.classification}: {exc}\n", encoding="utf-8")
+            try:
+                if repo.exists() and (repo / ".git").exists():
+                    capture_state(repo, evidence, "failure_final")
+                    if run is not None:
+                        capture_source(repo, capsule, run, evidence)
+                    capture_failure_evidence(repo, evidence, commands, current_stage)
+            except Exception:
+                (evidence / "CAPTURE_ERROR.txt").write_text(traceback.format_exc(), encoding="utf-8")
+        except Exception as exc:
+            result.update({"classification": "ENGINE_DEFECT", "message": f"{type(exc).__name__}: {exc}", "exit_code": 70, "failed_stage": current_stage})
+            (evidence / "ENGINE_TRACEBACK.txt").write_text(traceback.format_exc(), encoding="utf-8")
+            try:
+                if repo.exists() and (repo / ".git").exists():
+                    capture_failure_evidence(repo, evidence, commands, current_stage)
+            except Exception:
+                (evidence / "CAPTURE_ERROR.txt").write_text(traceback.format_exc(), encoding="utf-8")
+        finally:
+            result["finished_utc"] = now_utc()
+            result["notification_summary"] = capture_operator_evidence(evidence, context, notifier)
+            artifact_ready = package_current_evidence()
+            if artifact_ready and archive_consumed:
+                try:
+                    root = control_root or outbox.parent
+                    archived = archive_consumed_capsule(capsule_zip, root, capsule_sha)
+                    result["capsule_archive"] = str(archived)
+                    provenance["capsule_archive"] = str(archived)
+                    provenance["capsule_archive_sha256"] = sha256_file(archived)
+                except EngineError as exc:
+                    result.update({
+                        "result": "failure",
+                        "classification": exc.classification,
+                        "message": str(exc),
+                        "exit_code": exc.exit_code,
+                        "capsule_archive": "FAILED_INPUT_RETAINED",
+                    })
+                    (evidence / "INPUT_ARCHIVE_ERROR.txt").write_text(f"{exc.classification}: {exc}\n", encoding="utf-8")
+            if artifact_ready and notifier:
+                if result["exit_code"] == 0:
+                    commit = ""
+                    delivery_path = evidence / "GIT" / "delivery.json"
+                    if delivery_path.exists():
+                        try:
+                            commit = json.loads(delivery_path.read_text(encoding="utf-8")).get("local_sha", "")
+                        except Exception:
+                            commit = ""
+                    notifier.send(
+                        "success",
+                        "✅ SysGrid run succeeded\n"
+                        f"{identity_line()}\n"
+                        f"Commit: {commit[:12] if commit else 'not applicable'}\n"
+                        "Remote equality: verified when delivery was authorized\n"
+                        "Review ZIP: READY\n"
+                        f"Capsule archive: {'verified' if result.get('capsule_archive') else 'not requested'}\n"
+                        "Next: upload Outbox/UPLOAD_THIS_TO_CHATGPT.zip",
+                    )
+                else:
+                    safe_message, _ = redact_text(str(result.get("message", "run stopped")))
+                    notifier.send(
+                        "failure",
+                        "❌ SysGrid run stopped safely\n"
+                        f"{identity_line()}\n"
+                        f"Classification: {result.get('classification', 'UNKNOWN')}\n"
+                        f"Stage: {result.get('failed_stage', current_stage)}\n"
+                        f"Reason: {safe_message[:300]}\n"
+                        "Review ZIP: READY\n"
+                        "Next: upload Outbox/UPLOAD_THIS_TO_CHATGPT.zip",
+                    )
+                result["notification_summary"] = capture_operator_evidence(evidence, context, notifier)
+                artifact_ready = package_current_evidence()
+            elif artifact_ready:
+                result["notification_summary"] = capture_operator_evidence(evidence, context, notifier)
+                artifact_ready = package_current_evidence()
+            if artifact_ready:
+                result["artifact_sha256"] = sha256_file(final_zip)
+                result["artifact_size"] = final_zip.stat().st_size
+                terminal_state = "SUCCEEDED" if result["exit_code"] == 0 else "FAILED_REVIEW_READY"
+                write_state(terminal_state, "complete", artifact=str(final_zip))
+            else:
+                write_state("FAILED_NO_ARTIFACT", "packaging")
+                if notifier:
+                    notifier.send(
+                        "failure-no-artifact",
+                        "❌ SysGrid evidence packaging failed\n"
+                        f"{identity_line()}\n"
+                        "Canonical review ZIP is missing.\n"
+                        "Next: inspect sgs and the State worker log.",
+                    )
+    return int(result["exit_code"])
+
+def default_control_root() -> Path:
+    env = os.environ.get("SYSGRID_CONTROL_ROOT")
+    if env:
+        return Path(env).expanduser()
+    return Path.home() / "Library/Mobile Documents/com~apple~CloudDocs/SysGrid-Control"
+
+
+def default_repo() -> Path:
+    env = os.environ.get("SYSGRID_REPO")
+    if env:
+        return Path(env).expanduser()
+    return Path.home() / "home/development/sysgrid"
+
+
+def process_alive(pid: int | None) -> bool:
+    if not pid or pid <= 0:
+        return False
+    try:
+        os.kill(pid, 0)
+        return True
+    except OSError:
+        return False
+
+
+def read_active_lock(lock_path: Path) -> dict[str, Any] | None:
+    if not lock_path.exists():
+        return None
+    try:
+        data = json.loads(lock_path.read_text(encoding="utf-8"))
+        return data if isinstance(data, dict) else None
+    except Exception:
+        return None
+
+
+def active_lock_alive(lock_path: Path) -> bool:
+    data = read_active_lock(lock_path)
+    if not data:
+        return False
+    return any(process_alive(data.get(key)) for key in ("launcher_pid", "worker_pid", "pid"))
+
+
+def reserve_active_lock(lock_path: Path, value: dict[str, Any]) -> None:
+    lock_path.parent.mkdir(parents=True, exist_ok=True)
+    payload = (json.dumps(value, indent=2, sort_keys=True) + "\n").encode("utf-8")
+    try:
+        fd = os.open(lock_path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+    except FileExistsError as exc:
+        if active_lock_alive(lock_path):
+            data = read_active_lock(lock_path) or {}
+            raise EngineError(
+                "RUN_ALREADY_ACTIVE",
+                f"SysGrid run already active: run_id={data.get('run_id', 'unknown')} "
+                f"pid={data.get('launcher_pid') or data.get('worker_pid') or data.get('pid')}",
+                2,
+            ) from exc
+        lock_path.unlink(missing_ok=True)
+        fd = os.open(lock_path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+    with os.fdopen(fd, "wb") as f:
+        f.write(payload)
+
+
+def update_active_lock(lock_path: Path, run_id: str, **updates: Any) -> None:
+    data = read_active_lock(lock_path) or {}
+    if data.get("run_id") not in (None, run_id):
+        raise EngineError("RUN_LOCK_FAILURE", "active run lock identity changed", 73)
+    data.update(updates)
+    data["run_id"] = run_id
+    write_json_atomic(lock_path, data)
+
+
+def clear_active_lock(lock_path: Path, run_id: str) -> None:
+    data = read_active_lock(lock_path)
+    if not data or data.get("run_id") == run_id:
+        lock_path.unlink(missing_ok=True)
+
+
+def make_run_id(capsule: Path) -> str:
+    stamp = dt.datetime.now(dt.timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+    return f"{stamp}-{sha256_file(capsule)[:12]}-{uuid.uuid4().hex[:6]}"
+
+
+def control_paths(root: Path) -> tuple[Path, Path, Path, Path]:
+    inbox, outbox, state_dir = root / "Inbox", root / "Outbox", root / "State"
+    lock_path = state_dir / "active-run.json"
+    for path in (inbox, outbox, state_dir):
+        path.mkdir(parents=True, exist_ok=True)
+    return inbox, outbox, state_dir, lock_path
+
+
+def select_single_capsule(inbox: Path, state_file: Path) -> Path:
+    candidates = sorted(
+        p for p in inbox.iterdir()
+        if p.is_file() and p.suffix.lower() in {".zip", ".sgcap"} and not p.name.startswith(".")
+    )
+    if len(candidates) != 1:
+        message = f"expected exactly one capsule in {inbox}, found {len(candidates)}: {[p.name for p in candidates]}"
+        write_json_atomic(
+            state_file,
+            {
+                "state": "BLOCKED",
+                "classification": "INPUT_CARDINALITY_FAILURE",
+                "message": message,
+                "engine_version": ENGINE_VERSION,
+                "updated_utc": now_utc(),
+            },
+        )
+        raise EngineError("INPUT_CARDINALITY_FAILURE", message, 2)
+    return candidates[0]
+
+
+def control_run(*, foreground: bool = False) -> int:
+    root = default_control_root()
+    inbox, outbox, state_dir, lock_path = control_paths(root)
+    state_file = state_dir / "latest.json"
+    try:
+        capsule = select_single_capsule(inbox, state_file)
+        run_id = make_run_id(capsule)
+        operator_mode = "foreground" if foreground else "detached"
+        reservation = {
+            "run_id": run_id,
+            "capsule": str(capsule),
+            "created_utc": now_utc(),
+            "operator_mode": operator_mode,
+            "pid": os.getpid(),
+        }
+        reserve_active_lock(lock_path, reservation)
+    except EngineError as exc:
+        print(str(exc), file=sys.stderr)
+        return exc.exit_code
+
+    if foreground:
+        notifier = NotificationManager(state_dir, run_id)
+        context = {
+            "run_id": run_id,
+            "operator_mode": "foreground",
+            "worker_pid": os.getpid(),
+            "notification_status": notifier.status,
+        }
+        update_active_lock(lock_path, run_id, worker_pid=os.getpid())
+        try:
+            return execute(
+                capsule,
+                default_repo(),
+                outbox,
+                state_file,
+                archive_consumed=True,
+                control_root=root,
+                state_context=context,
+                notifier=notifier,
+            )
+        finally:
+            clear_active_lock(lock_path, run_id)
+
+    worker_log = state_dir / f"worker-{run_id}.log"
+    notifier = NotificationManager(state_dir, run_id)
+    write_json_atomic(
+        state_file,
+        {
+            "state": "STARTING",
+            "stage": "worker-launch",
+            "classification": "PENDING",
+            "message": "detached managed worker is launching",
+            "engine_version": ENGINE_VERSION,
+            "run_id": run_id,
+            "operator_mode": "detached",
+            "capsule_file": capsule.name,
+            "worker_log": str(worker_log),
+            "notification_status": notifier.status,
+            "updated_utc": now_utc(),
+        },
+    )
+    base_cmd = [
+        sys.executable,
+        str(Path(__file__).resolve()),
+        "control-worker",
+        str(capsule),
+        "--run-id",
+        run_id,
+        "--lock-path",
+        str(lock_path),
+        "--worker-log",
+        str(worker_log),
+    ]
+    caffeinate = shutil.which("caffeinate") if sys.platform == "darwin" else None
+    cmd = [caffeinate, "-dimsu", *base_cmd] if caffeinate else base_cmd
+    log_handle = worker_log.open("ab", buffering=0)
+    try:
+        proc = subprocess.Popen(
+            cmd,
+            stdin=subprocess.DEVNULL,
+            stdout=log_handle,
+            stderr=subprocess.STDOUT,
+            start_new_session=True,
+            close_fds=True,
+        )
+    except Exception as exc:
+        log_handle.close()
+        clear_active_lock(lock_path, run_id)
+        message = f"could not launch detached SysGrid worker: {type(exc).__name__}: {exc}"
+        write_json_atomic(
+            state_file,
+            {
+                "state": "BLOCKED",
+                "classification": "WORKER_LAUNCH_FAILURE",
+                "message": message,
+                "run_id": run_id,
+                "engine_version": ENGINE_VERSION,
+                "updated_utc": now_utc(),
+            },
+        )
+        print(message, file=sys.stderr)
+        return 72
+    log_handle.close()
+    reap_process_async(proc)
+    update_active_lock(lock_path, run_id, launcher_pid=proc.pid, command=cmd)
+    try:
+        current_state = json.loads(state_file.read_text(encoding="utf-8"))
+    except Exception:
+        current_state = {}
+    if current_state.get("run_id") == run_id and current_state.get("state") == "STARTING":
+        current_state.update({
+            "message": "detached managed worker launched",
+            "launcher_pid": proc.pid,
+            "updated_utc": now_utc(),
+        })
+        write_json_atomic(state_file, current_state)
+    print("SysGrid: STARTED IN BACKGROUND")
+    print(f"Run ID: {run_id}")
+    print(f"PID: {proc.pid}")
+    print(f"Telegram: {notifier.status}")
+    print(f"Status: {state_file}")
+    print("Next action: the terminal is free; run sgs for a snapshot or sgwatch to follow progress.")
+    return 0
+
+
+def control_worker(capsule: Path, run_id: str, lock_path: Path, worker_log: Path) -> int:
+    root = default_control_root()
+    _, outbox, state_dir, _ = control_paths(root)
+    state_file = state_dir / "latest.json"
+    current = read_active_lock(lock_path)
+    if not current or current.get("run_id") != run_id:
+        write_json_atomic(
+            state_file,
+            {
+                "state": "BLOCKED",
+                "classification": "RUN_LOCK_FAILURE",
+                "message": "detached worker could not verify its active-run lock",
+                "run_id": run_id,
+                "engine_version": ENGINE_VERSION,
+                "updated_utc": now_utc(),
+            },
+        )
+        return 73
+    update_active_lock(lock_path, run_id, worker_pid=os.getpid(), worker_log=str(worker_log))
+    notifier = NotificationManager(state_dir, run_id)
+    context = {
+        "run_id": run_id,
+        "operator_mode": "detached",
+        "launcher_pid": current.get("launcher_pid"),
+        "worker_pid": os.getpid(),
+        "worker_log": str(worker_log),
+        "notification_status": notifier.status,
+    }
+    try:
+        return execute(
+            capsule,
+            default_repo(),
+            outbox,
+            state_file,
+            archive_consumed=True,
+            control_root=root,
+            state_context=context,
+            notifier=notifier,
+        )
+    finally:
+        clear_active_lock(lock_path, run_id)
+
+
+def control_status() -> int:
+    root = default_control_root()
+    _, _, state_dir, lock_path = control_paths(root)
+    path = state_dir / "latest.json"
+    if not path.exists():
+        print("SysGrid: IDLE\nNo run state exists.\nNext action: place exactly one capsule in Inbox and run sg.")
+        return 0
+    data = json.loads(path.read_text(encoding="utf-8"))
+    active = active_lock_alive(lock_path)
+    print(f"SysGrid: {data.get('state', 'UNKNOWN')}")
+    print(f"Run ID: {data.get('run_id', 'unknown')}")
+    print(f"Mode: {data.get('operator_mode', 'unknown')}")
+    print(f"Active: {'YES' if active else 'NO'}")
+    pid = data.get("worker_pid") or data.get("launcher_pid")
+    if pid:
+        print(f"PID: {pid}")
+    print(f"Stage: {data.get('stage', 'unknown')}")
+    print(f"Engine: {data.get('engine_version', ENGINE_VERSION)}")
+    print(f"Telegram: {data.get('notification_status', 'UNAVAILABLE')}")
+    print(f"Classification: {data.get('classification', 'pending')}")
+    print(f"Message: {data.get('message', 'pending')}")
+    if data.get("artifact"):
+        print(f"Artifact: {data['artifact']}")
+        print(f"Artifact SHA-256: {data.get('artifact_sha256', 'pending')}")
+        print(f"Capsule archive: {data.get('capsule_archive', 'pending')}")
+        print("Next action: upload Outbox/UPLOAD_THIS_TO_CHATGPT.zip.")
+    elif data.get("state") in {"RUNNING", "STARTING"} or active:
+        print("Next action: no action required; use sgs again or sgwatch while the detached worker completes.")
+    else:
+        print("Next action: resolve the reported gate before another run.")
+    if data.get("worker_log"):
+        print(f"Worker log: {data['worker_log']}")
+    return 0
+
+
+def control_watch() -> int:
+    last = None
+    while True:
+        root = default_control_root()
+        _, _, state_dir, lock_path = control_paths(root)
+        path = state_dir / "latest.json"
+        content = path.read_text(encoding="utf-8") if path.exists() else ""
+        if content != last:
+            if sys.stdout.isatty() and os.environ.get("NO_CLEAR") not in {"1", "true"}:
+                os.system("clear")
+            control_status()
+            last = content
+        if path.exists():
+            try:
+                data = json.loads(content or "{}")
+            except Exception:
+                data = {}
+            if data.get("state") in TERMINAL_STATES and not active_lock_alive(lock_path):
+                return 0
+        try:
+            time.sleep(2)
+        except KeyboardInterrupt:
+            return 0
+
+def self_test() -> int:
+    # Minimal exact-byte qualification. The external unittest suite expands coverage.
+    failures: list[str] = []
+    try:
+        safe_member("RUN.json")
+        try:
+            safe_member("../bad")
+            failures.append("path traversal was not rejected")
+        except EngineError:
+            pass
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            (root / "a.txt").write_text("a", encoding="utf-8")
+            make_manifest(root)
+            verify_manifest(root)
+            (root / "a.txt").write_text("b", encoding="utf-8")
+            try:
+                verify_manifest(root)
+                failures.append("manifest corruption was not rejected")
+            except EngineError:
+                pass
+    except Exception as exc:
+        failures.append(f"unexpected self-test error: {exc}")
+    if failures:
+        print(json.dumps({"engine_version": ENGINE_VERSION, "result": "FAIL", "failures": failures}, indent=2))
+        return 1
+    print(json.dumps({"engine_version": ENGINE_VERSION, "result": "PASS", "tests": ["safe-path", "manifest", "corruption", "canonical-dirty-paths", "aggregate-recipes"]}, indent=2))
+    return 0
+
+
+def main(argv: list[str] | None = None) -> int:
+    parser = argparse.ArgumentParser(prog="sysgrid-runner")
+    sub = parser.add_subparsers(dest="command", required=True)
+    sub.add_parser("self-test")
+    run_parser = sub.add_parser("control-run")
+    run_parser.add_argument("--foreground", action="store_true", help="run attached to the current terminal")
+    sub.add_parser("control-status")
+    sub.add_parser("control-watch")
+    worker = sub.add_parser("control-worker")
+    worker.add_argument("capsule", type=Path)
+    worker.add_argument("--run-id", required=True)
+    worker.add_argument("--lock-path", type=Path, required=True)
+    worker.add_argument("--worker-log", type=Path, required=True)
+    ex = sub.add_parser("execute")
+    ex.add_argument("capsule", type=Path)
+    ex.add_argument("--repo", type=Path, default=default_repo())
+    ex.add_argument("--outbox", type=Path, default=default_control_root() / "Outbox")
+    args = parser.parse_args(argv)
+    if args.command == "self-test":
+        return self_test()
+    if args.command == "control-run":
+        return control_run(foreground=args.foreground)
+    if args.command == "control-status":
+        return control_status()
+    if args.command == "control-watch":
+        return control_watch()
+    if args.command == "control-worker":
+        return control_worker(args.capsule, args.run_id, args.lock_path, args.worker_log)
+    if args.command == "execute":
+        return execute(args.capsule, args.repo, args.outbox)
+    return 2
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

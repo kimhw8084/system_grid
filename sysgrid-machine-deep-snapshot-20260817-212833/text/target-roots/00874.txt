@@ -1,0 +1,13 @@
+ORIGINAL_PATH: /Users/haewonkim/.local/state/sysgrid-supervisor/runs/20260805T001326Z-82098-392000/launch.json
+ORIGINAL_SHA256: dbc61652dbced3921ec0cc977a5530e8de978d67adc409a6097fe41f22122f3f
+================================================================================
+{
+  "capsule_path": "/Users/haewonkim/.local/state/sysgrid-supervisor/runs/20260805T001326Z-82098-392000/input/SYSGRID_OUT31_PA14_PS5_NARROW_ANALYTICAL_PRIORITY_AND_ANCHORED_VIEWS_PRODUCT_SOURCE_CORRECTION_v1.0.0.sgcap",
+  "capsule_sha256": "b7eb5ccb6ee8bc6ce1dcbeab3e2df6b52133ae1250fe40154fa13f8e838ca6f7",
+  "command_sha256": "e5ac5606508998a8418d0749e8a4916166a4ffe90b4d1cee12878017e67b0fd4",
+  "engine_path": "/Users/haewonkim/.local/share/sysgrid-runner/engine-v1.1.1/sysgrid_runner.py",
+  "engine_sha256": "66b082fec1e9f6c49152e5ecb4cbb3f998e60ce27d53a2325e5f658634a8d032",
+  "launched_utc": "2026-08-05T00:13:29Z",
+  "repo": "/Users/haewonkim/home/development/sysgrid",
+  "run_id": "20260805T001326Z-82098-392000"
+}

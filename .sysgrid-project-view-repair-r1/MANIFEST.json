@@ -1,0 +1,29 @@
+{
+  "failure_signature": "OUT-40 Slice H openTimeline legacy sentinel count mismatch in all five tests",
+  "files": {
+    "README.md": {
+      "bytes": 1111,
+      "sha256": "fb51c6d33552e763f81faba0b318584a082f6658350ad577883419427f47fc8b"
+    },
+    "evidence/failure-signature.json": {
+      "bytes": 733,
+      "sha256": "ab5f607ea5889fda2b3664f8ea62303ed34c138e38ddd79216c1cfd8ba7d95be"
+    },
+    "repair_and_prove.py": {
+      "bytes": 12967,
+      "sha256": "dcd67caf14726866118b3e40e2e053f054bbe4eb8d121edf844bcee06f608d4e"
+    },
+    "run_from_repo.sh": {
+      "bytes": 123,
+      "sha256": "fb0ab5ebece8443e95c123732e11cb41e5f3c2197274800177aba007e19356b3"
+    }
+  },
+  "objective": "Approved Project View Perfection",
+  "parent_result_sha256": "ee99946d3ec51eb5a840955e80e932bc0edfb77ea2418023d391236743fbaa53",
+  "product_postimages_preserved": true,
+  "proof_before_apply": true,
+  "repair_iteration": 1,
+  "repair_path": "frontend/tests/projects-out40-slice-h-gantt-modernization.spec.ts",
+  "same_semantics": true,
+  "schema": "SYSGRID_PROJECT_VIEW_REPAIR_EXECUTOR_V1"
+}

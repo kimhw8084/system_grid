@@ -1,0 +1,27 @@
+ORIGINAL_PATH=/Users/haewonkim/Library/Application Support/SysGridDelivery/config.json
+SHA256=1e9520e6e793a56708c659dd1c7d676e4e75fa4574b3c92351ce9440d655171a
+SIZE=1292
+============================================================
+{
+  "accepted_branch": "main",
+  "activation_source": "Linear principal activation marker",
+  "cli_sha256": "377bf5ddc09212c39217f7d0323a5f9c878aae2bd91323ef8c2333de4368e404",
+  "dependency_source_path": "/Users/haewonkim/sysgrid-actions-runner/_work/system_grid/system_grid",
+  "github_credential_helper_path": "/Users/haewonkim/.local/share/sysgrid-delivery-v1.3.0/sg_git_credential.py",
+  "github_keychain_account": "kimhw8084",
+  "github_keychain_service": "SysGridDeliveryGitHubOAuth",
+  "installed_package_sha256": "714ec3be1ab034a165e9635b008509e9900100af407cacda84e60aec5db7f58c",
+  "issue": "OUT-31",
+  "keychain_account": "haewonkim",
+  "keychain_service": "com.sysgrid.linear.api",
+  "law_manifest_sha256": "ca1204aace1cadb1617d9405609b0ba29fa5a36028ae27ec048c79eb165e4b36",
+  "linear_endpoint": "https://api.linear.app/graphql",
+  "master": "OUT-5",
+  "principal_author_id": "354e2dba-e449-4057-bfd9-71e090e17a16",
+  "project": "SysGrid",
+  "repository_full_name": "kimhw8084/system_grid",
+  "repository_path": "/Users/haewonkim/.local/share/sysgrid-delivery-v1.3.0/repository",
+  "runner_sha256": "800bd87a59d46572cd1d218d4c01857e97080838d5ee54d349c25f257191d00b",
+  "schema_version": "1.3.0",
+  "tdre_overlay": "00B_PRINCIPAL_TARGETED_DESKTOP_RUNTIME_EVIDENCE_OVERLAY_v1.3.0"
+}

@@ -1,0 +1,6 @@
+ORIGINAL_PATH=/Users/haewonkim/.local/bin/sgs
+b27c93978a88390459c87b404ce017d3fd46a1619f7233b1eae302d7233c76d3  /Users/haewonkim/.local/bin/sgs
+================================================================
+#!/usr/bin/env bash
+set -Eeuo pipefail
+exec /opt/homebrew/opt/python@3.14/bin/python3.14 /Users/haewonkim/.local/share/sysgrid-supervisor/v2.1.5/payload/sysgrid_supervisor.py status "$@"

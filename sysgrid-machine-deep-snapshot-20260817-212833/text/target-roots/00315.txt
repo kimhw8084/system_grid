@@ -1,0 +1,6 @@
+ORIGINAL_PATH: /Users/haewonkim/.local/share/sysgrid-supervisor/backups/20260731T222433Z-pre-v1.2.1/sgwatch
+ORIGINAL_SHA256: b7c955e80973c489c47d1bfa41b51351903232b7f34c8df38efd85a3cfa80548
+================================================================================
+#!/usr/bin/env bash
+set -Eeuo pipefail
+exec /opt/anaconda3/bin/python3 /Users/haewonkim/.local/share/sysgrid-supervisor/v1.2.0/payload/sysgrid_supervisor.py watch "$@"

@@ -1,0 +1,6 @@
+ORIGINAL_PATH: /Users/haewonkim/.local/share/sysgrid-supervisor/backups/20260801T222643Z-pre-v2.1.4/sgs
+ORIGINAL_SHA256: 01e8c5693b406f920caa79cfab6017478fad6d25a1912722fa9ebc5ef127ec72
+================================================================================
+#!/usr/bin/env bash
+set -Eeuo pipefail
+exec /opt/homebrew/opt/python@3.14/bin/python3.14 /Users/haewonkim/.local/share/sysgrid-supervisor/v2.1.2/payload/sysgrid_supervisor.py status "$@"

@@ -1,0 +1,18 @@
+ORIGINAL_PATH: /Users/haewonkim/.local/state/sysgrid-supervisor/runs/20260803T224351Z-72434-650000/diagnostic/RESULT.json
+ORIGINAL_SHA256: bb27298cc93943b44f31b94fecb45f923bc9492a1ada45ac5c0b781938235b32
+================================================================================
+{
+  "capsule_file": "SYSGRID_OUT31_PA13_R1_RENDERED_READINESS_AND_FAR_LOCATOR_VERIFICATION_REPAIR_v1.0.0.sgcap",
+  "capsule_sha256": "2973872dd78c8590359f8ca99aa8d4fc8e05934dce2d84350d5e3f6f187b1ec2",
+  "classification": "PREFLIGHT_AGGREGATE_FAILURE",
+  "engine_version": "1.1.1",
+  "exit_code": 73,
+  "finished_utc": "2026-08-03T22:43:53Z",
+  "lane": "execution_platform",
+  "message": "repository: DUPLICATE_MUTATION_CAPSULE_POST_STATE: repository exactly matches this mutation capsule's declared post-state; the mutation was already applied by an earlier run and replay is prohibited. The prior canonical review ZIP is preserved. Use 'sg recover-artifact <run-id>' to republish an earlier run artifact without executing the product again.",
+  "mode": "qualification",
+  "mutation_state": "not_started",
+  "result": "failure",
+  "safe_automatic_retry_performed": 0,
+  "supervisor_version": "2.2.1"
+}

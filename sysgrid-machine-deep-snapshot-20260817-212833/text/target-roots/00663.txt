@@ -1,0 +1,34 @@
+ORIGINAL_PATH: /Users/haewonkim/.local/state/sysgrid-supervisor/runs/20260806T024223Z-30686-377000/preflight.json
+ORIGINAL_SHA256: 9a327368cd97d2b3bbd85157ff4e8331bd012b9b1864f260fe3b7075a95c7671
+================================================================================
+{
+  "declared_state": {
+    "dirty_path_count": 98,
+    "pre_hash_count": 98,
+    "protected_hash_count": 720
+  },
+  "engine_self_test": {
+    "engine_version": "1.1.1",
+    "result": "PASS",
+    "tests": [
+      "safe-path",
+      "manifest",
+      "corruption",
+      "canonical-dirty-paths",
+      "aggregate-recipes"
+    ]
+  },
+  "patch": {
+    "applicable": true,
+    "forward_diagnostic": "Checking patch frontend/src/components/shared/CanonicalVerificationContract.test.ts...",
+    "forward_exit_code": 0,
+    "reverse_applicable": false,
+    "reverse_diagnostic": "Checking patch frontend/src/components/shared/CanonicalVerificationContract.test.ts...\nerror: while searching for:\n    expect(script).toContain('\"SYSGRID_CANONICAL_GATE=1\"')\n    expect(script).toContain('\"SYSGRID_EXPECTED_FRONTEND_ORIGIN=$FRONTEND_ORIGIN\"')\n    expect(script).toContain('\"SYSGRID_EXPECTED_API_BASE=$BACKEND_ORIGIN/api/v1\"')\n    expect(script).toContain('\"${PLAYWRIGHT_ENV_COMMAND[@]}\" \"$FRONTEND_DIR/node_modules/.bin/playwright\" test \"${specs[@]}\" --workers=\"$PLAYWRIGHT_WORKERS\"')\n    expect(script).toContain('run_playwright_group affected_browser_promotion \"${PROMOTION_SPECS[@]}\"')\n    expect(script).toContain('run_playwright_group remaining_canonical_playwright \"${REMAINING_SPECS[@]}\"')\n    expect(script).not.toContain('npx playwright')\n    expect(script).toContain('run_validation_lanes')\n    expect(script).toContain('local vite_bin=\"$FRONTEND_DIR/node_modules/.bin/vite\"')\n\nerror: patch failed: frontend/src/components/shared/CanonicalVerificationContract.test.ts:12\nerror: frontend/src/components/shared/CanonicalVerificationContract.test.ts: patch does not apply",
+    "reverse_exit_code": 1
+  },
+  "storage": {
+    "control_free": 46874193920,
+    "local_free": 46874193920,
+    "required": 3221225472
+  }
+}

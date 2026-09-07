@@ -1,0 +1,10 @@
+ORIGINAL_PATH: /Users/haewonkim/.local/share/sysgrid-campaign-platform/v1.1.1/GPT_WORKFLOW_CONTRACT.md
+ORIGINAL_SHA256: 6de6ff98e3aa46ec99f79f236920606fa91bd2729350ba52e12ffbc155c0ecca
+================================================================================
+# GPT Workflow Contract — Continuity and Source Authority Amendment
+
+Every new SysGrid Project chat reconstructs state from the active law manifest, three law files, live Linear, accepted platform identity, current source identity, and no more than one immutable handoff. Chat memory is never state authority.
+
+For production source analysis, the operator runs `sg source-authority`. The resulting canonical ZIP is the complete safe current codebase authority for planning, questionnaire generation, patch authoring, and risk/test/visual mapping. The chat must verify its manifest, source fingerprint, Git identity, platform identity, and non-mutation proof before using it.
+
+Every future campaign review ZIP continues to carry a hash-bound continuity handoff. Live Linear remains authoritative for current operational state.

@@ -503,6 +503,16 @@ export const projectSavedViewErrorMessage = (error: unknown): string => {
   return 'Saved view request failed.'
 }
 
+/** The only server failure that is intentionally quiet for legacy saved-view capability discovery. */
+export const isLegacySavedViewUnsupportedError = (error: unknown): boolean => {
+  const source = asRecord(error)
+  const status = Number(source?.status)
+  const data = source ? asRecord(source.data) : null
+  const detail = data?.detail
+  const message = typeof detail === 'string' ? detail : asRecord(detail)?.message || source?.message
+  return status === 404 && message === 'Saved views are not supported by this server.'
+}
+
 export const isProjectSavedViewOfflineError = (error: unknown) => {
   const source = asRecord(error)
   const status = Number(source?.status)

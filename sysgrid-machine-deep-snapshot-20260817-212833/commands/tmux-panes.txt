@@ -1,0 +1,10 @@
+$ tmux list-panes -a -F #{session_name}:#{window_index}.#{pane_index} pid=#{pane_pid} cwd=#{pane_current_path} command=#{pane_current_command}
+
+agy:0.0 pid=4747 cwd=/Users/haewonkim/home/development/share_repo command=zsh
+codex:0.0 pid=61310 cwd=/Users/haewonkim command=zsh
+hh:0.0 pid=72588 cwd=/Users/haewonkim/home/development/homehuddle command=node
+hhweb:0.0 pid=72727 cwd=/Users/haewonkim/home/development/homehuddle/HomeHuddle command=zsh
+invest:0.0 pid=13547 cwd=/Users/haewonkim/Desktop/zero_cost_intraday_research_kit_v1/earnings_breadth_success_research_kit_v6_0 command=zsh
+sg:0.0 pid=40591 cwd=/Users/haewonkim/home/development/sysgrid command=bash
+sysgrid_web:0.0 pid=32551 cwd=/Users/haewonkim/home/development/sysgrid command=bash
+terminal:0.0 pid=85764 cwd=/Users/haewonkim/home/development/homehuddle/HomeHuddle command=zsh

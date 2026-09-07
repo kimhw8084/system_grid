@@ -1,0 +1,33 @@
+ORIGINAL_PATH: /Users/haewonkim/.local/state/sysgrid-supervisor/runs/20260804T015553Z-95872-230000/preflight.json
+ORIGINAL_SHA256: 9f576001fb4720217e2f6860a4e7676f4fe3d44674833906e8ba7bd16dd164cc
+================================================================================
+{
+  "failures": {
+    "repository": {
+      "classification": "DUPLICATE_MUTATION_CAPSULE_POST_STATE",
+      "exit_code": 73,
+      "message": "repository exactly matches this mutation capsule's declared post-state; the mutation was already applied by an earlier run and replay is prohibited. The prior canonical review ZIP is preserved. Use 'sg recover-artifact <run-id>' to republish an earlier run artifact without executing the product again."
+    }
+  },
+  "results": {
+    "engine": {
+      "path": "/Users/haewonkim/.local/share/sysgrid-runner/engine-v1.1.1/sysgrid_runner.py",
+      "self_test": {
+        "engine_version": "1.1.1",
+        "result": "PASS",
+        "tests": [
+          "safe-path",
+          "manifest",
+          "corruption",
+          "canonical-dirty-paths",
+          "aggregate-recipes"
+        ]
+      }
+    },
+    "storage": {
+      "control_free": 55396163584,
+      "local_free": 55396163584,
+      "required": 3221225472
+    }
+  }
+}

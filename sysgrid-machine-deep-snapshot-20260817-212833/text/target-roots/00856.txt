@@ -1,0 +1,32 @@
+ORIGINAL_PATH: /Users/haewonkim/.local/state/sysgrid-supervisor/runs/20260801T210051Z-28246-090000/preflight.json
+ORIGINAL_SHA256: 5c17f5a5ca78653703cd05708c16186c13d4c9ab685a93fe5fd21fdb6fa7bc3e
+================================================================================
+{
+  "declared_state": {
+    "dirty_path_count": 57,
+    "pre_hash_count": 57,
+    "protected_hash_count": 19
+  },
+  "engine_self_test": {
+    "engine_version": "1.0.4",
+    "result": "PASS",
+    "tests": [
+      "safe-path",
+      "manifest",
+      "corruption"
+    ]
+  },
+  "patch": {
+    "applicable": true,
+    "forward_diagnostic": "Checking patch frontend/src/components/shared/GoldenWorkspaceGeometryContract.test.ts...",
+    "forward_exit_code": 0,
+    "reverse_applicable": false,
+    "reverse_diagnostic": "Checking patch frontend/src/components/shared/GoldenWorkspaceGeometryContract.test.ts...\nerror: while searching for:\n    expect(shell).toContain(\"GOLDEN_GRID_BASE_CLASS = 'operational-grid-shell operational-grid relative box-border flex min-h-0 min-w-0 w-full max-w-full flex-1 flex-col overflow-hidden glass-panel ag-theme-alpine-dark\")\n    expect(shell).toContain(\"GOLDEN_GRID_CONTENT_CLASS = 'relative box-border flex min-h-0 min-w-0 w-full max-w-full flex-1 overflow-hidden\")\n    expect(shell).toContain('data-golden-grid-content=\"true\"')\n    expect(shell).toContain('[&_.ag-center-cols-container]:!min-w-full')\n    expect(shell).not.toContain('[&_.ag-center-cols-container]:!w-full')\n    expect(shell).toContain('[&>*]:!w-full')\n    expect(shell).toContain(\"golden: 'rounded-lg'\")\n    expect(shell).toContain(\"'attached-panel': 'rounded-t-none border-x border-b border-white/5'\")\n\nerror: patch failed: frontend/src/components/shared/GoldenWorkspaceGeometryContract.test.ts:27\nerror: frontend/src/components/shared/GoldenWorkspaceGeometryContract.test.ts: patch does not apply",
+    "reverse_exit_code": 1
+  },
+  "storage": {
+    "control_free": 56989384704,
+    "local_free": 56989384704,
+    "required": 536870912
+  }
+}

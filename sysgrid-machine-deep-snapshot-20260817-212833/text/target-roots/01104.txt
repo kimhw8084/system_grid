@@ -1,0 +1,13 @@
+ORIGINAL_PATH: /Users/haewonkim/.local/state/sysgrid-supervisor/runs/20260804T172401Z-66168-326000/launch.json
+ORIGINAL_SHA256: 4955c6ff1f40ce43a5767e17364ea636708e6f97676afe97fa2243823c6fa241
+================================================================================
+{
+  "capsule_path": "/Users/haewonkim/.local/state/sysgrid-supervisor/runs/20260804T172401Z-66168-326000/input/SYSGRID_OUT31_PA14_GUIDED_FAR_ANALYTICAL_FOCUS_AND_RETIREMENT_PREFLIGHT_v1.0.0.sgcap",
+  "capsule_sha256": "5b946cee7088d543a84479bec7db88932f1608ae2c4c618529a62dbe559ffbf5",
+  "command_sha256": "4c3764d6c4062d0d89615057976455d73ff781c195ee3126327483302bd90cda",
+  "engine_path": "/Users/haewonkim/.local/share/sysgrid-runner/engine-v1.1.1/sysgrid_runner.py",
+  "engine_sha256": "66b082fec1e9f6c49152e5ecb4cbb3f998e60ce27d53a2325e5f658634a8d032",
+  "launched_utc": "2026-08-04T17:24:02Z",
+  "repo": "/Users/haewonkim/home/development/sysgrid",
+  "run_id": "20260804T172401Z-66168-326000"
+}

@@ -1,0 +1,34 @@
+ORIGINAL_PATH: /Users/haewonkim/.local/state/sysgrid-supervisor/runs/20260803T210459Z-89376-290000/diagnostic/LOGS/preflight.json
+ORIGINAL_SHA256: 703d334b24a9eb46039c20b9dbd1d90f9227e17b2cfe7bc76031b5249832537b
+================================================================================
+{
+  "declared_state": {
+    "dirty_path_count": 95,
+    "pre_hash_count": 95,
+    "protected_hash_count": 93
+  },
+  "engine_self_test": {
+    "engine_version": "1.1.1",
+    "result": "PASS",
+    "tests": [
+      "safe-path",
+      "manifest",
+      "corruption",
+      "canonical-dirty-paths",
+      "aggregate-recipes"
+    ]
+  },
+  "patch": {
+    "applicable": true,
+    "forward_diagnostic": "Checking patch frontend/tests/far-workflows.spec.ts...\nChecking patch frontend/tests/golden-eight-seeded-visual-matrix.spec.ts...",
+    "forward_exit_code": 0,
+    "reverse_applicable": false,
+    "reverse_diagnostic": "Checking patch frontend/tests/golden-eight-seeded-visual-matrix.spec.ts...\nerror: while searching for:\n        if (JSON.stringify([...routeTenantIds]) !== JSON.stringify([testTenantId])) failures.push(`response tenants: ${JSON.stringify([...routeTenantIds])}`)\n        if (!(await workspace.isVisible().catch(() => false))) failures.push('workspace not visible')\n        if (!(await grid.isVisible().catch(() => false))) failures.push('shared grid surface not visible')\n        await expect(grid.locator('.ag-center-cols-container .ag-row').first()).toBeVisible({ timeout: 30_000 })\n\n        const shellBox = await workspace.boundingBox()\n        const gridBox = await grid.boundingBox()\n\nerror: patch failed: frontend/tests/golden-eight-seeded-visual-matrix.spec.ts:192\nerror: frontend/tests/golden-eight-seeded-visual-matrix.spec.ts: patch does not apply\nChecking patch frontend/tests/far-workflows.spec.ts...\nerror: while searching for:\n    await expect(workspace.getByText('Failure Inventory Maturity Profile')).toBeVisible()\n    await workspace.getByRole('button', { name: /Insights/i }).click()\n    await expect(workspace.getByText('Failure Inventory Maturity Profile')).not.toBeVisible()\n    await page.getByPlaceholder('Search FAR failure modes').fill(far.title)\n    const centerRow = workspace.locator('.ag-center-cols-container .ag-row').filter({ hasText: far.title })\n    await expect(centerRow).toBeVisible()\n    const rowIndex = await centerRow.getAttribute('row-index')\n\nerror: patch failed: frontend/tests/far-workflows.spec.ts:61\nerror: frontend/tests/far-workflows.spec.ts: patch does not apply",
+    "reverse_exit_code": 1
+  },
+  "storage": {
+    "control_free": 56090624000,
+    "local_free": 56090624000,
+    "required": 3221225472
+  }
+}

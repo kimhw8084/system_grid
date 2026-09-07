@@ -1,0 +1,16 @@
+ORIGINAL_PATH: /Users/haewonkim/.local/state/sysgrid-supervisor/runs/20260801T202245Z-84244-806000/patch.diff
+ORIGINAL_SHA256: ca6d8e538f6c9352d0e675c4c2a2c6a2337ccb754835a0d610d7444a72efb725
+================================================================================
+diff --git a/scripts/verify-app.sh b/scripts/verify-app.sh
+--- a/scripts/verify-app.sh
++++ b/scripts/verify-app.sh
+@@ -183,7 +183,8 @@
+     "${RUNTIME_ENV_COMMAND[@]}" ./backend/venv/bin/python seed.py \
+       --tenant-name "Playwright Gate" \
+       --tenant-db "$VERIFY_TENANT_DB_REL" \
+-      --admin-user "$TEST_USER_ID"
++      --admin-user "$TEST_USER_ID" \
++      --seed-data
+   )
+ 
+   echo "Provisioning code-managed reference data..."

@@ -1,0 +1,48 @@
+ORIGINAL_PATH: /Users/haewonkim/Library/Application Support/SysGridRelay/backups/synchronous-relay-20260804T211209Z/sg.before
+ORIGINAL_SHA256: 91fb1c967b200090d6760d1d63eed519c0b926244e06d0db031377772388f97d
+================================================================================
+#!/usr/bin/env bash
+set +e
+export PYTHONDONTWRITEBYTECODE=1
+ROOT="$HOME/.local/share/sysgrid-campaign-platform/v1.1.1"
+PYTHON="${PYTHON:-python3}"
+case "${1:-}" in
+  campaign)
+    shift
+    exec "$PYTHON" "$ROOT/payload/sysgrid_campaign.py" run "$@"
+    ;;
+  campaign-validate)
+    shift
+    exec "$PYTHON" "$ROOT/payload/sysgrid_campaign.py" validate "$@"
+    ;;
+  campaign-status)
+    shift
+    exec "$PYTHON" "$ROOT/payload/sysgrid_campaign.py" status "$@"
+    ;;
+  campaign-self-test)
+    shift
+    exec "$PYTHON" "$ROOT/payload/sysgrid_campaign.py" self-test "$@"
+    ;;
+  continuity-files)
+    printf '%s\n' "$ROOT/PROJECT_CONTINUITY"
+    ;;
+  source-authority)
+    shift
+    exec "$PYTHON" "$ROOT/payload/sysgrid_source_authority.py" "$@"
+    ;;
+  source-authority-self-test)
+    shift
+    exec "$PYTHON" "$ROOT/payload/sysgrid_source_authority.py" --self-test "$@"
+    ;;
+  "")
+    exec "$PYTHON" "$ROOT/payload/sysgrid_supervisor.py" run
+    ;;
+  run|status|watch|self-test|notification-test|recover-artifact|discover-engine)
+    exec "$PYTHON" "$ROOT/payload/sysgrid_supervisor.py" "$@"
+    ;;
+  *)
+    echo "Unknown command: $1" >&2
+    echo "Use: sg source-authority | sg campaign | sg campaign-validate | sg campaign-status | sg continuity-files | sg run | sg status" >&2
+    exit 2
+    ;;
+esac

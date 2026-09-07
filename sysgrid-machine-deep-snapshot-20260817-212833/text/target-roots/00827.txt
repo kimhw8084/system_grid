@@ -1,0 +1,436 @@
+ORIGINAL_PATH: /Users/haewonkim/.local/state/sysgrid-supervisor/runs/20260806T173517Z-8065-037000/SUPERVISOR_STATE.json
+ORIGINAL_SHA256: 219a0a3f02c353fcc6d19d776c78a6a03b240a8a66cea03e4a9cf3bb98c18d19
+================================================================================
+{
+  "artifact": "/Users/haewonkim/Library/Mobile Documents/com~apple~CloudDocs/SysGrid-Control/Outbox/UPLOAD_THIS_TO_CHATGPT.zip",
+  "artifact_sha256": "4689ab4fe1a0e5504256bc69b61eea8bec648335fd57278d68cf9abbf9b69d81",
+  "artifact_size": 13240666,
+  "attempt": 15,
+  "capsule_archive": "/Users/haewonkim/Library/Mobile Documents/com~apple~CloudDocs/SysGrid-Control/Archive/Processed-Capsules/20260806T173619Z__2540d34fa925__SYSGRID_OUT31_PA15_ENV1_WORKSTATION_UAT_REPO_NATIVE_ENVIRONMENT_CORRECTION_v1.0.1.sgcap",
+  "capsule_cross_ledger": {
+    "changed_path_count": 3,
+    "execution_profile": "promotion_qualification",
+    "execution_scope": {
+      "changed_paths": [],
+      "execution_profile": "promotion_qualification",
+      "targeted_tests": [],
+      "targeted_views": []
+    },
+    "patch_paths": [
+      "scripts/start-local.sh",
+      "scripts/workstation-up.sh",
+      "seed.py"
+    ],
+    "post_path_count": 100,
+    "pre_path_count": 98,
+    "protected_path_count": 718,
+    "recipe_ids": [
+      "forwarded-config-proof",
+      "runtime-origin-tests",
+      "shell-syntax"
+    ]
+  },
+  "capsule_file": "SYSGRID_OUT31_PA15_ENV1_WORKSTATION_UAT_REPO_NATIVE_ENVIRONMENT_CORRECTION_v1.0.1.sgcap",
+  "capsule_sha256": "2540d34fa925cee36661e72e1cf7cb91f5c871c09cb02927cf6a75ab6f74e44a",
+  "capsule_size": 68617,
+  "capsule_stage": "PA15 environment support \u2014 complete repo-native workstation UAT workflow",
+  "capsule_title": "Complete work-computer UAT profiles, data modes, evidence, and one-command launch",
+  "classification": "PASS",
+  "dirty_path_count": 98,
+  "engine_command": [
+    "/opt/homebrew/opt/python@3.14/bin/python3.14",
+    "<exact-engine>",
+    "execute",
+    "<exact-capsule>",
+    "--repo",
+    "/Users/haewonkim/home/development/sysgrid",
+    "--outbox",
+    "/Users/haewonkim/.local/state/sysgrid-supervisor/runs/20260806T173517Z-8065-037000/engine-outbox"
+  ],
+  "engine_completed": true,
+  "engine_completed_utc": "2026-08-06T17:36:19Z",
+  "engine_exit_code": 0,
+  "engine_path": "/Users/haewonkim/.local/share/sysgrid-runner/engine-v1.1.1/sysgrid_runner.py",
+  "engine_pid": 8157,
+  "engine_sha256": "66b082fec1e9f6c49152e5ecb4cbb3f998e60ce27d53a2325e5f658634a8d032",
+  "engine_started": true,
+  "engine_started_utc": "2026-08-06T17:35:20Z",
+  "event_timeline": [
+    {
+      "details": {},
+      "elapsed_seconds": 0.083,
+      "event_id": "capsule_selected",
+      "message": "Selecting the one immutable capsule and converging only byte-identical Inbox duplicates.",
+      "notification": {
+        "event_id": "capsule_selected",
+        "presentation_mode": "summary",
+        "required": false,
+        "status": "local_only",
+        "updated_utc": "2026-08-06T17:35:17Z"
+      },
+      "status": "started",
+      "utc": "2026-08-06T17:35:17Z"
+    },
+    {
+      "details": {
+        "changed_path_count": 3,
+        "execution_profile": "promotion_qualification",
+        "execution_scope": {
+          "changed_paths": [],
+          "execution_profile": "promotion_qualification",
+          "targeted_tests": [],
+          "targeted_views": []
+        },
+        "patch_paths": [
+          "scripts/start-local.sh",
+          "scripts/workstation-up.sh",
+          "seed.py"
+        ],
+        "post_path_count": 100,
+        "pre_path_count": 98,
+        "protected_path_count": 718,
+        "recipe_ids": [
+          "forwarded-config-proof",
+          "runtime-origin-tests",
+          "shell-syntax"
+        ]
+      },
+      "elapsed_seconds": 0.143,
+      "event_id": "capsule_verified",
+      "message": "Capsule archive, manifest, schema, patch identity, and cross-ledger contract are exact.",
+      "notification": {
+        "attempts": 1,
+        "chat_id_suffix": "1055",
+        "event_id": "run_started",
+        "first_attempt_utc": "2026-08-06T17:35:17Z",
+        "message_id": 662,
+        "payload_sha256": "ab24bd1de7e6d1a7b03d438cd941a1a8fd8df6d898ec257df72954ff9a0428fc",
+        "required": false,
+        "status": "delivered",
+        "updated_utc": "2026-08-06T17:35:18Z"
+      },
+      "status": "passed",
+      "utc": "2026-08-06T17:35:18Z"
+    },
+    {
+      "details": {},
+      "elapsed_seconds": 1.098,
+      "event_id": "preflight_started",
+      "message": "Running independent platform checks and exact repository-state proof.",
+      "notification": {
+        "event_id": "preflight_started",
+        "presentation_mode": "summary",
+        "required": false,
+        "status": "local_only",
+        "updated_utc": "2026-08-06T17:35:18Z"
+      },
+      "status": "started",
+      "utc": "2026-08-06T17:35:18Z"
+    },
+    {
+      "details": {
+        "dirty_paths": 98,
+        "head": "78da610377e5cfbb5a2b7986c1cb7d56397d0ca2",
+        "patch": {
+          "applicable": true,
+          "forward_diagnostic": "Checking patch scripts/start-local.sh...\nChecking patch scripts/workstation-up.sh...\nChecking patch seed.py...",
+          "forward_exit_code": 0,
+          "reverse_applicable": false,
+          "reverse_diagnostic": "Checking patch seed.py...\nerror: while searching for:\n    parser.add_argument(\"--tenant-name\", default=\"Local Demo\")\n    parser.add_argument(\"--tenant-db\", default=\"tenants/local-demo/local_demo.db\")\n    parser.add_argument(\"--admin-user\", default=\"haewon.kim\")\n    parser.add_argument(\"--admin-full-name\", default=None, help=\"Display name for the primary disposable admin\")\n    parser.add_argument(\"--admin-email\", default=None, help=\"Email for the primary disposable admin\")\n    parser.add_argument(\"--admin-department\", default=\"Infrastructure\", help=\"Department for disposable admins\")\n    parser.add_argument(\"--extra-admin-user\", action=\"append\", default=[], help=\"Additional user ids to grant admin access and select for this tenant\")\n    parser.add_argument(\"--seed-data\", action=\"store_true\", help=\"Seed full domain data\")\n    parser.add_argument(\"--no-seed-data\", action=\"store_true\", help=\"Skip domain/demo data and create only the bootstrap shell\")\n\nerror: patch failed: seed.py:1570\nerror: seed.py: patch does not apply\nChecking patch scripts/workstation-up.sh...\nerror: scripts/workstation-up.sh: No such file or directory\nChecking patch scripts/start-local.sh...\nerror: while searching for:\n#!/usr/bin/env bash\nset -Eeuo pipefail\n\nROOT_DIR=\"$(cd \"$(dirname \"${BASH_SOURCE[0]}\")/..\" && pwd)\"\nBACKEND_DIR=\"$ROOT_DIR/backend\"\n\nerror: patch failed: scripts/start-local.sh:1\nerror: scripts/start-local.sh: patch does not apply",
+          "reverse_exit_code": 1
+        }
+      },
+      "elapsed_seconds": 3.276,
+      "event_id": "preflight_completed",
+      "message": "Exact engine, repository, storage, state, protected hashes, and patch state passed.",
+      "notification": {
+        "event_id": "preflight_completed",
+        "presentation_mode": "summary",
+        "required": false,
+        "status": "local_only",
+        "updated_utc": "2026-08-06T17:35:20Z"
+      },
+      "status": "passed",
+      "utc": "2026-08-06T17:35:20Z"
+    },
+    {
+      "details": {},
+      "elapsed_seconds": 3.284,
+      "event_id": "engine_launch",
+      "message": "Launching the exact Stable Engine once; ambiguous mutation replay remains prohibited.",
+      "notification": {
+        "event_id": "engine_launch",
+        "presentation_mode": "summary",
+        "required": false,
+        "status": "local_only",
+        "updated_utc": "2026-08-06T17:35:20Z"
+      },
+      "status": "started",
+      "utc": "2026-08-06T17:35:20Z"
+    },
+    {
+      "details": {
+        "engine_exit_code": 0
+      },
+      "elapsed_seconds": 61.659,
+      "event_id": "engine_completed",
+      "message": "Stable Engine exited with code 0; verifying its complete evidence.",
+      "notification": {
+        "event_id": "engine_completed",
+        "presentation_mode": "summary",
+        "required": false,
+        "status": "local_only",
+        "updated_utc": "2026-08-06T17:36:19Z"
+      },
+      "status": "passed",
+      "utc": "2026-08-06T17:36:19Z"
+    },
+    {
+      "details": {
+        "artifact_size": 13240666,
+        "manifest_entries": 849
+      },
+      "elapsed_seconds": 61.798,
+      "event_id": "evidence_verified",
+      "message": "Engine evidence is complete and exactly correlated to capsule, engine, and process exit.",
+      "notification": {
+        "event_id": "evidence_verified",
+        "presentation_mode": "summary",
+        "required": false,
+        "status": "local_only",
+        "updated_utc": "2026-08-06T17:36:19Z"
+      },
+      "status": "passed",
+      "utc": "2026-08-06T17:36:19Z"
+    },
+    {
+      "details": {},
+      "elapsed_seconds": 61.802,
+      "event_id": "publication_started",
+      "message": "Publishing one content-addressed, fsynced, atomic canonical review ZIP.",
+      "notification": {
+        "event_id": "publication_started",
+        "presentation_mode": "summary",
+        "required": false,
+        "status": "local_only",
+        "updated_utc": "2026-08-06T17:36:19Z"
+      },
+      "status": "started",
+      "utc": "2026-08-06T17:36:19Z"
+    },
+    {
+      "details": {
+        "artifact_sha256": "4689ab4fe1a0e5504256bc69b61eea8bec648335fd57278d68cf9abbf9b69d81",
+        "exit_code": 0
+      },
+      "elapsed_seconds": 62.254,
+      "event_id": "publication_completed",
+      "message": "Run complete. Engine runtime: 55.0s. Canonical review ZIP is ready for upload.",
+      "notification": {
+        "attempts": 1,
+        "chat_id_suffix": "1055",
+        "event_id": "run_completed",
+        "first_attempt_utc": "2026-08-06T17:36:19Z",
+        "message_id": 663,
+        "payload_sha256": "2e919ea56ac64054cba06d0f4637bbe61511d64fe658f60a20e4a6313dfacfa4",
+        "required": false,
+        "status": "delivered",
+        "updated_utc": "2026-08-06T17:36:20Z"
+      },
+      "status": "passed",
+      "utc": "2026-08-06T17:36:20Z"
+    }
+  ],
+  "execution_profile": "promotion_qualification",
+  "execution_scope": {
+    "changed_paths": [],
+    "execution_profile": "promotion_qualification",
+    "targeted_tests": [],
+    "targeted_views": []
+  },
+  "issue": "OUT-31",
+  "iteration": 35,
+  "last_progress_event": "publication_completed",
+  "last_progress_message": "Run complete. Engine runtime: 55.0s. Canonical review ZIP is ready for upload.",
+  "last_progress_status": "passed",
+  "last_progress_utc": "2026-08-06T17:36:20Z",
+  "message": "all declared gates passed",
+  "monotonic_started": 4307752.901698666,
+  "notification_events": {
+    "capsule_selected": {
+      "event_id": "capsule_selected",
+      "presentation_mode": "summary",
+      "required": false,
+      "status": "local_only",
+      "updated_utc": "2026-08-06T17:35:17Z"
+    },
+    "capsule_verified": {
+      "attempts": 1,
+      "chat_id_suffix": "1055",
+      "event_id": "run_started",
+      "first_attempt_utc": "2026-08-06T17:35:17Z",
+      "message_id": 662,
+      "payload_sha256": "ab24bd1de7e6d1a7b03d438cd941a1a8fd8df6d898ec257df72954ff9a0428fc",
+      "required": false,
+      "status": "delivered",
+      "updated_utc": "2026-08-06T17:35:18Z"
+    },
+    "engine_completed": {
+      "event_id": "engine_completed",
+      "presentation_mode": "summary",
+      "required": false,
+      "status": "local_only",
+      "updated_utc": "2026-08-06T17:36:19Z"
+    },
+    "engine_launch": {
+      "event_id": "engine_launch",
+      "presentation_mode": "summary",
+      "required": false,
+      "status": "local_only",
+      "updated_utc": "2026-08-06T17:35:20Z"
+    },
+    "evidence_verified": {
+      "event_id": "evidence_verified",
+      "presentation_mode": "summary",
+      "required": false,
+      "status": "local_only",
+      "updated_utc": "2026-08-06T17:36:19Z"
+    },
+    "preflight_completed": {
+      "event_id": "preflight_completed",
+      "presentation_mode": "summary",
+      "required": false,
+      "status": "local_only",
+      "updated_utc": "2026-08-06T17:35:20Z"
+    },
+    "preflight_started": {
+      "event_id": "preflight_started",
+      "presentation_mode": "summary",
+      "required": false,
+      "status": "local_only",
+      "updated_utc": "2026-08-06T17:35:18Z"
+    },
+    "publication_completed": {
+      "attempts": 1,
+      "chat_id_suffix": "1055",
+      "event_id": "run_completed",
+      "first_attempt_utc": "2026-08-06T17:36:19Z",
+      "message_id": 663,
+      "payload_sha256": "2e919ea56ac64054cba06d0f4637bbe61511d64fe658f60a20e4a6313dfacfa4",
+      "required": false,
+      "status": "delivered",
+      "updated_utc": "2026-08-06T17:36:20Z"
+    },
+    "publication_started": {
+      "event_id": "publication_started",
+      "presentation_mode": "summary",
+      "required": false,
+      "status": "local_only",
+      "updated_utc": "2026-08-06T17:36:19Z"
+    }
+  },
+  "notification_policy": {
+    "delivery_semantics": "durably-deduplicated-at-least-once",
+    "engine_heartbeat_seconds": 300,
+    "max_messages_per_run": 3,
+    "presentation_mode": "summary",
+    "registered_events": 21,
+    "required_before_engine": false,
+    "telegram_heartbeats": false
+  },
+  "original_capsule": "/Users/haewonkim/Library/Mobile Documents/com~apple~CloudDocs/SysGrid-Control/Inbox/SYSGRID_OUT31_PA15_ENV1_WORKSTATION_UAT_REPO_NATIVE_ENVIRONMENT_CORRECTION_v1.0.1.sgcap",
+  "pid": 8065,
+  "preflight": {
+    "declared_state": {
+      "dirty_path_count": 98,
+      "pre_hash_count": 98,
+      "protected_hash_count": 718
+    },
+    "engine_self_test": {
+      "engine_version": "1.1.1",
+      "result": "PASS",
+      "tests": [
+        "safe-path",
+        "manifest",
+        "corruption",
+        "canonical-dirty-paths",
+        "aggregate-recipes"
+      ]
+    },
+    "patch": {
+      "applicable": true,
+      "forward_diagnostic": "Checking patch scripts/start-local.sh...\nChecking patch scripts/workstation-up.sh...\nChecking patch seed.py...",
+      "forward_exit_code": 0,
+      "reverse_applicable": false,
+      "reverse_diagnostic": "Checking patch seed.py...\nerror: while searching for:\n    parser.add_argument(\"--tenant-name\", default=\"Local Demo\")\n    parser.add_argument(\"--tenant-db\", default=\"tenants/local-demo/local_demo.db\")\n    parser.add_argument(\"--admin-user\", default=\"haewon.kim\")\n    parser.add_argument(\"--admin-full-name\", default=None, help=\"Display name for the primary disposable admin\")\n    parser.add_argument(\"--admin-email\", default=None, help=\"Email for the primary disposable admin\")\n    parser.add_argument(\"--admin-department\", default=\"Infrastructure\", help=\"Department for disposable admins\")\n    parser.add_argument(\"--extra-admin-user\", action=\"append\", default=[], help=\"Additional user ids to grant admin access and select for this tenant\")\n    parser.add_argument(\"--seed-data\", action=\"store_true\", help=\"Seed full domain data\")\n    parser.add_argument(\"--no-seed-data\", action=\"store_true\", help=\"Skip domain/demo data and create only the bootstrap shell\")\n\nerror: patch failed: seed.py:1570\nerror: seed.py: patch does not apply\nChecking patch scripts/workstation-up.sh...\nerror: scripts/workstation-up.sh: No such file or directory\nChecking patch scripts/start-local.sh...\nerror: while searching for:\n#!/usr/bin/env bash\nset -Eeuo pipefail\n\nROOT_DIR=\"$(cd \"$(dirname \"${BASH_SOURCE[0]}\")/..\" && pwd)\"\nBACKEND_DIR=\"$ROOT_DIR/backend\"\n\nerror: patch failed: scripts/start-local.sh:1\nerror: scripts/start-local.sh: patch does not apply",
+      "reverse_exit_code": 1
+    },
+    "storage": {
+      "control_free": 31711526912,
+      "local_free": 31711526912,
+      "required": 3221225472
+    }
+  },
+  "recovered_without_product_replay": false,
+  "repo": "/Users/haewonkim/home/development/sysgrid",
+  "repo_branch": "main",
+  "repo_head": "78da610377e5cfbb5a2b7986c1cb7d56397d0ca2",
+  "resource_plan": {
+    "backend_workers": 5,
+    "cpu_count": 12,
+    "e2e_workers": 2,
+    "frontend_workers": 5,
+    "memory_bytes": 19327352832,
+    "preflight_workers": 24,
+    "reserve_memory_bytes": 2147483648,
+    "test_cpu_budget": 11,
+    "usable_memory_bytes": 17179869184
+  },
+  "run_id": "20260806T173517Z-8065-037000",
+  "runtime_summary": {
+    "artifact": "/Users/haewonkim/.local/state/sysgrid-supervisor/runs/20260806T173517Z-8065-037000/engine-outbox/UPLOAD_THIS_TO_CHATGPT.zip",
+    "classification": "PASS",
+    "commands": [
+      {
+        "duration_seconds": 0.016,
+        "exit_code": 0,
+        "recipe_id": "shell-syntax",
+        "timed_out": false
+      },
+      {
+        "duration_seconds": 42.46,
+        "exit_code": 0,
+        "recipe_id": "runtime-origin-tests",
+        "timed_out": false
+      },
+      {
+        "duration_seconds": 1.239,
+        "exit_code": 0,
+        "recipe_id": "forwarded-config-proof",
+        "timed_out": false
+      }
+    ],
+    "engine_total_seconds": 55.0,
+    "failed_stage": null,
+    "finished_utc": "2026-08-06T17:36:16Z",
+    "result": "success",
+    "started_utc": "2026-08-06T17:35:21Z"
+  },
+  "safe_cleanup": {
+    "inspected": 0,
+    "removed": 0
+  },
+  "safe_retry_count": 0,
+  "stage": "complete",
+  "staged_capsule": "/Users/haewonkim/.local/state/sysgrid-supervisor/runs/20260806T173517Z-8065-037000/input/SYSGRID_OUT31_PA15_ENV1_WORKSTATION_UAT_REPO_NATIVE_ENVIRONMENT_CORRECTION_v1.0.1.sgcap",
+  "started_utc": "2026-08-06T17:35:17Z",
+  "state": "SUCCEEDED",
+  "supervisor_version": "2.2.1",
+  "telegram": {
+    "chat_id_suffix": "1055",
+    "configured": true,
+    "source": "/Users/haewonkim/.config/sysgrid-supervisor/telegram.json"
+  },
+  "updated_utc": "2026-08-06T17:36:20Z",
+  "work_dir": "/Users/haewonkim/.local/state/sysgrid-supervisor/runs/20260806T173517Z-8065-037000"
+}

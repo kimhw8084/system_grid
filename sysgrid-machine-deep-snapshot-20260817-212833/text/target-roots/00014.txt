@@ -1,0 +1,15 @@
+ORIGINAL_PATH: /Users/haewonkim/.local/share/sysgrid-runner/continuity-v1.0.4/INSTALLATION.json
+ORIGINAL_SHA256: e0b6983ac510346ac202ca2443e86c050c9fc86a5448e6aa5ad3fb234c14590a
+================================================================================
+{
+  "version": "1.0.4",
+  "installer_revision": "1.0.4.4",
+  "installed_utc": "2026-07-29T23:06:57Z",
+  "core_engine_version": "1.0.3",
+  "core_engine_path": "/Users/haewonkim/.local/lib/sysgrid-runner/current/sysgrid_runner.py",
+  "core_engine_sha256": "69b2bc5ca047dc548fea288ee3820ee9f3961488ebd05a928c2906567fe1a858",
+  "core_engine_discovery_mode": "exact-hash",
+  "backup_dir": "/Users/haewonkim/.local/share/sysgrid-runner/backups/20260729T230650Z-pre-continuity-v1044",
+  "control_root": "/Users/haewonkim/Library/Mobile Documents/com~apple~CloudDocs/SysGrid-Control",
+  "wrapper_pre_state": "continuity-already-present"
+}

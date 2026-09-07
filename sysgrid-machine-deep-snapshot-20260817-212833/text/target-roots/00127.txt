@@ -1,0 +1,838 @@
+ORIGINAL_PATH: /Users/haewonkim/.local/share/sysgrid-runner/backups/20260731T194319Z-pre-launcher-v104-repair/lib/1.0.4/tests/test_sysgrid_runner.py
+ORIGINAL_SHA256: 6978bce5d2dd3c2da043b09d0ae2922f24a4962c7e5dda875842cc3e79fca781
+================================================================================
+from __future__ import annotations
+
+import importlib.util
+import json
+import os
+import stat
+import subprocess
+import sys
+import tempfile
+import time
+import unittest
+from unittest import mock
+import zipfile
+from pathlib import Path
+
+ENGINE = Path(__file__).resolve().parents[1] / "sysgrid_runner.py"
+spec = importlib.util.spec_from_file_location("sysgrid_runner", ENGINE)
+mod = importlib.util.module_from_spec(spec)
+assert spec and spec.loader
+sys.modules[spec.name] = mod
+spec.loader.exec_module(mod)
+
+
+class EngineTests(unittest.TestCase):
+    def _make_resume_case(self, base: Path):
+        repo = base / "repo"
+        remote = base / "remote.git"
+        repo.mkdir()
+        subprocess.run(["git", "init", "-b", "main"], cwd=repo, check=True, stdout=subprocess.DEVNULL)
+        subprocess.run(["git", "init", "--bare", "--initial-branch=main", remote], check=True, stdout=subprocess.DEVNULL)
+        subprocess.run(["git", "config", "user.email", "test@example.com"], cwd=repo, check=True)
+        subprocess.run(["git", "config", "user.name", "Test"], cwd=repo, check=True)
+        (repo / "scripts").mkdir()
+        (repo / "scripts/start-local.sh").write_text("#!/bin/bash\necho before\n")
+        (repo / "protected.txt").write_text("protected\n")
+        subprocess.run(["git", "add", "."], cwd=repo, check=True)
+        subprocess.run(["git", "commit", "-m", "base"], cwd=repo, check=True, stdout=subprocess.DEVNULL)
+        subprocess.run(["git", "remote", "add", "origin", str(remote)], cwd=repo, check=True)
+        subprocess.run(["git", "push", "-u", "origin", "main"], cwd=repo, check=True, stdout=subprocess.DEVNULL)
+        head = subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=repo, text=True).strip()
+        (repo / "scripts/start-local.sh").write_text("#!/bin/bash\necho retained\n")
+        capsule = base / "capsule"
+        (capsule / "STATE").mkdir(parents=True)
+        run = valid_run()
+        run["baseline"] = {"branch": "main", "head": head, "upstream": "origin/main"}
+        run["state"] = {"pre_expected_dirty_paths": "STATE/paths.txt", "post_expected_dirty_paths": "STATE/paths.txt", "pre_hashes": "STATE/post.sha256", "post_hashes": "STATE/post.sha256", "protected_hashes": "STATE/protected.sha256"}
+        run["recipes"] = [{"id": "shell-syntax", "params": {"timeout": 30}, "required": True}]
+        (capsule / "RUN.json").write_text(json.dumps(run))
+        (capsule / "ACCEPTANCE.json").write_text("{}\n")
+        (capsule / "STATE/paths.txt").write_text("scripts/start-local.sh\n")
+        (capsule / "STATE/post.sha256").write_text(mod.sha256_file(repo / "scripts/start-local.sh") + "  scripts/start-local.sh\n")
+        (capsule / "STATE/protected.sha256").write_text(mod.sha256_file(repo / "protected.txt") + "  protected.txt\n")
+        mod.make_manifest(capsule)
+        capzip = base / "capsule.sgcap"
+        with zipfile.ZipFile(capzip, "w", zipfile.ZIP_DEFLATED) as zf:
+            for item in sorted(capsule.rglob("*")):
+                if item.is_file():
+                    info = zipfile.ZipInfo(item.relative_to(capsule).as_posix())
+                    info.external_attr = 0o100600 << 16
+                    zf.writestr(info, item.read_bytes())
+        return repo, remote, capsule, capzip, run
+    def test_safe_path_rejects_traversal(self):
+        with self.assertRaises(mod.EngineError):
+            mod.safe_member("../x")
+
+    def test_safe_path_rejects_backslash(self):
+        with self.assertRaises(mod.EngineError):
+            mod.safe_member("a\\b")
+
+    def test_manifest_detects_corruption(self):
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            (root / "a").write_text("a")
+            mod.make_manifest(root)
+            mod.verify_manifest(root)
+            (root / "a").write_text("b")
+            with self.assertRaises(mod.EngineError):
+                mod.verify_manifest(root)
+
+    def test_executable_capsule_member_is_rejected(self):
+        with tempfile.TemporaryDirectory() as td:
+            z = Path(td) / "x.zip"
+            with zipfile.ZipFile(z, "w") as zf:
+                info = zipfile.ZipInfo("bad.sh")
+                info.external_attr = 0o100755 << 16
+                zf.writestr(info, b"#!/bin/sh\n")
+            with self.assertRaises(mod.EngineError):
+                mod.extract_capsule(z, Path(td) / "out")
+
+    def test_unknown_run_field_is_rejected(self):
+        run = valid_run()
+        run["command"] = "rm -rf /"
+        with self.assertRaises(mod.EngineError):
+            mod.validate_run(run)
+
+    def test_resume_capsule_cannot_carry_patch(self):
+        run = valid_run()
+        run["patch"] = {"path": "PAYLOADS/x.patch", "sha256": "0" * 64}
+        with self.assertRaises(mod.EngineError):
+            mod.validate_run(run)
+
+    def test_process_timeout_returns_124_and_kills_group(self):
+        with tempfile.TemporaryDirectory() as td:
+            repo = Path(td)
+            logs = repo / "logs"
+            logs.mkdir()
+            recipe = mod.Recipe("timeout", [sys.executable, "-c", "import time; time.sleep(30)"], timeout=1)
+            record = mod.run_command(recipe, repo, logs)
+            self.assertEqual(record["classification"], "COMMAND_TIMEOUT")
+            self.assertEqual(record["exit_code"], 124)
+
+    def test_evidence_zip_manifest_round_trip(self):
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td) / "root"
+            out = Path(td) / "out.zip"
+            root.mkdir()
+            (root / "RESULT.json").write_text("{}\n")
+            mod.zip_tree(root, out)
+            extracted = Path(td) / "extracted"
+            extracted.mkdir()
+            mod.extract_capsule(out, extracted, allow_source=True)
+            mod.verify_manifest(extracted)
+
+    def test_plain_shell_source_in_capsule_is_rejected(self):
+        with tempfile.TemporaryDirectory() as td:
+            z = Path(td) / "x.zip"
+            with zipfile.ZipFile(z, "w") as zf:
+                info = zipfile.ZipInfo("payload.sh")
+                info.external_attr = 0o100600 << 16
+                zf.writestr(info, b"echo bad\n")
+            with self.assertRaises(mod.EngineError):
+                mod.extract_capsule(z, Path(td) / "out")
+
+    def test_wrong_engine_and_project_are_rejected(self):
+        run = valid_run()
+        run["engine"]["required_version"] = "9.9.9"
+        with self.assertRaises(mod.EngineError) as ctx:
+            mod.validate_run(run)
+        self.assertEqual(ctx.exception.classification, "ENGINE_VERSION_FAILURE")
+        run = valid_run()
+        run["project"] = "Other"
+        with self.assertRaises(mod.EngineError) as ctx:
+            mod.validate_run(run)
+        self.assertEqual(ctx.exception.classification, "PROJECT_SCOPE_FAILURE")
+
+    def test_non_integer_attempt_is_rejected(self):
+        run = valid_run()
+        run["attempt"] = "2"
+        with self.assertRaises(mod.EngineError):
+            mod.validate_run(run)
+
+    def test_untrusted_recipe_is_rejected(self):
+        with tempfile.TemporaryDirectory() as td:
+            with self.assertRaises(mod.EngineError) as ctx:
+                mod.build_recipe(Path(td), {"id": "arbitrary-command", "params": {}})
+            self.assertEqual(ctx.exception.classification, "RECIPE_NOT_TRUSTED")
+
+    def test_expected_paths_must_be_sorted_unique(self):
+        with tempfile.TemporaryDirectory() as td:
+            p = Path(td) / "paths.txt"
+            p.write_text("b\na\na\n")
+            with self.assertRaises(mod.EngineError):
+                mod.parse_paths(p)
+
+    def test_failed_command_record_is_retained(self):
+        with tempfile.TemporaryDirectory() as td:
+            repo = Path(td)
+            logs = repo / "logs"
+            logs.mkdir()
+            rec = mod.run_command(mod.Recipe("fail", [sys.executable, "-c", "raise SystemExit(7)"], timeout=10), repo, logs)
+            self.assertEqual(rec["exit_code"], 7)
+            self.assertEqual(rec["classification"], "TEST_OR_RECIPE_FAILURE")
+
+    def test_full_resume_execute_creates_manifest_verified_zip(self):
+        with tempfile.TemporaryDirectory() as td:
+            base = Path(td)
+            repo = base / "repo"
+            remote = base / "remote.git"
+            repo.mkdir()
+            subprocess.run(["git", "init", "-b", "main"], cwd=repo, check=True, stdout=subprocess.DEVNULL)
+            subprocess.run(["git", "init", "--bare", remote], check=True, stdout=subprocess.DEVNULL)
+            subprocess.run(["git", "config", "user.email", "test@example.com"], cwd=repo, check=True)
+            subprocess.run(["git", "config", "user.name", "Test"], cwd=repo, check=True)
+            (repo / "scripts").mkdir()
+            (repo / "scripts/start-local.sh").write_text("#!/bin/bash\necho before\n")
+            (repo / "protected.txt").write_text("protected\n")
+            subprocess.run(["git", "add", "."], cwd=repo, check=True)
+            subprocess.run(["git", "commit", "-m", "base"], cwd=repo, check=True, stdout=subprocess.DEVNULL)
+            subprocess.run(["git", "remote", "add", "origin", str(remote)], cwd=repo, check=True)
+            subprocess.run(["git", "push", "-u", "origin", "main"], cwd=repo, check=True, stdout=subprocess.DEVNULL)
+            head = subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=repo, text=True).strip()
+            (repo / "scripts/start-local.sh").write_text("#!/bin/bash\necho retained\n")
+            capsule = base / "capsule"
+            (capsule / "STATE").mkdir(parents=True)
+            run = valid_run()
+            run["baseline"] = {"branch": "main", "head": head, "upstream": "origin/main"}
+            run["state"] = {"pre_expected_dirty_paths": "STATE/paths.txt", "post_expected_dirty_paths": "STATE/paths.txt", "pre_hashes": "STATE/post.sha256", "post_hashes": "STATE/post.sha256", "protected_hashes": "STATE/protected.sha256"}
+            run["recipes"] = [{"id": "shell-syntax", "params": {"timeout": 30}, "required": True}]
+            (capsule / "RUN.json").write_text(json.dumps(run))
+            (capsule / "ACCEPTANCE.json").write_text("{}\n")
+            (capsule / "STATE/paths.txt").write_text("scripts/start-local.sh\n")
+            (capsule / "STATE/post.sha256").write_text(mod.sha256_file(repo / "scripts/start-local.sh") + "  scripts/start-local.sh\n")
+            (capsule / "STATE/protected.sha256").write_text(mod.sha256_file(repo / "protected.txt") + "  protected.txt\n")
+            mod.make_manifest(capsule)
+            capzip = base / "capsule.sgcap"
+            with zipfile.ZipFile(capzip, "w", zipfile.ZIP_DEFLATED) as zf:
+                for p in sorted(capsule.rglob("*")):
+                    if p.is_file():
+                        info = zipfile.ZipInfo(p.relative_to(capsule).as_posix())
+                        info.external_attr = 0o100600 << 16
+                        zf.writestr(info, p.read_bytes())
+            outbox = base / "outbox"
+            rc = mod.execute(capzip, repo, outbox)
+            self.assertEqual(rc, 0)
+            out = outbox / mod.CANONICAL_ZIP
+            self.assertTrue(out.exists())
+            extracted = base / "review"
+            extracted.mkdir()
+            mod.extract_capsule(out, extracted, allow_source=True)
+            mod.verify_manifest(extracted)
+            result = json.loads((extracted / "RESULT.json").read_text())
+            self.assertEqual(result["classification"], "PASS")
+            self.assertTrue((extracted / "SOURCE/scripts/start-local.sh").exists())
+
+    def test_symlink_capsule_member_is_rejected(self):
+        with tempfile.TemporaryDirectory() as td:
+            z = Path(td) / "x.zip"
+            with zipfile.ZipFile(z, "w") as zf:
+                info = zipfile.ZipInfo("link")
+                info.external_attr = 0o120777 << 16
+                zf.writestr(info, b"target")
+            with self.assertRaises(mod.EngineError) as ctx:
+                mod.extract_capsule(z, Path(td) / "out")
+            self.assertEqual(ctx.exception.classification, "CAPSULE_SAFETY_FAILURE")
+
+    def test_branch_head_and_upstream_mismatches_are_rejected(self):
+        with tempfile.TemporaryDirectory() as td:
+            repo, _, capsule, _, run = self._make_resume_case(Path(td))
+            for field, value in (("branch", "other"), ("head", "0" * 40), ("upstream", "origin/other")):
+                candidate = json.loads(json.dumps(run))
+                candidate["baseline"][field] = value
+                with self.subTest(field=field), self.assertRaises(mod.EngineError) as ctx:
+                    mod.verify_repo_state(repo, candidate, capsule, "post")
+                self.assertEqual(ctx.exception.classification, "BASELINE_MISMATCH")
+
+    def test_unexpected_dirty_path_is_rejected(self):
+        with tempfile.TemporaryDirectory() as td:
+            repo, _, capsule, _, run = self._make_resume_case(Path(td))
+            (repo / "unexpected.txt").write_text("unexpected\n")
+            with self.assertRaises(mod.EngineError) as ctx:
+                mod.verify_repo_state(repo, run, capsule, "post")
+            self.assertEqual(ctx.exception.classification, "BASELINE_MISMATCH")
+
+    def test_protected_hash_drift_is_rejected(self):
+        with tempfile.TemporaryDirectory() as td:
+            repo, _, capsule, _, run = self._make_resume_case(Path(td))
+            (repo / "protected.txt").write_text("changed\n")
+            (capsule / "STATE/paths.txt").write_text("protected.txt\nscripts/start-local.sh\n")
+            with self.assertRaises(mod.EngineError) as ctx:
+                mod.verify_repo_state(repo, run, capsule, "post")
+            self.assertEqual(ctx.exception.classification, "PROTECTED_HASH_MISMATCH")
+
+    def test_already_applied_patch_is_rejected(self):
+        with tempfile.TemporaryDirectory() as td:
+            base = Path(td); repo = base / "repo"; repo.mkdir()
+            subprocess.run(["git", "init", "-b", "main"], cwd=repo, check=True, stdout=subprocess.DEVNULL)
+            subprocess.run(["git", "config", "user.email", "test@example.com"], cwd=repo, check=True)
+            subprocess.run(["git", "config", "user.name", "Test"], cwd=repo, check=True)
+            (repo / "a.txt").write_text("before\n")
+            subprocess.run(["git", "add", "."], cwd=repo, check=True)
+            subprocess.run(["git", "commit", "-m", "base"], cwd=repo, check=True, stdout=subprocess.DEVNULL)
+            (repo / "a.txt").write_text("after\n")
+            patch = subprocess.check_output(["git", "diff", "--binary"], cwd=repo)
+            capsule = base / "capsule"; (capsule / "PAYLOADS").mkdir(parents=True)
+            patch_path = capsule / "PAYLOADS/change.patch"; patch_path.write_bytes(patch)
+            run = valid_run(); run["mode"] = "mutation"; run["patch"] = {"path": "PAYLOADS/change.patch", "sha256": mod.sha256_file(patch_path)}
+            with self.assertRaises(mod.EngineError) as ctx:
+                mod.apply_patch(repo, capsule, run)
+            self.assertEqual(ctx.exception.classification, "PATCH_STATE_FAILURE")
+
+    def test_partial_patch_is_rejected(self):
+        with tempfile.TemporaryDirectory() as td:
+            base = Path(td); repo = base / "repo"; repo.mkdir()
+            subprocess.run(["git", "init", "-b", "main"], cwd=repo, check=True, stdout=subprocess.DEVNULL)
+            subprocess.run(["git", "config", "user.email", "test@example.com"], cwd=repo, check=True)
+            subprocess.run(["git", "config", "user.name", "Test"], cwd=repo, check=True)
+            (repo / "a.txt").write_text("before-a\n"); (repo / "b.txt").write_text("before-b\n")
+            subprocess.run(["git", "add", "."], cwd=repo, check=True)
+            subprocess.run(["git", "commit", "-m", "base"], cwd=repo, check=True, stdout=subprocess.DEVNULL)
+            (repo / "a.txt").write_text("after-a\n"); (repo / "b.txt").write_text("after-b\n")
+            patch = subprocess.check_output(["git", "diff", "--binary"], cwd=repo)
+            subprocess.run(["git", "checkout", "--", "a.txt", "b.txt"], cwd=repo, check=True)
+            (repo / "a.txt").write_text("after-a\n")
+            capsule = base / "capsule"; (capsule / "PAYLOADS").mkdir(parents=True)
+            patch_path = capsule / "PAYLOADS/change.patch"; patch_path.write_bytes(patch)
+            run = valid_run(); run["mode"] = "mutation"; run["patch"] = {"path": "PAYLOADS/change.patch", "sha256": mod.sha256_file(patch_path)}
+            with self.assertRaises(mod.EngineError) as ctx:
+                mod.apply_patch(repo, capsule, run)
+            self.assertEqual(ctx.exception.classification, "PATCH_STATE_FAILURE")
+
+    def test_commit_failure_is_classified(self):
+        with tempfile.TemporaryDirectory() as td:
+            repo = Path(td) / "repo"; repo.mkdir()
+            subprocess.run(["git", "init", "-b", "main"], cwd=repo, check=True, stdout=subprocess.DEVNULL)
+            subprocess.run(["git", "config", "user.email", "test@example.com"], cwd=repo, check=True)
+            subprocess.run(["git", "config", "user.name", "Test"], cwd=repo, check=True)
+            (repo / "a.txt").write_text("before\n")
+            subprocess.run(["git", "add", "."], cwd=repo, check=True); subprocess.run(["git", "commit", "-m", "base"], cwd=repo, check=True, stdout=subprocess.DEVNULL)
+            hook = repo / ".git/hooks/pre-commit"; hook.write_text("#!/bin/sh\nexit 1\n"); hook.chmod(0o700)
+            (repo / "a.txt").write_text("after\n")
+            run = valid_run(); run["delivery"] = {"commit_push": True, "commit_message": "test", "remote": "origin", "branch": "main"}
+            evidence = Path(td) / "evidence"; evidence.mkdir()
+            with self.assertRaises(mod.EngineError) as ctx:
+                mod.commit_push(repo, run, evidence)
+            self.assertEqual(ctx.exception.classification, "GIT_FAILURE")
+
+    def test_push_failure_is_classified(self):
+        with tempfile.TemporaryDirectory() as td:
+            repo = Path(td) / "repo"; repo.mkdir()
+            subprocess.run(["git", "init", "-b", "main"], cwd=repo, check=True, stdout=subprocess.DEVNULL)
+            subprocess.run(["git", "config", "user.email", "test@example.com"], cwd=repo, check=True)
+            subprocess.run(["git", "config", "user.name", "Test"], cwd=repo, check=True)
+            (repo / "a.txt").write_text("before\n")
+            subprocess.run(["git", "add", "."], cwd=repo, check=True); subprocess.run(["git", "commit", "-m", "base"], cwd=repo, check=True, stdout=subprocess.DEVNULL)
+            (repo / "a.txt").write_text("after\n")
+            run = valid_run(); run["delivery"] = {"commit_push": True, "commit_message": "test", "remote": "missing", "branch": "main"}
+            evidence = Path(td) / "evidence"; evidence.mkdir()
+            with self.assertRaises(mod.EngineError) as ctx:
+                mod.commit_push(repo, run, evidence)
+            self.assertEqual(ctx.exception.classification, "PUSH_FAILURE")
+
+    def test_remote_sha_mismatch_is_classified(self):
+        with tempfile.TemporaryDirectory() as td:
+            repo, _, _, _, run = self._make_resume_case(Path(td))
+            (repo / "scripts/start-local.sh").write_text("#!/bin/bash\necho final\n")
+            run["delivery"] = {"commit_push": True, "commit_message": "test", "remote": "origin", "branch": "main"}
+            evidence = Path(td) / "evidence"; evidence.mkdir()
+            original_git = mod.git
+            def fake_git(repo_path, *args, check=True):
+                if args and args[0] == "ls-remote":
+                    return subprocess.CompletedProcess(["git", *args], 0, "0" * 40 + "\trefs/heads/main\n", "")
+                return original_git(repo_path, *args, check=check)
+            with mock.patch.object(mod, "git", side_effect=fake_git):
+                with self.assertRaises(mod.EngineError) as ctx:
+                    mod.commit_push(repo, run, evidence)
+            self.assertEqual(ctx.exception.classification, "REMOTE_VERIFICATION_FAILURE")
+
+    def test_primary_packaging_failure_gets_fallback_review_zip(self):
+        with tempfile.TemporaryDirectory() as td:
+            base = Path(td)
+            repo, _, _, capzip, _ = self._make_resume_case(base)
+            outbox = base / "outbox"
+            with mock.patch.object(mod, "zip_tree", side_effect=OSError("injected packaging failure")):
+                rc = mod.execute(capzip, repo, outbox)
+            self.assertEqual(rc, 74)
+            output = outbox / mod.CANONICAL_ZIP
+            self.assertTrue(output.exists())
+            extracted = base / "fallback-review"; extracted.mkdir()
+            mod.extract_capsule(output, extracted, allow_source=True); mod.verify_manifest(extracted)
+            result = json.loads((extracted / "RESULT.json").read_text())
+            self.assertEqual(result["classification"], "EVIDENCE_PACKAGING_FAILURE")
+
+    def test_frontend_test_linter_recipe_is_trusted_and_bounded(self):
+        with tempfile.TemporaryDirectory() as td, mock.patch.object(mod, "resolve_node_tool", return_value="/usr/bin/npm"):
+            recipe = mod.build_recipe(Path(td), {"id": "frontend-test-linter", "params": {"timeout": 240}})
+            self.assertEqual(recipe.command, ["/usr/bin/npm", "run", "test:lint"])
+            self.assertEqual(recipe.cwd, "frontend")
+            self.assertEqual(recipe.timeout, 240)
+
+    def test_missing_frontend_dependency_is_classified(self):
+        with tempfile.TemporaryDirectory() as td, mock.patch.dict(os.environ, {"PATH": ""}, clear=False):
+            with self.assertRaises(mod.EngineError) as ctx:
+                mod.build_recipe(Path(td), {"id": "frontend-typecheck", "params": {"timeout": 30}})
+            self.assertEqual(ctx.exception.classification, "ENVIRONMENT_MISSING_DEPENDENCY")
+
+    def test_command_logs_are_redacted_before_evidence(self):
+        with tempfile.TemporaryDirectory() as td, mock.patch.dict(os.environ, {"SYSGRID_TEST_TOKEN": "env-secret-123"}, clear=False):
+            root = Path(td); logs = root / "logs"; logs.mkdir()
+            code = "print('Authorization: Bearer [REDACTED]'); print('api_key=abc123'); print('env-secret-123'); print('https://x.test/?token=url-secret')"
+            record = mod.run_command(mod.Recipe("redact", [sys.executable, "-c", code], timeout=10), root, logs)
+            text = (logs / "redact.log").read_text()
+            for secret in ("bearer-secret", "abc123", "env-secret-123", "url-secret"):
+                self.assertNotIn(secret, text)
+            self.assertGreaterEqual(record["redactions"], 4)
+
+
+    def test_control_run_archives_successful_capsule_to_cloud_archive(self):
+        with tempfile.TemporaryDirectory() as td:
+            base = Path(td)
+            repo, _, _, capzip, _ = self._make_resume_case(base)
+            control = base / "control"
+            inbox = control / "Inbox"
+            inbox.mkdir(parents=True)
+            source = inbox / "success.sgcap"
+            source.write_bytes(capzip.read_bytes())
+            expected_sha = mod.sha256_file(source)
+            with mock.patch.dict(os.environ, {"SYSGRID_CONTROL_ROOT": str(control), "SYSGRID_REPO": str(repo)}, clear=False):
+                rc = mod.control_run(foreground=True)
+            self.assertEqual(rc, 0)
+            self.assertFalse(source.exists())
+            archived = list((control / "Archive/Processed-Capsules").glob("*success.sgcap"))
+            self.assertEqual(len(archived), 1)
+            self.assertEqual(mod.sha256_file(archived[0]), expected_sha)
+            self.assertTrue((control / "Outbox" / mod.CANONICAL_ZIP).exists())
+            state = json.loads((control / "State/latest.json").read_text())
+            self.assertEqual(state["state"], "SUCCEEDED")
+            self.assertEqual(Path(state["capsule_archive"]), archived[0])
+
+    def test_control_run_archives_failed_capsule_after_review_zip_is_verified(self):
+        with tempfile.TemporaryDirectory() as td:
+            base = Path(td)
+            repo, _, _, capzip, _ = self._make_resume_case(base)
+            control = base / "control"
+            inbox = control / "Inbox"
+            inbox.mkdir(parents=True)
+            source = inbox / "failure.sgcap"
+            source.write_bytes(capzip.read_bytes())
+            failing = mod.Recipe("injected-failure", [sys.executable, "-c", "raise SystemExit(9)"], timeout=10)
+            with mock.patch.dict(os.environ, {"SYSGRID_CONTROL_ROOT": str(control), "SYSGRID_REPO": str(repo)}, clear=False), mock.patch.object(mod, "build_recipe", return_value=failing):
+                rc = mod.control_run(foreground=True)
+            self.assertEqual(rc, 1)
+            self.assertFalse(source.exists())
+            archived = list((control / "Archive/Processed-Capsules").glob("*failure.sgcap"))
+            self.assertEqual(len(archived), 1)
+            output = control / "Outbox" / mod.CANONICAL_ZIP
+            self.assertTrue(output.exists())
+            extracted = base / "failure-review"; extracted.mkdir()
+            mod.extract_capsule(output, extracted, allow_source=True); mod.verify_manifest(extracted)
+            result = json.loads((extracted / "RESULT.json").read_text())
+            self.assertEqual(result["classification"], "TEST_OR_RECIPE_FAILURE")
+            self.assertEqual(Path(result["capsule_archive"]), archived[0])
+
+    def test_archive_failure_preserves_inbox_capsule_and_reports_review_ready_failure(self):
+        with tempfile.TemporaryDirectory() as td:
+            base = Path(td)
+            repo, _, _, capzip, _ = self._make_resume_case(base)
+            control = base / "control"
+            inbox = control / "Inbox"
+            inbox.mkdir(parents=True)
+            source = inbox / "preserved.sgcap"
+            source.write_bytes(capzip.read_bytes())
+            injected = mod.EngineError("INPUT_ARCHIVE_FAILURE", "injected archive failure", 75)
+            with mock.patch.dict(os.environ, {"SYSGRID_CONTROL_ROOT": str(control), "SYSGRID_REPO": str(repo)}, clear=False), mock.patch.object(mod, "archive_consumed_capsule", side_effect=injected):
+                rc = mod.control_run(foreground=True)
+            self.assertEqual(rc, 75)
+            self.assertTrue(source.exists())
+            state = json.loads((control / "State/latest.json").read_text())
+            self.assertEqual(state["state"], "FAILED_REVIEW_READY")
+            self.assertEqual(state["classification"], "INPUT_ARCHIVE_FAILURE")
+            output = control / "Outbox" / mod.CANONICAL_ZIP
+            extracted = base / "archive-failure-review"; extracted.mkdir()
+            mod.extract_capsule(output, extracted, allow_source=True); mod.verify_manifest(extracted)
+            result = json.loads((extracted / "RESULT.json").read_text())
+            self.assertEqual(result["classification"], "INPUT_ARCHIVE_FAILURE")
+            self.assertEqual(result["capsule_archive"], "FAILED_INPUT_RETAINED")
+
+    def test_default_control_root_is_icloud_sysgrid_control(self):
+        with mock.patch.dict(os.environ, {}, clear=True):
+            root = mod.default_control_root().as_posix()
+        self.assertTrue(root.endswith("Library/Mobile Documents/com~apple~CloudDocs/SysGrid-Control"), root)
+
+    def test_fault_matrix_declares_existing_automated_tests(self):
+        candidates = [
+            Path(__file__).resolve().parents[2] / "QUALIFICATION/FAULT_INJECTION_MATRIX.json",
+            Path(__file__).resolve().parents[1] / "QUALIFICATION/FAULT_INJECTION_MATRIX.json",
+        ]
+        matrix_path = next((p for p in candidates if p.is_file()), None)
+        self.assertIsNotNone(matrix_path)
+        matrix = json.loads(matrix_path.read_text())
+        self.assertEqual(len(matrix["required"]), 37)
+        for case in matrix["required"]:
+            self.assertTrue(hasattr(self, case["automated_test"]), case)
+
+    def test_control_run_detaches_by_default_and_completes(self):
+        with tempfile.TemporaryDirectory() as td:
+            base = Path(td)
+            repo, _, _, capzip, _ = self._make_resume_case(base)
+            control = base / "control"
+            inbox = control / "Inbox"
+            inbox.mkdir(parents=True)
+            source = inbox / "detached.sgcap"
+            source.write_bytes(capzip.read_bytes())
+            env = {
+                "SYSGRID_CONTROL_ROOT": str(control),
+                "SYSGRID_REPO": str(repo),
+                "SYSGRID_NOTIFY_DISABLE": "1",
+            }
+            with mock.patch.dict(os.environ, env, clear=False):
+                started = time.monotonic()
+                rc = mod.control_run()
+                elapsed = time.monotonic() - started
+                self.assertEqual(rc, 0)
+                self.assertLess(elapsed, 3.0)
+                state_path = control / "State/latest.json"
+                deadline = time.monotonic() + 30
+                state = {}
+                while time.monotonic() < deadline:
+                    if state_path.exists():
+                        state = json.loads(state_path.read_text())
+                        if state.get("state") in mod.TERMINAL_STATES:
+                            break
+                    time.sleep(0.1)
+                self.assertEqual(state.get("state"), "SUCCEEDED", state)
+                self.assertFalse((control / "State/active-run.json").exists())
+                self.assertFalse(source.exists())
+                self.assertTrue((control / "Outbox" / mod.CANONICAL_ZIP).exists())
+
+    def test_active_run_lock_blocks_a_second_sg(self):
+        with tempfile.TemporaryDirectory() as td:
+            base = Path(td)
+            repo, _, _, capzip, _ = self._make_resume_case(base)
+            control = base / "control"
+            inbox = control / "Inbox"
+            state_dir = control / "State"
+            inbox.mkdir(parents=True)
+            state_dir.mkdir(parents=True)
+            (inbox / "blocked.sgcap").write_bytes(capzip.read_bytes())
+            mod.write_json_atomic(
+                state_dir / "active-run.json",
+                {"run_id": "existing", "launcher_pid": os.getpid(), "created_utc": mod.now_utc()},
+            )
+            with mock.patch.dict(os.environ, {"SYSGRID_CONTROL_ROOT": str(control), "SYSGRID_REPO": str(repo)}, clear=False):
+                rc = mod.control_run()
+            self.assertEqual(rc, 2)
+            self.assertTrue((state_dir / "active-run.json").exists())
+
+    def test_stale_run_lock_is_recovered_before_launch(self):
+        with tempfile.TemporaryDirectory() as td:
+            base = Path(td)
+            repo, _, _, capzip, _ = self._make_resume_case(base)
+            control = base / "control"
+            inbox = control / "Inbox"
+            state_dir = control / "State"
+            inbox.mkdir(parents=True)
+            state_dir.mkdir(parents=True)
+            (inbox / "stale.sgcap").write_bytes(capzip.read_bytes())
+            mod.write_json_atomic(
+                state_dir / "active-run.json",
+                {"run_id": "stale", "launcher_pid": 99999999, "created_utc": mod.now_utc()},
+            )
+            with mock.patch.dict(os.environ, {
+                "SYSGRID_CONTROL_ROOT": str(control),
+                "SYSGRID_REPO": str(repo),
+                "SYSGRID_NOTIFY_DISABLE": "1",
+            }, clear=False), mock.patch.object(mod.subprocess, "Popen") as popen:
+                popen.return_value.pid = 4242
+                rc = mod.control_run()
+            self.assertEqual(rc, 0)
+            lock = json.loads((state_dir / "active-run.json").read_text())
+            self.assertNotEqual(lock["run_id"], "stale")
+            self.assertEqual(lock["launcher_pid"], 4242)
+
+    def test_detached_worker_uses_new_session_and_redirected_stdio(self):
+        with tempfile.TemporaryDirectory() as td:
+            base = Path(td)
+            repo, _, _, capzip, _ = self._make_resume_case(base)
+            control = base / "control"
+            inbox = control / "Inbox"
+            inbox.mkdir(parents=True)
+            (inbox / "launch.sgcap").write_bytes(capzip.read_bytes())
+            with mock.patch.dict(os.environ, {
+                "SYSGRID_CONTROL_ROOT": str(control),
+                "SYSGRID_REPO": str(repo),
+                "SYSGRID_NOTIFY_DISABLE": "1",
+            }, clear=False), mock.patch.object(mod.subprocess, "Popen") as popen, mock.patch.object(mod.shutil, "which", return_value=None):
+                popen.return_value.pid = 5151
+                rc = mod.control_run()
+            self.assertEqual(rc, 0)
+            kwargs = popen.call_args.kwargs
+            self.assertTrue(kwargs["start_new_session"])
+            self.assertTrue(kwargs["close_fds"])
+            self.assertIs(kwargs["stdin"], subprocess.DEVNULL)
+            self.assertIs(kwargs["stderr"], subprocess.STDOUT)
+            command = popen.call_args.args[0]
+            self.assertIn("control-worker", command)
+
+    def test_notification_bridge_queues_sanitized_deduplicated_messages(self):
+        with tempfile.TemporaryDirectory() as td:
+            base = Path(td)
+            state = base / "state"
+            capture = base / "messages.txt"
+            notify = base / "sgnotify"
+            notify.write_text("#!/bin/sh\nprintf '%s\\n---\\n' \"$1\" >> \"$NOTIFY_CAPTURE\"\n")
+            notify.chmod(0o700)
+            env = {"SYSGRID_NOTIFY_CMD": str(notify), "SYSGRID_NOTIFY_DISABLE": "0", "NOTIFY_CAPTURE": str(capture)}
+            with mock.patch.dict(os.environ, env, clear=False):
+                manager = mod.NotificationManager(state, "run-1")
+                self.assertEqual(manager.status, "READY")
+                manager.send("start", "hello token=super-secret")
+                manager.send("start", "duplicate")
+                deadline = time.monotonic() + 5
+                while time.monotonic() < deadline and not capture.exists():
+                    time.sleep(0.05)
+            text = capture.read_text()
+            self.assertIn("hello", text)
+            self.assertNotIn("super-secret", text)
+            self.assertNotIn("duplicate", text)
+            records = [json.loads(line) for line in manager.log_path.read_text().splitlines()]
+            self.assertEqual(len(records), 1)
+            self.assertEqual(records[0]["status"], "DELIVERED")
+
+    def test_notification_unavailable_is_nonfatal_and_recorded(self):
+        with tempfile.TemporaryDirectory() as td:
+            state = Path(td) / "state"
+            with mock.patch.dict(os.environ, {"SYSGRID_NOTIFY_CMD": str(Path(td) / "missing"), "SYSGRID_NOTIFY_DISABLE": "0"}, clear=False):
+                manager = mod.NotificationManager(state, "run-2")
+                manager.send("start", "hello")
+            self.assertEqual(manager.status, "UNAVAILABLE")
+            record = json.loads(manager.log_path.read_text().strip())
+            self.assertEqual(record["status"], "UNAVAILABLE")
+
+
+    def test_notification_delivery_failure_is_nonfatal_and_recorded(self):
+        with tempfile.TemporaryDirectory() as td:
+            base = Path(td)
+            state = base / "state"
+            notify = base / "sgnotify"
+            notify.write_text("#!/bin/sh\necho bridge-down >&2\nexit 7\n")
+            notify.chmod(0o700)
+            with mock.patch.dict(os.environ, {"SYSGRID_NOTIFY_CMD": str(notify), "SYSGRID_NOTIFY_DISABLE": "0"}, clear=False):
+                manager = mod.NotificationManager(state, "run-fail")
+                manager.send("start", "safe message")
+            record = json.loads(manager.log_path.read_text().strip())
+            self.assertEqual(record["status"], "DELIVERY_FAILURE")
+            self.assertEqual(record["exit_code"], 7)
+            self.assertIn("bridge-down", record["stderr"])
+
+    def test_operator_evidence_captures_worker_and_notification_ledgers(self):
+        with tempfile.TemporaryDirectory() as td:
+            base = Path(td)
+            evidence = base / "evidence"
+            worker = base / "worker.log"
+            notifications = base / "notifications.jsonl"
+            worker.write_text("managed worker output\n")
+            notifications.write_text(json.dumps({"event":"start","status":"DELIVERED","message_preview":"started"}) + "\n")
+            summary = mod.capture_operator_evidence(evidence, {"worker_log":str(worker), "notification_log":str(notifications)}, None)
+            self.assertEqual((evidence / "OPERATOR/worker.log").read_text(), "managed worker output\n")
+            self.assertTrue((evidence / "OPERATOR/notifications.jsonl").is_file())
+            self.assertEqual(summary["status_counts"]["DELIVERED"], 1)
+            self.assertEqual(summary["events"][0]["event"], "start")
+
+    def test_failure_capture_includes_referenced_source_and_playwright_artifacts(self):
+        with tempfile.TemporaryDirectory() as td:
+            base = Path(td)
+            repo = base / "repo"
+            evidence = base / "evidence"
+            (repo / "frontend/tests").mkdir(parents=True)
+            (repo / "frontend/test-results/case").mkdir(parents=True)
+            (evidence / "LOGS").mkdir(parents=True)
+            source = repo / "frontend/tests/sentinel_comprehensive.spec.ts"
+            source.write_text("throw new Error('sentinel')\n")
+            (repo / "scripts").mkdir()
+            (repo / "scripts/verify-app.sh").write_text("#!/bin/bash\n")
+            (repo / "frontend/playwright.config.ts").write_text("export default {}\n")
+            (repo / "frontend/llm-report.json").write_text("{}\n")
+            (repo / "frontend/test-results/case/error-context.md").write_text("context\n")
+            (repo / "frontend/test-results/case/test-failed-1.png").write_bytes(b"png")
+            log = evidence / "LOGS/full-app-gate.log"
+            log.write_text(f"Error at {source}:16:15\nattachment: test-results/case/error-context.md\n")
+            commands = [{"exit_code":1,"cwd":str(repo),"log":"full-app-gate.log","command":["/bin/bash","scripts/verify-app.sh"]}]
+            mod.capture_failure_evidence(repo, evidence, commands, "full-app-gate")
+            self.assertTrue((evidence / "FAILURE/SOURCE/frontend/tests/sentinel_comprehensive.spec.ts").is_file())
+            self.assertTrue((evidence / "FAILURE/SOURCE/scripts/verify-app.sh").is_file())
+            self.assertTrue((evidence / "FAILURE/ARTIFACTS/frontend/test-results/case/error-context.md").is_file())
+            capture = json.loads((evidence / "FAILURE/CAPTURE.json").read_text())
+            self.assertEqual(capture["failed_stage"], "full-app-gate")
+            self.assertGreaterEqual(len(capture["captured"]), 4)
+
+    def test_failure_zip_contains_final_notification_worker_and_failure_source(self):
+        with tempfile.TemporaryDirectory() as td:
+            base = Path(td)
+            repo, _, _, capzip, _ = self._make_resume_case(base)
+            (repo / "scripts/start-local.sh").write_text("#!/bin/bash\necho retained\n")
+            state = base / "state"
+            notify = base / "sgnotify"
+            notify.write_text("#!/bin/sh\nexit 0\n")
+            notify.chmod(0o700)
+            worker = state / "worker.log"
+            state.mkdir()
+            worker.write_text("worker output\n")
+            with mock.patch.dict(os.environ, {"SYSGRID_NOTIFY_CMD": str(notify), "SYSGRID_NOTIFY_DISABLE": "0"}, clear=False):
+                notifier = mod.NotificationManager(state, "run-evidence")
+                failing = mod.Recipe("shell-syntax", [sys.executable, "-c", "raise SystemExit(9)"], timeout=30)
+                with mock.patch.object(mod, "build_recipe", return_value=failing):
+                    rc = mod.execute(capzip, repo, base / "outbox", notifier=notifier, state_context={"worker_log":str(worker), "operator_mode":"detached"})
+            self.assertEqual(rc, 1)
+            review = base / "review"
+            review.mkdir()
+            mod.extract_capsule(base / "outbox" / mod.CANONICAL_ZIP, review, allow_source=True)
+            records = [json.loads(line) for line in (review / "OPERATOR/notifications.jsonl").read_text().splitlines()]
+            self.assertIn("failure", [record["event"] for record in records])
+            self.assertTrue(all(record["status"] == "DELIVERED" for record in records))
+            self.assertEqual((review / "OPERATOR/worker.log").read_text(), "worker output\n")
+            self.assertTrue((review / "SOURCE/scripts/start-local.sh").is_file())
+
+    def test_control_watch_exits_after_terminal_state_and_no_active_lock(self):
+        with tempfile.TemporaryDirectory() as td:
+            control = Path(td) / "control"
+            state = control / "State"
+            state.mkdir(parents=True)
+            mod.write_json_atomic(state / "latest.json", {"state": "SUCCEEDED", "stage": "complete"})
+            with mock.patch.dict(os.environ, {"SYSGRID_CONTROL_ROOT": str(control), "NO_CLEAR": "1"}, clear=False), mock.patch.object(mod, "control_status", return_value=0) as status:
+                rc = mod.control_watch()
+            self.assertEqual(rc, 0)
+            status.assert_called_once()
+
+    def test_execute_emits_start_milestone_delivery_and_success_events(self):
+        class Recorder:
+            status = "READY"
+            log_path = Path("/tmp/recorder.jsonl")
+            def __init__(self):
+                self.events = []
+            def send(self, event, message):
+                self.events.append((event, message))
+
+        with tempfile.TemporaryDirectory() as td:
+            base = Path(td)
+            repo, _, capsule, capzip, run = self._make_resume_case(base)
+            run["recipes"] = [{"id": "full-app-gate", "params": {"timeout": 30}, "required": True}]
+            run["delivery"] = {
+                "commit_push": True,
+                "commit_message": "test detached notification delivery",
+                "remote": "origin",
+                "branch": "main",
+            }
+            (capsule / "RUN.json").write_text(json.dumps(run))
+            mod.make_manifest(capsule)
+            with zipfile.ZipFile(capzip, "w", zipfile.ZIP_DEFLATED) as zf:
+                for item in sorted(capsule.rglob("*")):
+                    if item.is_file():
+                        info = zipfile.ZipInfo(item.relative_to(capsule).as_posix())
+                        info.external_attr = 0o100600 << 16
+                        zf.writestr(info, item.read_bytes())
+            recorder = Recorder()
+            no_op = mod.Recipe("full-app-gate", [sys.executable, "-c", "print('ok')"], timeout=30)
+            with mock.patch.object(mod, "build_recipe", return_value=no_op):
+                rc = mod.execute(capzip, repo, base / "outbox", notifier=recorder)
+            self.assertEqual(rc, 0)
+            events = [event for event, _ in recorder.events]
+            self.assertEqual(events, ["start", "baseline", "milestone:full-app-gate", "delivery", "success"])
+
+    def test_execute_emits_failure_event_without_changing_failure_classification(self):
+        class Recorder:
+            status = "READY"
+            log_path = Path("/tmp/recorder.jsonl")
+            def __init__(self):
+                self.events = []
+            def send(self, event, message):
+                self.events.append((event, message))
+
+        with tempfile.TemporaryDirectory() as td:
+            base = Path(td)
+            repo, _, _, capzip, _ = self._make_resume_case(base)
+            recorder = Recorder()
+            failing = mod.Recipe("shell-syntax", [sys.executable, "-c", "raise SystemExit(9)"], timeout=30)
+            with mock.patch.object(mod, "build_recipe", return_value=failing):
+                rc = mod.execute(capzip, repo, base / "outbox", notifier=recorder)
+            self.assertEqual(rc, 1)
+            output = base / "outbox" / mod.CANONICAL_ZIP
+            extracted = base / "review"; extracted.mkdir()
+            mod.extract_capsule(output, extracted, allow_source=True)
+            result = json.loads((extracted / "RESULT.json").read_text())
+            self.assertEqual(result["classification"], "TEST_OR_RECIPE_FAILURE")
+            self.assertIn("failure", [event for event, _ in recorder.events])
+
+    def test_mutation_supports_distinct_pre_and_post_dirty_path_sets(self):
+        with tempfile.TemporaryDirectory() as td:
+            base = Path(td)
+            repo = base / "repo"
+            remote = base / "remote.git"
+            capsule = base / "capsule"
+            repo.mkdir(); (capsule / "STATE").mkdir(parents=True); (capsule / "PAYLOADS").mkdir()
+            subprocess.run(["git", "init", "-b", "main"], cwd=repo, check=True, stdout=subprocess.DEVNULL)
+            subprocess.run(["git", "init", "--bare", remote], check=True, stdout=subprocess.DEVNULL)
+            subprocess.run(["git", "config", "user.email", "test@example.com"], cwd=repo, check=True)
+            subprocess.run(["git", "config", "user.name", "Test"], cwd=repo, check=True)
+            (repo / "a.txt").write_text("base-a\n")
+            (repo / "b.txt").write_text("base-b\n")
+            (repo / "protected.txt").write_text("protected\n")
+            subprocess.run(["git", "add", "."], cwd=repo, check=True)
+            subprocess.run(["git", "commit", "-m", "base"], cwd=repo, check=True, stdout=subprocess.DEVNULL)
+            subprocess.run(["git", "remote", "add", "origin", str(remote)], cwd=repo, check=True)
+            subprocess.run(["git", "push", "-u", "origin", "main"], cwd=repo, check=True, stdout=subprocess.DEVNULL)
+            head = subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=repo, text=True).strip()
+            (repo / "a.txt").write_text("retained-a\n")
+            pre_a = mod.sha256_file(repo / "a.txt")
+            pre_b = mod.sha256_file(repo / "b.txt")
+            old_b = (repo / "b.txt").read_text()
+            (repo / "b.txt").write_text("changed-b\n")
+            patch = subprocess.check_output(["git", "diff", "--binary", "--", "b.txt"], cwd=repo)
+            post_b = mod.sha256_file(repo / "b.txt")
+            (repo / "b.txt").write_text(old_b)
+            patch_path = capsule / "PAYLOADS/change.patch"; patch_path.write_bytes(patch)
+            (capsule / "STATE/pre-paths.txt").write_text("a.txt\n")
+            (capsule / "STATE/post-paths.txt").write_text("a.txt\nb.txt\n")
+            (capsule / "STATE/pre.sha256").write_text(f"{pre_a}  a.txt\n{pre_b}  b.txt\n")
+            (capsule / "STATE/post.sha256").write_text(f"{pre_a}  a.txt\n{post_b}  b.txt\n")
+            (capsule / "STATE/protected.sha256").write_text(mod.sha256_file(repo / "protected.txt") + "  protected.txt\n")
+            run = valid_run()
+            run.update({"mode":"mutation", "baseline":{"branch":"main","head":head,"upstream":"origin/main"},
+                        "state":{"pre_expected_dirty_paths":"STATE/pre-paths.txt","post_expected_dirty_paths":"STATE/post-paths.txt","pre_hashes":"STATE/pre.sha256","post_hashes":"STATE/post.sha256","protected_hashes":"STATE/protected.sha256"},
+                        "patch":{"path":"PAYLOADS/change.patch","sha256":mod.sha256_file(patch_path)}})
+            mod.validate_run(run)
+            mod.verify_repo_state(repo, run, capsule, "pre")
+            mod.apply_patch(repo, capsule, run)
+            mod.verify_repo_state(repo, run, capsule, "post")
+            self.assertEqual(mod.dirty_paths(repo), ["a.txt", "b.txt"])
+
+
+def valid_run():
+    return {
+        "schema_version": "1.0",
+        "capsule_version": "1",
+        "project": "SysGrid",
+        "master_context": "OUT-5",
+        "issue": "OUT-31",
+        "stage": "Stage 1",
+        "iteration": 12,
+        "attempt": 2,
+        "title": "Resume",
+        "lane": "product",
+        "mode": "resume_verify",
+        "engine": {"required_version": mod.ENGINE_VERSION},
+        "baseline": {"branch": "main", "head": "f" * 40, "upstream": "origin/main"},
+        "state": {"pre_expected_dirty_paths": "STATE/pre-paths.txt", "post_expected_dirty_paths": "STATE/post-paths.txt", "pre_hashes": "STATE/pre.sha256", "post_hashes": "STATE/post.sha256", "protected_hashes": "STATE/protected.sha256"},
+        "patch": None,
+        "recipes": [{"id": "shell-syntax", "params": {}, "required": True}],
+        "acceptance": {},
+        "delivery": {"commit_push": False},
+        "evidence": {},
+    }
+
+
+if __name__ == "__main__":
+    unittest.main(verbosity=2)

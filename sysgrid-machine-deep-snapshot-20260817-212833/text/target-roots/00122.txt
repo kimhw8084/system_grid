@@ -1,0 +1,38 @@
+ORIGINAL_PATH: /Users/haewonkim/.local/share/sysgrid-runner/backups/20260731T194319Z-pre-launcher-v104-repair/lib/1.0.4/README.md
+ORIGINAL_SHA256: d1729f5599f631c77eba71ea924ef8021c4e0bbe144906d043fa2ae007998454
+================================================================================
+# SysGrid Stable Execution Engine v1.0.3
+
+This is the reference implementation for the v1.1 workflow.
+
+Properties:
+
+- standard-library Python only;
+- declarative safe ZIP capsules;
+- no executable files or arbitrary commands in capsules;
+- trusted recipes versioned with the engine;
+- exact Git/path/hash state contracts;
+- `mutation` and `resume_verify` modes;
+- process-group timeouts and cleanup;
+- atomic status and canonical evidence ZIP;
+- conditional commit/push with remote SHA equality;
+- background-by-default `sg`, attached `sg --foreground`, `sgs`, and `sgwatch`;
+- sanitized Telegram lifecycle delivery through the existing operator-owned `sgnotify` command, with non-fatal exit evidence;
+- canonical inclusion of managed worker and notification ledgers;
+- bounded automatic capture of failed Playwright source, screenshot, trace/video, error context, and LLM report;
+- verified automatic consumed-capsule archival under the iCloud-backed control root.
+
+The engine must receive a PASS qualification review before any product capsule is executed.
+
+## v1.0.3 evidence-complete detached execution
+
+`sg` launches one detached, session-independent managed worker and returns the terminal immediately. An exclusive active-run lock prevents concurrent mutation. `sgs` reports run ID, PID, stage, Telegram readiness, artifact, and archival state. `sgwatch` follows the run and exits after a final state. `sg --foreground` remains available for diagnostics.
+
+The engine does not read Telegram credentials. It discovers the existing `~/.local/bin/sgnotify` bridge, delivers sanitized and deduplicated start, baseline, full-verification, delivery, success, and failure events with bounded exit evidence, and packages the complete sanitized notification ledger. Missing or failing delivery cannot alter product execution or evidence integrity. Failed routed runs also package the managed worker log, exact referenced source, bounded Playwright artifacts, and failure-capture manifest so recovery never depends on a blind rerun or manual Desktop source collection.
+
+## Retained v1.0.1 controls
+
+- The exact consumed capsule is moved from iCloud Inbox to `Archive/Processed-Capsules` only after the canonical review ZIP is built and verified.
+- Archive failure preserves the input in Inbox and reports `INPUT_ARCHIVE_FAILURE`.
+- Distinct pre- and post-mutation dirty-path contracts are enforced.
+- The trusted `frontend-test-linter` recipe runs before expensive verification.

@@ -12,8 +12,8 @@ export function ProjectsTimelineHost({ project }: { project: any }) {
   return <div className="sg-timeline-host">{authority.scheduleControl && <div className="sg-schedule-command">{authority.scheduleControl}</div>}<ProjectsModernGantt project={project} onPersist={authority.onPersist} isSaving={authority.isSaving}/></div>
 }
 /** Projects-only shell. Keep supplied action callbacks; make infrequent actions expandable. */
-export function ProjectsWorkspaceFrame({ header, commandBar, children }: any) {
-  return <div className="sg-projects-frame" data-workspace="projects" data-golden-workspace-shell="true" data-golden-workspace="projects" data-golden-archetype="hybrid" data-golden-geometry-version="1">
+export function ProjectsWorkspaceFrame({ header, commandBar, children, className = '' }: any) {
+  return <div className={`sg-projects-frame ${className}`} data-workspace="projects" data-golden-workspace-shell="true" data-golden-workspace="projects" data-golden-archetype="hybrid" data-golden-geometry-version="1">
     <div className="sg-workspace-command"><div className="sg-workspace-picker"><strong>{header?.title || 'Projects'}</strong>{commandBar?.left}</div><details className="sg-workspace-actions"><summary>Workspace actions</summary><div>{commandBar?.right}</div></details></div>
     {children}
   </div>

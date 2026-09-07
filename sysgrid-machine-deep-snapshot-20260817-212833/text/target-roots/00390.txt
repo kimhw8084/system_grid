@@ -1,0 +1,4 @@
+ORIGINAL_PATH: /Users/haewonkim/.local/share/sysgrid-campaign-platform/v1.1.1/templates/CURRENT_GATE.template.json
+ORIGINAL_SHA256: 218bc35eb1d304b6033e7e487c1e46ab8bfea682a5ccf2d5ac7056cb20e3ac8f
+================================================================================
+{"schema_version":"1.0","campaign_id":"<campaign-id>","gate":"SHADOW_QUALIFICATION_AUTHORIZED","questionnaire_closed":true,"approval_lock_valid":true}

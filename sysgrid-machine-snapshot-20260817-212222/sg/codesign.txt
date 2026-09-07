@@ -1,0 +1,1 @@
+/Users/haewonkim/.local/bin/sg: code object is not signed at all

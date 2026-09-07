@@ -1,0 +1,15 @@
+ORIGINAL_PATH: /Users/haewonkim/.local/share/sysgrid-runner/continuity-v1.0.5/rollback.sh
+ORIGINAL_SHA256: 7cf248c15f594898734b54fb5724bde312ec1daad7311c67fef09a5508961096
+================================================================================
+#!/usr/bin/env bash
+set -Eeuo pipefail
+backup_root="${1:-}"
+if [[ -z "$backup_root" || ! -d "$backup_root" ]]; then
+  printf 'Usage: %s <backup-directory>\n' "$0" >&2
+  exit 2
+fi
+for name in sg sgs sgwatch; do
+  [[ -f "$backup_root/$name" ]] || { printf 'Missing backup: %s\n' "$backup_root/$name" >&2; exit 2; }
+  install -m 0755 "$backup_root/$name" "$HOME/.local/bin/$name"
+done
+printf 'Restored SysGrid wrappers from %s\n' "$backup_root"

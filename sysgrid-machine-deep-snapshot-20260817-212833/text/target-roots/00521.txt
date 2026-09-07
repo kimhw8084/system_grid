@@ -1,0 +1,34 @@
+ORIGINAL_PATH: /Users/haewonkim/.local/state/sysgrid-supervisor/runs/20260804T232030Z-36467-732000/preflight.json
+ORIGINAL_SHA256: fe86d1cbc598fd1ac42eeede500edd68cebe134ab9c80ea81d6fd35ff53256c9
+================================================================================
+{
+  "declared_state": {
+    "dirty_path_count": 96,
+    "pre_hash_count": 96,
+    "protected_hash_count": 715
+  },
+  "engine_self_test": {
+    "engine_version": "1.1.1",
+    "result": "PASS",
+    "tests": [
+      "safe-path",
+      "manifest",
+      "corruption",
+      "canonical-dirty-paths",
+      "aggregate-recipes"
+    ]
+  },
+  "patch": {
+    "applicable": true,
+    "forward_diagnostic": "Checking patch frontend/src/components/FAR.tsx...\nChecking patch frontend/src/components/shared/OperationalWorkspaceShells.tsx...\nChecking patch frontend/tests/far-golden-workspace.spec.ts...\nChecking patch frontend/tests/shell-and-search.spec.ts...",
+    "forward_exit_code": 0,
+    "reverse_applicable": false,
+    "reverse_diagnostic": "Checking patch frontend/tests/shell-and-search.spec.ts...\nerror: while searching for:\n  await expect(commandBar).toBeVisible()\n  await expect(toolbar).toBeVisible()\n  await expect(grid).toBeVisible()\n  await expect(grid).toHaveAttribute('data-golden-grid-loading', 'false')\n  await page.evaluate(() => new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve()))))\n\n  const boxes = await Promise.all([shell, header, commandBar, toolbar, grid].map(async (locator) => {\n    const box = await locator.boundingBox()\n\nerror: patch failed: frontend/tests/shell-and-search.spec.ts:131\nerror: frontend/tests/shell-and-search.spec.ts: patch does not apply\nChecking patch frontend/tests/far-golden-workspace.spec.ts...\nerror: while searching for:\n    const firstCell = grid.locator('.ag-center-cols-container .ag-row .ag-cell').first()\n    await expect(firstCell).toBeVisible()\n    await firstCell.click()\n    const maximumKeyboardSteps = Math.min(512, Math.max(96, Math.ceil(metrics.maxScrollLeft / 10) + 32))\n    const leadingScrollPositions: number[] = []\n    for (let index = 0; index < maximumKeyboardSteps; index += 1) {\n      await page.evaluate(() => new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve()))))\n      const position = await centerViewport.evaluate((element: HTMLElement) => element.scrollLeft)\n      leadingScrollPositions.push(position)\n      if (position <= 2) break\n      await page.keyboard.press('ArrowLeft')\n    }\n    expect(\n      Math.min(...leadingScrollPositions),\n      `Keyboard traversal must establish the FAR leading edge before scanning. Observed: ${leadingScrollPositions.join(', ')}`,\n    ).toBeLessThanOrEqual(2)\n\n    const observedScrollPositions: number[] = []\n    for (let index = 0; index < maximumKeyboardSteps; index += 1) {\n      await page.evaluate(() => new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve()))))\n      await collectInsta",
+    "reverse_exit_code": 1
+  },
+  "storage": {
+    "control_free": 49462284288,
+    "local_free": 49462284288,
+    "required": 3221225472
+  }
+}

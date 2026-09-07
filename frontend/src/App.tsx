@@ -63,6 +63,7 @@ const queryClient = new QueryClient({
   },
   queryCache: new QueryCache({
     onError: (error: any) => {
+      if (error?.silent === true) return;
       // Avoid spamming error store if it's a connection error we're already retrying
       if (error.status === 0 || error.message === 'Failed to fetch') {
         console.warn("Connection lost, suppressing global error toast to prevent loop");
@@ -92,6 +93,7 @@ const queryClient = new QueryClient({
   }),
   mutationCache: new MutationCache({
     onError: (error: any) => {
+      if (error?.silent === true) return;
       errorManager.addError({
         message: error.message || 'API Mutation Failure',
         stack: error.traceback || error.stack,
@@ -782,7 +784,7 @@ function MainLayout() {
           <ErrorBoundary>
             <Routes>
               <Route path="/" element={<Dashboard onNavigate={(p:any) => navigate("/" + p)} />} />
-              <Route path="/projects" element={<ProtectedRoute view="projects" userProfile={userProfile}><Projects /></ProtectedRoute>} />
+              <Route path="/projects/*" element={<ProtectedRoute view="projects" userProfile={userProfile}><Projects /></ProtectedRoute>} />
               <Route path="/racks" element={<ProtectedRoute view="racks" userProfile={userProfile}><Racks /></ProtectedRoute>} />
               <Route path="/asset" element={<ProtectedRoute view="assets" userProfile={userProfile}><Assets /></ProtectedRoute>} />
               <Route path="/asset-real" element={<ProtectedRoute view="assets" userProfile={userProfile}><LegacyAssetRedirect /></ProtectedRoute>} />

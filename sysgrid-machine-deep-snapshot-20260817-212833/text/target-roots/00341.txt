@@ -1,0 +1,8 @@
+ORIGINAL_PATH: /Users/haewonkim/.local/share/sysgrid-campaign-platform/v1.0.0/templates/IMPROVEMENT_LEDGER.template.json
+ORIGINAL_SHA256: 5265924fa4d1cdf2afd84a43ade792878c0cd9cc852b3c41f4abfd18e738b294
+================================================================================
+{
+  "schema_version": "1.0",
+  "campaign_id": "SYSGRID-CAMPAIGN-XXXX",
+  "items": []
+}

@@ -1,0 +1,34 @@
+ORIGINAL_PATH: /Users/haewonkim/.local/share/sysgrid-supervisor/v2.0.2/RESEARCH_AND_DESIGN.md
+ORIGINAL_SHA256: c7e595747ce234ca9961b52c5f9a6862e53b451d31eb22fc5eca19935c3d4cad
+================================================================================
+# Research and Design — SysGrid Supervisor v2.0.2
+
+## Objective
+
+Minimize operator loops and wall time without weakening source authority, tenant/permission safeguards, complete evidence, exact state proof, final application verification, or remote equality.
+
+## Architecture
+
+1. **Immutable per-run evidence.** Every review and diagnostic ZIP is stored by SHA-256 and run identity. The fixed product-review alias is changed only by verified engine evidence; preflight diagnostics use a separate alias.
+2. **Duplicate mutation refusal.** When the repository exactly matches a mutation capsule's declared post-state, the supervisor classifies it as already applied and prohibits replay.
+3. **Artifact recovery without execution.** Runtime history and per-run state permit `sg recover-artifact <run-id>` to republish verified prior bytes without invoking the engine.
+4. **Quiet operator channel.** All internal events and two-minute health samples remain local. Telegram sends only start, one high-level progress summary, and final completion/failure.
+5. **Generated immutable release facts.** One source descriptor produces runtime policy, documentation, release report, manifest, and deterministic package.
+6. **Preserved execution trust.** Exact live-process reattachment, verified-output recovery, exact-prestate-only retry, post/unknown-state refusal, and bounded resource exports remain mandatory.
+
+## Qualification contract
+
+- complete deterministic package identity
+- exact Stable Engine identity and self-test
+- capsule cross-ledger consistency before mutation
+- exact repository state and patch-state proof
+- duplicate mutation replay refusal with exact post-state classification
+- immutable per-run artifact history and canonical-review preservation
+- one authorized engine invocation with replay refusal
+- three-message Telegram summary policy with full local event telemetry
+- machine-readable resource and runtime telemetry
+- verified evidence publication, artifact recovery, and deterministic rebuild
+
+## Honest boundary
+
+Telegram delivery remains durably deduplicated at-least-once. The three-message policy is an operator presentation layer only; it does not remove internal events, evidence, diagnostics, or fail-closed checks.

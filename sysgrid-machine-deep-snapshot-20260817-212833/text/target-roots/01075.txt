@@ -1,0 +1,13 @@
+ORIGINAL_PATH: /Users/haewonkim/.local/state/sysgrid-supervisor/runs/20260801T223054Z-32752-747000/diagnostic/TRACEBACK.txt
+ORIGINAL_SHA256: 08b9ac80da90762d5ff31dadf7a11c76c233a91cd25701156d1f050f3d2992db
+================================================================================
+Traceback (most recent call last):
+  File "/Users/haewonkim/.local/share/sysgrid-supervisor/v2.1.4/payload/sysgrid_supervisor.py", line 2824, in run_supervised
+    checks = parallel_checks({
+        "engine": lambda: (lambda p: {"path": str(p), "self_test": verify_engine(p)})(discover_engine()),
+        "repository": lambda: probe_repo_and_state(repo, capsule),
+        "storage": lambda: verify_storage(control, capsule.size),
+    })
+  File "/Users/haewonkim/.local/share/sysgrid-supervisor/v2.1.4/payload/sysgrid_supervisor.py", line 2377, in parallel_checks
+    raise PreflightAggregateError("; ".join(rendered), exit_code, results, failures)
+PreflightAggregateError: repository: DUPLICATE_MUTATION_CAPSULE_POST_STATE: repository exactly matches this mutation capsule's declared post-state; the mutation was already applied by an earlier run and replay is prohibited. The prior canonical review ZIP is preserved. Use 'sg recover-artifact <run-id>' to republish an earlier run artifact without executing the product again.

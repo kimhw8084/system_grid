@@ -1,0 +1,34 @@
+ORIGINAL_PATH: /Users/haewonkim/.local/state/sysgrid-supervisor/runs/20260805T131930Z-84523-076000/preflight.json
+ORIGINAL_SHA256: aa08d14890fcd6f5756911ab1d839bc692df6c837d79f3485797b9bcc95d0f14
+================================================================================
+{
+  "declared_state": {
+    "dirty_path_count": 97,
+    "pre_hash_count": 97,
+    "protected_hash_count": 717
+  },
+  "engine_self_test": {
+    "engine_version": "1.1.1",
+    "result": "PASS",
+    "tests": [
+      "safe-path",
+      "manifest",
+      "corruption",
+      "canonical-dirty-paths",
+      "aggregate-recipes"
+    ]
+  },
+  "patch": {
+    "applicable": true,
+    "forward_diagnostic": "Checking patch frontend/src/components/shared/OperationalWorkspacePrimitives.tsx...",
+    "forward_exit_code": 0,
+    "reverse_applicable": false,
+    "reverse_diagnostic": "Checking patch frontend/src/components/shared/OperationalWorkspacePrimitives.tsx...\nerror: while searching for:\n      return\n    }\n\n    const trigger = triggerRef.current\n\n    const handleViewportChange = (event?: Event) => {\n      if (shouldIgnoreWorkspaceAnchoredScroll(event?.target ?? null, panelRef.current)) return\n      schedulePositionUpdate()\n\nerror: patch failed: frontend/src/components/shared/OperationalWorkspacePrimitives.tsx:193\nerror: frontend/src/components/shared/OperationalWorkspacePrimitives.tsx: patch does not apply",
+    "reverse_exit_code": 1
+  },
+  "storage": {
+    "control_free": 54668759040,
+    "local_free": 54668759040,
+    "required": 3221225472
+  }
+}

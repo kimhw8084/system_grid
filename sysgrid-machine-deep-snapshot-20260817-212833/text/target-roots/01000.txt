@@ -1,0 +1,34 @@
+ORIGINAL_PATH: /Users/haewonkim/.local/state/sysgrid-supervisor/runs/20260804T010704Z-54912-696000/diagnostic/LOGS/preflight.json
+ORIGINAL_SHA256: e7db944f955e313b5fc2969ef5eab5d52e74bbbb5c7f7ea5f766255507a53777
+================================================================================
+{
+  "declared_state": {
+    "dirty_path_count": 95,
+    "pre_hash_count": 95,
+    "protected_hash_count": 94
+  },
+  "engine_self_test": {
+    "engine_version": "1.1.1",
+    "result": "PASS",
+    "tests": [
+      "safe-path",
+      "manifest",
+      "corruption",
+      "canonical-dirty-paths",
+      "aggregate-recipes"
+    ]
+  },
+  "patch": {
+    "applicable": true,
+    "forward_diagnostic": "Checking patch frontend/src/components/FAR.tsx...",
+    "forward_exit_code": 0,
+    "reverse_applicable": false,
+    "reverse_diagnostic": "Checking patch frontend/src/components/FAR.tsx...\nerror: while searching for:\n        </div>\n      )\n    }\n  ].map((column: any) => {\n    const columnId = String(column.colId || column.field || '')\n    const explicitWidth = typeof column.width === 'number' && typeof column.flex !== 'number'\n      ? column.width\n      : null\n    const utilityWidthLocked = columnId === 'selection' || columnId === 'actions'\n\n    if (explicitWidth !== null) {\n      const boundedMaxWidth = utilityWidthLocked\n        ? explicitWidth\n        : Math.max(explicitWidth, Math.min(explicitWidth * 2, 320))\n      return {\n        ...column,\n        cellDataType: false,\n        initialWidth: explicitWidth,\n        minWidth: utilityWidthLocked ? explicitWidth : Math.min(explicitWidth, 80),\n        maxWidth: boundedMaxWidth,\n        suppressAutoSize: true,\n        suppressSizeToFit: true,\n      }\n    }\n\n    const flexBounds = columnId === 'title'\n      ? { minWidth: 260, maxWidth: 420 }\n      : columnId === 'effect'\n        ? { minWidth: 220, maxWidth: 420 }\n        : columnId === 'analytical_focus'\n          ? { minWidth: 240, maxWidth: 480 }\n          : {}\n\n    return {\n      ...column,\n      ...flexBounds,\n      cellDataType: false,\n      suppressAutoSize: true,\n    }\n  }), [fontSize, hiddenColumns, mutationBlocked, workspaceMode]) as any\n\n  const canonicalColumnLayoutState = useMemo(() => columnDefs.map((column: any, index: number) => {\n    const state: Record<string, any> = {\n\nerror: patch failed: frontend/src/components/FAR.tsx:936\nerror: frontend/src/components/FAR.tsx: patch does not apply",
+    "reverse_exit_code": 1
+  },
+  "storage": {
+    "control_free": 55831519232,
+    "local_free": 55831519232,
+    "required": 3221225472
+  }
+}

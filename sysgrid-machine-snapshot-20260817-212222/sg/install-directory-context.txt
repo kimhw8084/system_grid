@@ -1,0 +1,16 @@
+=== sg directory: /Users/haewonkim/.local/bin ===
+total 293696
+drwxr-xr-x  16 haewonkim  staff        512 Aug  8 11:24 .
+drwxr-xr-x   7 haewonkim  staff        224 Jul 28 14:59 ..
+lrwxr-xr-x   1 haewonkim  staff         53 Apr 24 21:10 claude -> /Users/haewonkim/.local/share/claude/versions/2.1.119
+lrwxr-xr-x   1 haewonkim  staff         59 Jun  3 11:04 headroom -> /Users/haewonkim/.local/pipx/venvs/headroom-ai/bin/headroom
+-rwxr-xr-x   1 haewonkim  staff        147 Aug  8 11:24 sg
+-rwxr-xr-x@  1 haewonkim  staff     142979 Aug  1 22:47 sgd
+-rwxr-xr-x@  1 haewonkim  staff      45403 Aug  1 20:24 sgd.backup.20260802T014654Z
+-rwxr-xr-x@  1 haewonkim  staff      92097 Aug  1 20:46 sgd.backup.20260802T030839Z
+-rwxr-xr-x   1 haewonkim  staff     124575 Aug  1 22:08 sgd.backup.20260802T030902Z
+-rwxr-xr-x   1 haewonkim  staff     124575 Aug  1 22:09 sgd.backup.20260802T034707Z
+-rwxr-xr-x   1 haewonkim  staff        884 Jul 26 16:57 sgnotify
+-rwxr-xr-x   1 haewonkim  staff        187 Aug  1 17:49 sgs
+-rwxr-xr-x   1 haewonkim  staff        186 Aug  1 17:49 sgwatch
+lrwxr-xr-x   1 haewonkim  staff         60 Apr  8  2025 virtualenv -> /Users/haewonkim/.local/pipx/venvs/virtualenv/bin/virtualenv

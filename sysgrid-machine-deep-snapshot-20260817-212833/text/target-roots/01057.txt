@@ -1,0 +1,18 @@
+ORIGINAL_PATH: /Users/haewonkim/.local/state/sysgrid-supervisor/runs/20260802T032313Z-27523-292000/diagnostic/RESULT.json
+ORIGINAL_SHA256: 3f91b0133dd88cdca6d91ebbc5363b392ad382a0b90aedace8950cdd7c0abd03
+================================================================================
+{
+  "capsule_file": "DOWNLOAD_Attempt_12_Superseding_Cumulative_FAR_Domain_Recovery_and_Monitoring_Hydration.sgcap",
+  "capsule_sha256": "d97a577400df89f6fbb59c492b33f7f5846a516701652aea728021ee13627bee",
+  "classification": "PREFLIGHT_AGGREGATE_FAILURE",
+  "engine_version": "1.0.4",
+  "exit_code": 70,
+  "finished_utc": "2026-08-02T03:23:15Z",
+  "lane": "execution_platform",
+  "message": "repository: REPOSITORY_DIRTY_STATE_FAILURE: dirty paths mismatch missing=[] extra=['patches/FAR_DIRECT_APPLY_FULL_GOLDEN_RECOVERY/APPLY_FAR_RECOVERY.command', 'patches/FAR_DIRECT_APPLY_FULL_GOLDEN_RECOVERY/FAR_FULL_GOLDEN_RECOVERY.patch', 'patches/FAR_DIRECT_APPLY_FULL_GOLDEN_RECOVERY/README.md', 'patches/FAR_DIRECT_APPLY_FULL_GOLDEN_RECOVERY/ROLLBACK_FAR_FULL_GOLDEN_RECOVERY.patch']",
+  "mode": "qualification",
+  "mutation_state": "not_started",
+  "result": "failure",
+  "safe_automatic_retry_performed": 0,
+  "supervisor_version": "2.1.5"
+}

@@ -1,0 +1,102 @@
+ORIGINAL_PATH: /Users/haewonkim/.local/share/sysgrid-campaign-platform/v1.1.1/DIFFS/supervisor_v2.1.5_to_v2.2.0.patch
+ORIGINAL_SHA256: 92edd22b114180cc381d92f3abdb2dfa8b44782be720d98a6fde9ee376498c62
+================================================================================
+--- /mnt/data/workflow_impl/src/sysgrid_supervisor_v2_1_5.py	2026-08-02 14:18:21.150600269 +0000
++++ /mnt/data/workflow_impl/package/SYSGRID_CAMPAIGN_PLATFORM_v1.0.0/payload/sysgrid_supervisor.py	2026-08-02 14:31:08.274627703 +0000
+@@ -37,6 +37,8 @@
+ from pathlib import Path, PurePosixPath
+ from typing import Any, Callable, Iterable, Iterator, Sequence
+ 
++from sysgrid_state_identity import canonical_dirty_paths, StateIdentityError
++
+ PACKAGE_ROOT = Path(__file__).resolve().parent.parent
+ 
+ 
+@@ -390,7 +392,7 @@
+     missing = sorted(required - set(run))
+     if missing:
+         raise SupervisorError("CAPSULE_SCHEMA_FAILURE", f"RUN.json missing fields: {missing}", 65)
+-    if run.get("schema_version") != "1.0":
++    if run.get("schema_version") != "1.1":
+         raise SupervisorError("CAPSULE_SCHEMA_FAILURE", f"unsupported schema_version: {run.get('schema_version')!r}", 65)
+     if run.get("project") != "SysGrid":
+         raise SupervisorError("PROJECT_SCOPE_FAILURE", "capsule project must be SysGrid", 65)
+@@ -1054,26 +1056,10 @@
+ 
+ 
+ def dirty_paths(repo: Path) -> tuple[str, ...]:
+-    commands = [
+-        ("diff", "--name-only", "-z", "HEAD"),
+-        ("diff", "--cached", "--name-only", "-z", "HEAD"),
+-        ("ls-files", "--others", "--exclude-standard", "-z"),
+-    ]
+-    paths: set[str] = set()
+-    for args in commands:
+-        completed = subprocess.run(
+-            ["git", "-C", str(repo), "-c", "core.quotepath=false", *args],
+-            stdin=subprocess.DEVNULL, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+-            timeout=30, check=False, env=sanitized_env(),
+-        )
+-        if completed.returncode:
+-            raise SupervisorError("GIT_PREFLIGHT_FAILURE", completed.stderr.decode("utf-8", "replace")[:1000], 69)
+-        for rel in split_nul(completed.stdout):
+-            if rel.endswith("/"):
+-                paths.update(expand_collapsed_untracked_directory(repo, rel))
+-            else:
+-                paths.add(rel)
+-    return tuple(sorted(paths))
++    try:
++        return canonical_dirty_paths(repo)
++    except StateIdentityError as exc:
++        raise SupervisorError("GIT_PREFLIGHT_FAILURE", str(exc), 69) from exc
+ 
+ 
+ def probe_repo(repo: Path, run: dict[str, Any]) -> RepoInfo:
+@@ -1356,8 +1342,8 @@
+         if recipe_id in recipe_ids:
+             raise SupervisorError("CAPSULE_CROSS_LEDGER_FAILURE", f"duplicate recipe id: {recipe_id}", 65)
+         recipe_ids.add(recipe_id)
+-        if recipe.get("required") is not True:
+-            raise SupervisorError("CAPSULE_CROSS_LEDGER_FAILURE", f"recipe must be required: {recipe_id}", 65)
++        if not isinstance(recipe.get("required", True), bool):
++            raise SupervisorError("CAPSULE_CROSS_LEDGER_FAILURE", f"recipe required flag invalid: {recipe_id}", 65)
+         params = recipe.get("params")
+         timeout = params.get("timeout") if isinstance(params, dict) else None
+         if not isinstance(timeout, int) or isinstance(timeout, bool) or not 1 <= timeout <= 24 * 60 * 60:
+@@ -1616,7 +1602,7 @@
+     outbox.mkdir(parents=True, exist_ok=True)
+     local = state_root()
+     local.mkdir(parents=True, exist_ok=True)
+-    required = max(512 * 1024 * 1024, capsule_size * 8)
++    required = max(3 * 1024 * 1024 * 1024, capsule_size * 12)
+     free_local = shutil.disk_usage(local).free
+     free_control = shutil.disk_usage(outbox).free
+     if free_local < required:
+@@ -1952,7 +1938,8 @@
+         record = _local_notification_record(event_id)
+     else:
+         telegram_event_id, telegram_text, policy_required = presentation
+-        required = policy_required if required_notification is None else bool(required_notification and policy_required)
++        mandatory = bool(NOTIFICATION_POLICY.get("mandatory", False))
++        required = mandatory and (policy_required if required_notification is None else bool(required_notification and policy_required))
+         record = deliver_notification_event(
+             run_id=run_id,
+             event_id=telegram_event_id,
+@@ -2765,7 +2752,7 @@
+         run_id = f"{dt.datetime.now(dt.timezone.utc).strftime('%Y%m%dT%H%M%SZ')}-{os.getpid()}-{time.time_ns() % 1_000_000:06d}"
+         work = state_root() / "runs" / run_id
+         work.mkdir(parents=True, exist_ok=False)
+-        telegram_config = load_telegram_config(required=True)
++        telegram_config = load_telegram_config(required=bool(NOTIFICATION_POLICY.get("mandatory", False)))
+         state: dict[str, Any] = {
+             "state": "STARTING",
+             "stage": "initialization",
+@@ -2777,7 +2764,7 @@
+             "resource_plan": resource_plan(),
+             "telegram": telegram_public_summary(telegram_config),
+             "notification_policy": {
+-                "required_before_engine": True,
++                "required_before_engine": bool(NOTIFICATION_POLICY.get("mandatory", False)),
+                 "registered_events": len(PROGRESS_EVENT_REGISTRY),
+                 "engine_heartbeat_seconds": bounded_heartbeat_seconds(),
+                 "telegram_heartbeats": TELEGRAM_HEARTBEATS_ENABLED,

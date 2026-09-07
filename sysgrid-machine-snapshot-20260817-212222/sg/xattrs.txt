@@ -1,0 +1,2 @@
+$ xattr -l /Users/haewonkim/.local/bin/sg
+

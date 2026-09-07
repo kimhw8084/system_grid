@@ -1,0 +1,504 @@
+ORIGINAL_PATH: /Users/haewonkim/.local/share/sysgrid-runner/continuity-v1.0.7/sg
+ORIGINAL_SHA256: ee70f704eeedeb8e1a2bb519819e893307c1b8e39bbd2bbb41e67bf52cddd30c
+================================================================================
+#!/usr/bin/env bash
+set -Eeuo pipefail
+IFS=$'\n\t'
+
+VERSION="1.0.7"
+PAYLOAD_DIR="${SYSGRID_CONTINUITY_PAYLOAD_DIR:-$HOME/.local/share/sysgrid-runner/continuity-v1.0.7}"
+CORE_DIR="${SYSGRID_CONTINUITY_CORE_DIR:-$HOME/.local/share/sysgrid-runner/core-v1.0.4}"
+CORE_SG="$CORE_DIR/sg"
+CORE_SGWATCH="$CORE_DIR/sgwatch"
+PACKAGER="$PAYLOAD_DIR/continuity_packager.py"
+WATCHER="$PAYLOAD_DIR/continuity_watcher.py"
+CONTROL_ROOT="${SYSGRID_CONTROL_ROOT:-$HOME/Library/Mobile Documents/com~apple~CloudDocs/SysGrid-Control}"
+INBOX="$CONTROL_ROOT/Inbox"
+OUTBOX="$CONTROL_ROOT/Outbox"
+STATE_DIR="$CONTROL_ROOT/State"
+LOCK_DIR="$STATE_DIR/continuity-active.lock"
+FINAL_WAIT_SECONDS="${SYSGRID_CONTINUITY_FINAL_HANDOFF_WAIT_SECONDS:-300}"
+REPO_HINT_FILE="${SYSGRID_REPO_HINT_FILE:-$HOME/.config/sysgrid-runner/repo-path}"
+
+sha256_file() {
+  if command -v shasum >/dev/null 2>&1; then shasum -a 256 "$1" | awk '{print $1}'
+  else sha256sum "$1" | awk '{print $1}'
+  fi
+}
+
+fail() {
+  printf 'FAIL: %s\n' "$*" >&2
+  exit 2
+}
+
+ensure_platform() {
+  [[ -x "$CORE_SG" ]] || fail "missing qualified core sg: $CORE_SG"
+  [[ -x "$CORE_SGWATCH" ]] || fail "missing qualified core sgwatch: $CORE_SGWATCH"
+  [[ -x "$PACKAGER" && -x "$WATCHER" ]] || fail "continuity payload incomplete: $PAYLOAD_DIR"
+  command -v python3 >/dev/null 2>&1 || fail "python3 is required"
+  mkdir -p "$INBOX" "$OUTBOX" "$STATE_DIR" "$CONTROL_ROOT/Continuity"
+}
+
+inventory_json() {
+  python3 - "$INBOX" <<'PY'
+import json, pathlib, sys
+root=pathlib.Path(sys.argv[1])
+root.mkdir(parents=True, exist_ok=True)
+capsules=[]; unsafe=[]; ignored=[]
+for p in sorted(root.iterdir(), key=lambda q:q.name.lower()):
+    if p.name == '.DS_Store':
+        ignored.append(p.name); continue
+    if p.is_symlink():
+        unsafe.append({'name':p.name,'reason':'symlink'}); continue
+    if p.is_dir():
+        unsafe.append({'name':p.name,'reason':'directory'}); continue
+    if not p.is_file():
+        unsafe.append({'name':p.name,'reason':'non-regular'}); continue
+    if p.suffix.lower() not in {'.sgcap','.zip'}:
+        unsafe.append({'name':p.name,'reason':'unexpected-file'}); continue
+    capsules.append(str(p))
+print(json.dumps({'capsules':capsules,'unsafe':unsafe,'ignored':ignored}, separators=(',',':')))
+PY
+}
+
+read_inventory() {
+  local data="$1"
+  python3 - "$data" <<'PY'
+import json, sys
+x=json.loads(sys.argv[1])
+print(len(x['capsules']))
+print(x['capsules'][0] if len(x['capsules'])==1 else '')
+print('; '.join(f"{i['name']} ({i['reason']})" for i in x['unsafe']))
+PY
+}
+
+capsule_metadata() {
+  local path="$1"
+  python3 - "$path" <<'PY'
+import hashlib, pathlib, sys
+p=pathlib.Path(sys.argv[1])
+h=hashlib.sha256()
+with p.open('rb') as f:
+    for c in iter(lambda:f.read(1024*1024),b''): h.update(c)
+print(p.name)
+print(h.hexdigest())
+print(p.stat().st_size)
+PY
+}
+
+lock_state_json() {
+  python3 - "$LOCK_DIR" "$STATE_DIR" "$CONTROL_ROOT" <<'PY'
+import json, os, pathlib, sys
+lock=pathlib.Path(sys.argv[1]); state=pathlib.Path(sys.argv[2]); control=pathlib.Path(sys.argv[3])
+out={'status':'none','launch_id':None,'watcher_pid':None,'continuity_version':None}
+def alive(pid):
+    try: os.kill(pid,0); return True
+    except ProcessLookupError: return False
+    except PermissionError: return True
+if lock.is_dir():
+    out['status']='stale'
+    try: launch_id=(lock/'launch_id').read_text().strip()
+    except OSError: launch_id=''
+    out['launch_id']=launch_id or None
+    launch=state/f'continuity-launch-{launch_id}.json' if launch_id else None
+    if launch and launch.is_file():
+        try:
+            data=json.loads(launch.read_text())
+            out['continuity_version']=data.get('continuity_version')
+            pid=int(data.get('watcher_pid') or 0)
+            out['watcher_pid']=pid or None
+            if pid and alive(pid): out['status']='active'
+        except Exception: pass
+    # No process-table inference is permitted. A lock is active only when its
+    # immutable launch record supplies the PID and that PID is alive.
+print(json.dumps(out,separators=(',',':')))
+PY
+}
+
+bundle_ready() {
+  local path="$OUTBOX/UPLOAD_THIS_TO_CHATGPT.zip"
+  [[ -f "$path" ]] || return 1
+  python3 - "$path" <<'PY' >/dev/null 2>&1
+import sys, zipfile
+with zipfile.ZipFile(sys.argv[1]) as z:
+    names=set(z.namelist())
+    assert 'CONTINUITY/HANDOFF.json' in names
+    assert 'MANIFEST.sha256' in names
+    assert z.testzip() is None
+PY
+}
+
+bundle_capsule_sha() {
+  local path="$OUTBOX/UPLOAD_THIS_TO_CHATGPT.zip"
+  [[ -f "$path" ]] || return 1
+  python3 - "$path" <<'PY' 2>/dev/null
+import json, sys, zipfile
+with zipfile.ZipFile(sys.argv[1]) as z:
+    handoff=json.loads(z.read('CONTINUITY/HANDOFF.json'))
+    launch=handoff.get('launch') or {}
+    result=handoff.get('result') or {}
+    print(launch.get('expected_capsule_sha256') or result.get('capsule_sha256') or '')
+PY
+}
+
+
+platform_qualification_ready() {
+  local path="$OUTBOX/UPLOAD_THIS_TO_CHATGPT.zip"
+  [[ -f "$path" ]] || return 1
+  python3 - "$path" <<'PY_PLATFORM_STATUS' >/dev/null 2>&1
+import json, sys, zipfile
+with zipfile.ZipFile(sys.argv[1]) as z:
+    names=set(z.namelist())
+    assert 'RESULT.json' in names and 'MANIFEST.sha256' in names
+    assert 'CONTINUITY/HANDOFF.json' not in names
+    assert z.testzip() is None
+    result=json.loads(z.read('RESULT.json'))
+    assert result.get('lane') == 'execution-platform'
+    assert result.get('mode') == 'qualification'
+    assert result.get('result') == 'success'
+    assert result.get('classification') == 'PASS'
+PY_PLATFORM_STATUS
+}
+
+
+discover_repo() {
+  local handoff_hint candidate top
+  local -a candidates=()
+  [[ -n "${SYSGRID_REPO:-}" ]] && candidates+=("$SYSGRID_REPO")
+  if top="$(git rev-parse --show-toplevel 2>/dev/null)"; then candidates+=("$top"); fi
+  [[ -f "$REPO_HINT_FILE" ]] && candidates+=("$(cat "$REPO_HINT_FILE" 2>/dev/null || true)")
+  handoff_hint="$(python3 -c 'import json,pathlib,sys; p=pathlib.Path(sys.argv[1]); print(json.loads(p.read_text()).get("launch",{}).get("repo","") if p.is_file() else "")' "$CONTROL_ROOT/Continuity/Current/HANDOFF.json" 2>/dev/null || true)"
+  [[ -n "$handoff_hint" ]] && candidates+=("$handoff_hint")
+  candidates+=(
+    "$PWD/SysGrid" "$PWD/sysgrid"
+    "$HOME/SysGrid" "$HOME/sysgrid"
+    "$HOME/Documents/SysGrid" "$HOME/Developer/SysGrid" "$HOME/Projects/SysGrid"
+    "$HOME/Desktop/SysGrid" "$HOME/Downloads/SysGrid"
+  )
+  for candidate in "${candidates[@]}"; do
+    [[ -n "$candidate" && -d "$candidate" ]] || continue
+    if top="$(git -C "$candidate" rev-parse --show-toplevel 2>/dev/null)"; then
+      printf '%s\n' "$top"
+      return 0
+    fi
+  done
+  return 1
+}
+
+print_paths() {
+  printf '[1/4] Control root: %s\n' "$CONTROL_ROOT"
+  printf '[2/4] Inbox:       %s\n' "$INBOX"
+  printf '[3/4] Outbox:      %s\n' "$OUTBOX/UPLOAD_THIS_TO_CHATGPT.zip"
+  printf '[4/4] Installed:   %s\n' "$PAYLOAD_DIR"
+}
+
+show_status() {
+  ensure_platform
+  local inv rows count capsule unsafe lock lock_status launch_id watcher_pid outbox_path outbox_sha current_capsule_sha handoff_capsule_sha handoff_matches platform_ready
+  inv="$(inventory_json)"
+  rows="$(read_inventory "$inv")"
+  count="$(printf '%s\n' "$rows" | sed -n '1p')"
+  capsule="$(printf '%s\n' "$rows" | sed -n '2p')"
+  unsafe="$(printf '%s\n' "$rows" | sed -n '3p')"
+  lock="$(lock_state_json)"
+  lock_status="$(python3 -c 'import json,sys; print(json.loads(sys.argv[1])["status"])' "$lock")"
+  launch_id="$(python3 -c 'import json,sys; print(json.loads(sys.argv[1]).get("launch_id") or "none")' "$lock")"
+  watcher_pid="$(python3 -c 'import json,sys; print(json.loads(sys.argv[1]).get("watcher_pid") or "none")' "$lock")"
+  printf 'SysGrid status — continuity v%s\n' "$VERSION"
+  if [[ -n "$unsafe" ]]; then
+    printf '[1/4] Inbox: BLOCKED — %s\n' "$unsafe"
+  elif [[ "$count" == "1" ]]; then
+    printf '[1/4] Inbox: READY — %s\n' "$(basename "$capsule")"
+  elif [[ "$count" == "0" ]]; then
+    printf '[1/4] Inbox: EMPTY\n'
+  else
+    printf '[1/4] Inbox: BLOCKED — %s capsules present\n' "$count"
+  fi
+  printf '[2/4] Run lock: %s' "$lock_status"
+  [[ "$lock_status" == "none" ]] || printf ' — launch %s, watcher %s' "$launch_id" "$watcher_pid"
+  printf '\n'
+  outbox_path="$OUTBOX/UPLOAD_THIS_TO_CHATGPT.zip"
+  handoff_matches=0
+  platform_ready=0
+  current_capsule_sha=""
+  handoff_capsule_sha=""
+  if [[ "$count" == "1" ]]; then
+    current_capsule_sha="$(capsule_metadata "$capsule" | sed -n '2p')"
+  fi
+  if platform_qualification_ready; then
+    outbox_sha="$(sha256_file "$outbox_path")"
+    platform_ready=1
+    printf '[3/4] Handoff: PLATFORM QUALIFICATION READY — %s\n' "$outbox_sha"
+  elif bundle_ready; then
+    outbox_sha="$(sha256_file "$outbox_path")"
+    handoff_capsule_sha="$(bundle_capsule_sha || true)"
+    if [[ -z "$current_capsule_sha" || "$handoff_capsule_sha" == "$current_capsule_sha" ]]; then
+      handoff_matches=1
+      printf '[3/4] Handoff: READY — %s\n' "$outbox_sha"
+    else
+      printf '[3/4] Handoff: previous run ready; staged capsule has not run yet\n'
+    fi
+  elif [[ -f "$outbox_path" ]]; then
+    printf '[3/4] Handoff: engine/intermediate ZIP present; continuity not finalized\n'
+  else
+    printf '[3/4] Handoff: not ready\n'
+  fi
+  if [[ "$lock_status" == "active" ]]; then
+    printf '[4/4] Next: let the active run finish; check again with: sg status\n'
+  elif [[ "$platform_ready" == "1" ]]; then
+    printf '[4/4] Next: upload the platform qualification ZIP to ChatGPT; do not run a product capsule yet.\n'
+  elif [[ -n "$unsafe" || "$count" -gt 1 ]]; then
+    printf '[4/4] Next: leave exactly one capsule in Inbox.\n'
+  elif [[ "$count" == "1" && "$handoff_matches" == "0" ]]; then
+    printf '[4/4] Next: sg\n'
+  elif [[ "$handoff_matches" == "1" ]]; then
+    printf '[4/4] Next: upload the ready Outbox ZIP to ChatGPT.\n'
+  else
+    printf '[4/4] Next: place one .sgcap in Inbox, or run: sg run /path/to/file.sgcap\n'
+  fi
+}
+
+stage_capsule() {
+  local source="$1"
+  [[ -n "$source" ]] || fail "usage: sg run /path/to/file.sgcap"
+  python3 - "$source" "$INBOX" <<'PY'
+import hashlib, os, pathlib, shutil, sys
+src=pathlib.Path(sys.argv[1]).expanduser()
+inbox=pathlib.Path(sys.argv[2]); inbox.mkdir(parents=True,exist_ok=True)
+if not src.exists(): raise SystemExit(f'FAIL: capsule not found: {src}')
+if src.is_symlink() or not src.is_file(): raise SystemExit(f'FAIL: capsule must be a regular non-symlink file: {src}')
+if src.suffix.lower() not in {'.sgcap','.zip'}: raise SystemExit('FAIL: capsule extension must be .sgcap or .zip')
+if src.stat().st_size <= 0: raise SystemExit('FAIL: capsule is empty')
+def sha(p):
+    h=hashlib.sha256()
+    with p.open('rb') as f:
+        for c in iter(lambda:f.read(1024*1024),b''): h.update(c)
+    return h.hexdigest()
+existing=[]
+for p in inbox.iterdir():
+    if p.name=='.DS_Store': continue
+    if p.is_symlink() or p.is_dir() or not p.is_file() or p.suffix.lower() not in {'.sgcap','.zip'}:
+        raise SystemExit(f'FAIL: Inbox contains unsupported entry: {p.name}')
+    existing.append(p)
+if len(existing)>1: raise SystemExit('FAIL: Inbox contains multiple capsules; leave exactly one')
+target=inbox/src.name
+src_sha=sha(src)
+if existing:
+    current=existing[0]
+    if current.name==src.name and sha(current)==src_sha:
+        print(target); raise SystemExit(0)
+    raise SystemExit(f'FAIL: Inbox already contains a different capsule: {current.name}')
+tmp=inbox/f'.{src.name}.{os.getpid()}.tmp'
+shutil.copyfile(src,tmp)
+if sha(tmp)!=src_sha or tmp.stat().st_size!=src.stat().st_size:
+    tmp.unlink(missing_ok=True); raise SystemExit('FAIL: staged capsule verification failed')
+os.replace(tmp,target)
+print(target)
+PY
+}
+
+run_capsule() {
+  local foreground="$1"
+  ensure_platform
+
+  local inv rows count capsule unsafe meta capsule_name capsule_sha capsule_size lock lock_status stale_record
+  inv="$(inventory_json)"
+  rows="$(read_inventory "$inv")"
+  count="$(printf '%s\n' "$rows" | sed -n '1p')"
+  capsule="$(printf '%s\n' "$rows" | sed -n '2p')"
+  unsafe="$(printf '%s\n' "$rows" | sed -n '3p')"
+  [[ -z "$unsafe" ]] || fail "Inbox contains unsupported entry: $unsafe"
+  [[ "$count" == "1" ]] || fail "Inbox must contain exactly one capsule; found $count. Use: sg run /path/to/file.sgcap"
+  meta="$(capsule_metadata "$capsule")"
+  capsule_name="$(printf '%s\n' "$meta" | sed -n '1p')"
+  capsule_sha="$(printf '%s\n' "$meta" | sed -n '2p')"
+  capsule_size="$(printf '%s\n' "$meta" | sed -n '3p')"
+
+  lock="$(lock_state_json)"
+  lock_status="$(python3 -c 'import json,sys; print(json.loads(sys.argv[1])["status"])' "$lock")"
+  if [[ "$lock_status" == "active" ]]; then
+    printf 'A SysGrid run is already active. Nothing new was started.\n' >&2
+    show_status >&2
+    exit 75
+  elif [[ "$lock_status" == "stale" ]]; then
+    stale_record="$STATE_DIR/continuity-stale-lock-recovered-$(date -u +%Y%m%dT%H%M%SZ)-$$.json"
+    printf '%s\n' "$lock" > "$stale_record"
+    rm -rf "$LOCK_DIR"
+  fi
+
+  repo="$(discover_repo)" || fail "SysGrid repository not found. Set SYSGRID_REPO once, or run from its parent folder."
+  pre_head="$(git -C "$repo" rev-parse HEAD 2>/dev/null || printf unknown)"
+  mkdir -p "$(dirname "$REPO_HINT_FILE")"
+  printf '%s\n' "$repo" > "$REPO_HINT_FILE"
+
+  mkdir "$LOCK_DIR" 2>/dev/null || fail "could not acquire run lock; run: sg status"
+  launch_id="$(date -u +%Y%m%dT%H%M%SZ)-$$-$RANDOM"
+  printf '%s\n' "$launch_id" > "$LOCK_DIR/launch_id"
+  launch_json="$STATE_DIR/continuity-launch-$launch_id.json"
+  watcher_log="$STATE_DIR/continuity-launcher-$launch_id.log"
+  core_exit_json="$STATE_DIR/continuity-core-exit-$launch_id.json"
+  started_epoch="$(date +%s)"
+  outbox_pre_sha="missing"
+  if [[ -f "$OUTBOX/UPLOAD_THIS_TO_CHATGPT.zip" ]]; then
+    outbox_pre_sha="$(sha256_file "$OUTBOX/UPLOAD_THIS_TO_CHATGPT.zip" 2>/dev/null || printf unknown)"
+  fi
+
+  cleanup_untransferred_lock() { rm -rf "$LOCK_DIR" 2>/dev/null || true; }
+  trap cleanup_untransferred_lock EXIT
+
+  nohup /bin/sh -c 'trap "" HUP INT TERM; exec python3 "$@"' sh \
+    "$WATCHER" "$launch_json" \
+    --initialize \
+    --launch-id "$launch_id" \
+    --repo "$repo" \
+    --pre-head "$pre_head" \
+    --started-epoch "$started_epoch" \
+    --control-root "$CONTROL_ROOT" \
+    --core-sgwatch "$CORE_SGWATCH" \
+    --packager "$PACKAGER" \
+    --payload-dir "$PAYLOAD_DIR" \
+    --foreground "$foreground" \
+    --argument-count "0" \
+    --outbox-pre-sha256 "$outbox_pre_sha" \
+    --lock-dir "$LOCK_DIR" \
+    --wrapper-pid "$$" \
+    --core-exit-json "$core_exit_json" \
+    --expected-capsule-path "$capsule" \
+    --expected-capsule-name "$capsule_name" \
+    --expected-capsule-sha256 "$capsule_sha" \
+    --expected-capsule-size "$capsule_size" \
+    --launch-reason exact-capsule-preflight \
+    >"$watcher_log" 2>&1 </dev/null &
+  watcher_pid=$!
+  printf '%s\n' "$watcher_pid" > "$LOCK_DIR/watcher_pid"
+
+  # Fail closed until the detached watcher has atomically published and verified
+  # the immutable launch record. The product core must never start before this
+  # identity handshake is complete.
+  launch_ack_seconds="${SYSGRID_CONTINUITY_LAUNCH_ACK_SECONDS:-20}"
+  [[ "$launch_ack_seconds" =~ ^[0-9]+$ ]] || launch_ack_seconds=20
+  (( launch_ack_seconds < 5 )) && launch_ack_seconds=5
+  (( launch_ack_seconds > 60 )) && launch_ack_seconds=60
+  launch_deadline=$(( $(date +%s) + launch_ack_seconds ))
+  while [[ ! -f "$launch_json" && $(date +%s) -lt $launch_deadline ]]; do
+    kill -0 "$watcher_pid" 2>/dev/null || break
+    sleep 0.05
+  done
+  if [[ ! -f "$launch_json" ]]; then
+    kill -TERM "$watcher_pid" 2>/dev/null || true
+    wait "$watcher_pid" 2>/dev/null || true
+    fail "continuity watcher did not publish the immutable launch record within ${launch_ack_seconds}s"
+  fi
+  if ! python3 - "$launch_json" "$launch_id" "$watcher_pid" "$capsule_name" "$capsule_sha" "$capsule_size" <<'PY_LAUNCH_ACK'
+import json, pathlib, sys
+p=pathlib.Path(sys.argv[1])
+expected={
+    'launch_id':sys.argv[2],
+    'watcher_pid':int(sys.argv[3]),
+    'expected_capsule_name':sys.argv[4],
+    'expected_capsule_sha256':sys.argv[5],
+    'expected_capsule_size':int(sys.argv[6]),
+    'continuity_version':'1.0.7',
+}
+try:
+    data=json.loads(p.read_text(encoding='utf-8'))
+except Exception as exc:
+    raise SystemExit(f'launch record unreadable: {exc}')
+for key, value in expected.items():
+    if data.get(key) != value:
+        raise SystemExit(f'launch record mismatch for {key}: {data.get(key)!r} != {value!r}')
+PY_LAUNCH_ACK
+  then
+    kill -TERM "$watcher_pid" 2>/dev/null || true
+    wait "$watcher_pid" 2>/dev/null || true
+    fail "continuity watcher launch identity handshake failed"
+  fi
+  trap - EXIT
+
+  printf 'SysGrid run started — continuity v%s\n' "$VERSION"
+  printf '[1/4] Capsule: %s\n' "$capsule_name"
+  printf '[2/4] SHA-256: %s\n' "$capsule_sha"
+  printf '[3/4] Watcher: %s — exact capsule identity locked\n' "$watcher_pid"
+  printf '[4/4] Handoff: %s\n' "$OUTBOX/UPLOAD_THIS_TO_CHATGPT.zip"
+
+  set +e
+  if [[ "$foreground" == "1" ]]; then (cd "$repo" && "$CORE_SG" --foreground); else (cd "$repo" && "$CORE_SG"); fi
+  core_rc=$?
+  set -e
+  core_finished_epoch="$(date +%s)"
+  tmp_exit="$core_exit_json.$$.tmp"
+  printf '{"launch_id":"%s","core_exit_code":%s,"finished_epoch":%s,"expected_capsule_sha256":"%s"}\n' \
+    "$launch_id" "$core_rc" "$core_finished_epoch" "$capsule_sha" > "$tmp_exit"
+  mv -f "$tmp_exit" "$core_exit_json"
+
+  printf 'Core finished with exit %s. Finalizing evidence' "$core_rc"
+  deadline=$(( $(date +%s) + FINAL_WAIT_SECONDS ))
+  last_notice="$(date +%s)"
+  lock_gone_seen_at=0
+  while (( $(date +%s) < deadline )); do
+    if bundle_ready && [[ ! -d "$LOCK_DIR" ]]; then
+      printf '\nREADY: upload %s\n' "$OUTBOX/UPLOAD_THIS_TO_CHATGPT.zip"
+      printf 'SHA-256: %s\n' "$(sha256_file "$OUTBOX/UPLOAD_THIS_TO_CHATGPT.zip")"
+      exit "$core_rc"
+    fi
+    now="$(date +%s)"
+    if [[ ! -d "$LOCK_DIR" ]]; then
+      (( lock_gone_seen_at == 0 )) && lock_gone_seen_at="$now"
+      if (( now - lock_gone_seen_at >= 3 )); then
+        printf '\nFAIL: continuity packaging ended without an enriched handoff. Run: sg status\n' >&2
+        exit 3
+      fi
+    fi
+    if (( now - last_notice >= 15 )); then
+      printf '.'
+      last_notice="$now"
+    fi
+    sleep 1
+  done
+  printf '\nContinuity is still finalizing independently. Check with: sg status\n'
+  exit "$core_rc"
+}
+
+case "${1:-}" in
+  --continuity-version)
+    printf 'SysGrid continuity wrapper %s\n' "$VERSION"; exit 0 ;;
+  --version)
+    printf 'SysGrid continuity wrapper %s\n' "$VERSION"
+    [[ -x "$CORE_SG" ]] && "$CORE_SG" --version || true
+    exit 0 ;;
+  --help|-h|help|--help-continuity)
+    cat <<EOF_HELP
+SysGrid continuity wrapper $VERSION
+
+Phone or Mac — simplest use:
+  sg run /path/to/one-capsule.sgcap   Stage the exact file and run it.
+  sg                                   Run the one capsule already in Inbox.
+  sg status                            Show capsule, active run, handoff, and exact next action.
+  sg paths                             Show the control folders.
+
+The wrapper never starts a watcher until one exact capsule filename, SHA-256, and size are locked.
+EOF_HELP
+    exit 0 ;;
+  status)
+    show_status; exit 0 ;;
+  paths)
+    ensure_platform; print_paths; exit 0 ;;
+  doctor)
+    ensure_platform; print_paths; show_status; exit 0 ;;
+  run)
+    ensure_platform
+    [[ $# -ge 2 && $# -le 3 ]] || fail "usage: sg run /path/to/file.sgcap [--foreground]"
+    staged="$(stage_capsule "$2")"
+    printf 'Staged exact capsule: %s\n' "$staged"
+    foreground=0
+    [[ "${3:-}" == "--foreground" ]] && foreground=1
+    [[ -z "${3:-}" || "${3:-}" == "--foreground" ]] || fail "only --foreground is allowed after the capsule path"
+    run_capsule "$foreground" ;;
+  "")
+    run_capsule 0 ;;
+  --foreground)
+    [[ $# == 1 ]] || fail "usage: sg --foreground"
+    run_capsule 1 ;;
+  *)
+    fail "unsupported invocation. Use: sg, sg run /path/file.sgcap, or sg status" ;;
+esac

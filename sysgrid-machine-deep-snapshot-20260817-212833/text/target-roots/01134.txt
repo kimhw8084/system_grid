@@ -1,0 +1,41 @@
+ORIGINAL_PATH: /Users/haewonkim/.local/state/sysgrid-supervisor/notifications/20260801T202245Z-84244-806000.json
+ORIGINAL_SHA256: 5acd73e353b08db9cf844153d95a7b1d9f9788efc3bff042381886dadb367408
+================================================================================
+{
+  "events": {
+    "run_completed": {
+      "attempts": 1,
+      "chat_id_suffix": "1055",
+      "event_id": "run_completed",
+      "first_attempt_utc": "2026-08-01T20:25:31Z",
+      "message_id": 510,
+      "payload_sha256": "bf3c1ecbcd585aa03ff04e9be0a22684787c79bb12115703e5fa66494f715403",
+      "required": false,
+      "status": "delivered",
+      "updated_utc": "2026-08-01T20:25:32Z"
+    },
+    "run_progress": {
+      "attempts": 1,
+      "chat_id_suffix": "1055",
+      "event_id": "run_progress",
+      "first_attempt_utc": "2026-08-01T20:24:47Z",
+      "message_id": 509,
+      "payload_sha256": "7f0496ce21bd0f44c597cf11bcb6903ad6c34422f4dc3528b60b7dd4d5c91bd1",
+      "required": false,
+      "status": "delivered",
+      "updated_utc": "2026-08-01T20:24:48Z"
+    },
+    "run_started": {
+      "attempts": 1,
+      "chat_id_suffix": "1055",
+      "event_id": "run_started",
+      "first_attempt_utc": "2026-08-01T20:22:45Z",
+      "message_id": 508,
+      "payload_sha256": "f49227f2ff19d4856b0a6f878c8786efe43bd22cb4bada92db75d855f15091be",
+      "required": true,
+      "status": "delivered",
+      "updated_utc": "2026-08-01T20:22:46Z"
+    }
+  },
+  "run_id": "20260801T202245Z-84244-806000"
+}

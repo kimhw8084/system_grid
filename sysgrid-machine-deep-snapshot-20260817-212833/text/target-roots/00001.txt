@@ -1,0 +1,4 @@
+ORIGINAL_PATH: /Users/haewonkim/.local/share/sysgrid-delivery-v1.3.0/.sysgrid-runner-install.json
+ORIGINAL_SHA256: bd523a32041afe5235d9a487764a59aa9d722c9932aa3a249bdc91bebe389910
+================================================================================
+{"active": "fresh-text-1.0.0", "adapter_sha256": "044edd83a321287549b46b3c7e3641ed92ed3b18a59342efeac9ef27a3dc1f4a", "cli_rollback_sha256": "377bf5ddc09212c39217f7d0323a5f9c878aae2bd91323ef8c2333de4368e404", "cli_sha256": "f137c06450504a5d275f4174ac491296f777c01efccc352ffbaae08c66b1a339", "cli_target": "/Users/haewonkim/.local/share/sysgrid-delivery-v1.3.0/sg_cli.py", "rollback_sha256": "800bd87a59d46572cd1d218d4c01857e97080838d5ee54d349c25f257191d00b", "runner_sha256": "0cf92efcb19a4c4534855da43d2923fae4b8e6829eb04379bc335ed7a0e31198", "target": "/Users/haewonkim/.local/share/sysgrid-delivery-v1.3.0/sg_runner.py"}

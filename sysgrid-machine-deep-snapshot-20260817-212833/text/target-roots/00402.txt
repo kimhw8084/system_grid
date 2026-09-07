@@ -1,0 +1,9 @@
+ORIGINAL_PATH: /Users/haewonkim/.local/share/sysgrid-campaign-platform/v1.1.1/templates/TEST_PLAN.template.json
+ORIGINAL_SHA256: ac0551fd9be2ec588b6987ec46f158f777d6d70e4a907b367c54cad6d73195ad
+================================================================================
+{
+  "schema_version": "1.0",
+  "campaign_id": "SYSGRID-CAMPAIGN-XXXX",
+  "behavior_mappings": [],
+  "recipes": []
+}

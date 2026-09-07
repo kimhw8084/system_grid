@@ -1,0 +1,311 @@
+ORIGINAL_PATH: /Users/haewonkim/.local/share/sysgrid-supervisor/v1.2.0/INSTALL_AND_QUALIFY.py
+ORIGINAL_SHA256: bf21ad51b1f0a129874d90f525060a7bb04d5e685b07a75ab6574b4bd3b9d05f
+================================================================================
+#!/usr/bin/env python3
+"""One-command installer and independent local qualification for SysGrid Supervisor."""
+from __future__ import annotations
+
+import contextlib
+import datetime as dt
+import hashlib
+import json
+import os
+import shlex
+import shutil
+import stat
+import subprocess
+import sys
+import tempfile
+import traceback
+import zipfile
+from pathlib import Path
+
+PACKAGE_VERSION = "1.2.0"
+PACKAGE_ROOT = Path(__file__).resolve().parent
+PAYLOAD_ROOT = PACKAGE_ROOT / "payload"
+sys.path.insert(0, str(PAYLOAD_ROOT))
+import sysgrid_supervisor as sg  # noqa: E402
+
+
+def status(message: str) -> None:
+    print(f"[SysGrid supervisor qualification {PACKAGE_VERSION}] {message}", flush=True)
+
+
+def run(cmd: list[str], *, cwd: Path | None = None, env: dict[str, str] | None = None) -> subprocess.CompletedProcess[str]:
+    completed = subprocess.run(
+        cmd, cwd=str(cwd) if cwd else None, env=env or sg.sanitized_env(),
+        stdin=subprocess.DEVNULL, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+        text=True, check=False,
+    )
+    print(completed.stdout, end="", flush=True)
+    if completed.returncode:
+        raise sg.SupervisorError("INSTALLER_QUALIFICATION_FAILURE", f"command failed ({completed.returncode}): {' '.join(cmd)}", 1)
+    return completed
+
+
+def verify_package_manifest() -> dict[str, str]:
+    manifest_path = PACKAGE_ROOT / "MANIFEST.sha256"
+    if not manifest_path.is_file():
+        raise sg.SupervisorError("INSTALLER_PACKAGE_FAILURE", "MANIFEST.sha256 missing", 1)
+    manifest = sg.parse_manifest_text(manifest_path.read_text(encoding="utf-8"))
+    actual = sorted(
+        p.relative_to(PACKAGE_ROOT).as_posix()
+        for p in PACKAGE_ROOT.rglob("*")
+        if p.is_file() and p != manifest_path and not p.name.startswith(".") and "__pycache__" not in p.parts
+    )
+    if sorted(manifest) != actual:
+        raise sg.SupervisorError(
+            "INSTALLER_PACKAGE_FAILURE",
+            f"package manifest coverage mismatch missing={sorted(set(manifest)-set(actual))} extra={sorted(set(actual)-set(manifest))}",
+            1,
+        )
+    for rel, expected in manifest.items():
+        got = sg.sha256_file(PACKAGE_ROOT / rel)
+        if got != expected:
+            raise sg.SupervisorError("INSTALLER_PACKAGE_FAILURE", f"package digest mismatch for {rel}", 1)
+    return manifest
+
+
+def wrappers(install_root: Path) -> dict[str, bytes]:
+    python = shlex.quote(sys.executable)
+    supervisor = shlex.quote(str(install_root / "payload/sysgrid_supervisor.py"))
+    sg_wrapper = f'''#!/usr/bin/env bash
+set -Eeuo pipefail
+case "${{1:-}}" in
+  run) shift; exec {python} {supervisor} run "$@" ;;
+  status) shift; exec {python} {supervisor} status "$@" ;;
+  watch) shift; exec {python} {supervisor} watch "$@" ;;
+  self-test) shift; exec {python} {supervisor} self-test "$@" ;;
+  "") exec {python} {supervisor} run ;;
+  *) exec {python} {supervisor} run "$@" ;;
+esac
+'''.encode()
+    sgs_wrapper = f'''#!/usr/bin/env bash
+set -Eeuo pipefail
+exec {python} {supervisor} status "$@"
+'''.encode()
+    watch_wrapper = f'''#!/usr/bin/env bash
+set -Eeuo pipefail
+exec {python} {supervisor} watch "$@"
+'''.encode()
+    return {"sg": sg_wrapper, "sgs": sgs_wrapper, "sgwatch": watch_wrapper}
+
+
+def install_atomic(engine: Path, test_log: Path) -> dict[str, object]:
+    share = Path.home() / ".local/share/sysgrid-supervisor"
+    target = share / f"v{PACKAGE_VERSION}"
+    current = share / "current"
+    bin_dir = Path.home() / ".local/bin"
+    config = sg.config_root() / "config.json"
+    stamp = dt.datetime.now(dt.timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+    backup = share / "backups" / f"{stamp}-pre-v{PACKAGE_VERSION}"
+    share.mkdir(parents=True, exist_ok=True)
+    bin_dir.mkdir(parents=True, exist_ok=True)
+    backup.mkdir(parents=True, exist_ok=False)
+
+    stage = share / f".v{PACKAGE_VERSION}.stage-{os.getpid()}"
+    if stage.exists():
+        shutil.rmtree(stage)
+    shutil.copytree(PACKAGE_ROOT, stage, ignore=shutil.ignore_patterns("__pycache__", "*.pyc", ".DS_Store"))
+    verify_installed = stage / "payload/sysgrid_supervisor.py"
+    if sg.sha256_file(verify_installed) != sg.sha256_file(PAYLOAD_ROOT / "sysgrid_supervisor.py"):
+        raise sg.SupervisorError("INSTALLER_COPY_FAILURE", "staged supervisor digest mismatch", 1)
+
+    # Test the exact staged bytes before changing any command wrapper.
+    env = sg.sanitized_env(); env["PYTHONPATH"] = str(stage / "payload")
+    staged_test = subprocess.run(
+        [sys.executable, "-m", "unittest", "-v", "test_sysgrid_supervisor"],
+        cwd=str(stage / "payload"), env=env, stdin=subprocess.DEVNULL,
+        stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, check=False,
+    )
+    test_log.write_text(test_log.read_text(encoding="utf-8") + "\n# Staged-byte suite\n" + staged_test.stdout, encoding="utf-8")
+    print(staged_test.stdout, end="", flush=True)
+    if staged_test.returncode:
+        raise sg.SupervisorError("INSTALLER_QUALIFICATION_FAILURE", "staged-byte test suite failed", 1)
+
+    previous_current = None
+    if current.is_symlink():
+        previous_current = os.readlink(current)
+    elif current.exists():
+        previous_current = str(current.resolve())
+    for name in ("sg", "sgs", "sgwatch"):
+        path = bin_dir / name
+        if path.exists() or path.is_symlink():
+            shutil.copy2(path, backup / name, follow_symlinks=False)
+
+    if target.exists():
+        existing = target / "MANIFEST.sha256"
+        if not existing.is_file() or sg.sha256_file(target / "payload/sysgrid_supervisor.py") != sg.sha256_file(PAYLOAD_ROOT / "sysgrid_supervisor.py"):
+            raise sg.SupervisorError("INSTALLER_IDENTITY_COLLISION", f"existing target differs: {target}", 1)
+        shutil.rmtree(stage)
+    else:
+        os.replace(stage, target)
+        sg.fsync_dir(share)
+
+    temp_link = share / f".current-{os.getpid()}"
+    with contextlib.suppress(FileNotFoundError):
+        temp_link.unlink()
+    os.symlink(target.name, temp_link)
+    os.replace(temp_link, current)
+    sg.fsync_dir(share)
+
+    wrapper_digests: dict[str, str] = {}
+    try:
+        for name, content in wrappers(target).items():
+            sg.atomic_write_bytes(bin_dir / name, content, 0o755)
+            os.chmod(bin_dir / name, 0o755)
+            wrapper_digests[name] = sg.sha256_file(bin_dir / name)
+        sg.atomic_write_json(config, {
+            "supervisor_version": PACKAGE_VERSION,
+            "supervisor_path": str(target / "payload/sysgrid_supervisor.py"),
+            "engine_version": sg.ENGINE_VERSION,
+            "engine_path": str(engine),
+            "engine_sha256": sg.ENGINE_SHA256,
+            "installed_utc": sg.now_utc(),
+            "wrapper_sha256": wrapper_digests,
+        })
+        # Exact installed self-test plus wrapper status. No product execution occurs.
+        run([sys.executable, str(target / "payload/sysgrid_supervisor.py"), "self-test"])
+        run([str(bin_dir / "sgs")])
+    except Exception:
+        # Restore command entry points and current pointer. Installed version bytes remain immutable for diagnosis.
+        for name in ("sg", "sgs", "sgwatch"):
+            saved = backup / name
+            destination = bin_dir / name
+            if saved.exists() or saved.is_symlink():
+                shutil.copy2(saved, destination, follow_symlinks=False)
+            else:
+                with contextlib.suppress(FileNotFoundError):
+                    destination.unlink()
+        with contextlib.suppress(FileNotFoundError):
+            current.unlink()
+        if previous_current:
+            os.symlink(previous_current, current)
+        raise
+
+    return {
+        "target": str(target), "current": str(current), "backup": str(backup),
+        "engine_path": str(engine), "engine_sha256": sg.ENGINE_SHA256,
+        "wrapper_sha256": wrapper_digests, "config": str(config),
+    }
+
+
+def qualification_zip(stage: Path, result: dict[str, object], classification: str, message: str, exit_code: int) -> Path:
+    evidence = stage / "qualification"
+    evidence.mkdir(parents=True, exist_ok=True)
+    record = {
+        "result": "success" if exit_code == 0 else "failure",
+        "classification": classification,
+        "message": message,
+        "exit_code": exit_code,
+        "project": "SysGrid",
+        "issue": "OUT-31",
+        "lane": "execution_platform",
+        "mode": "qualification",
+        "supervisor_version": PACKAGE_VERSION,
+        "engine_version": sg.ENGINE_VERSION,
+        "engine_sha256": sg.ENGINE_SHA256,
+        "finished_utc": sg.now_utc(),
+        "product_repository_mutation": "none",
+        "product_commit_push": "none",
+        "installation": result,
+    }
+    sg.atomic_write_json(evidence / "RESULT.json", record)
+    sg.atomic_write_json(evidence / "QUALIFICATION.json", {
+        "contract": [
+            "One non-blocking OS lock serializes all product execution.",
+            "The exact accepted v1.0.4 engine is selected by SHA-256 and must pass self-test.",
+            "Capsule, manifest, schema, patch identity, repository baseline, storage, and patch state are fail-closed before engine start.",
+            "Independent preflight checks run concurrently and all failures are collected.",
+            "The engine is invoked synchronously through its exact execute interface with no shell and no watcher/output correlation race.",
+            "The engine writes to a per-run local outbox; output identity and full manifest coverage are verified before publication.",
+            "Published evidence is content-addressed, copied with SHA-256 verification, fsynced, and atomically aliased.",
+            "No automatic rerun occurs after the engine starts, preventing duplicate or ambiguous mutation.",
+            "A review-ready diagnostic ZIP is attempted for every supervisor/platform failure.",
+            "Capsules remain declarative; no run-specific executable logic is accepted.",
+        ],
+        "package_files": {
+            p.relative_to(PACKAGE_ROOT).as_posix(): {"sha256": sg.sha256_file(p), "size": p.stat().st_size}
+            for p in sorted(PACKAGE_ROOT.rglob("*"))
+            if p.is_file() and "__pycache__" not in p.parts and not p.name.endswith(".pyc")
+        },
+    })
+    test_log = stage / "TESTS.txt"
+    if test_log.is_file():
+        shutil.copy2(test_log, evidence / "TESTS.txt")
+    if exit_code:
+        (evidence / "TRACEBACK.txt").write_text(traceback.format_exc(), encoding="utf-8")
+    (evidence / "REVIEW_ME_FIRST.md").write_text(
+        "# SysGrid Execution Supervisor v1.2.0 Qualification\n\n"
+        f"- Result: {record['result']}\n- Classification: {classification}\n- Message: {message}\n"
+        f"- Exact engine: {sg.ENGINE_VERSION} / {sg.ENGINE_SHA256}\n"
+        "- Product repository mutation: none\n- Product commit/push: none\n\n"
+        "Review RESULT.json, QUALIFICATION.json, TESTS.txt, and MANIFEST.sha256.\n",
+        encoding="utf-8",
+    )
+    sg.make_manifest(evidence)
+    out = stage / sg.CANONICAL_ZIP
+    sg.zip_directory(evidence, out)
+    sg.verify_archive_manifest(out, allow_source=True)
+    return out
+
+
+def main() -> int:
+    with tempfile.TemporaryDirectory(prefix="sysgrid-supervisor-install-") as td:
+        stage = Path(td)
+        test_log = stage / "TESTS.txt"
+        test_log.write_text("", encoding="utf-8")
+        installation: dict[str, object] = {}
+        try:
+            status("Verifying immutable package manifest.")
+            manifest = verify_package_manifest()
+            status(f"Package identity accepted: {len(manifest)} files.")
+
+            status("Running pre-install released-byte suite.")
+            env = sg.sanitized_env(); env["PYTHONPATH"] = str(PAYLOAD_ROOT)
+            pre = subprocess.run(
+                [sys.executable, "-m", "unittest", "-v", "test_sysgrid_supervisor"],
+                cwd=str(PAYLOAD_ROOT), env=env, stdin=subprocess.DEVNULL,
+                stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, check=False,
+            )
+            print(pre.stdout, end="", flush=True)
+            test_log.write_text("# Pre-install released-byte suite\n" + pre.stdout, encoding="utf-8")
+            if pre.returncode:
+                raise sg.SupervisorError("INSTALLER_QUALIFICATION_FAILURE", "pre-install test suite failed", 1)
+
+            status("Locating and self-testing exact accepted Stable Engine v1.0.4.")
+            engine = sg.discover_engine(deep=True)
+            engine_self_test = sg.verify_engine(engine)
+            installation["engine_self_test"] = engine_self_test
+            status(f"Exact engine accepted: {engine}")
+
+            status("Installing versioned supervisor and atomic command wrappers.")
+            installation.update(install_atomic(engine, test_log))
+            status("Installation and post-install qualification passed.")
+            classification = "PASS"
+            message = "SysGrid Execution Supervisor v1.2.0 installed and qualified; exact Stable Engine v1.0.4 preserved"
+            exit_code = 0
+        except Exception as exc:
+            classification = exc.classification if isinstance(exc, sg.SupervisorError) else "INSTALLER_INTERNAL_FAILURE"
+            message = str(exc)
+            exit_code = exc.exit_code if isinstance(exc, sg.SupervisorError) else 1
+            installation["error"] = f"{type(exc).__name__}: {exc}"
+            print(f"FAIL: {classification}: {message}", file=sys.stderr)
+
+        artifact = qualification_zip(stage, installation, classification, message, exit_code)
+        control = sg.default_control_root()
+        digest = sg.sha256_file(artifact)
+        published = sg.publish_artifact(artifact, control, digest)
+        print(f"Qualification artifact: {published}")
+        print(f"SHA-256: {digest}")
+        if exit_code == 0:
+            print("PASS: installation complete.")
+            print("Future runs: sg run /path/to/capsule.sgcap  (or plain sg with exactly one Inbox capsule)")
+            print("Upload: Outbox/UPLOAD_THIS_TO_CHATGPT.zip")
+        else:
+            print("Upload the qualification artifact for review; no product run was started.", file=sys.stderr)
+        return exit_code
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

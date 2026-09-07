@@ -1,0 +1,33 @@
+ORIGINAL_PATH=/Users/haewonkim/.local/bin/sgnotify
+2eed22d5a8ecf303caef988d713a0b6815faa176d887df4d882170b2bd39c56f  /Users/haewonkim/.local/bin/sgnotify
+================================================================
+#!/usr/bin/env python3
+import json
+import os
+import sys
+import urllib.parse
+import urllib.request
+from pathlib import Path
+
+config_path = Path.home() / ".config" / "sysgrid-phone" / "telegram.json"
+if not config_path.is_file():
+    raise SystemExit(0)
+
+try:
+    config = json.loads(config_path.read_text())
+    token = [REDACTED]
+    chat_id = str(config["chat_id"])
+    text = " ".join(sys.argv[1:]).strip()
+    if not text:
+        raise SystemExit(0)
+    data = urllib.parse.urlencode({"chat_id": chat_id, "text": text}).encode("utf-8")
+    req = urllib.request.Request(
+        f"https://api.telegram.org/bot{token}/sendMessage",
+        data=data,
+        method="POST",
+    )
+    with urllib.request.urlopen(req, timeout=15) as response:
+        response.read()
+except Exception:
+    # Notifications must never fail or alter a SysGrid run.
+    raise SystemExit(0)

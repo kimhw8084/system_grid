@@ -1,0 +1,189 @@
+ORIGINAL_PATH: /Users/haewonkim/.local/state/sysgrid-supervisor/runs/20260805T125837Z-59044-504000/patch.diff
+ORIGINAL_SHA256: 9cc2a0cd1c009971494079dda6d3dafd00d859027074ba7909db52172c4694b2
+================================================================================
+diff --git a/frontend/src/components/shared/OperationalWorkspacePrimitives.tsx b/frontend/src/components/shared/OperationalWorkspacePrimitives.tsx
+index f9f127b..8d0f091 100644
+--- a/frontend/src/components/shared/OperationalWorkspacePrimitives.tsx
++++ b/frontend/src/components/shared/OperationalWorkspacePrimitives.tsx
+@@ -198,6 +198,7 @@ export function useWorkspaceAnchoredLayer(isOpen: boolean, options?: { offset?:
+       schedulePositionUpdate()
+     }
+ 
++    updatePosition()
+     schedulePositionUpdate()
+     window.addEventListener('resize', handleViewportChange)
+     window.addEventListener('scroll', handleViewportChange, true)
+@@ -206,6 +207,7 @@ export function useWorkspaceAnchoredLayer(isOpen: boolean, options?: { offset?:
+     let observerFrame: number | null = null
+     if (typeof ResizeObserver !== 'undefined') {
+       observer = new ResizeObserver(() => schedulePositionUpdate())
++      observer.observe(trigger)
+       observerFrame = window.requestAnimationFrame(() => {
+         if (panelRef.current) observer?.observe(panelRef.current)
+       })
+@@ -221,7 +223,7 @@ export function useWorkspaceAnchoredLayer(isOpen: boolean, options?: { offset?:
+         frameRef.current = null
+       }
+     }
+-  }, [isOpen, schedulePositionUpdate])
++  }, [isOpen, schedulePositionUpdate, updatePosition])
+ 
+   return { triggerRef, panelRef, panelStyle }
+ }
+diff --git a/frontend/src/components/shared/OperationalWorkspaceShells.tsx b/frontend/src/components/shared/OperationalWorkspaceShells.tsx
+index d1c5332..9e602ce 100644
+--- a/frontend/src/components/shared/OperationalWorkspaceShells.tsx
++++ b/frontend/src/components/shared/OperationalWorkspaceShells.tsx
+@@ -171,17 +171,31 @@ export function OperationalAnchoredPanel({
+ }) {
+   if (!isOpen) return null
+ 
++  const { maxHeight, overflowY, overflowX, overscrollBehavior, scrollbarGutter, ...anchorStyle } = style
++  const scrollSurfaceStyle: React.CSSProperties = {
++    width: '100%',
++    maxWidth: '100%',
++    boxSizing: 'border-box',
++    maxHeight,
++    overflowY,
++    overflowX,
++    overscrollBehavior,
++    scrollbarGutter,
++  }
++
+   return (
+     <div
+       ref={panelRef}
+-      style={style}
++      style={anchorStyle}
+       className={className}
+       data-workspace-panel="true"
+       data-workspace-panel-key={panelKey}
+       data-workspace-panel-offset={yOffset}
+       data-workspace-interaction-lock={interactionLocked ? 'true' : undefined}
+     >
+-      {children}
++      <div data-workspace-panel-scroll-surface="true" style={scrollSurfaceStyle}>
++        {children}
++      </div>
+     </div>
+   )
+ }
+diff --git a/frontend/src/components/shared/OperationalSavedViewsPanel.test.tsx b/frontend/src/components/shared/OperationalSavedViewsPanel.test.tsx
+index ce8d66a..d205fbc 100644
+--- a/frontend/src/components/shared/OperationalSavedViewsPanel.test.tsx
++++ b/frontend/src/components/shared/OperationalSavedViewsPanel.test.tsx
+@@ -270,6 +270,40 @@ describe('Operational anchored-panel interaction continuity', () => {
+     expect(Number(narrow.style.left) + Number(narrow.style.width)).toBeLessThanOrEqual(378)
+   })
+ 
++  it('keeps fixed anchor geometry separate from the constrained inner scroll surface', () => {
++    render(
++      <OperationalAnchoredPanel
++        isOpen
++        panelKey="split-scroll-contract"
++        style={{
++          position: 'fixed',
++          left: 12,
++          width: 366,
++          boxSizing: 'border-box',
++          maxHeight: 584,
++          overflowY: 'auto',
++          overscrollBehavior: 'contain',
++        }}
++      >
++        <WorkspaceFloatingPanel>Panel content</WorkspaceFloatingPanel>
++      </OperationalAnchoredPanel>,
++    )
++
++    const anchor = document.querySelector<HTMLElement>('[data-workspace-panel-key="split-scroll-contract"]')
++    const scrollSurface = screen.getByText('Panel content').closest('[data-workspace-panel-scroll-surface="true"]') as HTMLElement | null
++    expect(anchor).not.toBeNull()
++    expect(anchor?.style.width).toBe('366px')
++    expect(anchor?.style.overflowY).toBe('')
++    expect(anchor?.style.maxHeight).toBe('')
++    expect(scrollSurface).not.toBeNull()
++    expect(scrollSurface?.style.width).toBe('100%')
++    expect(scrollSurface?.style.maxWidth).toBe('100%')
++    expect(scrollSurface?.style.boxSizing).toBe('border-box')
++    expect(scrollSurface?.style.maxHeight).toBe('584px')
++    expect(scrollSurface?.style.overflowY).toBe('auto')
++    expect(scrollSurface?.style.overscrollBehavior).toBe('contain')
++  })
++
+   it('classifies only panel-descendant scroll as internal', () => {
+     const panel = document.createElement('div')
+     const child = document.createElement('div')
+diff --git a/frontend/tests/far-golden-workspace.spec.ts b/frontend/tests/far-golden-workspace.spec.ts
+index be57856..9b6f8b6 100644
+--- a/frontend/tests/far-golden-workspace.spec.ts
++++ b/frontend/tests/far-golden-workspace.spec.ts
+@@ -12,22 +12,40 @@ async function waitForFAR(page: any) {
+ 
+ async function waitForSettledAnchoredGeometry(page: any, trigger: any, panel: any) {
+   let previousSignature = ''
+-  let latest: { triggerBox: any; panelBox: any; viewport: any } | null = null
++  let consecutiveMatches = 0
++  let latest: { triggerBox: any; panelBox: any; scrollSurfaceBox: any; viewport: any } | null = null
+   await expect.poll(async () => {
+     await page.evaluate(() => new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve()))))
+-    const triggerBox = await trigger.boundingBox()
+-    const panelBox = await panel.boundingBox()
+-    const viewport = page.viewportSize()
+-    if (!triggerBox || !panelBox || !viewport) return false
+-    latest = { triggerBox, panelBox, viewport }
++    const panelHandle = await panel.elementHandle()
++    if (!panelHandle) return false
++    try {
++      latest = await trigger.evaluate((triggerElement: HTMLElement, panelElement: HTMLElement) => {
++        const triggerRect = triggerElement.getBoundingClientRect()
++        const panelRect = panelElement.getBoundingClientRect()
++        const scrollSurface = panelElement.querySelector<HTMLElement>('[data-workspace-panel-scroll-surface="true"]')
++        const scrollRect = scrollSurface?.getBoundingClientRect()
++        return {
++          triggerBox: { x: triggerRect.x, y: triggerRect.y, width: triggerRect.width, height: triggerRect.height },
++          panelBox: { x: panelRect.x, y: panelRect.y, width: panelRect.width, height: panelRect.height },
++          scrollSurfaceBox: scrollRect ? { x: scrollRect.x, y: scrollRect.y, width: scrollRect.width, height: scrollRect.height } : null,
++          viewport: { width: window.innerWidth, height: window.innerHeight },
++        }
++      }, panelHandle)
++    } finally {
++      await panelHandle.dispose()
++    }
++    if (!latest?.scrollSurfaceBox) return false
++    const { triggerBox, panelBox, scrollSurfaceBox, viewport } = latest
+     const signature = JSON.stringify([
+       triggerBox.x, triggerBox.y, triggerBox.width, triggerBox.height,
+       panelBox.x, panelBox.y, panelBox.width, panelBox.height,
++      scrollSurfaceBox.x, scrollSurfaceBox.y, scrollSurfaceBox.width, scrollSurfaceBox.height,
+       viewport.width, viewport.height,
+     ])
+-    const settled = signature === previousSignature
++    if (signature === previousSignature) consecutiveMatches += 1
++    else consecutiveMatches = 0
+     previousSignature = signature
+-    return settled
++    return consecutiveMatches >= 2
+   }, { timeout: 10_000 }).toBe(true)
+   if (!latest) throw new Error('Anchored panel geometry did not become measurable')
+   return latest
+@@ -203,6 +221,8 @@ test.describe('FAR whole-view golden workspace', () => {
+     expect(viewsPanelBox.y).toBeGreaterThanOrEqual(viewsButtonBox.y + viewsButtonBox.height + 6)
+     expect(viewsPanelBox.x).toBeGreaterThanOrEqual(12)
+     expect(viewsPanelBox.x + viewsPanelBox.width).toBeLessThanOrEqual(viewport.width - 12)
++    const desktopScrollBox = (await waitForSettledAnchoredGeometry(page, viewsButton, viewsPanel)).scrollSurfaceBox
++    expect(Math.abs(desktopScrollBox.width - viewsPanelBox.width)).toBeLessThanOrEqual(1)
+     await clickResilientButton(page, 'Close saved views')
+ 
+     const search = page.getByLabel('Search FAR failure modes')
+@@ -259,9 +279,10 @@ test.describe('FAR whole-view golden workspace', () => {
+     await narrowViewsButton.click()
+     const narrowViewsPanel = page.locator('[data-workspace-panel-key="views-menu"]')
+     await expect(narrowViewsPanel).toBeVisible()
+-    const { panelBox: narrowPanelBox, viewport: narrowViewport } = await waitForSettledAnchoredGeometry(page, narrowViewsButton, narrowViewsPanel)
++    const { panelBox: narrowPanelBox, scrollSurfaceBox: narrowScrollBox, viewport: narrowViewport } = await waitForSettledAnchoredGeometry(page, narrowViewsButton, narrowViewsPanel)
+     expect(narrowPanelBox.x).toBeGreaterThanOrEqual(12)
+     expect(narrowPanelBox.x + narrowPanelBox.width).toBeLessThanOrEqual(narrowViewport.width - 12)
++    expect(Math.abs(narrowScrollBox.width - narrowPanelBox.width)).toBeLessThanOrEqual(1)
+     await clickResilientButton(page, 'Close saved views')
+ 
+     await page.screenshot({ path: testInfo.outputPath('far-whole-view-golden-narrow.png'), fullPage: false, animations: 'disabled' })

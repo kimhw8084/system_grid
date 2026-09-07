@@ -1,0 +1,69 @@
+ORIGINAL_PATH: /Users/haewonkim/.local/share/sysgrid-supervisor/v1.3.4/CHANGELOG.md
+ORIGINAL_SHA256: a847115e564027dc3eb589a80e31d697d2bb653f69c322d31145702b5a3f605e
+================================================================================
+# Changelog
+
+## v1.3.4 — 2026-07-31
+
+- Replaced fragile manual Telegram chat-ID entry with automatic private-chat discovery from a fresh `/start` message.
+- Validates the bot token through `getMe`, refuses discovery when a webhook is active, records the current update baseline, and accepts only a newer private-chat update.
+- Opens the bot conversation automatically on macOS when possible; one fresh Start action is sufficient.
+- Deduplicates discovered chats and requires an explicit numbered choice only when more than one fresh private chat appears.
+- Keeps direct numeric `SYSGRID_TELEGRAM_CHAT_ID` configuration available for non-interactive or webhook-managed bots.
+- Preserves secure `0600` storage, two live installation probes, six numbered notifications, five-minute Stage 3 heartbeats, runtime history, and all one-invocation/recovery guarantees.
+- Added five permanent discovery, webhook-safety, fresh-update, deduplication, and installer regressions.
+- Total released-byte suite: 74 tests.
+
+## v1.3.3 — 2026-07-31
+
+- Added mandatory direct Telegram delivery through the official HTTPS Bot API, with secure `0600` local credential storage and no secret leakage into evidence.
+- Added automatic credential discovery plus one-time hidden terminal prompting when no prior Telegram configuration exists.
+- Added two live qualification probes: one from candidate bytes and one from exact installed bytes.
+- Added deduplicated messages for all six numbered supervisor steps and five-minute step-3 heartbeats with elapsed time.
+- Added fail-closed Telegram proof before Stable Engine launch while keeping post-launch notification loss from destroying or replaying product execution.
+- Added `sg notification-test`, live elapsed/heartbeat reporting in `sgs`, verified engine runtime extraction, and durable local runtime history.
+- Added eight permanent notification, redaction, deduplication, fail-closed, and runtime-summary regressions.
+- Total released-byte suite: 69 tests.
+
+## v1.3.2 — 2026-07-31
+
+- Fixed the reproduced `CAPSULE_SCHEMA_FAILURE` that incorrectly required a patch object for `resume_verify`.
+- Aligned supervisor validation with Stable Engine v1.0.4: only `mutation` carries a patch; `resume_verify`, `read_only`, and `qualification` must not.
+- Removed patch-member inspection, patch staging, and Git forward/reverse applicability checks from the resume path.
+- Preserved exact repository-state proof, one engine invocation, interruption recovery, evidence convergence, and engine-owned commit/push.
+- Added four permanent regressions: resume-without-patch acceptance, resume-with-patch rejection, no-op resume patch precheck, and end-to-end resume execution with exactly one engine invocation.
+- Total released-byte suite: 61 tests.
+
+## v1.3.1 — 2026-07-31
+
+- Fixed canonical capsule-state compatibility: newline dirty-path ledgers and GNU-style `.sha256` ledgers are now parsed directly, while JSON state ledgers remain supported.
+- Added strict UTF-8, duplicate-key, duplicate-path, malformed-line, repository-escape, and Git-metadata rejection across both state formats.
+- Made patch applicability explicitly dependent on successful exact repository-state proof instead of running it concurrently against an unproven worktree.
+- Added bounded forward/reverse `git apply --check --verbose` diagnostics so a remaining patch mismatch identifies the exact product path and context rather than returning a generic block.
+- Preserved the exact Stable Engine v1.0.4 contract, one-invocation rule, interruption recovery, evidence convergence, and ambiguous-state replay refusal.
+- Added six permanent regressions, including full end-to-end execution from canonical `.txt` and `.sha256` ledgers; total released-byte suite: 57 tests.
+
+## v1.3.0 — 2026-07-31
+
+- Added automatic recovery of a complete local engine artifact without product replay.
+- Added exact PID/command-identity reattachment to a still-running Stable Engine process.
+- Added one bounded automatic retry only when exact declared pre-state proves no product mutation and the patch remains uniquely forward-applicable.
+- Prohibited retry for post-state, unknown-state, or any ambiguous mutation condition.
+- Added automatic archival of byte-identical Inbox capsule duplicates while retaining fail-closed behavior for distinct identities.
+- Made preflight concurrency resource-aware and preserved structured partial successes alongside all failures.
+- Added bounded engine logs, launch record, structured preflight record, and explicit mutation-state evidence to diagnostics.
+- Added durable repository hinting under the supervisor configuration root and safe cleanup limited to old supervisor-owned temporary files.
+- Added nine recovery, identity, resource, serialization, and diagnostic regressions; total released-byte suite: 51 tests.
+
+## v1.2.1 — 2026-07-31
+
+- Removed generated bytecode from the immutable distribution.
+- Required exact complete-tree package coverage before payload import and after installation.
+- Disabled bytecode generation and added package identity regressions.
+- Released suite: 42 tests.
+
+## v1.2.0 — 2026-07-31
+
+- Replaced detached watcher/output-correlation topology with one synchronous supervisor and one exact engine child.
+- Added exact v1.0.4 engine binding, capsule/archive safety, parallel preflight, exact repository ledgers, local output isolation, exact output correlation, atomic publication, diagnostic packaging, and versioned installation.
+- Released suite: 37 tests.

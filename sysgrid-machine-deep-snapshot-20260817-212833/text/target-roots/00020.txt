@@ -1,0 +1,164 @@
+ORIGINAL_PATH: /Users/haewonkim/.local/share/sysgrid-runner/continuity-v1.0.4/active_law/01_AI_Controlled_Delivery_Constitution_v1.1.md
+ORIGINAL_SHA256: af708e112fae3aad728aa12227ae5dad336023b0fbac2f6402b08044c3bc50a7
+================================================================================
+# AI-Controlled Delivery Constitution v1.1
+
+**Status:** Draft pending explicit activation  
+**Proposed effective date:** 2026-07-28  
+**Supersedes after activation:** AI-Controlled Delivery Constitution v1.0
+
+## 1. Objective
+
+The system converts approved human direction into production-grade software through a reproducible, independently reviewable control loop.
+
+```text
+maximum verified user value
+÷
+minimum operator effort, rework, scope drift, and unproven change
+```
+
+The governing loop is:
+
+```text
+verified state
+→ one bounded hypothesis
+→ immutable treatment
+→ stable deterministic execution
+→ objective evidence
+→ independent review
+→ acceptance or narrow recovery
+```
+
+## 2. Actors and trust boundaries
+
+### User
+
+The user sets direction, approves material decisions and law activation, runs one supplied artifact when execution is required, and uploads one canonical review ZIP. The user is not required to diagnose executor failures or choose repository repair commands.
+
+### ChatGPT control room
+
+The control room reads the active law and current project ledger, inspects current source/evidence, authors all source changes and immutable patches, declares acceptance criteria, produces declarative run capsules, reviews returned evidence, and records verdicts and lessons.
+
+### Stable execution platform
+
+The stable execution platform is a versioned, qualified executor. It may verify state, apply an exact immutable patch, run only trusted recipe identifiers, own bounded child processes, collect evidence, commit and push after full success when authorized by the project overlay, and package one canonical ZIP.
+
+It must not infer, generate, rewrite, or improvise source changes.
+
+### Independent reviewer
+
+Review is logically independent from authorship and execution. Intent, confidence, compilation, or a nominal smoke result cannot replace evidence against predeclared acceptance criteria.
+
+## 3. Authority
+
+The active manifest defines authority order. General phrases such as “proceed,” “workhorse,” or “maximum reasoning” do not silently override trust boundaries or law-activation requirements.
+
+A boundary override must name the boundary, project/issue, cycle, and duration.
+
+## 4. One active work item and one mutation lane
+
+Only one project overlay and one active implementation issue control a mutation cycle. Parallel read-only research is allowed. Parallel source mutation is prohibited unless the user explicitly authorizes independently baselined workstreams.
+
+Work in progress is limited to one unaccepted product mutation. Execution-platform work and product work are separate lanes and cannot be released together.
+
+## 5. Stable-platform law
+
+Per-run generated executors are prohibited after engine qualification.
+
+A product cycle may provide only declarative data:
+
+```text
+project and issue identity
+baseline and state contract
+immutable patch identity
+trusted recipe identifiers and bounded parameters
+acceptance criteria
+evidence requirements
+commit/push policy
+```
+
+The capsule must contain zero run-specific executable logic, shell programs, embedded Python/JavaScript, dynamic command strings, or generative instructions.
+
+A bootstrap installer for the first stable engine is a one-time exception. It must be small, immutable, mechanically qualified, and contain only extraction, verification, installation, rollback, self-test, and evidence packaging logic.
+
+## 6. Value law
+
+Every accepted mutation must deliver all three:
+
+1. **Behavior delta:** obvious user or operator value.
+2. **Proof delta:** focused evidence that fails without the change and passes with it.
+3. **Protection delta:** an invariant or off-nominal regression preventing recurrence.
+
+Acquisition and control-platform qualification are not product iterations and must not be represented as product completion.
+
+## 7. Small-batch law
+
+Use the smallest complete vertical slice that delivers independently provable value. A large incomplete patch is worse than a smaller complete slice.
+
+A valid slice includes all applicable layers: state contract, service behavior, user/operator behavior, failure/recovery behavior, focused proof, and realistic routed validation.
+
+## 8. Source-of-truth and provenance
+
+Every cycle declares the accepted baseline, active issue, authoritative behavior, protected files/behavior, exact changed-path set, immutable payload digest, recipes, and acceptance criteria.
+
+Every result records exact commands, exit codes, durations, environment/runtime identities, patch state, local and remote Git identities, and output digest.
+
+Unknowns are labeled unknown. Current state is never claimed from memory.
+
+## 9. Verification and validation
+
+Verification asks whether the change satisfies the contract. Validation asks whether the system solves the intended problem in realistic use. Both are required when applicable.
+
+Each criterion maps to explicit proof methods: analysis, inspection, unit/contract test, integration test, routed end-to-end test, visual evidence, or manual validation.
+
+Compilation, typecheck, build, isolated mocks, or screenshots alone cannot prove complete routed behavior.
+
+## 10. Nominal and off-nominal qualification
+
+The execution platform and material product behavior must be tested in nominal and relevant off-nominal conditions.
+
+Engine qualification includes malformed capsules, wrong baselines, unexpected paths, patch-state inconsistencies, missing dependencies, occupied ports, timeouts, process cleanup, packaging faults, commit failures, push failures, and remote mismatch.
+
+Every operator-visible executor defect creates a permanent engine regression test before product issuance resumes.
+
+## 11. Stop-the-line authority
+
+Stop before mutation when scope, baseline, permissions, tenant ownership, destructive behavior, migration safety, patch identity, protected hashes, or current source cannot be proven.
+
+After an operator-visible executor defect, product issuance is frozen until the permanent platform is corrected and requalified against that failure class.
+
+## 12. Evidence over narrative
+
+Raw attributable evidence is primary. Narrative summaries are secondary. Mechanical gates are preferred over prose checklists.
+
+The canonical ZIP must be safe, manifest-verified, and reviewable through a stable evidence layout.
+
+## 13. Commit and push
+
+A mutation run may commit and push only when the active project overlay authorizes it and every declared acceptance gate has passed.
+
+Required order:
+
+```text
+final exact state verification
+→ one named commit
+→ push verified upstream
+→ read remote branch SHA
+→ require local SHA equals remote SHA
+→ require clean worktree
+→ package evidence
+```
+
+Failed, read-only, acquisition, and qualification runs do not commit or push. A push or remote-verification failure makes the run a failure and still packages evidence.
+
+## 14. Learning and recurrence prevention
+
+Every nontrivial review records verdict, score, what worked, what failed, root cause, lesson, next rule, and safe next action.
+
+A lesson is valid only when it changes a future patch, recipe, engine test, proof gate, or law.
+
+## 15. Completion
+
+Done requires a canonical review artifact, formal PASS, proven criteria, accepted delivery state, no unresolved critical defect, recorded lesson, and explicit lock or transition statement.
+
+`planned → implemented`, `compiled → tested`, `partial → pass`, and `audit complete → product complete` promotions are prohibited without the missing evidence.

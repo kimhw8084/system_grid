@@ -1,0 +1,8 @@
+ORIGINAL_PATH: /Users/haewonkim/.local/state/sysgrid-workstation/profiles/work/runs/20260811T024021Z/backend.log
+ORIGINAL_SHA256: 727174d31bad5194f1ca9c0020fd11a1318e5ddb50e5bd4e864a21f8bb0f0912
+================================================================================
+INFO:     Started server process [27867]
+INFO:     Waiting for application startup.
+2026-08-10 21:41:41,670 INFO sysgrid.api Checking database migrations
+INFO  [alembic.runtime.migration] Context impl SQLiteImpl.
+INFO  [alembic.runtime.migration] Will assume non-transactional DDL.

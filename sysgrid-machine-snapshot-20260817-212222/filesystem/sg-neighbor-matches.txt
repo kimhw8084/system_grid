@@ -1,0 +1,13 @@
+
+===== /Users/haewonkim/.local/bin =====
+0o755 size=147 /Users/haewonkim/.local/bin/sg
+0o755 size=142979 /Users/haewonkim/.local/bin/sgd
+0o755 size=45403 /Users/haewonkim/.local/bin/sgd.backup.20260802T014654Z
+0o755 size=92097 /Users/haewonkim/.local/bin/sgd.backup.20260802T030839Z
+0o755 size=124575 /Users/haewonkim/.local/bin/sgd.backup.20260802T030902Z
+0o755 size=124575 /Users/haewonkim/.local/bin/sgd.backup.20260802T034707Z
+0o755 size=884 /Users/haewonkim/.local/bin/sgnotify
+0o755 size=187 /Users/haewonkim/.local/bin/sgs
+0o755 size=186 /Users/haewonkim/.local/bin/sgwatch
+
+===== /Users/haewonkim/.local =====

@@ -1,0 +1,72 @@
+{
+  "branch": "main",
+  "committed_blobs": {
+    "frontend/src/components/ProjectsModernGantt.tsx": "15160b7d4b18b9f877aaa49be175628a14a9ab95",
+    "frontend/src/components/ProjectsSchedulingCompletion.tsx": "28663d0a9858afcae7d39d0dfa1652c901d6d4ee",
+    "frontend/src/components/ProjectsVisualRepair.css": "b2bd92bb77d3d60fffad27a644b41209feec676b",
+    "frontend/tests/projects-navigation.spec.ts": "4db5eed685e43b9d43ca7461a0088a1e7d221a03",
+    "frontend/tests/projects-out40-slice-e-timeline-dependency-a11y.spec.ts": "2e257214b4854a756aeb37f8c770fcab4c650210",
+    "frontend/tests/projects-out40-slice-g-accessible-name-audit.spec.ts": "9bb45acc166cc8984f33efffdde5b13f0e3e6948",
+    "frontend/tests/projects-out40-slice-h-gantt-modernization.spec.ts": "98daa22e1c2cfc4b98ba981855c95aaecb4359e1",
+    "frontend/tests/projects-visual-repair.spec.ts": "9e104744565bb6ef6b11b1b4243ac45a14cbe15c"
+  },
+  "completed_at": "2026-09-06T20:48:08.791575+00:00",
+  "expected_base": {
+    "commit": "d40c0929ff7a9ec37d9c57bdb7ef0cf2d020c7ee",
+    "tree": "0aa53cc6ed9121b178c72c31e2a6b1c04e985f5f"
+  },
+  "expected_blobs": {
+    "frontend/src/components/ProjectsModernGantt.tsx": "15160b7d4b18b9f877aaa49be175628a14a9ab95",
+    "frontend/src/components/ProjectsSchedulingCompletion.tsx": "28663d0a9858afcae7d39d0dfa1652c901d6d4ee",
+    "frontend/src/components/ProjectsVisualRepair.css": "b2bd92bb77d3d60fffad27a644b41209feec676b",
+    "frontend/tests/projects-navigation.spec.ts": "4db5eed685e43b9d43ca7461a0088a1e7d221a03",
+    "frontend/tests/projects-out40-slice-e-timeline-dependency-a11y.spec.ts": "2e257214b4854a756aeb37f8c770fcab4c650210",
+    "frontend/tests/projects-out40-slice-g-accessible-name-audit.spec.ts": "9bb45acc166cc8984f33efffdde5b13f0e3e6948",
+    "frontend/tests/projects-out40-slice-h-gantt-modernization.spec.ts": "98daa22e1c2cfc4b98ba981855c95aaecb4359e1",
+    "frontend/tests/projects-visual-repair.spec.ts": "9e104744565bb6ef6b11b1b4243ac45a14cbe15c"
+  },
+  "expected_gitlink": {
+    "mode": "160000",
+    "oid": "445c225a3dec7c359f8ff0b09934716ee2d91b6e",
+    "path": "SysGrid"
+  },
+  "gitlink_after_commit": "160000 commit 445c225a3dec7c359f8ff0b09934716ee2d91b6e\tSysGrid",
+  "gitlink_observed": "160000 commit 445c225a3dec7c359f8ff0b09934716ee2d91b6e\tSysGrid",
+  "initial_head": "d40c0929ff7a9ec37d9c57bdb7ef0cf2d020c7ee",
+  "initial_tree": "0aa53cc6ed9121b178c72c31e2a6b1c04e985f5f",
+  "local_commit_created": "66244b997a70b85e6e887870c96db958f3f0d22d",
+  "local_commit_tree": "0e736196233c7ee98ad91918ab09f07c01613bf0",
+  "next_gate": "FRESH_GITHUB_VERIFY_THEN_LINEAR_FRONTIER_HOT_STATE_TRANSITION",
+  "objective": "Approved Project View Perfection",
+  "origin": "git@github.com:kimhw8084/system_grid.git",
+  "publication_mode": "DIRECT_MAIN_FAST_FORWARD_NO_FORCE",
+  "published_commit": "66244b997a70b85e6e887870c96db958f3f0d22d",
+  "published_tree": "0e736196233c7ee98ad91918ab09f07c01613bf0",
+  "remote_main_after": "66244b997a70b85e6e887870c96db958f3f0d22d",
+  "remote_main_before": "d40c0929ff7a9ec37d9c57bdb7ef0cf2d020c7ee",
+  "remote_published": true,
+  "remote_write_attempted": true,
+  "schema": "SYSGRID_PROJECT_VIEW_PUBLICATION_RESULT_V1",
+  "started_at": "2026-09-06T20:48:04.872978+00:00",
+  "status": "PASS",
+  "tracked_status_before": [
+    " M frontend/src/components/ProjectsModernGantt.tsx",
+    " M frontend/src/components/ProjectsSchedulingCompletion.tsx",
+    " M frontend/src/components/ProjectsVisualRepair.css",
+    " M frontend/tests/projects-navigation.spec.ts",
+    " M frontend/tests/projects-out40-slice-e-timeline-dependency-a11y.spec.ts",
+    " M frontend/tests/projects-out40-slice-g-accessible-name-audit.spec.ts",
+    " M frontend/tests/projects-out40-slice-h-gantt-modernization.spec.ts",
+    " M frontend/tests/projects-visual-repair.spec.ts"
+  ],
+  "worktree_blobs_before_commit": {
+    "frontend/src/components/ProjectsModernGantt.tsx": "15160b7d4b18b9f877aaa49be175628a14a9ab95",
+    "frontend/src/components/ProjectsSchedulingCompletion.tsx": "28663d0a9858afcae7d39d0dfa1652c901d6d4ee",
+    "frontend/src/components/ProjectsVisualRepair.css": "b2bd92bb77d3d60fffad27a644b41209feec676b",
+    "frontend/tests/projects-navigation.spec.ts": "4db5eed685e43b9d43ca7461a0088a1e7d221a03",
+    "frontend/tests/projects-out40-slice-e-timeline-dependency-a11y.spec.ts": "2e257214b4854a756aeb37f8c770fcab4c650210",
+    "frontend/tests/projects-out40-slice-g-accessible-name-audit.spec.ts": "9bb45acc166cc8984f33efffdde5b13f0e3e6948",
+    "frontend/tests/projects-out40-slice-h-gantt-modernization.spec.ts": "98daa22e1c2cfc4b98ba981855c95aaecb4359e1",
+    "frontend/tests/projects-visual-repair.spec.ts": "9e104744565bb6ef6b11b1b4243ac45a14cbe15c"
+  }
+}

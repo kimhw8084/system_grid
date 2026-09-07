@@ -1,0 +1,11 @@
+ORIGINAL_PATH: /Users/haewonkim/.local/state/sysgrid-supervisor/runs/20260801T191314Z-2458-372000/diagnostic/REVIEW_ME_FIRST.md
+ORIGINAL_SHA256: f616aa7453e8ddc33a9919cf7896f8c941b19f2564fad66b117ac5cc4644cb42
+================================================================================
+# SysGrid Supervisor Diagnostic
+
+- Result: failure
+- Classification: CAPSULE_SELECTION_FAILURE
+- Message: Inbox must contain one capsule; found 0
+- Product mutation authority: none added by this diagnostic
+
+Review RESULT.json, SUPERVISOR_STATE.json, TRACEBACK.txt, and MANIFEST.sha256.

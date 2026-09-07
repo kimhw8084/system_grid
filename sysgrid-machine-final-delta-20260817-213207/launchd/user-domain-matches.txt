@@ -1,0 +1,74 @@
+=== user/501 ===
+		 0x5d603    M   A   com.apple.dock.notificationcenter
+		 0x5d303    M   A   com.apple.dock.launchpad
+		 0x72307    M   D   com.apple.intelligentroutingd.xpc.media
+		 0x6070f    M   A   com.apple.FontWorker
+		       0    M   D   com.apple.AOSPushRelay.push.demo
+		 0x8b397    M   D   com.apple.routined.store.cloud
+		       0    M   D   com.apple.ibooks.BLService
+		 0xe811b    M   D   com.apple.siri.encore_xpc_service
+		       0    M   D   com.apple.usernotifications.delegate.com.apple.ManagedClient.PasscodeUserNotification2
+--
+		 0xb3d0b    M   D   com.apple.helpd
+		 0x44e3f    M   A   com.apple.CoreLocation.agent
+		 0x4a603    M   A   com.apple.widget-observation
+		 0x32f07    M   A   com.apple.accountsd.accountmanager
+		       0    M   D   com.apple.AOSPushRelay
+		 0x3291b    M   D   com.apple.backgroundtaskmanagementagent
+		 0x3754f    M   D   com.apple.backgroundtaskmanagement.notifications
+		 0x7f703    M   A   com.apple.aps.StatusKit
+		 0x70f03    M   D   com.apple.MobileTimer.stopwatchserver
+--
+		 0x3651f    M   A   com.apple.window_proxies.startup
+		 0x1c813    M   D   com.apple.SecureBackupDaemon.concurrent
+		 0x92f0b    M   D   com.apple.Maps.MapsSync.store
+		 0x77203    M   A   com.apple.dock.spaces
+		       0    M   D   com.apple.AOSPushRelay.notifier
+		 0xbe703    M   D   com.apple.AOSPushRelay.push
+		       0    M   D   com.apple.DistributedTimers
+		 0x81803    M   A   com.apple.routined.registration
+		 0x82f03    M   A   com.apple.inputmethodkit.launcher
+		 0x7ee4b    M   A   com.apple.ak.custodian.xpc
+--
+		 0x872cf    M   D   com.apple.newsd.today-feed
+		 0xa2dbb    M   D   com.apple.devicecheckd
+		 0xc0617    M   D   com.apple.aps.SafariCloudHistoryPushAgent
+		 0xd0f03    M   D   com.apple.private.alloy.lockdownmode-idswake
+		       0    M   D   com.apple.AOSPushRelay.push.dev
+		 0x56a03    M   A   com.apple.ak.anisette.xpc
+		 0x4f8b3    M   D   com.apple.quicklook.ui.helper
+		 0x73203    M   D   com.apple.suggestd.mail-intelligence
+		 0x61103    M   D   com.apple.suggestd.messages
+--
+		 0x915bb    M   D   com.apple.netauth.user.auth
+		 0x9d30f    M   D   com.apple.CoreRoutine.helperservice
+		 0x5490b    M   D   com.apple.siri.intelligence-tool-helper-service
+		0x1067df    M   D   com.apple.usernotifications.delegate.com.apple.TimeZoneUpdates.tznotify
+		 0x33d03    M   A   com.apple.cascade.SetChangeRelayService
+		 0x61f03    M   A   com.apple.bird
+		 0x30f03    M   A   com.apple.proactive.SuggestionRequest.ps_facetime_fallback_interaction_model
+		 0x9bdcf    M   D   com.apple.usernotifications.delegate.com.apple.studentd.notifications
+		       0    M   D   com.apple.DictationIM.feedback
+--
+		 0x7965b    M   D   com.apple.CoreDevice.CoreDeviceService
+		 0xcd167    U   A   com.apple.DiscRecording:registrar
+		 0x53e03    M   A   com.apple.siri.client_lite
+		 0x54103    M   A   com.apple.siri.orchestration.intelligencesession
+		 0xfc203    M   A   com.apple.sidecar-relay
+		 0xac103    M   D   com.apple.aps.photos.cloud.datarepair
+		 0x71c23    M   D   com.apple.quicklook.ThumbnailsAgent
+		       0    M   D   com.apple.symptom_diagnostics_collection
+		 0x44003    M   D   com.apple.homekit.xpc
+--
+		"com.apple.Siri.agent" => enabled
+		"com.if.AmphetamineHelper-AllProcesses" => enabled
+		"io.tailscale.ipn.macos.login-item-helper" => enabled
+		"com.citrix.ReceiverHelper" => enabled
+		"com.sysgrid.public-relay" => disabled
+		"com.apple.FolderActionsDispatcher" => disabled
+		"com.citrix.AuthManager_Mac" => enabled
+		"actions.runner.kimhw8084-system_grid.sysgrid-relay-HaeBook-Pro-M3-1785852110" => disabled
+		"com.openai.chat-helper" => enabled
+		"com.cloudflare.1dot1dot1dot1.macos.loginlauncherapp" => enabled
+		"com.apple.appleseed.seedusaged.postinstall" => disabled
+		"com.apple.ScriptMenuApp" => disabled

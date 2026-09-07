@@ -1,0 +1,11 @@
+ORIGINAL_PATH: /Users/haewonkim/.local/share/sysgrid-campaign-platform/v1.0.0/ORIGINAL_SOURCE_IDENTITY.json
+ORIGINAL_SHA256: 59ab564e43fa679b38f8e74fcbae5bf3b508bc4be43fd1540013014f70d2881c
+================================================================================
+{
+  "stable_engine_v1.0.4": {
+    "sha256": "ab63bb20c0de32771e20b0159475205f685f28910a0956c217fb3693c02f96e1"
+  },
+  "supervisor_v2.1.5": {
+    "sha256": "5eeb2262e3159c254a5d9fe19d526fd3417336d2c2b80455311fb634baf116e5"
+  }
+}

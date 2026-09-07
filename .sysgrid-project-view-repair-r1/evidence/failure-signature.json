@@ -1,0 +1,12 @@
+{
+  "schema": "SYSGRID_PROJECT_VIEW_REPAIR_EVIDENCE_V1",
+  "parent_result_sha256": "ee99946d3ec51eb5a840955e80e932bc0edfb77ea2418023d391236743fbaa53",
+  "parent_status": "FAIL",
+  "parent_passed_stage": "projects-visual-repair",
+  "parent_visual_repair_summary": "12 model/geometry tests + production build + 15 real-app Playwright tests PASS",
+  "failed_stage": "out40-slice-h-regression",
+  "failed_test_count": 5,
+  "common_failure": "openTimeline expected [data-project-legacy-gantt-hidden=true] count 1; received 0 before each test body",
+  "repair_hypothesis": "harness-only legacy sentinel is obsolete; preserve unique modern Gantt presence instead",
+  "repair_scope": "test harness only; no product-source semantic change"
+}

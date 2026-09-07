@@ -1,0 +1,37 @@
+ORIGINAL_PATH: /Users/haewonkim/.local/share/sysgrid-campaign-platform/v1.0.0/payload/sg
+ORIGINAL_SHA256: 9fcfdbba3cf8df3074ad93ad721623821f6e9d0a8844973eece5469aa34cffef
+================================================================================
+#!/usr/bin/env bash
+set +e
+export PYTHONDONTWRITEBYTECODE=1
+ROOT="$HOME/.local/share/sysgrid-campaign-platform/v1.0.0"
+PYTHON="${PYTHON:-python3}"
+case "${1:-}" in
+  campaign)
+    shift
+    exec "$PYTHON" "$ROOT/payload/sysgrid_campaign.py" run "$@"
+    ;;
+  campaign-validate)
+    shift
+    exec "$PYTHON" "$ROOT/payload/sysgrid_campaign.py" validate "$@"
+    ;;
+  campaign-status)
+    shift
+    exec "$PYTHON" "$ROOT/payload/sysgrid_campaign.py" status "$@"
+    ;;
+  campaign-self-test)
+    shift
+    exec "$PYTHON" "$ROOT/payload/sysgrid_campaign.py" self-test "$@"
+    ;;
+  "")
+    exec "$PYTHON" "$ROOT/payload/sysgrid_supervisor.py" run
+    ;;
+  run|status|watch|self-test|notification-test|recover-artifact|discover-engine)
+    exec "$PYTHON" "$ROOT/payload/sysgrid_supervisor.py" "$@"
+    ;;
+  *)
+    echo "Unknown command: $1" >&2
+    echo "Use: sg campaign | sg campaign-validate | sg campaign-status | sg run | sg status" >&2
+    exit 2
+    ;;
+esac

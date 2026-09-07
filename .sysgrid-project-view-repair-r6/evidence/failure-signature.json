@@ -1,0 +1,9 @@
+{
+  "classification": "PRODUCT_RESPONSIVE_DIALOG_CONTAINING_BLOCK",
+  "observed": "Repair 5 diagnostic sweep passed Slice H/G/F/E/D/C, navigation, and readability. Scheduling failed only at 390x844 with schedule dialog bounding-box x = -7px.",
+  "parent_result_sha256": "30d01f16fa2cba6de437e3e690d642661cde281c455e65c0c00825c59b1a29c5",
+  "proof_gate": "Run the complete diagnostic sweep first; then canonical OUT-40 regression; then full Projects visual-repair proof. Apply locally only after all gates PASS.",
+  "repair": "Portal the existing schedule-control dialog to document.body so its already-scoped fixed positioning is viewport-anchored. Preserve schedule state, canonical Project writes, ARIA modal semantics, focus, and Escape behavior.",
+  "repair_iteration": 6,
+  "schema": "SYSGRID_PROJECT_VIEW_REPAIR_FAILURE_SIGNATURE_V1"
+}

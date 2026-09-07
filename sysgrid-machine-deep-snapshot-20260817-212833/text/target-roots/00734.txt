@@ -1,0 +1,17 @@
+ORIGINAL_PATH: /Users/haewonkim/.local/state/sysgrid-supervisor/runs/20260801T165116Z-41268-284000/patch.diff
+ORIGINAL_SHA256: 23487f314b2109e508c41ffc56fcab6d4c3fbf3ed9686bcdea439c42fe5e4b9b
+================================================================================
+diff --git a/frontend/src/components/shared/CanonicalVerificationContract.test.ts b/frontend/src/components/shared/CanonicalVerificationContract.test.ts
+index 425abcf..33795d5 100644
+--- a/frontend/src/components/shared/CanonicalVerificationContract.test.ts
++++ b/frontend/src/components/shared/CanonicalVerificationContract.test.ts
+@@ -12,7 +12,8 @@ describe('canonical verification contract', () => {
+     expect(script).toContain('"SYSGRID_CANONICAL_GATE=1"')
+     expect(script).toContain('"SYSGRID_EXPECTED_FRONTEND_ORIGIN=$FRONTEND_ORIGIN"')
+     expect(script).toContain('"SYSGRID_EXPECTED_API_BASE=$BACKEND_ORIGIN/api/v1"')
+-    expect(script).toContain('"${PLAYWRIGHT_ENV_COMMAND[@]}" npx playwright test "${PLAYWRIGHT_SPECS[@]}"')
++    expect(script).toContain('"${PLAYWRIGHT_ENV_COMMAND[@]}" "$FRONTEND_DIR/node_modules/.bin/playwright" test "${PLAYWRIGHT_SPECS[@]}"')
++    expect(script).not.toContain('npx playwright')
+     expect(script).toContain('run_validation_lanes')
+     expect(script).toContain('npm run preview -- --host "$FRONTEND_HOST"')
+     expect(script).toContain('VITE_API_BASE_URL="$BACKEND_ORIGIN" VITE_FRONTEND_ORIGIN="$FRONTEND_ORIGIN" npm run build')

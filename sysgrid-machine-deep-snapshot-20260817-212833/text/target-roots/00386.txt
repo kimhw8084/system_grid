@@ -1,0 +1,4 @@
+ORIGINAL_PATH: /Users/haewonkim/.local/share/sysgrid-campaign-platform/v1.1.1/templates/ACTIVE_ARTIFACT_IDENTITY.template.json
+ORIGINAL_SHA256: 1c500c55a9ecf91061ba5e61b90f7f8b5aeab83c7c2bf522a290570796b98c38
+================================================================================
+{"schema_version":"1.0","campaign_id":"<campaign-id>","kind":"campaign_payload","filename":"<filename>","sha256":"<sha256>","sole_active":true}

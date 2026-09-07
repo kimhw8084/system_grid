@@ -1,0 +1,7 @@
+PID=8159
+ 8159  8152   501 haewonkim Sun06PM   0:50.92 SN   /Users/haewonkim/Library/Caches/SysGrid/operator-fddee7b80843/frontend/node_modules/@esbuild/darwin-arm64/bin/esbuild --service=0.21.5 --ping
+
+COMMAND  PID      USER   FD   TYPE DEVICE SIZE/OFF                NODE NAME
+esbuild 8159 haewonkim  cwd    DIR   1,14     5760           118444662 /Users/haewonkim/Library/Caches/SysGrid/operator-2f9fee7a4d23/frontend
+esbuild 8159 haewonkim  txt    REG   1,14  9859426           115156128 /Users/haewonkim/Library/Caches/SysGrid/operator-fddee7b80843/frontend/node_modules/esbuild/bin/esbuild
+esbuild 8159 haewonkim  txt    REG   1,14  2289328 1152921500312524539 /usr/lib/dyld

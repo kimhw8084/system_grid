@@ -1,0 +1,33 @@
+PID=8152
+ 8152  8123   501 haewonkim Sun06PM   2:16.90 SN   node /Users/haewonkim/Library/Caches/SysGrid/operator-2f9fee7a4d23/frontend/node_modules/.bin/vite --host --host 127.0.0.1 --port 5173
+
+COMMAND  PID      USER   FD   TYPE DEVICE SIZE/OFF                NODE NAME
+node    8152 haewonkim  cwd    DIR   1,14     5760           118444662 /Users/haewonkim/Library/Caches/SysGrid/operator-2f9fee7a4d23/frontend
+node    8152 haewonkim  txt    REG   1,14    68672            88123555 /opt/homebrew/Cellar/node/26.0.0/bin/node
+node    8152 haewonkim  txt    REG   1,14    95664            88123325 /opt/homebrew/Cellar/llhttp/9.4.1/lib/libllhttp.9.4.1.dylib
+node    8152 haewonkim  txt    REG   1,14    88112            88116303 /opt/homebrew/Cellar/brotli/1.2.0/lib/libbrotlidec.1.2.0.dylib
+node    8152 haewonkim  txt    REG   1,14    75920            88116514 /opt/homebrew/Cellar/hdrhistogram_c/0.11.9/lib/libhdr_histogram.6.2.3.dylib
+node    8152 haewonkim  txt    REG   1,14   207408            88123303 /opt/homebrew/Cellar/libuv/1.52.1/lib/libuv.1.0.0.dylib
+node    8152 haewonkim  txt    REG   1,14   113344            88123398 /opt/homebrew/Cellar/simdjson/4.6.4/lib/libsimdjson.33.0.0.dylib
+node    8152 haewonkim  txt    REG   1,14    98176            88123367 /opt/homebrew/Cellar/merve/1.2.2_1/lib/libmerve.1.2.2.dylib
+node    8152 haewonkim  txt    REG   1,14    53136            88123385 /opt/homebrew/Cellar/nbytes/0.1.4/lib/libnbytes.dylib
+node    8152 haewonkim  txt    REG   1,14   244768            88116337 /opt/homebrew/Cellar/c-ares/1.34.6/lib/libcares.2.19.5.dylib
+node    8152 haewonkim  txt    REG   1,14   616512            88116284 /opt/homebrew/Cellar/ada-url/3.4.4/lib/libada.3.4.4.dylib
+node    8152 haewonkim  txt    REG   1,14    83616            88123436 /opt/homebrew/Cellar/uvwasi/0.0.23/lib/libuvwasi.dylib
+node    8152 haewonkim  txt    REG   1,14   202144            88116569 /opt/homebrew/Cellar/libnghttp2/1.69.0/lib/libnghttp2.14.dylib
+node    8152 haewonkim  txt    REG   1,14   201376            88116584 /opt/homebrew/Cellar/libnghttp3/1.16.0/lib/libnghttp3.9.7.0.dylib
+node    8152 haewonkim  txt    REG   1,14   657136            88116304 /opt/homebrew/Cellar/brotli/1.2.0/lib/libbrotlienc.1.2.0.dylib
+node    8152 haewonkim  txt    REG   1,14   163626           115156794 /Users/haewonkim/Library/Caches/SysGrid/operator-fddee7b80843/frontend/node_modules/fsevents/fsevents.node
+node    8152 haewonkim  txt    REG   1,14   168128            88116302 /opt/homebrew/Cellar/brotli/1.2.0/lib/libbrotlicommon.1.2.0.dylib
+node    8152 haewonkim  txt    REG   1,14   367440            88123282 /opt/homebrew/Cellar/libngtcp2/1.23.0/lib/libngtcp2.16.dylib
+node    8152 haewonkim  txt    REG   1,14  2289328 1152921500312524539 /usr/lib/dyld
+node    8152 haewonkim  txt    REG   1,14   239776            88123342 /opt/homebrew/Cellar/simdutf/9.0.0/lib/libsimdutf.34.0.0.dylib
+node    8152 haewonkim  txt    REG   1,14  1294288            88123425 /opt/homebrew/Cellar/sqlite/3.53.1/lib/libsqlite3.3.53.1.dylib
+node    8152 haewonkim  txt    REG   1,14   653328            88123522 /opt/homebrew/Cellar/zstd/1.5.7_1/lib/libzstd.1.5.7.dylib
+node    8152 haewonkim  txt    REG   1,14   905488            88116691 /opt/homebrew/Cellar/openssl@3/3.6.2/lib/libssl.3.dylib
+node    8152 haewonkim  txt    REG   1,14  1877408            88116547 /opt/homebrew/Cellar/icu4c@78/78.3/lib/libicuuc.78.3.dylib
+node    8152 haewonkim  txt    REG   1,14  4872000            88116690 /opt/homebrew/Cellar/openssl@3/3.6.2/lib/libcrypto.3.dylib
+node    8152 haewonkim  txt    REG   1,14  3186704            88116543 /opt/homebrew/Cellar/icu4c@78/78.3/lib/libicui18n.78.3.dylib
+node    8152 haewonkim  txt    REG   1,14  1763792           115156445 /Users/haewonkim/Library/Caches/SysGrid/operator-fddee7b80843/frontend/node_modules/@rollup/rollup-darwin-arm64/rollup.darwin-arm64.node
+node    8152 haewonkim  txt    REG   1,14 70843136            88123559 /opt/homebrew/Cellar/node/26.0.0/lib/libnode.147.dylib
+node    8152 haewonkim  txt    REG   1,14 33389136            88116542 /opt/homebrew/Cellar/icu4c@78/78.3/lib/libicudata.78.3.dylib

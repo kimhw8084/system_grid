@@ -1,0 +1,15 @@
+ORIGINAL_PATH: /Users/haewonkim/Library/Application Support/SysGridRelay/config.json
+ORIGINAL_SHA256: 3d2aa8cf133ba780c4f47448109d8e7351333234c630f53dcb38abddd3b62a69
+================================================================================
+{
+  "activated_after_epoch": 1785852114.398187,
+  "control_root": "/Users/haewonkim/Library/Mobile Documents/com~apple~CloudDocs/SysGrid-Control",
+  "gh_path": "/opt/homebrew/bin/gh",
+  "max_attempts": 3,
+  "repository": "kimhw8084/system_grid",
+  "schema_version": "1.1.0",
+  "spool_root": "/Users/haewonkim/Library/Application Support/SysGridRelay/spool",
+  "state_path": "/Users/haewonkim/Library/Application Support/SysGridRelay/state.json",
+  "token_path": "/Users/haewonkim/Library/Application Support/SysGridRelay/github-token",
+  "workflow": "sysgrid-public-outbox-relay.yml"
+}

@@ -1,0 +1,7 @@
+ORIGINAL_PATH=/Users/haewonkim/.local/bin/sg
+8568fbb49e3664076d4f3c4871bfa520c675f6cc80f4be54dc9649d3a69b9360  /Users/haewonkim/.local/bin/sg
+================================================================
+#!/usr/bin/env bash
+set -euo pipefail
+ROOT="$HOME/.local/share/sysgrid-delivery-v1.3.0"
+exec env PYTHONUNBUFFERED=1 python3 "$ROOT/sg_cli.py" "$@"

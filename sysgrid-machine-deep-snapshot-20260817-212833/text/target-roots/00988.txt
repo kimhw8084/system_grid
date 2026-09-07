@@ -1,0 +1,13 @@
+ORIGINAL_PATH: /Users/haewonkim/.local/state/sysgrid-supervisor/runs/20260804T010704Z-54912-696000/launch.json
+ORIGINAL_SHA256: 935f788e9c119680635121a9b1eea240cdb437a35b6cfb851c3fab3fd7dc8a57
+================================================================================
+{
+  "capsule_path": "/Users/haewonkim/.local/state/sysgrid-supervisor/runs/20260804T010704Z-54912-696000/input/SYSGRID_OUT31_PA13_PS2_FAR_BOUNDED_COLUMN_LIFECYCLE_CORRECTION_v1.0.0.sgcap",
+  "capsule_sha256": "93bb6a9f8925f9c8ba16bd49f89e8bcabcc6fb0088e9274370a8bda61e2c7434",
+  "command_sha256": "35f0f9af6ab0da0dc44afb3cb3d6123a9b1df5abece5833859dc54c10cb66c73",
+  "engine_path": "/Users/haewonkim/.local/share/sysgrid-runner/engine-v1.1.1/sysgrid_runner.py",
+  "engine_sha256": "66b082fec1e9f6c49152e5ecb4cbb3f998e60ce27d53a2325e5f658634a8d032",
+  "launched_utc": "2026-08-04T01:07:05Z",
+  "repo": "/Users/haewonkim/home/development/sysgrid",
+  "run_id": "20260804T010704Z-54912-696000"
+}

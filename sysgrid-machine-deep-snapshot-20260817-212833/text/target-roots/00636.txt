@@ -1,0 +1,38 @@
+ORIGINAL_PATH: /Users/haewonkim/.local/state/sysgrid-supervisor/runs/20260807T030131Z-10511-174000/patch.diff
+ORIGINAL_SHA256: c67cbd89c548cff63a45fc689e4a1accec141b0c26537418466904d81f5e9a2c
+================================================================================
+diff --git a/frontend/src/components/ServicesReal.tsx b/frontend/src/components/ServicesReal.tsx
+index 10ec02b..d95e394 100644
+--- a/frontend/src/components/ServicesReal.tsx
++++ b/frontend/src/components/ServicesReal.tsx
+@@ -581,6 +581,7 @@ export default function ServicesReal() {
+   const autoSizeFrameRef = useRef<number | null>(null)
+   const autoSizeTimeoutRef = useRef<number | null>(null)
+   const servicePreferenceHydratedRef = useRef(false)
++  const serviceSearchInteractedBeforeHydrationRef = useRef(false)
+   const servicePreferenceMigratedRef = useRef(false)
+   const servicePreferenceSyncRef = useRef<string | null>(null)
+   const servicePreferenceSyncTimeoutRef = useRef<number | null>(null)
+@@ -718,7 +719,9 @@ export default function ServicesReal() {
+       setQuickFilters(payload?.uiState.quickFilters ?? normalizeServiceQuickFilters(null))
+       setGroupBy(payload?.uiState.groupBy ?? 'raw')
+       setColumnLayoutState(payload?.uiState.columnLayoutState ?? [])
+-      setSearchTerm(payload?.uiState.searchTerm ?? '')
++      if (!serviceSearchInteractedBeforeHydrationRef.current) {
++        setSearchTerm(payload?.uiState.searchTerm ?? '')
++      }
+       return
+     }
+ 
+@@ -1910,7 +1913,10 @@ export default function ServicesReal() {
+       toolbarSearch={(
+         <ToolbarSearch
+           value={searchTerm}
+-          onChange={(e) => setSearchTerm(e.target.value)}
++          onChange={(e) => {
++            serviceSearchInteractedBeforeHydrationRef.current = true
++            setSearchTerm(e.target.value)
++          }}
+           placeholder="Search services, hosts, or metadata..."
+         />
+       )}

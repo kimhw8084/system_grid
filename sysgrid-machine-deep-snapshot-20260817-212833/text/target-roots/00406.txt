@@ -1,0 +1,40 @@
+ORIGINAL_PATH: /Users/haewonkim/.local/share/sysgrid-campaign-platform/v1.1.0/IMPROVEMENT_LEDGER.json
+ORIGINAL_SHA256: 8c6ab0e3f1d7366897fa00e142b5ae36d2b036aeed05424a329197006825d652
+================================================================================
+{
+  "items": [
+    {
+      "disposition": "ACT_NOW",
+      "finding": "Fresh-chat continuation previously depended partly on project memory and conversation retrieval.",
+      "id": "P2-1",
+      "resolution": "Added mandatory live-authority bootstrap protocol and conformance suite."
+    },
+    {
+      "disposition": "ACT_NOW",
+      "finding": "Campaign evidence lacked a dedicated immutable continuity handoff directory.",
+      "id": "P2-2",
+      "resolution": "Added hash-bound HANDOFF evidence and controller validation."
+    },
+    {
+      "disposition": "DEFER_MATERIAL",
+      "finding": "Project memory mode cannot be changed for an existing Project.",
+      "id": "P2-3",
+      "resolution": "Current Project is hardened without relying on memory; optional clean project-only migration remains a separately approved choice."
+    },
+    {
+      "disposition": "DEFER_OUT_OF_SCOPE",
+      "finding": "Product Attempt 12 implementation.",
+      "id": "P2-4",
+      "resolution": "Remains blocked until P2 activation and fresh-chat conformance acceptance."
+    },
+    {
+      "disposition": "REJECT_WITH_REASON",
+      "finding": "Use a mutable current-state Project file.",
+      "id": "P2-5",
+      "resolution": "Live Linear and immutable evidence remain authority."
+    }
+  ],
+  "product_attempt": 12,
+  "repair": "P2",
+  "schema_version": "1.0"
+}

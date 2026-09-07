@@ -1,0 +1,34 @@
+ORIGINAL_PATH: /Users/haewonkim/.local/state/sysgrid-supervisor/runs/20260805T113731Z-63890-573000/preflight.json
+ORIGINAL_SHA256: 7c28ac6059cc66701314019e8caaae6918b7f0e2bc1531427140933b849baf8b
+================================================================================
+{
+  "declared_state": {
+    "dirty_path_count": 96,
+    "pre_hash_count": 96,
+    "protected_hash_count": 719
+  },
+  "engine_self_test": {
+    "engine_version": "1.1.1",
+    "result": "PASS",
+    "tests": [
+      "safe-path",
+      "manifest",
+      "corruption",
+      "canonical-dirty-paths",
+      "aggregate-recipes"
+    ]
+  },
+  "patch": {
+    "applicable": true,
+    "forward_diagnostic": "Checking patch frontend/src/components/shared/OperationalSavedViewsPanel.test.tsx...\nChecking patch frontend/src/components/shared/OperationalWorkspacePrimitives.tsx...\nChecking patch frontend/tests/far-golden-workspace.spec.ts...",
+    "forward_exit_code": 0,
+    "reverse_applicable": false,
+    "reverse_diagnostic": "Checking patch frontend/tests/far-golden-workspace.spec.ts...\nerror: while searching for:\n    await clickResilientButton(page, 'Filters')\n    await expect(page.locator('[data-far-filter-bar=\"true\"]')).toHaveCount(0)\n\n    const riskHeader = grid.getByRole('columnheader', { name: 'Risk', exact: true })\n    await riskHeader.click()\n    await expect(riskHeader).toHaveAttribute('aria-sort', /ascending|descending/)\n\n\nerror: patch failed: frontend/tests/far-golden-workspace.spec.ts:142\nerror: frontend/tests/far-golden-workspace.spec.ts: patch does not apply\nChecking patch frontend/src/components/shared/OperationalWorkspacePrimitives.tsx...\nerror: while searching for:\n      bottom: resolvedPlacement === 'above' ? viewportHeight - triggerRect.top + offset : undefined,\n      left,\n      width,\n      boxSizing: 'border-box',\n      maxHeight: Math.max(40, availableHeight),\n      overflowY: 'auto',\n      overscrollBehavior: 'contain',\n\nerror: patch failed: frontend/src/components/shared/OperationalWorkspacePrimitives.tsx:55\nerror: frontend/src/components/shared/OperationalWorkspacePrimitives.tsx: patch does not apply\nChecking patch frontend/src/components/shared/OperationalSavedViewsPanel.test.tsx...\nerror: while searching for:\n    expect(moved.style.maxHeight).toBe(40)\n  })\n\n  it('keeps the rendered border box inside protected narrow viewport margins', () => {\n    const narrow = computeWorkspaceAnchoredPanelStyle({\n      triggerRect: { top: 120, right: 378, bottom: 160, left: 300, width: 78 },\n      viewportWidth: 390,\n      viewportHeight: 844,\n      offset: 8,\n      minWidth: 420,\n      placement: null,\n    })\n\n    expect(narrow.style).toMatchObject({\n      left: 12,\n      width: 366,\n      boxSizing: 'border-box',\n      overflowY: 'auto',\n      scrollbarGutter: 'stable',\n    })\n    expect(Number(narrow.style.left) + Number(narrow.style.width)).toBeLessThanOrEqual(378)\n  })\n\n  it('classifies only panel-descendant scroll as internal', () => {\n    const panel = document.createE",
+    "reverse_exit_code": 1
+  },
+  "storage": {
+    "control_free": 54752067584,
+    "local_free": 54752067584,
+    "required": 3221225472
+  }
+}

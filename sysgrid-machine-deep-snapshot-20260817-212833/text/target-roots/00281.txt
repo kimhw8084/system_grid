@@ -1,0 +1,1169 @@
+ORIGINAL_PATH: /Users/haewonkim/.local/share/sysgrid-supervisor/v1.2.0/payload/sysgrid_supervisor.py
+ORIGINAL_SHA256: aaab95b75aafbb831db64732c5ce2571eeb18f7abec8de2538b4d360550afc93
+================================================================================
+#!/usr/bin/env python3
+"""SysGrid Execution Supervisor v1.2.0.
+
+A standard-library-only, fail-closed supervisor for the independently qualified
+SysGrid Stable Engine v1.0.4. Capsules remain immutable and declarative. This
+program does not generate run logic or edit product source; it verifies inputs,
+invokes the exact engine synchronously, verifies the resulting evidence, and
+publishes it atomically.
+"""
+from __future__ import annotations
+
+import argparse
+import concurrent.futures
+import contextlib
+import datetime as dt
+import errno
+import fcntl
+import hashlib
+import json
+import os
+import re
+import shutil
+import signal
+import stat
+import subprocess
+import sys
+import tempfile
+import time
+import traceback
+import zipfile
+from dataclasses import dataclass
+from pathlib import Path, PurePosixPath
+from typing import Any, Callable, Iterable, Iterator, Sequence
+
+SUPERVISOR_VERSION = "1.2.0"
+ENGINE_VERSION = "1.0.4"
+ENGINE_SHA256 = "ab63bb20c0de32771e20b0159475205f685f28910a0956c217fb3693c02f96e1"
+CANONICAL_ZIP = "UPLOAD_THIS_TO_CHATGPT.zip"
+MAX_CAPSULE_BYTES = 50 * 1024 * 1024
+MAX_ZIP_MEMBERS = 4096
+MAX_TOTAL_UNCOMPRESSED = 256 * 1024 * 1024
+MAX_SINGLE_UNCOMPRESSED = 64 * 1024 * 1024
+MAX_COMPRESSION_RATIO = 250
+MAX_JSON_BYTES = 4 * 1024 * 1024
+MAX_ENGINE_BYTES = 20 * 1024 * 1024
+SHA256_RE = re.compile(r"^[0-9a-f]{64}$")
+SAFE_ID = re.compile(r"^[A-Za-z0-9_.:/+-]{1,240}$")
+PROHIBITED_CAPSULE_SUFFIXES = {
+    ".sh", ".bash", ".zsh", ".py", ".pyc", ".pyo", ".js", ".mjs", ".cjs",
+    ".ts", ".tsx", ".exe", ".command", ".app", ".dylib", ".so",
+}
+TERMINAL_STATES = {"SUCCEEDED", "FAILED_REVIEW_READY", "FAILED_NO_ARTIFACT", "BLOCKED", "ABORTED"}
+
+
+class SupervisorError(RuntimeError):
+    def __init__(self, classification: str, message: str, exit_code: int = 70):
+        super().__init__(message)
+        self.classification = classification
+        self.exit_code = exit_code
+
+
+@dataclass(frozen=True)
+class CapsuleInfo:
+    path: Path
+    sha256: str
+    size: int
+    run: dict[str, Any]
+    manifest: dict[str, str]
+
+
+@dataclass(frozen=True)
+class RepoInfo:
+    path: Path
+    branch: str
+    head: str
+    upstream: str
+    dirty_paths: tuple[str, ...]
+
+
+def now_utc() -> str:
+    return dt.datetime.now(dt.timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z")
+
+
+def sha256_file(path: Path) -> str:
+    h = hashlib.sha256()
+    with path.open("rb") as f:
+        for chunk in iter(lambda: f.read(1024 * 1024), b""):
+            h.update(chunk)
+    return h.hexdigest()
+
+
+def sha256_bytes(data: bytes) -> str:
+    return hashlib.sha256(data).hexdigest()
+
+
+def fsync_dir(path: Path) -> None:
+    try:
+        fd = os.open(path, os.O_RDONLY)
+    except OSError:
+        return
+    try:
+        os.fsync(fd)
+    finally:
+        os.close(fd)
+
+
+def atomic_write_bytes(path: Path, data: bytes, mode: int = 0o600) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    tmp = path.with_name(f".{path.name}.tmp-{os.getpid()}-{time.time_ns()}")
+    fd = os.open(tmp, os.O_WRONLY | os.O_CREAT | os.O_EXCL, mode)
+    try:
+        with os.fdopen(fd, "wb", closefd=True) as f:
+            f.write(data)
+            f.flush()
+            os.fsync(f.fileno())
+        os.replace(tmp, path)
+        fsync_dir(path.parent)
+    except Exception:
+        with contextlib.suppress(OSError):
+            tmp.unlink()
+        raise
+
+
+def atomic_write_json(path: Path, value: Any) -> None:
+    atomic_write_bytes(path, (json.dumps(value, indent=2, sort_keys=True) + "\n").encode("utf-8"))
+
+
+def copy_verified_atomic(source: Path, destination: Path, expected_sha: str | None = None) -> str:
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    tmp = destination.with_name(f".{destination.name}.partial-{os.getpid()}-{time.time_ns()}")
+    try:
+        with source.open("rb") as src, tmp.open("xb") as dst:
+            shutil.copyfileobj(src, dst, length=1024 * 1024)
+            dst.flush()
+            os.fsync(dst.fileno())
+        got = sha256_file(tmp)
+        if expected_sha and got != expected_sha:
+            raise SupervisorError("ATOMIC_COPY_FAILURE", f"copy digest mismatch: expected {expected_sha}, got {got}")
+        os.replace(tmp, destination)
+        fsync_dir(destination.parent)
+        if sha256_file(destination) != got:
+            raise SupervisorError("ATOMIC_COPY_FAILURE", "destination digest changed after atomic replace")
+        return got
+    except Exception:
+        with contextlib.suppress(OSError):
+            tmp.unlink()
+        raise
+
+
+def safe_member(name: str) -> PurePosixPath:
+    if (
+        not isinstance(name, str) or not name or "\\" in name or name.startswith("/")
+        or name.startswith("./") or "//" in name or "/./" in name or "\x00" in name
+    ):
+        raise SupervisorError("CAPSULE_SAFETY_FAILURE", f"unsafe ZIP member path: {name!r}", 65)
+    p = PurePosixPath(name)
+    if any(part in {"", ".", ".."} for part in p.parts):
+        raise SupervisorError("CAPSULE_SAFETY_FAILURE", f"unsafe ZIP member path: {name!r}", 65)
+    if len(name.encode("utf-8", "surrogatepass")) > 1024:
+        raise SupervisorError("CAPSULE_SAFETY_FAILURE", "ZIP member path exceeds limit", 65)
+    return p
+
+
+def inspect_zip(path: Path, *, allow_source: bool, max_bytes: int = MAX_CAPSULE_BYTES) -> dict[str, zipfile.ZipInfo]:
+    if not path.is_file() or path.is_symlink():
+        raise SupervisorError("CAPSULE_SELECTION_FAILURE", f"not a regular file: {path}", 66)
+    size = path.stat().st_size
+    if size <= 0 or size > max_bytes:
+        raise SupervisorError("CAPSULE_SAFETY_FAILURE", f"archive size {size} outside accepted range", 65)
+    try:
+        zf = zipfile.ZipFile(path)
+    except (OSError, zipfile.BadZipFile) as exc:
+        raise SupervisorError("CAPSULE_SAFETY_FAILURE", f"invalid ZIP: {type(exc).__name__}: {exc}", 65) from exc
+    with zf:
+        infos = zf.infolist()
+        if not infos or len(infos) > MAX_ZIP_MEMBERS:
+            raise SupervisorError("CAPSULE_SAFETY_FAILURE", f"ZIP member count {len(infos)} outside accepted range", 65)
+        seen: set[str] = set()
+        total = 0
+        result: dict[str, zipfile.ZipInfo] = {}
+        for info in infos:
+            raw_name = info.filename.rstrip("/")
+            if not raw_name:
+                continue
+            member = safe_member(raw_name)
+            rel = member.as_posix()
+            if rel in seen:
+                raise SupervisorError("CAPSULE_SAFETY_FAILURE", f"duplicate ZIP path: {rel}", 65)
+            seen.add(rel)
+            mode = (info.external_attr >> 16) & 0o170000
+            if mode == stat.S_IFLNK:
+                raise SupervisorError("CAPSULE_SAFETY_FAILURE", f"symlink prohibited: {rel}", 65)
+            if mode not in (0, stat.S_IFREG, stat.S_IFDIR):
+                raise SupervisorError("CAPSULE_SAFETY_FAILURE", f"special member prohibited: {rel}", 65)
+            if info.flag_bits & 0x1:
+                raise SupervisorError("CAPSULE_SAFETY_FAILURE", f"encrypted member prohibited: {rel}", 65)
+            executable = bool((info.external_attr >> 16) & 0o111)
+            if executable and not info.is_dir():
+                raise SupervisorError("CAPSULE_SAFETY_FAILURE", f"executable member prohibited: {rel}", 65)
+            if not allow_source and not info.is_dir() and member.suffix.lower() in PROHIBITED_CAPSULE_SUFFIXES:
+                raise SupervisorError("CAPSULE_SAFETY_FAILURE", f"run-specific executable/source prohibited: {rel}", 65)
+            if info.file_size > MAX_SINGLE_UNCOMPRESSED:
+                raise SupervisorError("CAPSULE_SAFETY_FAILURE", f"member exceeds uncompressed limit: {rel}", 65)
+            total += info.file_size
+            if total > MAX_TOTAL_UNCOMPRESSED:
+                raise SupervisorError("CAPSULE_SAFETY_FAILURE", "archive exceeds total uncompressed limit", 65)
+            if info.file_size and info.compress_size == 0:
+                raise SupervisorError("CAPSULE_SAFETY_FAILURE", f"invalid zero compressed size: {rel}", 65)
+            if info.compress_size and info.file_size / info.compress_size > MAX_COMPRESSION_RATIO:
+                raise SupervisorError("CAPSULE_SAFETY_FAILURE", f"compression ratio exceeds limit: {rel}", 65)
+            result[rel] = info
+        corrupt = zf.testzip()
+        if corrupt:
+            raise SupervisorError("CAPSULE_SAFETY_FAILURE", f"CRC failure: {corrupt}", 65)
+        return result
+
+
+def parse_manifest_text(text: str) -> dict[str, str]:
+    result: dict[str, str] = {}
+    for line in text.splitlines():
+        if not line.strip():
+            continue
+        try:
+            digest, rel = line.split("  ", 1)
+        except ValueError as exc:
+            raise SupervisorError("CAPSULE_MANIFEST_FAILURE", f"invalid manifest line: {line!r}", 65) from exc
+        if not SHA256_RE.fullmatch(digest) or safe_member(rel).as_posix() != rel:
+            raise SupervisorError("CAPSULE_MANIFEST_FAILURE", f"invalid manifest entry: {line!r}", 65)
+        if rel == "MANIFEST.sha256" or rel in result:
+            raise SupervisorError("CAPSULE_MANIFEST_FAILURE", f"invalid duplicate/self manifest entry: {rel}", 65)
+        result[rel] = digest
+    return result
+
+
+def read_zip_member(zf: zipfile.ZipFile, name: str, *, max_bytes: int = MAX_JSON_BYTES) -> bytes:
+    try:
+        info = zf.getinfo(name)
+    except KeyError as exc:
+        raise SupervisorError("CAPSULE_SCHEMA_FAILURE", f"required member missing: {name}", 65) from exc
+    if info.file_size > max_bytes:
+        raise SupervisorError("CAPSULE_SAFETY_FAILURE", f"member exceeds read limit: {name}", 65)
+    data = zf.read(info)
+    if len(data) != info.file_size:
+        raise SupervisorError("CAPSULE_SAFETY_FAILURE", f"short ZIP read: {name}", 65)
+    return data
+
+
+def require_string(value: Any, name: str, pattern: re.Pattern[str] | None = None) -> str:
+    if not isinstance(value, str) or not value:
+        raise SupervisorError("CAPSULE_SCHEMA_FAILURE", f"{name} must be a non-empty string", 65)
+    if pattern and not pattern.fullmatch(value):
+        raise SupervisorError("CAPSULE_SCHEMA_FAILURE", f"{name} contains unsupported characters", 65)
+    return value
+
+
+def validate_run_minimal(run: Any) -> dict[str, Any]:
+    if not isinstance(run, dict):
+        raise SupervisorError("CAPSULE_SCHEMA_FAILURE", "RUN.json must contain an object", 65)
+    required = {"schema_version", "project", "issue", "lane", "mode", "engine", "baseline", "state", "recipes", "delivery"}
+    missing = sorted(required - set(run))
+    if missing:
+        raise SupervisorError("CAPSULE_SCHEMA_FAILURE", f"RUN.json missing fields: {missing}", 65)
+    if run.get("schema_version") != "1.0":
+        raise SupervisorError("CAPSULE_SCHEMA_FAILURE", f"unsupported schema_version: {run.get('schema_version')!r}", 65)
+    if run.get("project") != "SysGrid":
+        raise SupervisorError("PROJECT_SCOPE_FAILURE", "capsule project must be SysGrid", 65)
+    require_string(run.get("issue"), "issue", SAFE_ID)
+    if run.get("lane") not in {"product", "execution_platform", "read_only"}:
+        raise SupervisorError("CAPSULE_SCHEMA_FAILURE", "invalid lane", 65)
+    if run.get("mode") not in {"read_only", "mutation", "resume_verify", "qualification"}:
+        raise SupervisorError("CAPSULE_SCHEMA_FAILURE", "invalid mode", 65)
+    engine = run.get("engine")
+    if not isinstance(engine, dict) or engine.get("required_version") != ENGINE_VERSION:
+        raise SupervisorError("ENGINE_VERSION_FAILURE", f"capsule must require engine {ENGINE_VERSION}", 65)
+    baseline = run.get("baseline")
+    if not isinstance(baseline, dict):
+        raise SupervisorError("CAPSULE_SCHEMA_FAILURE", "baseline must be an object", 65)
+    head = require_string(baseline.get("head"), "baseline.head")
+    if not re.fullmatch(r"[0-9a-f]{40}", head):
+        raise SupervisorError("CAPSULE_SCHEMA_FAILURE", "baseline.head must be a 40-character lowercase Git SHA", 65)
+    for field in ("branch", "upstream"):
+        require_string(baseline.get(field), f"baseline.{field}")
+    if not isinstance(run.get("state"), dict):
+        raise SupervisorError("CAPSULE_SCHEMA_FAILURE", "state must be an object", 65)
+    if not isinstance(run.get("recipes"), list):
+        raise SupervisorError("CAPSULE_SCHEMA_FAILURE", "recipes must be an array", 65)
+    if not isinstance(run.get("delivery"), dict):
+        raise SupervisorError("CAPSULE_SCHEMA_FAILURE", "delivery must be an object", 65)
+    if run.get("mode") in {"mutation", "resume_verify"}:
+        patch = run.get("patch")
+        if not isinstance(patch, dict):
+            raise SupervisorError("CAPSULE_SCHEMA_FAILURE", "patch must be an object for mutation/resume", 65)
+        require_string(patch.get("path"), "patch.path")
+        if not SHA256_RE.fullmatch(str(patch.get("sha256", ""))):
+            raise SupervisorError("CAPSULE_SCHEMA_FAILURE", "patch.sha256 must be lowercase SHA-256", 65)
+    return run
+
+
+def verify_archive_manifest(path: Path, *, allow_source: bool) -> tuple[dict[str, str], dict[str, Any] | None]:
+    infos = inspect_zip(path, allow_source=allow_source, max_bytes=max(MAX_CAPSULE_BYTES, path.stat().st_size + 1))
+    if "MANIFEST.sha256" not in infos:
+        raise SupervisorError("CAPSULE_MANIFEST_FAILURE", "MANIFEST.sha256 missing", 65)
+    with zipfile.ZipFile(path) as zf:
+        raw_manifest = read_zip_member(zf, "MANIFEST.sha256", max_bytes=2 * 1024 * 1024)
+        try:
+            manifest = parse_manifest_text(raw_manifest.decode("utf-8", "strict"))
+        except UnicodeDecodeError as exc:
+            raise SupervisorError("CAPSULE_MANIFEST_FAILURE", "manifest is not UTF-8", 65) from exc
+        actual = sorted(name for name, info in infos.items() if not info.is_dir() and name != "MANIFEST.sha256")
+        if sorted(manifest) != actual:
+            missing = sorted(set(manifest) - set(actual))
+            extra = sorted(set(actual) - set(manifest))
+            raise SupervisorError("CAPSULE_MANIFEST_FAILURE", f"manifest coverage mismatch missing={missing} extra={extra}", 65)
+        for rel, expected in manifest.items():
+            h = hashlib.sha256()
+            with zf.open(rel) as src:
+                for chunk in iter(lambda: src.read(1024 * 1024), b""):
+                    h.update(chunk)
+            got = h.hexdigest()
+            if got != expected:
+                raise SupervisorError("CAPSULE_MANIFEST_FAILURE", f"digest mismatch for {rel}: expected {expected}, got {got}", 65)
+        result = None
+        if "RESULT.json" in infos:
+            try:
+                result = json.loads(read_zip_member(zf, "RESULT.json").decode("utf-8", "strict"))
+            except (UnicodeDecodeError, json.JSONDecodeError) as exc:
+                raise SupervisorError("OUTPUT_CORRELATION_FAILURE", "RESULT.json is invalid", 74) from exc
+        return manifest, result
+
+
+def inspect_capsule(path: Path) -> CapsuleInfo:
+    infos = inspect_zip(path, allow_source=False)
+    if "RUN.json" not in infos or "MANIFEST.sha256" not in infos:
+        raise SupervisorError("CAPSULE_SCHEMA_FAILURE", "capsule requires RUN.json and MANIFEST.sha256", 65)
+    manifest, _ = verify_archive_manifest(path, allow_source=False)
+    with zipfile.ZipFile(path) as zf:
+        try:
+            run = validate_run_minimal(json.loads(read_zip_member(zf, "RUN.json").decode("utf-8", "strict")))
+        except (UnicodeDecodeError, json.JSONDecodeError) as exc:
+            raise SupervisorError("CAPSULE_SCHEMA_FAILURE", "RUN.json is invalid UTF-8 JSON", 65) from exc
+        if run.get("mode") in {"mutation", "resume_verify"}:
+            patch_path = safe_member(run["patch"]["path"]).as_posix()
+            if patch_path not in manifest:
+                raise SupervisorError("PATCH_IDENTITY_FAILURE", f"patch is not manifest-covered: {patch_path}", 65)
+            data = read_zip_member(zf, patch_path, max_bytes=MAX_SINGLE_UNCOMPRESSED)
+            got = sha256_bytes(data)
+            if got != run["patch"]["sha256"]:
+                raise SupervisorError("PATCH_IDENTITY_FAILURE", f"patch digest mismatch: expected {run['patch']['sha256']}, got {got}", 65)
+    return CapsuleInfo(path=path.resolve(), sha256=sha256_file(path), size=path.stat().st_size, run=run, manifest=manifest)
+
+
+def default_control_root() -> Path:
+    override = os.environ.get("SYSGRID_CONTROL_ROOT")
+    if override:
+        return Path(override).expanduser()
+    return Path.home() / "Library/Mobile Documents/com~apple~CloudDocs/SysGrid-Control"
+
+
+def config_root() -> Path:
+    return Path(os.environ.get("SYSGRID_SUPERVISOR_CONFIG", Path.home() / ".config/sysgrid-supervisor")).expanduser()
+
+
+def state_root() -> Path:
+    return Path(os.environ.get("SYSGRID_SUPERVISOR_STATE", Path.home() / ".local/state/sysgrid-supervisor")).expanduser()
+
+
+def run_git(repo: Path, *args: str, check: bool = True, timeout: float = 30) -> subprocess.CompletedProcess[str]:
+    try:
+        completed = subprocess.run(
+            ["git", "-C", str(repo), "-c", "core.quotepath=false", *args],
+            stdin=subprocess.DEVNULL,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+            timeout=timeout,
+            check=False,
+            env=sanitized_env(),
+        )
+    except subprocess.TimeoutExpired as exc:
+        raise SupervisorError("GIT_PREFLIGHT_FAILURE", f"git {' '.join(args)} timed out", 69) from exc
+    if check and completed.returncode:
+        message = (completed.stderr or completed.stdout).strip()[:1000]
+        raise SupervisorError("GIT_PREFLIGHT_FAILURE", f"git {' '.join(args)} failed: {message}", 69)
+    return completed
+
+
+def git_top(path: Path) -> Path | None:
+    if not path.exists() or not path.is_dir():
+        return None
+    completed = run_git(path, "rev-parse", "--show-toplevel", check=False, timeout=10)
+    if completed.returncode:
+        return None
+    return Path(completed.stdout.strip()).resolve()
+
+
+def discover_repo(explicit: Path | None = None) -> Path:
+    candidates: list[Path] = []
+    if explicit:
+        candidates.append(explicit.expanduser())
+    if os.environ.get("SYSGRID_REPO"):
+        candidates.append(Path(os.environ["SYSGRID_REPO"]).expanduser())
+    hint = Path.home() / ".config/sysgrid-runner/repo-path"
+    if hint.is_file():
+        with contextlib.suppress(OSError):
+            value = hint.read_text(encoding="utf-8").strip()
+            if value:
+                candidates.append(Path(value).expanduser())
+    candidates.extend([
+        Path.cwd(), Path.cwd() / "SysGrid", Path.cwd() / "sysgrid",
+        Path.home() / "home/development/sysgrid", Path.home() / "SysGrid", Path.home() / "sysgrid",
+        Path.home() / "Developer/SysGrid", Path.home() / "Projects/SysGrid", Path.home() / "Documents/SysGrid",
+    ])
+    seen: set[Path] = set()
+    for candidate in candidates:
+        with contextlib.suppress(OSError):
+            candidate = candidate.resolve()
+        if candidate in seen:
+            continue
+        seen.add(candidate)
+        top = git_top(candidate)
+        if top:
+            return top
+    raise SupervisorError("REPOSITORY_DISCOVERY_FAILURE", "could not locate the SysGrid Git repository; set SYSGRID_REPO once", 66)
+
+
+def split_nul(data: bytes) -> list[str]:
+    return [part.decode("utf-8", "surrogateescape") for part in data.split(b"\0") if part]
+
+
+def dirty_paths(repo: Path) -> tuple[str, ...]:
+    commands = [
+        ("diff", "--name-only", "-z", "HEAD"),
+        ("diff", "--cached", "--name-only", "-z", "HEAD"),
+        ("ls-files", "--others", "--exclude-standard", "-z"),
+    ]
+    paths: set[str] = set()
+    for args in commands:
+        completed = subprocess.run(
+            ["git", "-C", str(repo), "-c", "core.quotepath=false", *args],
+            stdin=subprocess.DEVNULL, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+            timeout=30, check=False, env=sanitized_env(),
+        )
+        if completed.returncode:
+            raise SupervisorError("GIT_PREFLIGHT_FAILURE", completed.stderr.decode("utf-8", "replace")[:1000], 69)
+        paths.update(split_nul(completed.stdout))
+    return tuple(sorted(paths))
+
+
+def probe_repo(repo: Path, run: dict[str, Any]) -> RepoInfo:
+    top = git_top(repo)
+    if not top or top != repo.resolve():
+        raise SupervisorError("REPOSITORY_IDENTITY_FAILURE", f"repository root mismatch: {repo}", 69)
+    head = run_git(repo, "rev-parse", "HEAD").stdout.strip()
+    branch = run_git(repo, "symbolic-ref", "--quiet", "--short", "HEAD", check=False).stdout.strip() or "(detached)"
+    upstream = run_git(repo, "rev-parse", "--abbrev-ref", "--symbolic-full-name", "@{upstream}", check=False).stdout.strip()
+    expected = run["baseline"]
+    if head != expected["head"]:
+        raise SupervisorError("BASELINE_HEAD_FAILURE", f"HEAD mismatch: expected {expected['head']}, got {head}", 69)
+    if branch != expected["branch"]:
+        raise SupervisorError("BASELINE_BRANCH_FAILURE", f"branch mismatch: expected {expected['branch']}, got {branch}", 69)
+    if upstream != expected["upstream"]:
+        raise SupervisorError("BASELINE_UPSTREAM_FAILURE", f"upstream mismatch: expected {expected['upstream']}, got {upstream or '(none)'}", 69)
+    return RepoInfo(path=repo, branch=branch, head=head, upstream=upstream, dirty_paths=dirty_paths(repo))
+
+
+def read_capsule_json(capsule: CapsuleInfo, member: str) -> Any:
+    rel = safe_member(member).as_posix()
+    if rel not in capsule.manifest:
+        raise SupervisorError("CAPSULE_STATE_FAILURE", f"state member is not manifest-covered: {rel}", 65)
+    with zipfile.ZipFile(capsule.path) as zf:
+        try:
+            return json.loads(read_zip_member(zf, rel).decode("utf-8", "strict"))
+        except (UnicodeDecodeError, json.JSONDecodeError) as exc:
+            raise SupervisorError("CAPSULE_STATE_FAILURE", f"invalid state JSON: {rel}", 65) from exc
+
+
+def normalize_expected_paths(value: Any, name: str) -> tuple[str, ...]:
+    if isinstance(value, dict):
+        selected = next((value.get(key) for key in ("paths", "expected_dirty_paths", "dirty_paths", "value") if isinstance(value.get(key), list)), None)
+        if selected is not None:
+            value = selected
+        elif all(isinstance(key, str) for key in value):
+            value = list(value)
+    if not isinstance(value, list) or not all(isinstance(item, str) for item in value):
+        raise SupervisorError("CAPSULE_STATE_FAILURE", f"{name} must be a JSON path array", 65)
+    normalized = []
+    for item in value:
+        rel = safe_member(item).as_posix()
+        if rel.startswith(".git/") or rel == ".git":
+            raise SupervisorError("CAPSULE_STATE_FAILURE", f"Git metadata path prohibited in {name}: {rel}", 65)
+        normalized.append(rel)
+    if len(normalized) != len(set(normalized)):
+        raise SupervisorError("CAPSULE_STATE_FAILURE", f"duplicate paths in {name}", 65)
+    return tuple(sorted(normalized))
+
+
+def normalize_expected_hashes(value: Any, name: str) -> dict[str, str | None]:
+    if isinstance(value, dict):
+        selected = next((value.get(key) for key in ("hashes", "files", "sha256") if isinstance(value.get(key), dict)), None)
+        if selected is not None:
+            value = selected
+    if not isinstance(value, dict):
+        raise SupervisorError("CAPSULE_STATE_FAILURE", f"{name} must be a JSON hash object", 65)
+    result: dict[str, str | None] = {}
+    for raw_path, raw_expected in value.items():
+        if not isinstance(raw_path, str):
+            raise SupervisorError("CAPSULE_STATE_FAILURE", f"non-string path in {name}", 65)
+        rel = safe_member(raw_path).as_posix()
+        if rel.startswith(".git/") or rel == ".git":
+            raise SupervisorError("CAPSULE_STATE_FAILURE", f"Git metadata path prohibited in {name}: {rel}", 65)
+        expected = raw_expected
+        if isinstance(expected, dict):
+            expected = expected.get("sha256")
+        if expected is None or expected in {"MISSING", "ABSENT", "missing", "absent"}:
+            result[rel] = None
+        elif isinstance(expected, str) and SHA256_RE.fullmatch(expected):
+            result[rel] = expected
+        else:
+            raise SupervisorError("CAPSULE_STATE_FAILURE", f"invalid SHA-256 expectation for {rel} in {name}", 65)
+    return result
+
+
+def resolve_repo_member(repo: Path, rel: str) -> Path:
+    candidate = (repo / rel).resolve(strict=False)
+    try:
+        candidate.relative_to(repo.resolve())
+    except ValueError as exc:
+        raise SupervisorError("CAPSULE_STATE_FAILURE", f"state path escapes repository: {rel}", 65) from exc
+    return candidate
+
+
+def verify_hash_ledger(repo: Path, expected: dict[str, str | None], name: str) -> None:
+    mismatches: dict[str, dict[str, str | None]] = {}
+    for rel, digest in expected.items():
+        path = resolve_repo_member(repo, rel)
+        if path.is_symlink():
+            actual = "SYMLINK"
+        elif not path.exists():
+            actual = None
+        elif not path.is_file():
+            actual = "NOT_REGULAR"
+        else:
+            actual = sha256_file(path)
+        if actual != digest:
+            mismatches[rel] = {"expected": digest, "actual": actual}
+    if mismatches:
+        preview = dict(list(sorted(mismatches.items()))[:20])
+        raise SupervisorError("REPOSITORY_HASH_FAILURE", f"{name} mismatch ({len(mismatches)} paths): {preview}", 69)
+
+
+def verify_declared_pre_state(repo: Path, capsule: CapsuleInfo, repo_info: RepoInfo) -> dict[str, Any]:
+    state = capsule.run["state"]
+    required = ("pre_expected_dirty_paths", "pre_hashes", "protected_hashes")
+    missing = [key for key in required if not isinstance(state.get(key), str) or not state.get(key)]
+    if missing:
+        raise SupervisorError("CAPSULE_STATE_FAILURE", f"state declaration missing members: {missing}", 65)
+    expected_dirty = normalize_expected_paths(
+        read_capsule_json(capsule, state["pre_expected_dirty_paths"]), "pre_expected_dirty_paths"
+    )
+    if repo_info.dirty_paths != expected_dirty:
+        missing_paths = sorted(set(expected_dirty) - set(repo_info.dirty_paths))
+        extra_paths = sorted(set(repo_info.dirty_paths) - set(expected_dirty))
+        raise SupervisorError(
+            "REPOSITORY_DIRTY_STATE_FAILURE",
+            f"dirty paths mismatch missing={missing_paths[:30]} extra={extra_paths[:30]}",
+            69,
+        )
+    pre_hashes = normalize_expected_hashes(read_capsule_json(capsule, state["pre_hashes"]), "pre_hashes")
+    protected_hashes = normalize_expected_hashes(
+        read_capsule_json(capsule, state["protected_hashes"]), "protected_hashes"
+    )
+    verify_hash_ledger(repo, pre_hashes, "pre_hashes")
+    verify_hash_ledger(repo, protected_hashes, "protected_hashes")
+    return {
+        "dirty_path_count": len(expected_dirty),
+        "pre_hash_count": len(pre_hashes),
+        "protected_hash_count": len(protected_hashes),
+    }
+
+
+def probe_repo_and_state(repo: Path, capsule: CapsuleInfo) -> tuple[RepoInfo, dict[str, Any]]:
+    info = probe_repo(repo, capsule.run)
+    state_summary = verify_declared_pre_state(repo, capsule, info)
+    return info, state_summary
+
+
+def sanitized_env() -> dict[str, str]:
+    keep = {
+        "HOME", "PATH", "TMPDIR", "LANG", "LC_ALL", "LC_CTYPE", "USER", "LOGNAME", "SHELL",
+        "SSH_AUTH_SOCK", "TERM", "COLORTERM", "XDG_CONFIG_HOME", "XDG_CACHE_HOME", "XDG_STATE_HOME",
+        "SYSGRID_CONTROL_ROOT", "SYSGRID_REPO", "SYSGRID_NOTIFY_CMD", "SYSGRID_NOTIFY_DISABLE",
+    }
+    env = {key: value for key, value in os.environ.items() if key in keep}
+    env.update({
+        "PYTHONDONTWRITEBYTECODE": "1",
+        "PYTHONNOUSERSITE": "1",
+        "GIT_TERMINAL_PROMPT": "0",
+        "GCM_INTERACTIVE": "Never",
+        "LC_ALL": env.get("LC_ALL") or "C",
+    })
+    return env
+
+
+def candidate_engine_paths() -> Iterator[Path]:
+    explicit = os.environ.get("SYSGRID_ENGINE")
+    if explicit:
+        yield Path(explicit).expanduser()
+    record = config_root() / "config.json"
+    if record.is_file():
+        with contextlib.suppress(Exception):
+            value = json.loads(record.read_text(encoding="utf-8")).get("engine_path")
+            if value:
+                yield Path(value).expanduser()
+    common = [
+        Path.home() / ".local/share/sysgrid-runner",
+        Path.home() / ".local/lib/sysgrid-runner",
+        Path.home() / ".local/lib",
+        Path.home() / ".local/share",
+        Path.home() / ".local/bin",
+    ]
+    for direct in [
+        Path.home() / ".local/share/sysgrid-runner/current/sysgrid_runner.py",
+        Path.home() / ".local/share/sysgrid-runner/engine-v1.0.4/sysgrid_runner.py",
+        Path.home() / ".local/lib/sysgrid-runner/current/sysgrid_runner.py",
+    ]:
+        yield direct
+    visited = 0
+    for root in common:
+        if not root.is_dir():
+            continue
+        root_depth = len(root.parts)
+        for current, dirs, files in os.walk(root):
+            depth = len(Path(current).parts) - root_depth
+            if depth >= 8:
+                dirs[:] = []
+            dirs[:] = sorted(d for d in dirs if not d.startswith("."))
+            for name in sorted(files):
+                visited += 1
+                if visited > 30000:
+                    return
+                if name.endswith(".py") or "engine" in name.lower() or "runner" in name.lower():
+                    yield Path(current) / name
+
+
+def discover_engine(*, expected_sha: str = ENGINE_SHA256, deep: bool = True) -> Path:
+    seen: set[Path] = set()
+    for candidate in candidate_engine_paths():
+        with contextlib.suppress(OSError):
+            candidate = candidate.resolve()
+        if candidate in seen:
+            continue
+        seen.add(candidate)
+        try:
+            st = candidate.stat()
+        except OSError:
+            continue
+        if not stat.S_ISREG(st.st_mode) or st.st_size <= 0 or st.st_size > MAX_ENGINE_BYTES:
+            continue
+        try:
+            if sha256_file(candidate) == expected_sha:
+                return candidate
+        except OSError:
+            continue
+        if not deep and len(seen) >= 5:
+            break
+    raise SupervisorError("ENGINE_IDENTITY_FAILURE", f"exact qualified engine SHA-256 {expected_sha} was not found", 67)
+
+
+def verify_engine(engine: Path, expected_sha: str = ENGINE_SHA256) -> dict[str, Any]:
+    got = sha256_file(engine)
+    if got != expected_sha:
+        raise SupervisorError("ENGINE_IDENTITY_FAILURE", f"engine digest mismatch: expected {expected_sha}, got {got}", 67)
+    completed = subprocess.run(
+        [sys.executable, str(engine), "self-test"], stdin=subprocess.DEVNULL,
+        stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, timeout=60,
+        check=False, env=sanitized_env(),
+    )
+    if completed.returncode:
+        raise SupervisorError("ENGINE_SELF_TEST_FAILURE", f"engine self-test exit {completed.returncode}: {(completed.stderr or completed.stdout)[:1000]}", 67)
+    try:
+        data = json.loads(completed.stdout)
+    except json.JSONDecodeError as exc:
+        raise SupervisorError("ENGINE_SELF_TEST_FAILURE", "engine self-test did not return JSON", 67) from exc
+    if data.get("engine_version") != ENGINE_VERSION or data.get("result") != "PASS":
+        raise SupervisorError("ENGINE_SELF_TEST_FAILURE", f"unexpected engine self-test result: {data}", 67)
+    return data
+
+
+def verify_storage(control: Path, capsule_size: int) -> dict[str, Any]:
+    outbox = control / "Outbox"
+    outbox.mkdir(parents=True, exist_ok=True)
+    local = state_root()
+    local.mkdir(parents=True, exist_ok=True)
+    required = max(512 * 1024 * 1024, capsule_size * 8)
+    free_local = shutil.disk_usage(local).free
+    free_control = shutil.disk_usage(outbox).free
+    if free_local < required:
+        raise SupervisorError("RESOURCE_PREFLIGHT_FAILURE", f"local free space {free_local} below required {required}", 68)
+    if free_control < required:
+        raise SupervisorError("RESOURCE_PREFLIGHT_FAILURE", f"control-root free space {free_control} below required {required}", 68)
+    probes = [local / f".write-probe-{os.getpid()}", outbox / f".write-probe-{os.getpid()}"]
+    try:
+        for probe in probes:
+            atomic_write_bytes(probe, b"probe\n")
+            probe.unlink()
+            fsync_dir(probe.parent)
+    finally:
+        for probe in probes:
+            with contextlib.suppress(OSError):
+                probe.unlink()
+    return {"local_free": free_local, "control_free": free_control, "required": required}
+
+
+def extract_patch_for_check(capsule: CapsuleInfo, destination: Path) -> Path | None:
+    if capsule.run.get("mode") not in {"mutation", "resume_verify"}:
+        return None
+    patch_rel = capsule.run["patch"]["path"]
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    with zipfile.ZipFile(capsule.path) as zf:
+        data = read_zip_member(zf, patch_rel, max_bytes=MAX_SINGLE_UNCOMPRESSED)
+    atomic_write_bytes(destination, data)
+    if sha256_file(destination) != capsule.run["patch"]["sha256"]:
+        raise SupervisorError("PATCH_IDENTITY_FAILURE", "staged patch digest mismatch", 65)
+    return destination
+
+
+def patch_state_precheck(repo: Path, capsule: CapsuleInfo, work: Path) -> dict[str, Any]:
+    patch = extract_patch_for_check(capsule, work / "patch.diff")
+    if not patch:
+        return {"applicable": None, "reverse_applicable": None}
+    forward = run_git(repo, "apply", "--check", str(patch), check=False, timeout=60)
+    reverse = run_git(repo, "apply", "--check", "--reverse", str(patch), check=False, timeout=60)
+    mode = capsule.run["mode"]
+    if mode == "mutation" and not (forward.returncode == 0 and reverse.returncode != 0):
+        raise SupervisorError("PATCH_STATE_FAILURE", "mutation patch is not uniquely forward-applicable", 69)
+    if mode == "resume_verify" and reverse.returncode != 0:
+        raise SupervisorError("PATCH_STATE_FAILURE", "resume patch is not present as an exact reversible state", 69)
+    return {"applicable": forward.returncode == 0, "reverse_applicable": reverse.returncode == 0}
+
+
+def select_capsule(explicit: Path | None, control: Path) -> Path:
+    if explicit:
+        path = explicit.expanduser()
+        if not path.is_absolute():
+            path = (Path.cwd() / path).resolve()
+        if not path.is_file() or path.is_symlink():
+            raise SupervisorError("CAPSULE_SELECTION_FAILURE", f"capsule not found: {path}", 66)
+        return path
+    inbox = control / "Inbox"
+    inbox.mkdir(parents=True, exist_ok=True)
+    candidates = sorted(
+        p for p in inbox.iterdir()
+        if p.is_file() and not p.is_symlink() and p.suffix.lower() == ".sgcap" and not p.name.startswith(".")
+    )
+    if len(candidates) != 1:
+        raise SupervisorError("CAPSULE_SELECTION_FAILURE", f"Inbox must contain exactly one capsule; found {len(candidates)}", 66)
+    return candidates[0]
+
+
+@contextlib.contextmanager
+def exclusive_run_lock() -> Iterator[Path]:
+    root = state_root()
+    root.mkdir(parents=True, exist_ok=True)
+    lock_path = root / "run.lock"
+    lock_file = lock_path.open("a+")
+    try:
+        try:
+            fcntl.flock(lock_file.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+        except OSError as exc:
+            if exc.errno in {errno.EACCES, errno.EAGAIN}:
+                raise SupervisorError("RUN_ALREADY_ACTIVE", "another SysGrid supervisor owns the run lock", 73) from exc
+            raise
+        lock_file.seek(0)
+        lock_file.truncate()
+        lock_file.write(json.dumps({"pid": os.getpid(), "started_utc": now_utc()}) + "\n")
+        lock_file.flush()
+        os.fsync(lock_file.fileno())
+        yield lock_path
+    finally:
+        with contextlib.suppress(OSError):
+            fcntl.flock(lock_file.fileno(), fcntl.LOCK_UN)
+        lock_file.close()
+
+
+def write_state(value: dict[str, Any]) -> None:
+    value = {**value, "supervisor_version": SUPERVISOR_VERSION, "updated_utc": now_utc()}
+    atomic_write_json(state_root() / "latest.json", value)
+
+
+def parallel_checks(checks: dict[str, Callable[[], Any]], max_workers: int = 4) -> dict[str, Any]:
+    results: dict[str, Any] = {}
+    failures: list[tuple[str, BaseException]] = []
+    with concurrent.futures.ThreadPoolExecutor(max_workers=min(max_workers, max(1, len(checks))), thread_name_prefix="sg-preflight") as pool:
+        futures = {pool.submit(fn): name for name, fn in checks.items()}
+        for future in concurrent.futures.as_completed(futures):
+            name = futures[future]
+            try:
+                results[name] = future.result()
+            except BaseException as exc:  # collect every independent failure before reporting
+                failures.append((name, exc))
+    if failures:
+        rendered = []
+        exit_code = 70
+        for name, exc in sorted(failures, key=lambda item: item[0]):
+            if isinstance(exc, SupervisorError):
+                exit_code = max(exit_code, exc.exit_code)
+                rendered.append(f"{name}: {exc.classification}: {exc}")
+            else:
+                rendered.append(f"{name}: {type(exc).__name__}: {exc}")
+        raise SupervisorError("PREFLIGHT_AGGREGATE_FAILURE", "; ".join(rendered), exit_code)
+    return results
+
+
+def verify_engine_output(path: Path, capsule: CapsuleInfo, engine_sha: str = ENGINE_SHA256) -> dict[str, Any]:
+    if not path.is_file():
+        raise SupervisorError("ENGINE_OUTPUT_MISSING", f"engine did not create {CANONICAL_ZIP}", 74)
+    manifest, result = verify_archive_manifest(path, allow_source=True)
+    if not isinstance(result, dict):
+        raise SupervisorError("OUTPUT_CORRELATION_FAILURE", "engine artifact lacks RESULT.json", 74)
+    checks = {
+        "capsule_sha256": capsule.sha256,
+        "capsule_file": capsule.path.name,
+        "engine_version": ENGINE_VERSION,
+    }
+    mismatches = {key: {"expected": expected, "actual": result.get(key)} for key, expected in checks.items() if result.get(key) != expected}
+    if mismatches:
+        raise SupervisorError("OUTPUT_CORRELATION_FAILURE", f"engine artifact identity mismatch: {mismatches}", 74)
+    if result.get("exit_code") is None or not isinstance(result.get("exit_code"), int):
+        raise SupervisorError("OUTPUT_CORRELATION_FAILURE", "RESULT.json lacks integer exit_code", 74)
+    return {"result": result, "manifest_entries": len(manifest), "artifact_sha256": sha256_file(path), "artifact_size": path.stat().st_size, "engine_sha256": engine_sha}
+
+
+def archive_existing_alias(control: Path) -> None:
+    alias = control / "Outbox" / CANONICAL_ZIP
+    if not alias.exists():
+        return
+    archive = control / "Archive" / "Review-ZIPs"
+    archive.mkdir(parents=True, exist_ok=True)
+    digest = sha256_file(alias)
+    stamp = dt.datetime.now(dt.timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+    target = archive / f"{stamp}__{digest[:12]}__{CANONICAL_ZIP}"
+    counter = 1
+    while target.exists():
+        target = archive / f"{stamp}__{digest[:12]}__{counter}__{CANONICAL_ZIP}"
+        counter += 1
+    copy_verified_atomic(alias, target, digest)
+    alias.unlink()
+    fsync_dir(alias.parent)
+
+
+def publish_artifact(source: Path, control: Path, expected_sha: str) -> Path:
+    outbox = control / "Outbox"
+    store = control / "Artifacts" / expected_sha[:2]
+    outbox.mkdir(parents=True, exist_ok=True)
+    store.mkdir(parents=True, exist_ok=True)
+    canonical_store = store / f"{expected_sha}.zip"
+    if canonical_store.exists():
+        if sha256_file(canonical_store) != expected_sha:
+            raise SupervisorError("ARTIFACT_STORE_FAILURE", f"content-addressed store collision: {canonical_store}", 74)
+    else:
+        copy_verified_atomic(source, canonical_store, expected_sha)
+    archive_existing_alias(control)
+    alias = outbox / CANONICAL_ZIP
+    copy_verified_atomic(canonical_store, alias, expected_sha)
+    atomic_write_bytes(outbox / f"{CANONICAL_ZIP}.sha256", f"{expected_sha}  {CANONICAL_ZIP}\n".encode("utf-8"), 0o644)
+    return alias
+
+
+def archive_consumed_inbox_capsule(original: Path, control: Path, expected_sha: str) -> Path | None:
+    inbox = (control / "Inbox").resolve()
+    try:
+        original_resolved = original.resolve()
+    except OSError:
+        return None
+    if original_resolved.parent != inbox or not original.exists():
+        return None
+    archive = control / "Archive" / "Processed-Capsules"
+    archive.mkdir(parents=True, exist_ok=True)
+    stamp = dt.datetime.now(dt.timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+    safe_name = re.sub(r"[^A-Za-z0-9_.+-]", "_", original.name)
+    target = archive / f"{stamp}__{expected_sha[:12]}__{safe_name}"
+    copy_verified_atomic(original, target, expected_sha)
+    if sha256_file(target) != expected_sha:
+        raise SupervisorError("INPUT_ARCHIVE_FAILURE", "archived capsule digest mismatch", 75)
+    original.unlink()
+    fsync_dir(original.parent)
+    return target
+
+
+def make_manifest(root: Path) -> None:
+    lines = []
+    out = root / "MANIFEST.sha256"
+    for path in sorted(root.rglob("*")):
+        if path.is_file() and path != out:
+            lines.append(f"{sha256_file(path)}  {path.relative_to(root).as_posix()}")
+    atomic_write_bytes(out, ("\n".join(lines) + "\n").encode("utf-8"), 0o644)
+
+
+def zip_directory(root: Path, destination: Path) -> None:
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    temp = destination.with_name(f".{destination.name}.tmp-{os.getpid()}-{time.time_ns()}")
+    try:
+        with zipfile.ZipFile(temp, "w", compression=zipfile.ZIP_DEFLATED, compresslevel=6, allowZip64=True) as zf:
+            for path in sorted(root.rglob("*")):
+                if path.is_file():
+                    info = zipfile.ZipInfo(path.relative_to(root).as_posix())
+                    info.date_time = (2026, 1, 1, 0, 0, 0)
+                    info.compress_type = zipfile.ZIP_DEFLATED
+                    info.external_attr = (stat.S_IFREG | 0o600) << 16
+                    with path.open("rb") as src, zf.open(info, "w") as dst:
+                        shutil.copyfileobj(src, dst, length=1024 * 1024)
+        os.replace(temp, destination)
+        fsync_dir(destination.parent)
+    except Exception:
+        with contextlib.suppress(OSError):
+            temp.unlink()
+        raise
+
+
+def build_diagnostic_zip(work: Path, state: dict[str, Any], exc: BaseException, capsule: CapsuleInfo | None) -> Path:
+    evidence = work / "diagnostic"
+    evidence.mkdir(parents=True, exist_ok=True)
+    classification = exc.classification if isinstance(exc, SupervisorError) else "SUPERVISOR_INTERNAL_FAILURE"
+    exit_code = exc.exit_code if isinstance(exc, SupervisorError) else 70
+    result = {
+        "result": "failure", "classification": classification, "message": str(exc), "exit_code": exit_code,
+        "supervisor_version": SUPERVISOR_VERSION, "engine_version": ENGINE_VERSION,
+        "capsule_file": capsule.path.name if capsule else None,
+        "capsule_sha256": capsule.sha256 if capsule else None,
+        "finished_utc": now_utc(), "lane": "execution_platform", "mode": "qualification",
+    }
+    atomic_write_json(evidence / "RESULT.json", result)
+    atomic_write_json(evidence / "SUPERVISOR_STATE.json", state)
+    atomic_write_bytes(evidence / "TRACEBACK.txt", traceback.format_exc().encode("utf-8", "replace"))
+    review = (
+        "# SysGrid Supervisor Diagnostic\n\n"
+        f"- Result: failure\n- Classification: {classification}\n- Message: {str(exc)}\n"
+        "- Product mutation authority: none added by this diagnostic\n\n"
+        "Review RESULT.json, SUPERVISOR_STATE.json, TRACEBACK.txt, and MANIFEST.sha256.\n"
+    )
+    atomic_write_bytes(evidence / "REVIEW_ME_FIRST.md", review.encode("utf-8"), 0o644)
+    make_manifest(evidence)
+    out = work / CANONICAL_ZIP
+    zip_directory(evidence, out)
+    verify_archive_manifest(out, allow_source=True)
+    return out
+
+
+def run_supervised(capsule_arg: Path | None, repo_arg: Path | None) -> int:
+    control = default_control_root().expanduser()
+    original: Path | None = None
+    capsule: CapsuleInfo | None = None
+    state: dict[str, Any] = {"state": "STARTING", "stage": "lock", "pid": os.getpid(), "started_utc": now_utc()}
+    with exclusive_run_lock():
+        run_id = f"{dt.datetime.now(dt.timezone.utc).strftime('%Y%m%dT%H%M%SZ')}-{os.getpid()}-{time.time_ns() % 1_000_000:06d}"
+        work = state_root() / "runs" / run_id
+        work.mkdir(parents=True, exist_ok=False)
+        state.update({"run_id": run_id, "work_dir": str(work)})
+        write_state(state)
+        try:
+            state.update({"state": "RUNNING", "stage": "capsule-selection"})
+            write_state(state)
+            original = select_capsule(capsule_arg, control)
+            capsule = inspect_capsule(original)
+            staged = work / "input" / original.name
+            copy_verified_atomic(original, staged, capsule.sha256)
+            capsule = inspect_capsule(staged)
+            state.update({
+                "capsule_file": original.name, "capsule_sha256": capsule.sha256, "capsule_size": capsule.size,
+                "issue": capsule.run.get("issue"), "iteration": capsule.run.get("iteration"), "attempt": capsule.run.get("attempt"),
+                "stage": "preflight",
+            })
+            write_state(state)
+            repo = discover_repo(repo_arg)
+            checks = parallel_checks({
+                "engine": lambda: (lambda p: {"path": str(p), "self_test": verify_engine(p)})(discover_engine()),
+                "repository": lambda: probe_repo_and_state(repo, capsule),
+                "storage": lambda: verify_storage(control, capsule.size),
+                "patch": lambda: patch_state_precheck(repo, capsule, work),
+            })
+            engine_path = Path(checks["engine"]["path"])
+            repo_info, declared_state = checks["repository"]
+            state.update({
+                "engine_path": str(engine_path), "engine_sha256": ENGINE_SHA256,
+                "repo": str(repo_info.path), "repo_head": repo_info.head, "repo_branch": repo_info.branch,
+                "dirty_path_count": len(repo_info.dirty_paths), "preflight": {
+                    "storage": checks["storage"], "patch": checks["patch"], "declared_state": declared_state,
+                    "engine_self_test": checks["engine"]["self_test"],
+                }, "stage": "engine",
+            })
+            write_state(state)
+            local_outbox = work / "engine-outbox"
+            local_outbox.mkdir()
+            stdout_path = work / "engine.stdout.txt"
+            stderr_path = work / "engine.stderr.txt"
+            cmd = [sys.executable, str(engine_path), "execute", str(capsule.path), "--repo", str(repo), "--outbox", str(local_outbox)]
+            state["engine_command"] = [sys.executable, "<exact-engine>", "execute", "<exact-capsule>", "--repo", str(repo), "--outbox", str(local_outbox)]
+            write_state(state)
+            child: subprocess.Popen[str] | None = None
+            old_handlers: dict[int, Any] = {}
+            with stdout_path.open("w", encoding="utf-8") as stdout, stderr_path.open("w", encoding="utf-8") as stderr:
+                child = subprocess.Popen(
+                    cmd, stdin=subprocess.DEVNULL, stdout=stdout, stderr=stderr, text=True,
+                    cwd=str(repo), env=sanitized_env(), start_new_session=False, close_fds=True,
+                )
+                state["engine_pid"] = child.pid
+                write_state(state)
+                def forward(signum: int, _frame: Any) -> None:
+                    if child and child.poll() is None:
+                        with contextlib.suppress(ProcessLookupError):
+                            child.send_signal(signum)
+                for sig in (signal.SIGINT, signal.SIGTERM, signal.SIGHUP):
+                    old_handlers[sig] = signal.signal(sig, forward)
+                try:
+                    engine_rc = child.wait()
+                finally:
+                    for sig, handler in old_handlers.items():
+                        signal.signal(sig, handler)
+            artifact = local_outbox / CANONICAL_ZIP
+            state.update({"stage": "output-verification", "engine_exit_code": engine_rc})
+            write_state(state)
+            output = verify_engine_output(artifact, capsule)
+            if output["result"]["exit_code"] != engine_rc:
+                raise SupervisorError("OUTPUT_CORRELATION_FAILURE", f"process exit {engine_rc} != RESULT exit {output['result']['exit_code']}", 74)
+            published = publish_artifact(artifact, control, output["artifact_sha256"])
+            archived_capsule = archive_consumed_inbox_capsule(original, control, capsule.sha256)
+            terminal = "SUCCEEDED" if engine_rc == 0 and output["result"].get("result") == "success" else "FAILED_REVIEW_READY"
+            state.update({
+                "state": terminal, "stage": "complete", "classification": output["result"].get("classification"),
+                "message": output["result"].get("message"), "artifact": str(published),
+                "artifact_sha256": output["artifact_sha256"], "artifact_size": output["artifact_size"],
+                "capsule_archive": str(archived_capsule) if archived_capsule else None,
+            })
+            write_state(state)
+            print(f"SysGrid: {terminal}")
+            print(f"Classification: {state['classification']}")
+            print(f"Artifact: {published}")
+            print(f"SHA-256: {output['artifact_sha256']}")
+            print("Next action: upload Outbox/UPLOAD_THIS_TO_CHATGPT.zip.")
+            return engine_rc
+        except BaseException as exc:
+            state.update({
+                "state": "FAILED_NO_ARTIFACT", "stage": state.get("stage", "unknown"),
+                "classification": exc.classification if isinstance(exc, SupervisorError) else "SUPERVISOR_INTERNAL_FAILURE",
+                "message": str(exc), "exit_code": exc.exit_code if isinstance(exc, SupervisorError) else 70,
+            })
+            try:
+                diagnostic = build_diagnostic_zip(work, state, exc, capsule)
+                digest = sha256_file(diagnostic)
+                published = publish_artifact(diagnostic, control, digest)
+                state.update({"state": "FAILED_REVIEW_READY", "artifact": str(published), "artifact_sha256": digest, "artifact_size": diagnostic.stat().st_size})
+            except Exception as packaging_exc:
+                state["diagnostic_packaging_error"] = f"{type(packaging_exc).__name__}: {packaging_exc}"
+            write_state(state)
+            print(f"SysGrid: {state['state']}", file=sys.stderr)
+            print(f"Classification: {state['classification']}", file=sys.stderr)
+            print(f"Message: {state['message']}", file=sys.stderr)
+            if state.get("artifact"):
+                print(f"Artifact: {state['artifact']}", file=sys.stderr)
+                print("Next action: upload Outbox/UPLOAD_THIS_TO_CHATGPT.zip.", file=sys.stderr)
+            return int(state["exit_code"])
+
+
+def status() -> int:
+    path = state_root() / "latest.json"
+    if not path.is_file():
+        print("SysGrid: IDLE\nNo supervisor state exists.\nNext action: place exactly one capsule in Inbox and run sg.")
+        return 0
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except Exception as exc:
+        print(f"SysGrid: STATE_CORRUPT\n{type(exc).__name__}: {exc}")
+        return 1
+    print(f"SysGrid: {data.get('state', 'UNKNOWN')}")
+    print(f"Run ID: {data.get('run_id', 'none')}")
+    print(f"Stage: {data.get('stage', 'unknown')}")
+    print(f"Issue: {data.get('issue', 'unknown')}")
+    print(f"Engine: {data.get('engine_sha256', ENGINE_SHA256)}")
+    print(f"Classification: {data.get('classification', 'pending')}")
+    print(f"Message: {data.get('message', 'pending')}")
+    if data.get("artifact"):
+        print(f"Artifact: {data['artifact']}")
+        print(f"Artifact SHA-256: {data.get('artifact_sha256', 'pending')}")
+        print("Next action: upload Outbox/UPLOAD_THIS_TO_CHATGPT.zip.")
+    elif data.get("state") in {"STARTING", "RUNNING"}:
+        print("Next action: no action required; use sgs or sgwatch.")
+    else:
+        print("Next action: resolve the reported preflight gate.")
+    return 0
+
+
+def watch(interval: float = 1.0) -> int:
+    latest = None
+    while True:
+        path = state_root() / "latest.json"
+        content = path.read_text(encoding="utf-8") if path.is_file() else ""
+        if content != latest:
+            if sys.stdout.isatty() and os.environ.get("NO_CLEAR", "").lower() not in {"1", "true", "yes"}:
+                print("\033[2J\033[H", end="")
+            status()
+            latest = content
+        if content:
+            with contextlib.suppress(Exception):
+                if json.loads(content).get("state") in TERMINAL_STATES:
+                    return 0
+        try:
+            time.sleep(max(0.2, interval))
+        except KeyboardInterrupt:
+            return 0
+
+
+def self_test() -> int:
+    failures: list[str] = []
+    try:
+        safe_member("RUN.json")
+        for bad in ("../x", "/x", "./x", "a\\b", "a//b"):
+            try:
+                safe_member(bad)
+                failures.append(f"unsafe member accepted: {bad}")
+            except SupervisorError:
+                pass
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            target = root / "atomic.txt"
+            atomic_write_bytes(target, b"one")
+            if target.read_bytes() != b"one":
+                failures.append("atomic write mismatch")
+            atomic_write_bytes(target, b"two")
+            if target.read_bytes() != b"two":
+                failures.append("atomic replace mismatch")
+    except Exception as exc:
+        failures.append(f"unexpected self-test exception: {type(exc).__name__}: {exc}")
+    result = {"supervisor_version": SUPERVISOR_VERSION, "result": "FAIL" if failures else "PASS", "failures": failures}
+    print(json.dumps(result, indent=2, sort_keys=True))
+    return 1 if failures else 0
+
+
+def main(argv: Sequence[str] | None = None) -> int:
+    parser = argparse.ArgumentParser(prog="sysgrid-supervisor")
+    sub = parser.add_subparsers(dest="command", required=True)
+    run_parser = sub.add_parser("run")
+    run_parser.add_argument("capsule", nargs="?", type=Path)
+    run_parser.add_argument("--repo", type=Path)
+    sub.add_parser("status")
+    watch_parser = sub.add_parser("watch")
+    watch_parser.add_argument("--interval", type=float, default=1.0)
+    sub.add_parser("self-test")
+    discover = sub.add_parser("discover-engine")
+    discover.add_argument("--sha256", default=ENGINE_SHA256)
+    args = parser.parse_args(argv)
+    if args.command == "run":
+        return run_supervised(args.capsule, args.repo)
+    if args.command == "status":
+        return status()
+    if args.command == "watch":
+        return watch(args.interval)
+    if args.command == "self-test":
+        return self_test()
+    if args.command == "discover-engine":
+        print(discover_engine(expected_sha=args.sha256))
+        return 0
+    return 2
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

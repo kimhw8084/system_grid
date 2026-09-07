@@ -1,0 +1,38 @@
+ORIGINAL_PATH: /Users/haewonkim/.local/share/sysgrid-campaign-platform/v1.1.1/DIFFS/dispatcher_v1.1.0_to_v1.1.1.patch
+ORIGINAL_SHA256: 2c3508bfe605ab0e0593a11d8dc66ff6339c60f6118eef878cebdc2f6fc4c5fc
+================================================================================
+--- /mnt/data/p2_cmd_review/SYSGRID_CAMPAIGN_PLATFORM_v1.1.0/payload/sg	2026-08-02 00:00:00.000000000 +0000
++++ /mnt/data/p3_build/SYSGRID_CAMPAIGN_PLATFORM_v1.1.1/payload/sg	2026-08-02 15:31:52.626758036 +0000
+@@ -1,7 +1,7 @@
+ #!/usr/bin/env bash
+ set +e
+ export PYTHONDONTWRITEBYTECODE=1
+-ROOT="$HOME/.local/share/sysgrid-campaign-platform/v1.1.0"
++ROOT="$HOME/.local/share/sysgrid-campaign-platform/v1.1.1"
+ PYTHON="${PYTHON:-python3}"
+ case "${1:-}" in
+   campaign)
+@@ -23,6 +23,14 @@
+   continuity-files)
+     printf '%s\n' "$ROOT/PROJECT_CONTINUITY"
+     ;;
++  source-authority)
++    shift
++    exec "$PYTHON" "$ROOT/payload/sysgrid_source_authority.py" "$@"
++    ;;
++  source-authority-self-test)
++    shift
++    exec "$PYTHON" "$ROOT/payload/sysgrid_source_authority.py" --self-test "$@"
++    ;;
+   "")
+     exec "$PYTHON" "$ROOT/payload/sysgrid_supervisor.py" run
+     ;;
+@@ -31,7 +39,7 @@
+     ;;
+   *)
+     echo "Unknown command: $1" >&2
+-    echo "Use: sg campaign | sg campaign-validate | sg campaign-status | sg continuity-files | sg run | sg status" >&2
++    echo "Use: sg source-authority | sg campaign | sg campaign-validate | sg campaign-status | sg continuity-files | sg run | sg status" >&2
+     exit 2
+     ;;
+ esac

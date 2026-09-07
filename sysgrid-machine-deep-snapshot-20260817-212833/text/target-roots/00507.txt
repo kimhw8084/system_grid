@@ -1,0 +1,114 @@
+ORIGINAL_PATH: /Users/haewonkim/.local/state/sysgrid-supervisor/runs/20260807T111629Z-27092-450000/patch.diff
+ORIGINAL_SHA256: ee6e02013ee7156a8e31321a02a4c8656ced90b8dd2649f9d9011fa99e731393
+================================================================================
+diff --git a/frontend/src/components/shared/ServicesDirtyGuardRecovery.test.tsx b/frontend/src/components/shared/ServicesDirtyGuardRecovery.test.tsx
+index 80a4cf4..e9c9f4f 100644
+--- a/frontend/src/components/shared/ServicesDirtyGuardRecovery.test.tsx
++++ b/frontend/src/components/shared/ServicesDirtyGuardRecovery.test.tsx
+@@ -99,7 +99,7 @@ describe('Services dirty guard recovery', () => {
+ 
+     expect(screen.getByTestId('services-dirty-state')).toHaveTextContent('false')
+     expect(screen.getByPlaceholderText('e.g. ERP DB Prod 01')).toHaveValue('')
+-  })
++  }, 15_000)
+ 
+   it('keeps clean close clean', () => {
+     renderHarness({ name: 'Existing Service' })
+diff --git a/frontend/tests/shell-and-search.spec.ts b/frontend/tests/shell-and-search.spec.ts
+index 6e1aec7..76eea6f 100644
+--- a/frontend/tests/shell-and-search.spec.ts
++++ b/frontend/tests/shell-and-search.spec.ts
+@@ -151,7 +151,7 @@ function expectAligned(actual: number, expected: number, tolerance = 2) {
+ test.describe('Golden Eight rendered geometry', () => {
+ 
+ 
+-  test('records authoritative API response shapes for comprehensive Golden Eight seed fixtures', async ({ page }, testInfo) => {
++  test('records authoritative API response shapes for comprehensive Golden Eight seed fixtures', async ({ page, sysApi }, testInfo) => {
+     await resetBrowserState(page)
+     await page.setViewportSize({ width: 1440, height: 1000 })
+ 
+@@ -167,39 +167,67 @@ test.describe('Golden Eight rendered geometry', () => {
+ 
+     for (const route of goldenRoutes) {
+       const routeEntries: typeof inventory = []
+-      const listener = async (response: any) => {
++      const listener = (response: any) => {
+         const request = response.request()
+         const url = new URL(response.url())
+         if (!url.pathname.startsWith('/api/')) return
+-        const contentType = response.headers()['content-type'] || ''
+-        const entry: (typeof inventory)[number] = {
++        routeEntries.push({
+           route: route.path,
+           method: request.method(),
+           url: `${url.pathname}${url.search}`,
+           status: response.status(),
+-          contentType,
+-        }
+-        if (contentType.includes('application/json')) {
+-          try {
+-            entry.shape = summarizePayloadShape(await response.json())
+-          } catch (error) {
+-            entry.bodyError = error instanceof Error ? error.message : String(error)
+-          }
+-        }
+-        routeEntries.push(entry)
++          contentType: response.headers()['content-type'] || '',
++        })
+       }
+ 
+       page.on('response', listener)
+-      await page.goto(route.path)
+-      await waitForAppIdle(page)
+-      await page.waitForTimeout(250)
+-      page.off('response', listener)
++      try {
++        await page.goto(route.path)
++        await waitForAppIdle(page)
++        await expect.poll(() => routeEntries.length, { timeout: 10_000 }).toBeGreaterThan(0)
++        let previousCount = -1
++        let stableObservations = 0
++        await expect.poll(() => {
++          const currentCount = routeEntries.length
++          stableObservations = currentCount === previousCount ? stableObservations + 1 : 0
++          previousCount = currentCount
++          return stableObservations
++        }, { timeout: 10_000, intervals: [50, 100, 150, 250] }).toBeGreaterThanOrEqual(2)
++      } finally {
++        page.off('response', listener)
++      }
+ 
+       const deduplicated = new Map<string, (typeof inventory)[number]>()
+       for (const entry of routeEntries) {
+         const key = `${entry.method} ${entry.url} ${entry.status}`
+         if (!deduplicated.has(key)) deduplicated.set(key, entry)
+       }
++
++      const responseErrors: string[] = []
++      for (const entry of deduplicated.values()) {
++        if (!entry.contentType.includes('application/json')) continue
++        if (entry.method !== 'GET') {
++          entry.bodyError = `cannot safely replay non-GET JSON response: ${entry.method}`
++          responseErrors.push(`${entry.method} ${entry.url}: ${entry.bodyError}`)
++          continue
++        }
++        try {
++          const replay = await sysApi.get(entry.url)
++          const replayContentType = replay.headers()['content-type'] || ''
++          if (replay.status() !== entry.status) {
++            throw new Error(`status mismatch: browser=${entry.status} replay=${replay.status()}`)
++          }
++          if (!replayContentType.includes('application/json')) {
++            throw new Error(`content-type mismatch: browser=${entry.contentType} replay=${replayContentType}`)
++          }
++          entry.shape = summarizePayloadShape(await replay.json())
++        } catch (error) {
++          entry.bodyError = error instanceof Error ? error.message : String(error)
++          responseErrors.push(`${entry.method} ${entry.url}: ${entry.bodyError}`)
++        }
++      }
++
++      expect(responseErrors, `${route.path} returned unreadable or non-equivalent JSON`).toEqual([])
+       inventory.push(...deduplicated.values())
+     }
+ 

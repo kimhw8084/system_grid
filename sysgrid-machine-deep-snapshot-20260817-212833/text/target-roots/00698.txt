@@ -1,0 +1,34 @@
+ORIGINAL_PATH: /Users/haewonkim/.local/state/sysgrid-supervisor/runs/20260803T035809Z-31355-367000/preflight.json
+ORIGINAL_SHA256: 158a8ee79d65665f15fc18f86022e137bb9c75a7982b1a4a0bb3c820f5e206ac
+================================================================================
+{
+  "declared_state": {
+    "dirty_path_count": 92,
+    "pre_hash_count": 92,
+    "protected_hash_count": 21
+  },
+  "engine_self_test": {
+    "engine_version": "1.1.1",
+    "result": "PASS",
+    "tests": [
+      "safe-path",
+      "manifest",
+      "corruption",
+      "canonical-dirty-paths",
+      "aggregate-recipes"
+    ]
+  },
+  "patch": {
+    "applicable": true,
+    "forward_diagnostic": "Checking patch backend/app/schemas/schemas.py...\nChecking patch backend/app/services/far_service.py...\nChecking patch backend/test_far_integrity.py...\nChecking patch frontend/src/components/far/FARDomain.ts...\nChecking patch frontend/src/components/shared/GoldenWorkspaceGeometryContract.test.ts...\nChecking patch frontend/src/components/shared/OperationalDataGrid.tsx...\nChecking patch frontend/src/components/shared/OperationalWorkspaceShells.tsx...",
+    "forward_exit_code": 0,
+    "reverse_applicable": false,
+    "reverse_diagnostic": "Checking patch frontend/src/components/shared/OperationalWorkspaceShells.tsx...\nerror: while searching for:\nexport function OperationalSavedViewsPanel<TView extends {\n  id: string\n  name: string\n  config?: unknown\n  scope?: 'personal' | 'team'\n  source?: 'system' | 'remote' | 'local'\n}>({\n\nerror: patch failed: frontend/src/components/shared/OperationalWorkspaceShells.tsx:380\nerror: frontend/src/components/shared/OperationalWorkspaceShells.tsx: patch does not apply\nChecking patch frontend/src/components/shared/OperationalDataGrid.tsx...\nerror: while searching for:\n  loadingIcon,\n  loadingLabel,\n  dataState,\n  stateAction,\n  className = '',\n  surfaceVariant = 'golden',\n  height,\n\nerror: patch failed: frontend/src/components/shared/OperationalDataGrid.tsx:80\nerror: frontend/src/components/shared/OperationalDataGrid.tsx: patch does not apply\nChecking patch frontend/src/components/shared/GoldenWorkspaceGeometryContract.test.ts...\nerror: while searching for:\n    expect(commandBar).toContain('data-golden-command-bar=\"true\"')\n  })\n\n  it('keeps FAR in the shared shell without a duplicate runtime or grid owner', () => {\n    const shell = read('shared/OperationalWorkspaceShells.tsx')\n    const farWorkspace = read('far/FARGoldenWorkspace.tsx')\n    const farRuntime = read('FAR.tsx')\n\n    expect(shell).not.toContain(\"workspace === 'far'\")\n    expect(shell).not.toContain('<FARGoldenWorkspace')\n    expect(farWorkspace).toContain('data-far-compatibility-adapter=\"true\"')\n    expect(farWorkspace).toContain('{children ?? null}')\n    expect(farWorkspace).not.toContain('<AgGridReact')\n    expect(farWorkspace).not.toContain('fetch(')\n    expect(farRuntime).toContain('<OperationalWorkspaceShell')\n    expect(farRuntime).toContain('<OperationalDataGrid')\n    expect(farRuntime).toContain('data-far-grid=\"true\"')\n    expect(farRuntime).not.toContain('<AgGridReact')\n  })\n\n  it.each(views)('%s cannot locally reconstruct fundamental shell geometry', (file) => {\n\nerror: patch failed: frontend/src/c",
+    "reverse_exit_code": 1
+  },
+  "storage": {
+    "control_free": 56652783616,
+    "local_free": 56652783616,
+    "required": 3221225472
+  }
+}

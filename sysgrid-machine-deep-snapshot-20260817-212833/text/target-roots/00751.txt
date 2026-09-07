@@ -1,0 +1,13 @@
+ORIGINAL_PATH: /Users/haewonkim/.local/state/sysgrid-supervisor/runs/20260801T011735Z-77734-734000/launch.json
+ORIGINAL_SHA256: e6948d041989f3b3b6b7b4cd7a54a41ed444d7c4855e627a1102d0d40a768bd1
+================================================================================
+{
+  "capsule_path": "/Users/haewonkim/.local/state/sysgrid-supervisor/runs/20260801T011735Z-77734-734000/input/OUT-31_Golden-Eight_Iteration-36-Attempt-02_Geometry-Contract-Exact-Test-Correction.sgcap",
+  "capsule_sha256": "b3fa118e5434711e93a4479fc26b2a440cd019c881bc41476147696ba4354f7b",
+  "command_sha256": "2de9a81e09a18fc8d5345120b04285adfd41a729d3598d95cc7ae408759673e3",
+  "engine_path": "/Users/haewonkim/.local/lib/sysgrid-runner/1.0.4/sysgrid_runner.py",
+  "engine_sha256": "ab63bb20c0de32771e20b0159475205f685f28910a0956c217fb3693c02f96e1",
+  "launched_utc": "2026-08-01T01:17:36Z",
+  "repo": "/Users/haewonkim/home/development/sysgrid",
+  "run_id": "20260801T011735Z-77734-734000"
+}

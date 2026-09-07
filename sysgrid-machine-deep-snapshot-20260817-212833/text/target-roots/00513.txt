@@ -1,0 +1,38 @@
+ORIGINAL_PATH: /Users/haewonkim/.local/state/sysgrid-supervisor/runs/20260803T145323Z-77691-464000/patch.diff
+ORIGINAL_SHA256: 51c0ff69f56b02c2732c6bca0899656739c486edd50fa28421ce28fb0118d0a4
+================================================================================
+diff --git a/backend/test_dashboard_metrics.py b/backend/test_dashboard_metrics.py
+index 4609f4f1472cbcbe20abef21de4c20802c4f7f38..c8dca78c55ce99231c66d1df621c19830bf66d22 100644
+--- a/backend/test_dashboard_metrics.py
++++ b/backend/test_dashboard_metrics.py
+@@ -173,7 +173,7 @@ async def test_dashboard_metrics_rolls_up_seeded_operational_data(seeded_admin_t
+         },
+         headers=headers,
+     )
+-    assert far_res.status_code == 200, far_res.text
++    assert far_res.status_code == 201, far_res.text
+ 
+     flow_res = await client.post(
+         "/api/v1/data-flows",
+@@ -341,7 +341,7 @@ async def test_dashboard_search_returns_cross_domain_matches(seeded_admin_tenant
+         },
+         headers=headers,
+     )
+-    assert far_res.status_code == 200, far_res.text
++    assert far_res.status_code == 201, far_res.text
+ 
+     project_res = await client.post(
+         "/api/v1/projects",
+diff --git a/backend/test_devices_api_edges.py b/backend/test_devices_api_edges.py
+index 28f1ed76e9013e733d723f9311c2473f4544350b..0b205941b4a278a6631ddd7f928dac3347000435 100644
+--- a/backend/test_devices_api_edges.py
++++ b/backend/test_devices_api_edges.py
+@@ -385,7 +385,7 @@ async def test_devices_bulk_purge_with_far_mode_assets(seeded_admin_tenant):
+         },
+         headers=headers,
+     )
+-    assert mode_res.status_code == 200, mode_res.text
++    assert mode_res.status_code == 201, mode_res.text
+     mode = mode_res.json()
+     assert device["id"] in [asset["id"] for asset in mode["affected_assets"]]
+ 

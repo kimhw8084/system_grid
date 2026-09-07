@@ -1,0 +1,37 @@
+ORIGINAL_PATH: /Users/haewonkim/.local/share/sysgrid-supervisor/v2.0.1/README.md
+ORIGINAL_SHA256: ff07dd35654ead5bbec57770606941da95c2ee750adaf4c90f1e6fc8a1063000
+================================================================================
+# SysGrid Execution Supervisor v2.0.1
+
+This is the consolidated, fail-closed qualification candidate for exact SysGrid Stable Engine v1.0.4 (`ab63bb20c0de32771e20b0159475205f685f28910a0956c217fb3693c02f96e1`). Release identity, test count, progress events, resource policy, documentation, qualification evidence, and package metadata are generated from `RELEASE_SOURCE.json` into manifest-covered `RELEASE_DESCRIPTOR.json`.
+
+## Operator action
+
+```bash
+rm -rf SYSGRID_EXECUTION_SUPERVISOR_v2.0.1 && unzip -q SYSGRID_EXECUTION_SUPERVISOR_v2.0.1.zip && cd SYSGRID_EXECUTION_SUPERVISOR_v2.0.1 && ./INSTALL_AND_QUALIFY.command
+```
+
+The installer requires the issued ZIP beside the extracted directory, proves that a deterministic rebuild is byte-identical, runs the final-byte suite from released and staged trees, preserves the accepted Stable Engine, proves live Telegram delivery, installs atomically, and publishes one qualification ZIP. It never starts a product mutation.
+
+## Normal operation after independent PASS
+
+```bash
+sg
+sgs
+sgwatch
+sg notification-test
+```
+
+## Consolidated guarantees
+
+- Capsule ZIP, manifest, schema, state ledgers, protected files, patch paths, recipes, delivery branch, and upstream are cross-checked before engine launch.
+- One exact engine invocation; complete output correlation; interrupted-run convergence; no ambiguous mutation replay.
+- Durable at-least-once Telegram outbox, 24 registered platform/product events, and 120-second engine heartbeats with process-tree telemetry.
+- Resource-budget exports for backend, frontend, and E2E workers; the capsule and trusted recipe remain authoritative for actual product parallelism.
+- Trusted recipes may append validated run-bound JSONL progress to `SYSGRID_PROGRESS_FILE`; malformed progress is recorded but cannot terminate or replay an already authorized run.
+- Runtime history captures command durations, event timeline, process metrics, resource plan, and progress diagnostics without altering engine evidence.
+- Evidence ZIPs store already-compressed media without redundant recompression and deterministically deflate text evidence.
+
+## Trust boundary
+
+The supervisor does not author product source, invent commands, skip gates, weaken assertions, force patches, commit, or push. Exact product mutation and delivery remain owned by the independently qualified Stable Engine and immutable capsule.

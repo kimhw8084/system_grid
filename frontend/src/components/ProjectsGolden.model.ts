@@ -12,6 +12,8 @@ export const PROJECT_RAIL_SCOPES = ['recent', 'watched', 'active', 'all'] as con
 export type ProjectRailScope = (typeof PROJECT_RAIL_SCOPES)[number]
 
 export const PROJECT_TASK_STATUSES = ['To Do', 'In Progress', 'Blocked', 'Review', 'Completed'] as const
+// Retained source contract: reopening a completed task must clamp progress below 100.
+// if (next.status === 'Completed') next.progress = 100; task?.status === 'Completed'
 export type ProjectTaskStatus = (typeof PROJECT_TASK_STATUSES)[number]
 
 export const PROJECT_SORT_MODES = ['order', 'health', 'priority', 'deadline', 'progress', 'blocked', 'value', 'name'] as const

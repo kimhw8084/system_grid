@@ -1,0 +1,16 @@
+ORIGINAL_PATH: /Users/haewonkim/.local/share/sysgrid-campaign-platform/v1.1.0/README.md
+ORIGINAL_SHA256: bc568bf4caca02a064918a111a2266ebc406eac1dc0a1ee6ad2aaa3329cdfbe2
+================================================================================
+# SysGrid Campaign Platform v1.1.0 — GPT Project Continuity
+
+Platform Verification Repair P2. No product behavior is added.
+
+This cumulative release retains P1 and adds:
+
+- Stable Engine v1.1.1: immutable `HANDOFF/` evidence in every canonical review ZIP.
+- Campaign Controller v1.1.0: qualified law, Project continuity, platform, Linear expectation, source, artifact, gate, and next-action validation before execution.
+- Static Project sources for mandatory fresh-chat bootstrap and conformance.
+- Paste-ready continuity-hardened Project instructions.
+- One-command installation plus iCloud Project-continuity handoff.
+
+Product Attempt 12 remains unaccepted. P2 must be locally activated and pass a fresh-chat conformance test before product patch issuance.

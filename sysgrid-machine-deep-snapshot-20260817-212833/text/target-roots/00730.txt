@@ -1,0 +1,673 @@
+ORIGINAL_PATH: /Users/haewonkim/.local/state/sysgrid-supervisor/runs/20260801T165116Z-41268-284000/SUPERVISOR_STATE.json
+ORIGINAL_SHA256: 44b2df0225236a03af94b140c29442c5080f6bd856291dea7a7135514651044e
+================================================================================
+{
+  "artifact": "/Users/haewonkim/Library/Mobile Documents/com~apple~CloudDocs/SysGrid-Control/Outbox/UPLOAD_THIS_TO_CHATGPT.zip",
+  "artifact_sha256": "a0031df4740288865e5de582746420d1226b84e3f02ecd4f9f1698d7abf4d8e3",
+  "artifact_size": 25932072,
+  "attempt": 4,
+  "capsule_archive": "/Users/haewonkim/Library/Mobile Documents/com~apple~CloudDocs/SysGrid-Control/Archive/Processed-Capsules/20260801T165805Z__03b63f6031eb__OUT-31_Golden-Eight_Iteration-36-Attempt-04_Verification-Repair-R1_Exact-Local-Playwright-Contract-Alignment.sgcap",
+  "capsule_cross_ledger": {
+    "changed_path_count": 1,
+    "patch_paths": [
+      "frontend/src/components/shared/CanonicalVerificationContract.test.ts"
+    ],
+    "post_path_count": 56,
+    "pre_path_count": 56,
+    "protected_path_count": 19,
+    "recipe_ids": [
+      "full-app-gate"
+    ]
+  },
+  "capsule_file": "OUT-31_Golden-Eight_Iteration-36-Attempt-04_Verification-Repair-R1_Exact-Local-Playwright-Contract-Alignment.sgcap",
+  "capsule_sha256": "03b63f6031eba28d6ed4a96c11ffd7ed1f9f59b9f1808c4567ab7c0b0c544c7b",
+  "capsule_size": 12635,
+  "capsule_stage": "Golden Eight Full-Matrix Physical Closure \u2014 Attempt 04 Verification Repair R1 \u2014 Exact Local Playwright Contract Alignment",
+  "capsule_title": "Iteration 36 Attempt 04 \u2014 Verification Repair R1: Align the Canonical Verification Ownership Test with the Exact Local Playwright Runner",
+  "classification": "TEST_OR_RECIPE_FAILURE",
+  "dirty_path_count": 56,
+  "engine_command": [
+    "/opt/anaconda3/bin/python3",
+    "<exact-engine>",
+    "execute",
+    "<exact-capsule>",
+    "--repo",
+    "/Users/haewonkim/home/development/sysgrid",
+    "--outbox",
+    "/Users/haewonkim/.local/state/sysgrid-supervisor/runs/20260801T165116Z-41268-284000/engine-outbox"
+  ],
+  "engine_completed": true,
+  "engine_completed_utc": "2026-08-01T16:58:05Z",
+  "engine_elapsed_seconds": 360.4,
+  "engine_exit_code": 1,
+  "engine_last_activity_age_seconds": 56.0779767036438,
+  "engine_last_heartbeat_utc": "2026-08-01T16:57:18Z",
+  "engine_path": "/Users/haewonkim/.local/lib/sysgrid-runner/1.0.4/sysgrid_runner.py",
+  "engine_pid": 41281,
+  "engine_process_metrics": {
+    "available": true,
+    "cpu_percent": 250.2,
+    "process_count": 13,
+    "rss_bytes": 1347272704,
+    "states": [
+      "R   ",
+      "S   ",
+      "S+  ",
+      "Ss  "
+    ]
+  },
+  "engine_sha256": "ab63bb20c0de32771e20b0159475205f685f28910a0956c217fb3693c02f96e1",
+  "engine_stall_suspected": false,
+  "engine_started": true,
+  "engine_started_utc": "2026-08-01T16:51:17Z",
+  "event_timeline": [
+    {
+      "details": {},
+      "elapsed_seconds": 0.006,
+      "event_id": "capsule_selected",
+      "message": "Selecting the one immutable capsule and converging only byte-identical Inbox duplicates.",
+      "notification": {
+        "event_id": "capsule_selected",
+        "presentation_mode": "summary",
+        "required": false,
+        "status": "local_only",
+        "updated_utc": "2026-08-01T16:51:16Z"
+      },
+      "status": "started",
+      "utc": "2026-08-01T16:51:16Z"
+    },
+    {
+      "details": {
+        "changed_path_count": 1,
+        "patch_paths": [
+          "frontend/src/components/shared/CanonicalVerificationContract.test.ts"
+        ],
+        "post_path_count": 56,
+        "pre_path_count": 56,
+        "protected_path_count": 19,
+        "recipe_ids": [
+          "full-app-gate"
+        ]
+      },
+      "elapsed_seconds": 0.02,
+      "event_id": "capsule_verified",
+      "message": "Capsule archive, manifest, schema, patch identity, and cross-ledger contract are exact.",
+      "notification": {
+        "attempts": 1,
+        "chat_id_suffix": "1055",
+        "event_id": "run_started",
+        "first_attempt_utc": "2026-08-01T16:51:16Z",
+        "message_id": 483,
+        "payload_sha256": "b1f293730e47dbe056e18139cc26384df810d536a30d3f6e460b1587c51120d9",
+        "required": true,
+        "status": "delivered",
+        "updated_utc": "2026-08-01T16:51:17Z"
+      },
+      "status": "passed",
+      "utc": "2026-08-01T16:51:17Z"
+    },
+    {
+      "details": {},
+      "elapsed_seconds": 0.655,
+      "event_id": "preflight_started",
+      "message": "Running independent platform checks and exact repository-state proof.",
+      "notification": {
+        "event_id": "preflight_started",
+        "presentation_mode": "summary",
+        "required": false,
+        "status": "local_only",
+        "updated_utc": "2026-08-01T16:51:17Z"
+      },
+      "status": "started",
+      "utc": "2026-08-01T16:51:17Z"
+    },
+    {
+      "details": {
+        "dirty_paths": 56,
+        "head": "dbc3f870b5b37dbd53de7ac82697221270e19381",
+        "patch": {
+          "applicable": true,
+          "forward_diagnostic": "Checking patch frontend/src/components/shared/CanonicalVerificationContract.test.ts...",
+          "forward_exit_code": 0,
+          "reverse_applicable": false,
+          "reverse_diagnostic": "Checking patch frontend/src/components/shared/CanonicalVerificationContract.test.ts...\nerror: while searching for:\n    expect(script).toContain('\"SYSGRID_CANONICAL_GATE=1\"')\n    expect(script).toContain('\"SYSGRID_EXPECTED_FRONTEND_ORIGIN=$FRONTEND_ORIGIN\"')\n    expect(script).toContain('\"SYSGRID_EXPECTED_API_BASE=$BACKEND_ORIGIN/api/v1\"')\n    expect(script).toContain('\"${PLAYWRIGHT_ENV_COMMAND[@]}\" \"$FRONTEND_DIR/node_modules/.bin/playwright\" test \"${PLAYWRIGHT_SPECS[@]}\"')\n    expect(script).not.toContain('npx playwright')\n    expect(script).toContain('run_validation_lanes')\n    expect(script).toContain('npm run preview -- --host \"$FRONTEND_HOST\"')\n    expect(script).toContain('VITE_API_BASE_URL=\"$BACKEND_ORIGIN\" VITE_FRONTEND_ORIGIN=\"$FRONTEND_ORIGIN\" npm run build')\n\nerror: patch failed: frontend/src/components/shared/CanonicalVerificationContract.test.ts:12\nerror: frontend/src/components/shared/CanonicalVerificationContract.test.ts: patch does not apply",
+          "reverse_exit_code": 1
+        }
+      },
+      "elapsed_seconds": 0.996,
+      "event_id": "preflight_completed",
+      "message": "Exact engine, repository, storage, state, protected hashes, and patch state passed.",
+      "notification": {
+        "event_id": "preflight_completed",
+        "presentation_mode": "summary",
+        "required": false,
+        "status": "local_only",
+        "updated_utc": "2026-08-01T16:51:17Z"
+      },
+      "status": "passed",
+      "utc": "2026-08-01T16:51:17Z"
+    },
+    {
+      "details": {},
+      "elapsed_seconds": 0.997,
+      "event_id": "engine_launch",
+      "message": "Launching the exact Stable Engine once; ambiguous mutation replay remains prohibited.",
+      "notification": {
+        "event_id": "engine_launch",
+        "presentation_mode": "summary",
+        "required": false,
+        "status": "local_only",
+        "updated_utc": "2026-08-01T16:51:17Z"
+      },
+      "status": "started",
+      "utc": "2026-08-01T16:51:17Z"
+    },
+    {
+      "details": {},
+      "elapsed_seconds": 2.026,
+      "event_id": "static_started",
+      "message": "Canonical static verification started.",
+      "notification": {
+        "event_id": "static_started",
+        "presentation_mode": "summary",
+        "required": false,
+        "status": "local_only",
+        "updated_utc": "2026-08-01T16:51:18Z"
+      },
+      "status": "started",
+      "utc": "2026-08-01T16:51:18Z"
+    },
+    {
+      "details": {},
+      "elapsed_seconds": 2.028,
+      "event_id": "backend_started",
+      "message": "Backend coverage lane started.",
+      "notification": {
+        "event_id": "backend_started",
+        "presentation_mode": "summary",
+        "required": false,
+        "status": "local_only",
+        "updated_utc": "2026-08-01T16:51:18Z"
+      },
+      "status": "started",
+      "utc": "2026-08-01T16:51:18Z"
+    },
+    {
+      "details": {},
+      "elapsed_seconds": 2.548,
+      "event_id": "frontend_started",
+      "message": "Frontend lint, contracts, typecheck, coverage, and production build lane started.",
+      "notification": {
+        "event_id": "frontend_started",
+        "presentation_mode": "summary",
+        "required": false,
+        "status": "local_only",
+        "updated_utc": "2026-08-01T16:51:19Z"
+      },
+      "status": "started",
+      "utc": "2026-08-01T16:51:19Z"
+    },
+    {
+      "details": {},
+      "elapsed_seconds": 297.377,
+      "event_id": "static_completed",
+      "message": "Canonical static verification passed.",
+      "notification": {
+        "event_id": "static_completed",
+        "presentation_mode": "summary",
+        "required": false,
+        "status": "local_only",
+        "updated_utc": "2026-08-01T16:56:14Z"
+      },
+      "status": "passed",
+      "utc": "2026-08-01T16:56:14Z"
+    },
+    {
+      "details": {},
+      "elapsed_seconds": 297.38,
+      "event_id": "backend_completed",
+      "message": "Backend coverage lane passed.",
+      "notification": {
+        "event_id": "backend_completed",
+        "presentation_mode": "summary",
+        "required": false,
+        "status": "local_only",
+        "updated_utc": "2026-08-01T16:56:14Z"
+      },
+      "status": "passed",
+      "utc": "2026-08-01T16:56:14Z"
+    },
+    {
+      "details": {},
+      "elapsed_seconds": 297.384,
+      "event_id": "frontend_completed",
+      "message": "Frontend verification lane passed.",
+      "notification": {
+        "event_id": "frontend_completed",
+        "presentation_mode": "summary",
+        "required": false,
+        "status": "local_only",
+        "updated_utc": "2026-08-01T16:56:14Z"
+      },
+      "status": "passed",
+      "utc": "2026-08-01T16:56:14Z"
+    },
+    {
+      "details": {},
+      "elapsed_seconds": 297.387,
+      "event_id": "build_completed",
+      "message": "Canonical production frontend build completed.",
+      "notification": {
+        "event_id": "build_completed",
+        "presentation_mode": "summary",
+        "required": false,
+        "status": "local_only",
+        "updated_utc": "2026-08-01T16:56:14Z"
+      },
+      "status": "passed",
+      "utc": "2026-08-01T16:56:14Z"
+    },
+    {
+      "details": {},
+      "elapsed_seconds": 305.5,
+      "event_id": "runtime_ready",
+      "message": "Disposable tenant, backend, and exact production frontend are ready.",
+      "notification": {
+        "event_id": "runtime_ready",
+        "presentation_mode": "summary",
+        "required": false,
+        "status": "local_only",
+        "updated_utc": "2026-08-01T16:56:22Z"
+      },
+      "status": "passed",
+      "utc": "2026-08-01T16:56:22Z"
+    },
+    {
+      "details": {},
+      "elapsed_seconds": 305.503,
+      "event_id": "playwright_started",
+      "message": "Canonical Playwright and Golden Eight evidence matrix started.",
+      "notification": {
+        "attempts": 1,
+        "chat_id_suffix": "1055",
+        "event_id": "run_progress",
+        "first_attempt_utc": "2026-08-01T16:56:22Z",
+        "message_id": 484,
+        "payload_sha256": "dec869402bebf374301f76368145b276b32828d5b81f1c0968bfdd23030d4cee",
+        "required": false,
+        "status": "delivered",
+        "updated_utc": "2026-08-01T16:56:22Z"
+      },
+      "status": "started",
+      "utc": "2026-08-01T16:56:22Z"
+    },
+    {
+      "details": {},
+      "elapsed_seconds": 407.107,
+      "event_id": "playwright_completed",
+      "message": "Canonical Playwright matrix failed; complete evidence remains available.",
+      "notification": {
+        "event_id": "playwright_completed",
+        "presentation_mode": "summary",
+        "required": false,
+        "status": "local_only",
+        "updated_utc": "2026-08-01T16:58:03Z"
+      },
+      "status": "failed",
+      "utc": "2026-08-01T16:58:03Z"
+    },
+    {
+      "details": {
+        "engine_exit_code": 1
+      },
+      "elapsed_seconds": 408.644,
+      "event_id": "engine_completed",
+      "message": "Stable Engine exited with code 1; verifying its complete evidence.",
+      "notification": {
+        "event_id": "engine_completed",
+        "presentation_mode": "summary",
+        "required": false,
+        "status": "local_only",
+        "updated_utc": "2026-08-01T16:58:05Z"
+      },
+      "status": "failed",
+      "utc": "2026-08-01T16:58:05Z"
+    },
+    {
+      "details": {
+        "artifact_size": 25932072,
+        "manifest_entries": 222
+      },
+      "elapsed_seconds": 408.707,
+      "event_id": "evidence_verified",
+      "message": "Engine evidence is complete and exactly correlated to capsule, engine, and process exit.",
+      "notification": {
+        "event_id": "evidence_verified",
+        "presentation_mode": "summary",
+        "required": false,
+        "status": "local_only",
+        "updated_utc": "2026-08-01T16:58:05Z"
+      },
+      "status": "passed",
+      "utc": "2026-08-01T16:58:05Z"
+    },
+    {
+      "details": {},
+      "elapsed_seconds": 408.713,
+      "event_id": "publication_started",
+      "message": "Publishing one content-addressed, fsynced, atomic canonical review ZIP.",
+      "notification": {
+        "event_id": "publication_started",
+        "presentation_mode": "summary",
+        "required": false,
+        "status": "local_only",
+        "updated_utc": "2026-08-01T16:58:05Z"
+      },
+      "status": "started",
+      "utc": "2026-08-01T16:58:05Z"
+    },
+    {
+      "details": {
+        "artifact_sha256": "a0031df4740288865e5de582746420d1226b84e3f02ecd4f9f1698d7abf4d8e3",
+        "exit_code": 1
+      },
+      "elapsed_seconds": 409.024,
+      "event_id": "publication_completed",
+      "message": "Run complete. Engine runtime: 407.0s. Canonical review ZIP is ready for upload.",
+      "notification": {
+        "attempts": 1,
+        "chat_id_suffix": "1055",
+        "event_id": "run_completed",
+        "first_attempt_utc": "2026-08-01T16:58:05Z",
+        "message_id": 485,
+        "payload_sha256": "413071a2b0469029fb67bee05a86a087c615fcfab9e7cf5451a2b322c457a8be",
+        "required": false,
+        "status": "delivered",
+        "updated_utc": "2026-08-01T16:58:06Z"
+      },
+      "status": "failed",
+      "utc": "2026-08-01T16:58:06Z"
+    }
+  ],
+  "issue": "OUT-31",
+  "iteration": 36,
+  "last_progress_event": "publication_completed",
+  "last_progress_message": "Run complete. Engine runtime: 407.0s. Canonical review ZIP is ready for upload.",
+  "last_progress_status": "failed",
+  "last_progress_utc": "2026-08-01T16:58:06Z",
+  "message": "recipe full-app-gate failed with exit 1",
+  "monotonic_started": 3879867.80845925,
+  "notification_events": {
+    "backend_completed": {
+      "event_id": "backend_completed",
+      "presentation_mode": "summary",
+      "required": false,
+      "status": "local_only",
+      "updated_utc": "2026-08-01T16:56:14Z"
+    },
+    "backend_started": {
+      "event_id": "backend_started",
+      "presentation_mode": "summary",
+      "required": false,
+      "status": "local_only",
+      "updated_utc": "2026-08-01T16:51:18Z"
+    },
+    "build_completed": {
+      "event_id": "build_completed",
+      "presentation_mode": "summary",
+      "required": false,
+      "status": "local_only",
+      "updated_utc": "2026-08-01T16:56:14Z"
+    },
+    "capsule_selected": {
+      "event_id": "capsule_selected",
+      "presentation_mode": "summary",
+      "required": false,
+      "status": "local_only",
+      "updated_utc": "2026-08-01T16:51:16Z"
+    },
+    "capsule_verified": {
+      "attempts": 1,
+      "chat_id_suffix": "1055",
+      "event_id": "run_started",
+      "first_attempt_utc": "2026-08-01T16:51:16Z",
+      "message_id": 483,
+      "payload_sha256": "b1f293730e47dbe056e18139cc26384df810d536a30d3f6e460b1587c51120d9",
+      "required": true,
+      "status": "delivered",
+      "updated_utc": "2026-08-01T16:51:17Z"
+    },
+    "engine-heartbeat-1": {
+      "event_id": "engine-heartbeat-1",
+      "presentation_mode": "summary",
+      "required": false,
+      "status": "local_only",
+      "updated_utc": "2026-08-01T16:53:18Z"
+    },
+    "engine-heartbeat-2": {
+      "event_id": "engine-heartbeat-2",
+      "presentation_mode": "summary",
+      "required": false,
+      "status": "local_only",
+      "updated_utc": "2026-08-01T16:55:17Z"
+    },
+    "engine-heartbeat-3": {
+      "event_id": "engine-heartbeat-3",
+      "presentation_mode": "summary",
+      "required": false,
+      "status": "local_only",
+      "updated_utc": "2026-08-01T16:57:18Z"
+    },
+    "engine_completed": {
+      "event_id": "engine_completed",
+      "presentation_mode": "summary",
+      "required": false,
+      "status": "local_only",
+      "updated_utc": "2026-08-01T16:58:05Z"
+    },
+    "engine_launch": {
+      "event_id": "engine_launch",
+      "presentation_mode": "summary",
+      "required": false,
+      "status": "local_only",
+      "updated_utc": "2026-08-01T16:51:17Z"
+    },
+    "evidence_verified": {
+      "event_id": "evidence_verified",
+      "presentation_mode": "summary",
+      "required": false,
+      "status": "local_only",
+      "updated_utc": "2026-08-01T16:58:05Z"
+    },
+    "frontend_completed": {
+      "event_id": "frontend_completed",
+      "presentation_mode": "summary",
+      "required": false,
+      "status": "local_only",
+      "updated_utc": "2026-08-01T16:56:14Z"
+    },
+    "frontend_started": {
+      "event_id": "frontend_started",
+      "presentation_mode": "summary",
+      "required": false,
+      "status": "local_only",
+      "updated_utc": "2026-08-01T16:51:19Z"
+    },
+    "playwright_completed": {
+      "event_id": "playwright_completed",
+      "presentation_mode": "summary",
+      "required": false,
+      "status": "local_only",
+      "updated_utc": "2026-08-01T16:58:03Z"
+    },
+    "playwright_started": {
+      "attempts": 1,
+      "chat_id_suffix": "1055",
+      "event_id": "run_progress",
+      "first_attempt_utc": "2026-08-01T16:56:22Z",
+      "message_id": 484,
+      "payload_sha256": "dec869402bebf374301f76368145b276b32828d5b81f1c0968bfdd23030d4cee",
+      "required": false,
+      "status": "delivered",
+      "updated_utc": "2026-08-01T16:56:22Z"
+    },
+    "preflight_completed": {
+      "event_id": "preflight_completed",
+      "presentation_mode": "summary",
+      "required": false,
+      "status": "local_only",
+      "updated_utc": "2026-08-01T16:51:17Z"
+    },
+    "preflight_started": {
+      "event_id": "preflight_started",
+      "presentation_mode": "summary",
+      "required": false,
+      "status": "local_only",
+      "updated_utc": "2026-08-01T16:51:17Z"
+    },
+    "publication_completed": {
+      "attempts": 1,
+      "chat_id_suffix": "1055",
+      "event_id": "run_completed",
+      "first_attempt_utc": "2026-08-01T16:58:05Z",
+      "message_id": 485,
+      "payload_sha256": "413071a2b0469029fb67bee05a86a087c615fcfab9e7cf5451a2b322c457a8be",
+      "required": false,
+      "status": "delivered",
+      "updated_utc": "2026-08-01T16:58:06Z"
+    },
+    "publication_started": {
+      "event_id": "publication_started",
+      "presentation_mode": "summary",
+      "required": false,
+      "status": "local_only",
+      "updated_utc": "2026-08-01T16:58:05Z"
+    },
+    "runtime_ready": {
+      "event_id": "runtime_ready",
+      "presentation_mode": "summary",
+      "required": false,
+      "status": "local_only",
+      "updated_utc": "2026-08-01T16:56:22Z"
+    },
+    "static_completed": {
+      "event_id": "static_completed",
+      "presentation_mode": "summary",
+      "required": false,
+      "status": "local_only",
+      "updated_utc": "2026-08-01T16:56:14Z"
+    },
+    "static_started": {
+      "event_id": "static_started",
+      "presentation_mode": "summary",
+      "required": false,
+      "status": "local_only",
+      "updated_utc": "2026-08-01T16:51:18Z"
+    }
+  },
+  "notification_policy": {
+    "delivery_semantics": "durably-deduplicated-at-least-once",
+    "engine_heartbeat_seconds": 120,
+    "max_messages_per_run": 3,
+    "presentation_mode": "summary",
+    "registered_events": 24,
+    "required_before_engine": true,
+    "telegram_heartbeats": false
+  },
+  "original_capsule": "/Users/haewonkim/Library/Mobile Documents/com~apple~CloudDocs/SysGrid-Control/Inbox/OUT-31_Golden-Eight_Iteration-36-Attempt-04_Verification-Repair-R1_Exact-Local-Playwright-Contract-Alignment.sgcap",
+  "pid": 41268,
+  "preflight": {
+    "declared_state": {
+      "dirty_path_count": 56,
+      "pre_hash_count": 56,
+      "protected_hash_count": 19
+    },
+    "engine_self_test": {
+      "engine_version": "1.0.4",
+      "result": "PASS",
+      "tests": [
+        "safe-path",
+        "manifest",
+        "corruption"
+      ]
+    },
+    "patch": {
+      "applicable": true,
+      "forward_diagnostic": "Checking patch frontend/src/components/shared/CanonicalVerificationContract.test.ts...",
+      "forward_exit_code": 0,
+      "reverse_applicable": false,
+      "reverse_diagnostic": "Checking patch frontend/src/components/shared/CanonicalVerificationContract.test.ts...\nerror: while searching for:\n    expect(script).toContain('\"SYSGRID_CANONICAL_GATE=1\"')\n    expect(script).toContain('\"SYSGRID_EXPECTED_FRONTEND_ORIGIN=$FRONTEND_ORIGIN\"')\n    expect(script).toContain('\"SYSGRID_EXPECTED_API_BASE=$BACKEND_ORIGIN/api/v1\"')\n    expect(script).toContain('\"${PLAYWRIGHT_ENV_COMMAND[@]}\" \"$FRONTEND_DIR/node_modules/.bin/playwright\" test \"${PLAYWRIGHT_SPECS[@]}\"')\n    expect(script).not.toContain('npx playwright')\n    expect(script).toContain('run_validation_lanes')\n    expect(script).toContain('npm run preview -- --host \"$FRONTEND_HOST\"')\n    expect(script).toContain('VITE_API_BASE_URL=\"$BACKEND_ORIGIN\" VITE_FRONTEND_ORIGIN=\"$FRONTEND_ORIGIN\" npm run build')\n\nerror: patch failed: frontend/src/components/shared/CanonicalVerificationContract.test.ts:12\nerror: frontend/src/components/shared/CanonicalVerificationContract.test.ts: patch does not apply",
+      "reverse_exit_code": 1
+    },
+    "storage": {
+      "control_free": 57349054464,
+      "local_free": 57349054464,
+      "required": 536870912
+    }
+  },
+  "product_event_status": {
+    "backend_completed": "passed",
+    "backend_started": "started",
+    "build_completed": "passed",
+    "frontend_completed": "passed",
+    "frontend_started": "started",
+    "playwright_completed": "failed",
+    "playwright_started": "started",
+    "runtime_ready": "passed",
+    "static_completed": "passed",
+    "static_started": "started"
+  },
+  "product_progress_last_event": "playwright_completed",
+  "product_progress_last_utc": "2026-08-01T16:58:03Z",
+  "product_progress_sequence": 10,
+  "recovered_without_product_replay": false,
+  "repo": "/Users/haewonkim/home/development/sysgrid",
+  "repo_branch": "main",
+  "repo_head": "dbc3f870b5b37dbd53de7ac82697221270e19381",
+  "resource_plan": {
+    "backend_workers": 4,
+    "cpu_count": 12,
+    "e2e_workers": 2,
+    "frontend_workers": 4,
+    "memory_bytes": 19327352832,
+    "preflight_workers": 24,
+    "reserve_memory_bytes": 2147483648,
+    "test_cpu_budget": 11,
+    "usable_memory_bytes": 17179869184
+  },
+  "run_id": "20260801T165116Z-41268-284000",
+  "runtime_summary": {
+    "artifact": "/Users/haewonkim/.local/state/sysgrid-supervisor/runs/20260801T165116Z-41268-284000/engine-outbox/UPLOAD_THIS_TO_CHATGPT.zip",
+    "classification": "TEST_OR_RECIPE_FAILURE",
+    "commands": [
+      {
+        "duration_seconds": 405.605,
+        "exit_code": 1,
+        "recipe_id": "full-app-gate",
+        "timed_out": false
+      }
+    ],
+    "engine_total_seconds": 407.0,
+    "failed_stage": "full-app-gate",
+    "finished_utc": "2026-08-01T16:58:04Z",
+    "result": "failure",
+    "started_utc": "2026-08-01T16:51:17Z"
+  },
+  "safe_cleanup": {
+    "inspected": 0,
+    "removed": 0
+  },
+  "safe_retry_count": 0,
+  "stage": "complete",
+  "staged_capsule": "/Users/haewonkim/.local/state/sysgrid-supervisor/runs/20260801T165116Z-41268-284000/input/OUT-31_Golden-Eight_Iteration-36-Attempt-04_Verification-Repair-R1_Exact-Local-Playwright-Contract-Alignment.sgcap",
+  "started_utc": "2026-08-01T16:51:16Z",
+  "state": "FAILED_REVIEW_READY",
+  "supervisor_version": "2.0.2",
+  "telegram": {
+    "chat_id_suffix": "1055",
+    "configured": true,
+    "source": "/Users/haewonkim/.config/sysgrid-supervisor/telegram.json"
+  },
+  "updated_utc": "2026-08-01T16:58:06Z",
+  "work_dir": "/Users/haewonkim/.local/state/sysgrid-supervisor/runs/20260801T165116Z-41268-284000"
+}

@@ -1,0 +1,13 @@
+ORIGINAL_PATH: /Users/haewonkim/.local/state/sysgrid-supervisor/runs/20260801T004127Z-35531-962000/diagnostic/TRACEBACK.txt
+ORIGINAL_SHA256: ec867f5096426aee88e357c7f5cb375c9f642fb7d00b13785fb829c494f3ce9a
+================================================================================
+Traceback (most recent call last):
+  File "/Users/haewonkim/.local/share/sysgrid-supervisor/v1.3.1/payload/sysgrid_supervisor.py", line 1524, in run_supervised
+    capsule = inspect_capsule(original)
+              ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/haewonkim/.local/share/sysgrid-supervisor/v1.3.1/payload/sysgrid_supervisor.py", line 372, in inspect_capsule
+    run = validate_run_minimal(json.loads(read_zip_member(zf, "RUN.json").decode("utf-8", "strict")))
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/haewonkim/.local/share/sysgrid-supervisor/v1.3.1/payload/sysgrid_supervisor.py", line 326, in validate_run_minimal
+    raise SupervisorError("CAPSULE_SCHEMA_FAILURE", "patch must be an object for mutation/resume", 65)
+SupervisorError: patch must be an object for mutation/resume

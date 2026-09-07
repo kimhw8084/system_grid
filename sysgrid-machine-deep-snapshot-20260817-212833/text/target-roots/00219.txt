@@ -1,0 +1,32 @@
+ORIGINAL_PATH: /Users/haewonkim/.local/share/sysgrid-supervisor/v2.0.1/RESEARCH_AND_DESIGN.md
+ORIGINAL_SHA256: d9983095a17a278004638c461587f7c8c74073011f3cb3c889752373173232cd
+================================================================================
+# Research and Design — SysGrid Supervisor v2.0.1
+
+## Objective
+
+Minimize operator loops and wall time without weakening source authority, tenant/permission safeguards, complete evidence, exact state proof, final application verification, or remote equality.
+
+## Architecture
+
+1. **Generated immutable release facts.** One source descriptor produces the runtime descriptor, documentation, release report, manifest, and deterministic package.
+2. **Cross-ledger capsule proof.** Pre/post dirty sets and hashes, protected hashes, patch-touched paths, recipe uniqueness/timeouts, and delivery topology must agree before repository mutation.
+3. **One-invocation convergence.** Exact live-process reattachment, verified-output recovery, exact-prestate-only retry, and post/unknown-state replay refusal remain mandatory.
+4. **Observable trusted execution.** The engine receives only bounded resource hints and a run-bound append-only progress path. The supervisor validates and relays progress but never generates product commands.
+5. **Safe performance.** Worker budgets are constrained by CPU, memory, and explicit caps. Actual concurrency is activated only by trusted recipes after isolation is proven.
+6. **Evidence efficiency.** Already-compressed media is stored; text is deflated; all members remain mandatory, hashed, deterministic, and reviewable.
+
+## Qualification contract
+
+- complete deterministic package identity
+- exact Stable Engine identity and self-test
+- capsule cross-ledger consistency before mutation
+- exact repository state and patch-state proof
+- one authorized engine invocation with replay refusal
+- durable Telegram event outbox and two-minute heartbeat
+- machine-readable resource and runtime telemetry
+- verified evidence publication and deterministic rebuild
+
+## Honest boundary
+
+Telegram cannot provide client-defined exactly-once idempotency. Delivery is therefore durably deduplicated at-least-once and every message carries run/event identity. Product-subgate progress depends on future trusted recipe support; absence of progress never substitutes for product proof.

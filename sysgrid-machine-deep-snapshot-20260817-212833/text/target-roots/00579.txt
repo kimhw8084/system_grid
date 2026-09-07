@@ -1,0 +1,13 @@
+ORIGINAL_PATH: /Users/haewonkim/.local/state/sysgrid-supervisor/runs/20260805T174920Z-95186-601000/product-progress.jsonl
+ORIGINAL_SHA256: 30cb644197caed2928c5924ae85a2593845a43d18d4d2a26037eca2c3f87a818
+================================================================================
+{"event_id": "accelerator_preflight_started", "message": "Universal fast-fail syntax, contracts, lint, and typecheck preflight started.", "run_id": "20260805T174920Z-95186-601000", "sequence": 1, "status": "started"}
+{"event_id": "accelerator_preflight_completed", "message": "Universal fast-fail preflight passed.", "run_id": "20260805T174920Z-95186-601000", "sequence": 2, "status": "passed"}
+{"event_id": "build_started", "message": "Canonical production frontend build started before runtime promotion.", "run_id": "20260805T174920Z-95186-601000", "sequence": 3, "status": "started"}
+{"event_id": "build_completed", "message": "Canonical production frontend build completed.", "run_id": "20260805T174920Z-95186-601000", "sequence": 4, "status": "passed"}
+{"event_id": "backend_started", "message": "Backend full coverage lane started.", "run_id": "20260805T174920Z-95186-601000", "sequence": 5, "status": "started"}
+{"event_id": "runtime_ready", "message": "Disposable tenant, backend, and exact production frontend are ready.", "run_id": "20260805T174920Z-95186-601000", "sequence": 6, "status": "passed"}
+{"event_id": "playwright_started", "message": "Affected browser promotion started before the remaining canonical matrix.", "run_id": "20260805T174920Z-95186-601000", "sequence": 7, "status": "started"}
+{"event_id": "backend_completed", "message": "Backend full coverage lane passed.", "run_id": "20260805T174920Z-95186-601000", "sequence": 8, "status": "passed"}
+{"event_id": "frontend_completed", "message": "Frontend full coverage lane failed.", "run_id": "20260805T174920Z-95186-601000", "sequence": 9, "status": "failed"}
+{"event_id": "playwright_completed", "message": "Full backend or frontend coverage failed after affected browser promotion.", "run_id": "20260805T174920Z-95186-601000", "sequence": 10, "status": "failed"}

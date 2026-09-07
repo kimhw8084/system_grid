@@ -1,0 +1,11 @@
+ORIGINAL_PATH: /Users/haewonkim/.local/state/sysgrid-supervisor/runs/20260802T034709Z-47369-145000/diagnostic/TRACEBACK.txt
+ORIGINAL_SHA256: cc7c51d09bbdf31410f714de813647a1daa747329ce8c24ca196b1251f68139f
+================================================================================
+Traceback (most recent call last):
+  File "/Users/haewonkim/.local/share/sysgrid-supervisor/v2.1.5/payload/sysgrid_supervisor.py", line 2808, in run_supervised
+    cross_ledger = validate_capsule_cross_ledger(capsule)
+  File "/Users/haewonkim/.local/share/sysgrid-supervisor/v2.1.5/payload/sysgrid_supervisor.py", line 1300, in validate_capsule_cross_ledger
+    raise SupervisorError(
+    ...<4 lines>...
+    )
+SupervisorError: pre dirty paths/hash keys differ: paths_only=['frontend/src/components/far', 'patches'] hashes_only=['frontend/src/components/far/FARGoldenWorkspace.tsx', 'frontend/src/components/far/FARGoldenWorkspaceModel.test.ts', 'frontend/src/components/far/FARGoldenWorkspaceModel.ts', 'patches/FAR_DIRECT_APPLY_FULL_GOLDEN_RECOVERY/APPLY_FAR_RECOVERY.command', 'patches/FAR_DIRECT_APPLY_FULL_GOLDEN_RECOVERY/FAR_FULL_GOLDEN_RECOVERY.patch', 'patches/FAR_DIRECT_APPLY_FULL_GOLDEN_RECOVERY/README.md', 'patches/FAR_DIRECT_APPLY_FULL_GOLDEN_RECOVERY/ROLLBACK_FAR_FULL_GOLDEN_RECOVERY.patch']

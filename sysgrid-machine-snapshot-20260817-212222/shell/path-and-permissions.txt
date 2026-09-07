@@ -1,0 +1,32 @@
+PATH=/Users/haewonkim/.local/bin:/Users/haewonkim/.local/bin:/Users/haewonkim/.local/bin:/Users/haewonkim/.opencode/bin:/Users/haewonkim/.opencode/bin:/Users/haewonkim/.antigravity/antigravity/bin:/Users/haewonkim/.local/bin:/opt/homebrew/bin:/opt/homebrew/sbin:/usr/local/bin:/System/Cryptexes/App/usr/bin:/usr/bin:/bin:/usr/sbin:/sbin:/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/local/bin:/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/bin:/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/appleinternal/bin:/Library/Apple/usr/bin:/Users/haewonkim/.local/bin:/Users/haewonkim/.opencode/bin:/Users/haewonkim/.antigravity/antigravity/bin:/opt/anaconda3/bin:/opt/anaconda3/condabin:/Applications/Externals/iTerm.app/Contents/Resources/utilities:/Users/haewonkim/.orbstack/bin:/Applications/Visual Studio Code.app/Contents/Resources/app/bin:/Users/haewonkim/.local/bin:/Users/haewonkim/.orbstack/bin:/Applications/Visual Studio Code.app/Contents/Resources/app/bin
+
+drwxr-xr-x  16 haewonkim  staff  512 Aug  8 11:24 /Users/haewonkim/.local/bin
+drwxr-xr-x  16 haewonkim  staff  512 Aug  8 11:24 /Users/haewonkim/.local/bin
+drwxr-xr-x  16 haewonkim  staff  512 Aug  8 11:24 /Users/haewonkim/.local/bin
+drwxr-xr-x  3 haewonkim  staff  96 Mar 30 21:34 /Users/haewonkim/.opencode/bin
+drwxr-xr-x  3 haewonkim  staff  96 Mar 30 21:34 /Users/haewonkim/.opencode/bin
+drwxr-xr-x@ 4 haewonkim  staff  128 Mar 24 20:51 /Users/haewonkim/.antigravity/antigravity/bin
+drwxr-xr-x  16 haewonkim  staff  512 Aug  8 11:24 /Users/haewonkim/.local/bin
+drwxrwxr-x@ 492 haewonkim  admin  15744 Aug 17 21:01 /opt/homebrew/bin
+drwxrwxr-x@ 11 haewonkim  admin  352 Apr  4  2025 /opt/homebrew/sbin
+drwxr-xr-x  20 root  wheel  640 Jun  5 21:56 /usr/local/bin
+drwxr-xr-x  3 root  wheel  96 Jul 31  2025 /System/Cryptexes/App/usr/bin
+drwxr-xr-x  917 root  wheel  29344 Nov 22  2025 /usr/bin
+drwxr-xr-x@ 39 root  wheel  1248 Nov 22  2025 /bin
+drwxr-xr-x  229 root  wheel  7328 Nov 22  2025 /usr/sbin
+drwxr-xr-x@ 76 root  wheel  2432 Nov 22  2025 /sbin
+ls: /var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/local/bin: No such file or directory
+ls: /var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/bin: No such file or directory
+ls: /var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/appleinternal/bin: No such file or directory
+drwxr-xr-x  3 root  wheel  96 Oct 29  2022 /Library/Apple/usr/bin
+drwxr-xr-x  16 haewonkim  staff  512 Aug  8 11:24 /Users/haewonkim/.local/bin
+drwxr-xr-x  3 haewonkim  staff  96 Mar 30 21:34 /Users/haewonkim/.opencode/bin
+drwxr-xr-x@ 4 haewonkim  staff  128 Mar 24 20:51 /Users/haewonkim/.antigravity/antigravity/bin
+drwxr-xr-x  670 haewonkim  staff  21440 May 19 08:54 /opt/anaconda3/bin
+drwxr-xr-x  3 haewonkim  staff  96 Apr 24  2024 /opt/anaconda3/condabin
+drwxr-xr-x  19 haewonkim  staff  608 Jun  2 13:16 /Applications/Externals/iTerm.app/Contents/Resources/utilities
+drwxr-xr-x  8 haewonkim  staff  256 May 27 13:33 /Users/haewonkim/.orbstack/bin
+drwxr-xr-x@ 4 haewonkim  staff  128 Aug  4 11:23 /Applications/Visual Studio Code.app/Contents/Resources/app/bin
+drwxr-xr-x  16 haewonkim  staff  512 Aug  8 11:24 /Users/haewonkim/.local/bin
+drwxr-xr-x  8 haewonkim  staff  256 May 27 13:33 /Users/haewonkim/.orbstack/bin
+drwxr-xr-x@ 4 haewonkim  staff  128 Aug  4 11:23 /Applications/Visual Studio Code.app/Contents/Resources/app/bin

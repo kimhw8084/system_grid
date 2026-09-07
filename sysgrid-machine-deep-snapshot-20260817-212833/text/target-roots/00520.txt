@@ -1,0 +1,169 @@
+ORIGINAL_PATH: /Users/haewonkim/.local/state/sysgrid-supervisor/runs/20260804T232030Z-36467-732000/patch.diff
+ORIGINAL_SHA256: 92a4eb50c94e9e91b6f8fcfc0e88c43c08911b7e8fbaec76b2964d1fc49d160d
+================================================================================
+diff --git a/frontend/src/components/FAR.tsx b/frontend/src/components/FAR.tsx
+index 21a93d4..966324e 100644
+--- a/frontend/src/components/FAR.tsx
++++ b/frontend/src/components/FAR.tsx
+@@ -594,6 +594,18 @@ export default function FAR() {
+ 
+   // AgGrid Defs (High Density)
+   const mutationBlocked = !isOnline || Boolean(modesError)
++  const [isNarrowViewport, setIsNarrowViewport] = useState(() =>
++    typeof window !== 'undefined' && window.matchMedia('(max-width: 640px)').matches
++  )
++
++  useEffect(() => {
++    if (typeof window === 'undefined') return undefined
++    const media = window.matchMedia('(max-width: 640px)')
++    const update = () => setIsNarrowViewport(media.matches)
++    update()
++    media.addEventListener?.('change', update)
++    return () => media.removeEventListener?.('change', update)
++  }, [])
+ 
+   const openRetirementPreflight = useCallback((mode: any, node: any) => {
+     if (mutationBlocked || !mode?.id) return
+@@ -625,7 +637,7 @@ export default function FAR() {
+       width: 50,
+       checkboxSelection: true, 
+       headerCheckboxSelection: true, 
+-      pinned: 'left', 
++      pinned: isNarrowViewport ? null : 'left',
+       cellClass: 'flex items-center justify-center border-r border-white/5 pl-2', 
+       headerClass: 'flex items-center justify-center border-r border-white/5 pl-2',
+       suppressSizeToFit: true,
+@@ -638,7 +650,7 @@ export default function FAR() {
+       field: "id", 
+       headerName: "ID", 
+       width: 70,
+-      pinned: 'left',
++      pinned: isNarrowViewport ? null : 'left',
+       cellClass: 'text-center font-bold text-slate-500',
+       headerClass: 'text-center',
+       filter: 'agNumberColumnFilter',
+@@ -950,7 +962,7 @@ export default function FAR() {
+       headerName: "Action",
+       width: 100,
+       minWidth: 100,
+-      pinned: 'right',
++      pinned: isNarrowViewport ? null : 'right',
+       cellClass: 'text-center',
+       headerClass: 'text-center',
+       cellRenderer: (p: any) => (
+@@ -999,7 +1011,7 @@ export default function FAR() {
+       cellDataType: false,
+       suppressAutoSize: true,
+     }
+-  }), [fontSize, hiddenColumns, mutationBlocked, openRetirementPreflight, workspaceMode]) as any
++  }), [fontSize, hiddenColumns, isNarrowViewport, mutationBlocked, openRetirementPreflight, workspaceMode]) as any
+ 
+   const canonicalColumnLayoutState = useMemo(() => columnDefs.map((column: any, index: number) => {
+     const state: Record<string, any> = {
+@@ -1017,17 +1029,28 @@ export default function FAR() {
+ 
+   const applyInitialColumnLayout = useCallback((api: any) => {
+     const pending = pendingColumnStateRef.current
+-    const state = pending?.length ? pending : canonicalColumnLayoutState
++    const sourceState = pending?.length ? pending : canonicalColumnLayoutState
++    const state = sourceState.map((entry: any) => {
++      const colId = String(entry.colId || '')
++      const normalized = { ...entry }
++      if (isNarrowViewport && ['selection', 'id', 'actions'].includes(colId)) normalized.pinned = null
++      if (colId === 'analytical_focus') normalized.hide = workspaceMode === 'failure_modes'
++      return normalized
++    })
+     if (!api?.applyColumnState || !state.length) return
+     suppressColumnCaptureRef.current = true
+     api.applyColumnState({ state, applyOrder: true })
+     requestAnimationFrame(() => {
+       api.applyColumnState({ state, applyOrder: true })
++      if (workspaceMode !== 'failure_modes') {
++        api.setColumnsVisible?.(['analytical_focus'], true)
++        api.ensureColumnVisible?.('analytical_focus', 'end')
++      }
+       window.setTimeout(() => {
+         suppressColumnCaptureRef.current = false
+       }, 0)
+     })
+-  }, [canonicalColumnLayoutState])
++  }, [canonicalColumnLayoutState, isNarrowViewport, workspaceMode])
+ 
+   const synchronizeAnalyticalFocus = useCallback((api: any = gridRef.current?.api) => {
+     if (!api) return false
+diff --git a/frontend/src/components/shared/OperationalWorkspaceShells.tsx b/frontend/src/components/shared/OperationalWorkspaceShells.tsx
+index 7206e98..d1c5332 100644
+--- a/frontend/src/components/shared/OperationalWorkspaceShells.tsx
++++ b/frontend/src/components/shared/OperationalWorkspaceShells.tsx
+@@ -136,7 +136,7 @@ export function OperationalGridSurface({
+       GOLDEN_GRID_BASE_CLASS,
+       GOLDEN_GRID_VARIANT_CLASS[variant],
+       className
+-    )} style={style} data-golden-grid-surface="true" data-testid="golden-grid-surface" data-golden-grid-variant={variant} data-golden-geometry-version={GOLDEN_WORKSPACE_GEOMETRY_VERSION}>
++    )} style={style} data-golden-grid-surface="true" data-testid="golden-grid-surface" data-golden-grid-variant={variant} data-golden-grid-loading={loading ? 'true' : 'false'} data-golden-geometry-version={GOLDEN_WORKSPACE_GEOMETRY_VERSION}>
+       {loading ? (
+         <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-[#020617]/80 backdrop-blur-sm space-y-4">
+           {loadingIcon}
+diff --git a/frontend/tests/far-golden-workspace.spec.ts b/frontend/tests/far-golden-workspace.spec.ts
+index b1180d8..1007fbb 100644
+--- a/frontend/tests/far-golden-workspace.spec.ts
++++ b/frontend/tests/far-golden-workspace.spec.ts
+@@ -45,9 +45,21 @@ async function collectReachableHeaders(page: any, grid: any, required: string[])
+     const firstCell = grid.locator('.ag-center-cols-container .ag-row .ag-cell').first()
+     await expect(firstCell).toBeVisible()
+     await firstCell.click()
+-    await page.keyboard.press('Home')
+-    const observedScrollPositions: number[] = []
+     const maximumKeyboardSteps = Math.min(512, Math.max(96, Math.ceil(metrics.maxScrollLeft / 10) + 32))
++    const leadingScrollPositions: number[] = []
++    for (let index = 0; index < maximumKeyboardSteps; index += 1) {
++      await page.evaluate(() => new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve()))))
++      const position = await centerViewport.evaluate((element: HTMLElement) => element.scrollLeft)
++      leadingScrollPositions.push(position)
++      if (position <= 2) break
++      await page.keyboard.press('ArrowLeft')
++    }
++    expect(
++      Math.min(...leadingScrollPositions),
++      `Keyboard traversal must establish the FAR leading edge before scanning. Observed: ${leadingScrollPositions.join(', ')}`,
++    ).toBeLessThanOrEqual(2)
++
++    const observedScrollPositions: number[] = []
+     for (let index = 0; index < maximumKeyboardSteps; index += 1) {
+       await page.evaluate(() => new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve()))))
+       await collectInstantiatedHeaders()
+@@ -60,8 +72,19 @@ async function collectReachableHeaders(page: any, grid: any, required: string[])
+       Math.max(...observedScrollPositions),
+       `Keyboard traversal must reach the measured FAR maximum ${metrics.maxScrollLeft}. Observed: ${observedScrollPositions.join(', ')}`,
+     ).toBeGreaterThanOrEqual(metrics.maxScrollLeft - 2)
+-    await page.keyboard.press('Home')
+-    await expect.poll(async () => Math.round(await centerViewport.evaluate((element: HTMLElement) => element.scrollLeft))).toBeLessThanOrEqual(2)
++
++    const restoredScrollPositions: number[] = []
++    for (let index = 0; index < maximumKeyboardSteps; index += 1) {
++      await page.evaluate(() => new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve()))))
++      const position = await centerViewport.evaluate((element: HTMLElement) => element.scrollLeft)
++      restoredScrollPositions.push(position)
++      if (position <= 2) break
++      await page.keyboard.press('ArrowLeft')
++    }
++    expect(
++      Math.min(...restoredScrollPositions),
++      `Keyboard traversal must restore the measured FAR leading edge. Observed: ${restoredScrollPositions.join(', ')}`,
++    ).toBeLessThanOrEqual(2)
+   }
+ 
+   return [...headers]
+diff --git a/frontend/tests/shell-and-search.spec.ts b/frontend/tests/shell-and-search.spec.ts
+index 1ce5fc6..943004a 100644
+--- a/frontend/tests/shell-and-search.spec.ts
++++ b/frontend/tests/shell-and-search.spec.ts
+@@ -131,6 +131,8 @@ async function readGoldenGeometry(page: any) {
+   await expect(commandBar).toBeVisible()
+   await expect(toolbar).toBeVisible()
+   await expect(grid).toBeVisible()
++  await expect(grid).toHaveAttribute('data-golden-grid-loading', 'false')
++  await page.evaluate(() => new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve()))))
+ 
+   const boxes = await Promise.all([shell, header, commandBar, toolbar, grid].map(async (locator) => {
+     const box = await locator.boundingBox()

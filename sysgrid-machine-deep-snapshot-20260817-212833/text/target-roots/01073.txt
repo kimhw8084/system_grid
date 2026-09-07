@@ -1,0 +1,11 @@
+ORIGINAL_PATH: /Users/haewonkim/.local/state/sysgrid-supervisor/runs/20260801T223054Z-32752-747000/diagnostic/REVIEW_ME_FIRST.md
+ORIGINAL_SHA256: ab6182249056d9d3ce014028ef02b0fc51fe23165c5be6b6729fe13c38511c60
+================================================================================
+# SysGrid Supervisor Diagnostic
+
+- Result: failure
+- Classification: PREFLIGHT_AGGREGATE_FAILURE
+- Message: repository: DUPLICATE_MUTATION_CAPSULE_POST_STATE: repository exactly matches this mutation capsule's declared post-state; the mutation was already applied by an earlier run and replay is prohibited. The prior canonical review ZIP is preserved. Use 'sg recover-artifact <run-id>' to republish an earlier run artifact without executing the product again.
+- Product mutation authority: none added by this diagnostic
+
+Review RESULT.json, SUPERVISOR_STATE.json, TRACEBACK.txt, and MANIFEST.sha256.

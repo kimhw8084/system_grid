@@ -1,0 +1,34 @@
+ORIGINAL_PATH: /Users/haewonkim/.local/state/sysgrid-supervisor/runs/20260805T160049Z-71898-509000/preflight.json
+ORIGINAL_SHA256: 736ab0b4376469139bf4e54e628cc46d69d5620ac0ba5eb829eaa94694097077
+================================================================================
+{
+  "declared_state": {
+    "dirty_path_count": 98,
+    "pre_hash_count": 98,
+    "protected_hash_count": 715
+  },
+  "engine_self_test": {
+    "engine_version": "1.1.1",
+    "result": "PASS",
+    "tests": [
+      "safe-path",
+      "manifest",
+      "corruption",
+      "canonical-dirty-paths",
+      "aggregate-recipes"
+    ]
+  },
+  "patch": {
+    "applicable": true,
+    "forward_diagnostic": "Checking patch frontend/src/components/FAR.tsx...",
+    "forward_exit_code": 0,
+    "reverse_applicable": false,
+    "reverse_diagnostic": "Checking patch frontend/src/components/FAR.tsx...\nerror: while searching for:\n          ) : null}\n        </div>\n      )}\n      floatingPanels={(\n        <OperationalSavedViewsPanel\n          isOpen={showSavedViews}\n          panelRef={viewsPanelRef}\n          panelStyle={viewsPanelStyle}\n          entityLabel=\"FAR\"\n          onClose={() => setShowSavedViews(false)}\n          activeViewId={activeViewId}\n          currentViewName={currentSavedView?.name || 'FAR default'}\n          newViewName={newViewName}\n          onNewViewNameChange={setNewViewName}\n          onCreateView={() => void createSavedView()}\n          onApplySystemDefault={applySystemDefault}\n          savedViews={savedViews}\n          defaultViewIds={FAR_SYSTEM_VIEW_IDS}\n          onApplyView={(id) => {\n            const view = savedViews.find((candidate) => candidate.id === id)\n            if (view) applySavedView(view)\n          }}\n          onOverwriteView={(id) => void overwriteSavedView(id)}\n          onRenameView={renameSavedView}\n          onDeleteView={(id) => void deleteSavedView(id)}\n          describeView={(view) => {\n            const config = sanitizeFARSavedViewDefinition(view.config)\n            const mode = FAR_WORKSPACE_MODES.find((item) => item.id === config.filters.mode)?.label || 'Failure Modes'\n            return `${mode} \u00b7 ${config.filters.preset} \u00b7 ${config.filters.riskBand === 'all' ? 'all risks' : config.filters.riskBand}`\n          }}\n          syncStatus={collaborativeViews.status}\n          syncMessage={syncMessage}\n          onCopyViewLink={(id) => void collaborativeViews.copyViewLink(id)}\n          conflictMessage={collaborativeViews.conflict?.message}\n          onReloadConflict={collaborativeViews.reloadConflict}\n          onSaveConflictCopy={() => void collaborativeViews.saveConflictCopy()}\n        />\n      )}\n    >\n      <AnimatePresence>\n        {showStyleLab && (\n          <motion.div data-far-display-controls=\"true\" initial={{ opacity: 0, x: 20 }} animate={{ opacity:",
+    "reverse_exit_code": 1
+  },
+  "storage": {
+    "control_free": 52303769600,
+    "local_free": 52303769600,
+    "required": 3221225472
+  }
+}

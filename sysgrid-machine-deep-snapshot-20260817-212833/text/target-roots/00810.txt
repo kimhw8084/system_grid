@@ -1,0 +1,13 @@
+ORIGINAL_PATH: /Users/haewonkim/.local/state/sysgrid-supervisor/runs/20260801T195955Z-58073-775000/launch.json
+ORIGINAL_SHA256: 0fdfd064fb7d2719cf6b88fd599bcc10959ca5b781393ec1ae892a880cc18ee7
+================================================================================
+{
+  "capsule_path": "/Users/haewonkim/.local/state/sysgrid-supervisor/runs/20260801T195955Z-58073-775000/input/DOWNLOAD_Attempt_06_Seeded_Golden_Visibility.sgcap",
+  "capsule_sha256": "922272d9bc320f2ecc2bf9702ad1e9a875893c7826d1a35a4b4452e4a8bc55db",
+  "command_sha256": "c9d7fe00e643d86da160893e53eebda5a28884265a494d08a06c4dd556b3ad71",
+  "engine_path": "/Users/haewonkim/.local/lib/sysgrid-runner/1.0.4/sysgrid_runner.py",
+  "engine_sha256": "ab63bb20c0de32771e20b0159475205f685f28910a0956c217fb3693c02f96e1",
+  "launched_utc": "2026-08-01T19:59:56Z",
+  "repo": "/Users/haewonkim/home/development/sysgrid",
+  "run_id": "20260801T195955Z-58073-775000"
+}

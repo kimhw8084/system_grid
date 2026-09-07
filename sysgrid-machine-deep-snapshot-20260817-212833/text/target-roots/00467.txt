@@ -1,0 +1,157 @@
+ORIGINAL_PATH: /Users/haewonkim/.local/state/sysgrid-workstation/profiles/work/repository-backups/20260809T024611Z/working-tree.patch
+ORIGINAL_SHA256: 96135c220dfd176f8d33d4d1a46b4566afa1b710da15b6fca53d78362583f1fe
+================================================================================
+diff --git a/frontend/src/components/ServicesReal.tsx b/frontend/src/components/ServicesReal.tsx
+index 10ec02ba..d95e394a 100644
+--- a/frontend/src/components/ServicesReal.tsx
++++ b/frontend/src/components/ServicesReal.tsx
+@@ -581,6 +581,7 @@ export default function ServicesReal() {
+   const autoSizeFrameRef = useRef<number | null>(null)
+   const autoSizeTimeoutRef = useRef<number | null>(null)
+   const servicePreferenceHydratedRef = useRef(false)
++  const serviceSearchInteractedBeforeHydrationRef = useRef(false)
+   const servicePreferenceMigratedRef = useRef(false)
+   const servicePreferenceSyncRef = useRef<string | null>(null)
+   const servicePreferenceSyncTimeoutRef = useRef<number | null>(null)
+@@ -718,7 +719,9 @@ export default function ServicesReal() {
+       setQuickFilters(payload?.uiState.quickFilters ?? normalizeServiceQuickFilters(null))
+       setGroupBy(payload?.uiState.groupBy ?? 'raw')
+       setColumnLayoutState(payload?.uiState.columnLayoutState ?? [])
+-      setSearchTerm(payload?.uiState.searchTerm ?? '')
++      if (!serviceSearchInteractedBeforeHydrationRef.current) {
++        setSearchTerm(payload?.uiState.searchTerm ?? '')
++      }
+       return
+     }
+ 
+@@ -1910,7 +1913,10 @@ export default function ServicesReal() {
+       toolbarSearch={(
+         <ToolbarSearch
+           value={searchTerm}
+-          onChange={(e) => setSearchTerm(e.target.value)}
++          onChange={(e) => {
++            serviceSearchInteractedBeforeHydrationRef.current = true
++            setSearchTerm(e.target.value)
++          }}
+           placeholder="Search services, hosts, or metadata..."
+         />
+       )}
+diff --git a/frontend/src/components/shared/ServicesDirtyGuardRecovery.test.tsx b/frontend/src/components/shared/ServicesDirtyGuardRecovery.test.tsx
+index 80a4cf4a..e9c9f4fb 100644
+--- a/frontend/src/components/shared/ServicesDirtyGuardRecovery.test.tsx
++++ b/frontend/src/components/shared/ServicesDirtyGuardRecovery.test.tsx
+@@ -99,7 +99,7 @@ describe('Services dirty guard recovery', () => {
+ 
+     expect(screen.getByTestId('services-dirty-state')).toHaveTextContent('false')
+     expect(screen.getByPlaceholderText('e.g. ERP DB Prod 01')).toHaveValue('')
+-  })
++  }, 15_000)
+ 
+   it('keeps clean close clean', () => {
+     renderHarness({ name: 'Existing Service' })
+diff --git a/frontend/tests/shell-and-search.spec.ts b/frontend/tests/shell-and-search.spec.ts
+index 6e1aec78..ad898cc5 100644
+--- a/frontend/tests/shell-and-search.spec.ts
++++ b/frontend/tests/shell-and-search.spec.ts
+@@ -151,7 +151,7 @@ function expectAligned(actual: number, expected: number, tolerance = 2) {
+ test.describe('Golden Eight rendered geometry', () => {
+ 
+ 
+-  test('records authoritative API response shapes for comprehensive Golden Eight seed fixtures', async ({ page }, testInfo) => {
++  test('records authoritative API response shapes for comprehensive Golden Eight seed fixtures', async ({ page, sysApi }, testInfo) => {
+     await resetBrowserState(page)
+     await page.setViewportSize({ width: 1440, height: 1000 })
+ 
+@@ -167,39 +167,67 @@ test.describe('Golden Eight rendered geometry', () => {
+ 
+     for (const route of goldenRoutes) {
+       const routeEntries: typeof inventory = []
+-      const listener = async (response: any) => {
++      const listener = (response: any) => {
+         const request = response.request()
+         const url = new URL(response.url())
+         if (!url.pathname.startsWith('/api/')) return
+-        const contentType = response.headers()['content-type'] || ''
+-        const entry: (typeof inventory)[number] = {
++        routeEntries.push({
+           route: route.path,
+           method: request.method(),
+           url: `${url.pathname}${url.search}`,
+           status: response.status(),
+-          contentType,
+-        }
+-        if (contentType.includes('application/json')) {
+-          try {
+-            entry.shape = summarizePayloadShape(await response.json())
+-          } catch (error) {
+-            entry.bodyError = error instanceof Error ? error.message : String(error)
+-          }
+-        }
+-        routeEntries.push(entry)
++          contentType: response.headers()['content-type'] || '',
++        })
+       }
+ 
+       page.on('response', listener)
+-      await page.goto(route.path)
+-      await waitForAppIdle(page)
+-      await page.waitForTimeout(250)
+-      page.off('response', listener)
++      try {
++        await page.goto(route.path)
++        await waitForAppIdle(page)
++        await expect.poll(() => routeEntries.length, { timeout: 10_000 }).toBeGreaterThan(0)
++        let previousCount = -1
++        let stableObservations = 0
++        await expect.poll(() => {
++          const currentCount = routeEntries.length
++          stableObservations = currentCount === previousCount ? stableObservations + 1 : 0
++          previousCount = currentCount
++          return stableObservations
++        }, { timeout: 10_000, intervals: [50, 100, 150, 250] }).toBeGreaterThanOrEqual(2)
++      } finally {
++        page.off('response', listener)
++      }
+ 
+       const deduplicated = new Map<string, (typeof inventory)[number]>()
+       for (const entry of routeEntries) {
+         const key = `${entry.method} ${entry.url} ${entry.status}`
+         if (!deduplicated.has(key)) deduplicated.set(key, entry)
+       }
++
++      const responseErrors: string[] = []
++      for (const entry of deduplicated.values()) {
++        if (!entry.contentType.includes('application/json')) continue
++        if (entry.method !== 'GET') {
++          entry.bodyError = `cannot safely replay non-GET JSON response: ${entry.method}`
++          responseErrors.push(`${entry.method} ${entry.url}: ${entry.bodyError}`)
++          continue
++        }
++        try {
++          const replay = await sysApi.get(entry.url)
++          const replayContentType = replay.headers()['content-type'] || ''
++          if (replay.status() !== entry.status) {
++            throw new Error(`status mismatch: browser=${entry.status} replay=${replay.status()}`)
++          }
++          if (!replayContentType.includes('application/json')) {
++            throw new Error(`content-type mismatch: browser=${entry.contentType} replay=${replayContentType}`)
++          }
++          entry.shape = summarizePayloadShape(await replay.json())
++        } catch (error) {
++          entry.bodyError = error instanceof Error ? error.message : String(error)
++          responseErrors.push(`${entry.method} ${entry.url}: ${entry.bodyError}`)
++        }
++      }
++
++      expect(responseErrors, `${route.path} returned unreadable or non-equivalent JSON`).toEqual([])
+       inventory.push(...deduplicated.values())
+     }
+ 
+@@ -211,6 +239,7 @@ test.describe('Golden Eight rendered geometry', () => {
+     }
+   })
+   test('keeps desktop shell, command bar, and grid alignment invariant on every golden route', async ({ page }, testInfo) => {
++    test.setTimeout(180_000)
+     await resetBrowserState(page)
+     await page.setViewportSize({ width: 1440, height: 1000 })
+ 

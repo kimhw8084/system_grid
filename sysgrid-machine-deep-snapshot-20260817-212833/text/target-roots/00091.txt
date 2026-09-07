@@ -1,0 +1,97 @@
+ORIGINAL_PATH: /Users/haewonkim/.local/share/sysgrid-runner/backups/20260728-145934/sg
+ORIGINAL_SHA256: ff385e0274a0416274b776797af3df08b829b04a919213eee03dd25a7fa6f060
+================================================================================
+#!/usr/bin/env bash
+set -euo pipefail
+STATE="$HOME/.local/state/sysgrid-phone"
+CONFIG="$STATE/config"
+[[ -f "$CONFIG" ]] || { echo "Run SysGrid_Phone_Workflow_Setup.sh on the Mac first." >&2; exit 1; }
+# shellcheck disable=SC1090
+source "$CONFIG"
+INBOX="$ICLOUD_ROOT/Inbox"
+OUTBOX="$ICLOUD_ROOT/Outbox"
+ARCHIVE="$ICLOUD_ROOT/Archive"
+DOWNLOADS="$HOME/Downloads"
+PIDFILE="$STATE/run.pid"
+mkdir -p "$INBOX" "$OUTBOX" "$ARCHIVE" "$DOWNLOADS"
+
+if [[ -f "$PIDFILE" ]]; then
+  old_pid="$(cat "$PIDFILE" 2>/dev/null || true)"
+  if [[ -n "$old_pid" ]] && kill -0 "$old_pid" 2>/dev/null; then
+    echo "A SysGrid run is already active (PID $old_pid). Use: sgs"
+    exit 1
+  fi
+  rm -f "$PIDFILE"
+fi
+
+runner_source="$(find "$INBOX" -maxdepth 1 -type f -name 'OUT-*ONE_COMMAND*.sh' -print0 2>/dev/null | xargs -0 ls -1t 2>/dev/null | head -n 1 || true)"
+[[ -n "$runner_source" ]] || {
+  echo "No OUT-*ONE_COMMAND*.sh file is in iCloud Drive/SysGrid-Control/Inbox." >&2
+  echo "Save the runner and every required patch there from the ChatGPT app, then run sg again." >&2
+  exit 1
+}
+
+stamp="$(date +%Y%m%d-%H%M%S)"
+archive_dir="$ARCHIVE/$stamp"
+mkdir -p "$archive_dir"
+while IFS= read -r -d '' file; do
+  cp -f "$file" "$DOWNLOADS/$(basename "$file")"
+  mv "$file" "$archive_dir/$(basename "$file")"
+done < <(find "$INBOX" -maxdepth 1 -type f \( -name 'OUT-*' -o -name 'SysGrid_*' \) -print0)
+
+runner="$DOWNLOADS/$(basename "$runner_source")"
+[[ -f "$runner" ]] || { echo "Runner copy failed: $runner" >&2; exit 1; }
+chmod +x "$runner"
+log="$OUTBOX/${stamp}_terminal.txt"
+latest_log="$OUTBOX/latest-terminal.txt"
+status="$OUTBOX/latest-status.txt"
+marker="$STATE/start-$stamp"
+touch "$marker"
+
+worker="$STATE/worker-$stamp.sh"
+cat > "$worker" <<WORKER
+#!/usr/bin/env bash
+set +e
+cleanup() { rm -f "$PIDFILE" "$worker" "$marker"; }
+trap cleanup EXIT
+printf 'RUNNING\nStarted: %s\nRunner: %s\nRepo: %s\n' "$(date -Iseconds)" "$runner" "$REPO" > "$status"
+cd "$REPO" || exit 90
+caffeinate -dimsu bash "$runner" > "$log" 2>&1
+rc=\$?
+cp -f "$log" "$latest_log"
+{
+  printf 'Exit code: %s\nFinished: %s\nRunner: %s\nTerminal result: %s\n' "\$rc" "\$(date -Iseconds)" "$runner" "$latest_log"
+  printf 'New review artifacts:\n'
+  find "$DOWNLOADS" -maxdepth 1 -type f -newer "$marker" \\
+    \( -name 'SysGrid_*.zip' -o -name '*Final-Review-Bundle.zip' -o -name '*AI-Review-Capsule.zip' \) -print
+} > "$status"
+while IFS= read -r -d '' artifact; do
+  cp -f "\$artifact" "$OUTBOX/$(basename "\$artifact")"
+done < <(find "$DOWNLOADS" -maxdepth 1 -type f -newer "$marker" \\
+  \( -name 'SysGrid_*.zip' -o -name '*Final-Review-Bundle.zip' -o -name '*AI-Review-Capsule.zip' \) -print0)
+if [[ \$rc -ne 0 ]]; then
+  support="$OUTBOX/${stamp}_failure-evidence.zip"
+  cd "$DOWNLOADS" || true
+  latest_logs="\$(find . -maxdepth 1 -type d -name 'OUT-*_logs' -newer "$marker" -print | head -n 1)"
+  latest_evidence="\$(find . -maxdepth 1 -type d -name 'OUT-*_evidence' -newer "$marker" -print | head -n 1)"
+  items=()
+  [[ -n "\$latest_logs" ]] && items+=("\$latest_logs")
+  [[ -n "\$latest_evidence" ]] && items+=("\$latest_evidence")
+  if [[ \${#items[@]} -gt 0 ]]; then zip -qry "\$support" "\${items[@]}" || true; fi
+fi
+exit \$rc
+WORKER
+chmod +x "$worker"
+nohup "$worker" >/dev/null 2>&1 &
+pid=$!
+echo "$pid" > "$PIDFILE"
+# SYSGRID_TELEGRAM_NOTIFICATIONS_START
+if [[ -x "$HOME/.local/bin/sgnotify" && -x "$HOME/.local/bin/sgwatch" ]]; then
+  "$HOME/.local/bin/sgnotify" "▶️ SysGrid run started
+Runner: $(basename "$runner")
+PID: $pid
+Check anytime: sgs" || true
+  nohup "$HOME/.local/bin/sgwatch" "$pid" "$status" "$(basename "$runner")" >/dev/null 2>&1 &
+fi
+# SYSGRID_TELEGRAM_NOTIFICATIONS_END
+printf 'STARTED\nPID: %s\nRunner: %s\nResult folder: iCloud Drive/SysGrid-Control/Outbox\nUse: sgs\n' "$pid" "$(basename "$runner")"

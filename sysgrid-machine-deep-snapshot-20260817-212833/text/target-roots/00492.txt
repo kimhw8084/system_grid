@@ -1,0 +1,21 @@
+ORIGINAL_PATH: /Users/haewonkim/Library/Application Support/SysGridRelay/backups/synchronous-relay-20260804T211209Z/com.sysgrid.public-relay.plist.before
+ORIGINAL_SHA256: 4a962ff9db3b2378e5739847d93d259243327958251a21d5fbcbfcfe833df4f0
+================================================================================
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key><string>com.sysgrid.public-relay</string>
+  <key>ProgramArguments</key>
+  <array>
+    <string>/opt/anaconda3/bin/python3</string>
+    <string>/Users/haewonkim/Library/Application Support/SysGridRelay/watch_and_dispatch.py</string>
+    <string>/Users/haewonkim/Library/Application Support/SysGridRelay/config.json</string>
+  </array>
+  <key>RunAtLoad</key><true/>
+  <key>StartInterval</key><integer>20</integer>
+  <key>ProcessType</key><string>Background</string>
+  <key>StandardOutPath</key><string>/Users/haewonkim/Library/Application Support/SysGridRelay/watcher.stdout.log</string>
+  <key>StandardErrorPath</key><string>/Users/haewonkim/Library/Application Support/SysGridRelay/watcher.stderr.log</string>
+</dict>
+</plist>

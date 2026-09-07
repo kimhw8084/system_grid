@@ -1,0 +1,18 @@
+ORIGINAL_PATH: /Users/haewonkim/.local/state/sysgrid-supervisor/runs/20260801T200755Z-67263-609000/diagnostic/RESULT.json
+ORIGINAL_SHA256: 2ec82090907b186dbf235fae6bc77f961107fa1a93a6561f5987591c7c11f6dd
+================================================================================
+{
+  "capsule_file": null,
+  "capsule_sha256": null,
+  "classification": "CAPSULE_SELECTION_FAILURE",
+  "engine_version": "1.0.4",
+  "exit_code": 66,
+  "finished_utc": "2026-08-01T20:07:55Z",
+  "lane": "execution_platform",
+  "message": "Inbox contains 2 capsules with 2 distinct identities (256eadfc9374:1, b6d91af142cc:1); exact choice is ambiguous",
+  "mode": "qualification",
+  "mutation_state": "not_started",
+  "result": "failure",
+  "safe_automatic_retry_performed": 0,
+  "supervisor_version": "2.1.2"
+}

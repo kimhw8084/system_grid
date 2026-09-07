@@ -1,0 +1,10 @@
+$ tmux list-sessions
+
+agy: 1 windows (created Sun Jun 28 20:32:36 2026)
+codex: 1 windows (created Tue Jul 28 16:06:57 2026)
+hh: 1 windows (created Wed Aug 12 05:42:59 2026) (attached)
+hhweb: 1 windows (created Wed Aug 12 05:43:08 2026) (attached)
+invest: 1 windows (created Wed Aug  5 20:26:08 2026) (attached)
+sg: 1 windows (created Wed Aug 12 21:31:24 2026) (attached)
+sysgrid_web: 1 windows (created Tue Jul 28 16:50:04 2026)
+terminal: 1 windows (created Thu Jul 23 09:19:33 2026)

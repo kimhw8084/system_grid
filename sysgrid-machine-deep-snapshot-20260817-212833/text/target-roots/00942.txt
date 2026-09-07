@@ -1,0 +1,32 @@
+ORIGINAL_PATH: /Users/haewonkim/.local/state/sysgrid-supervisor/runs/20260802T033203Z-34878-805000/preflight.json
+ORIGINAL_SHA256: 5a438ce65f165a685c81602149a7c754de4b1edcf0153e040ceb751f7e747639
+================================================================================
+{
+  "declared_state": {
+    "dirty_path_count": 65,
+    "pre_hash_count": 65,
+    "protected_hash_count": 21
+  },
+  "engine_self_test": {
+    "engine_version": "1.0.4",
+    "result": "PASS",
+    "tests": [
+      "safe-path",
+      "manifest",
+      "corruption"
+    ]
+  },
+  "patch": {
+    "applicable": true,
+    "forward_diagnostic": "Checking patch backend/app/api/workspaces.py...\nChecking patch backend/test_workspace_views.py...\nChecking patch frontend/src/components/FAR.tsx...\nChecking patch frontend/src/components/MonitoringGrid.tsx...\nChecking patch frontend/src/components/far/FARGoldenWorkspace.tsx...\nChecking patch frontend/src/components/shared/FARResearchGoldenPresentationContract.test.ts...\nChecking patch frontend/src/components/shared/GoldenWorkspaceGeometryContract.test.ts...\nChecking patch frontend/src/components/shared/GoldenWorkspaceShellContract.test.ts...\nChecking patch frontend/src/components/shared/OperationalWorkspaceShells.tsx...\nChecking patch frontend/tests/far-golden-workspace.spec.ts...",
+    "forward_exit_code": 0,
+    "reverse_applicable": false,
+    "reverse_diagnostic": "Checking patch frontend/tests/far-golden-workspace.spec.ts...\nerror: while searching for:\nimport { expect } from '@playwright/test'\nimport { test } from './helpers/sysgrid-test'\nimport { clickResilientButton, resetBrowserState, waitForAppIdle } from './helpers/sysgrid'\n\nasync function waitForFAR(page: any) {\n  await waitForAppIdle(page)\n  await expect(page.locator('[data-far-golden-workspace=\"true\"]')).toBeVisible()\n}\n\n\nerror: patch failed: frontend/tests/far-golden-workspace.spec.ts:1\nerror: frontend/tests/far-golden-workspace.spec.ts: patch does not apply\nChecking patch frontend/src/components/shared/OperationalWorkspaceShells.tsx...\nerror: while searching for:\nimport { PageHeader } from './LayoutPrimitives'\nimport { WorkspaceCommandBar } from './WorkspaceCommandBar'\nimport { WorkspaceFloatingPanel } from './OperationalWorkspacePrimitives'\n\nconst join = (...parts: Array<string | false | null | undefined>) => parts.filter(Boolean).join(' ')\ntype WorkspaceFilterChip = { id: string; label: string; onRemove: () => void }\n\nerror: patch failed: frontend/src/components/shared/OperationalWorkspaceShells.tsx:5\nerror: frontend/src/components/shared/OperationalWorkspaceShells.tsx: patch does not apply\nChecking patch frontend/src/components/shared/GoldenWorkspaceShellContract.test.ts...\nerror: while searching for:\n    expect(routeMatrix).toContain(`key: '${view.key}', path: '${view.route}'`)\n  })\n\n  it('protects newer Monitoring search input from late remote hydration', () => {\n    const monitoring = readComponent('MonitoringGrid.tsx')\n    expect(monitoring).toContain('const monitoringLocalSearchTouchedRef = useRef(false)')\n    expect(monitoring).toContain('if (!monitoringLocalSearchTouchedRef.current)')\n    expect(monitoring).toContain('const setMonitoringSearchFromUser = useCallback')\n    expect(monitoring).toContain('onChange={(e) => setMonitoringSearchFromUser(e.target.value)}')\n  })\n\n  it('contains no stale plural Assets route in active source or tests', () => {\n    expe",
+    "reverse_exit_code": 1
+  },
+  "storage": {
+    "control_free": 57291358208,
+    "local_free": 57291358208,
+    "required": 536870912
+  }
+}

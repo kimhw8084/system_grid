@@ -1,0 +1,64 @@
+ORIGINAL_PATH: /Users/haewonkim/.local/state/sysgrid-supervisor/runs/20260804T000803Z-39212-674000/patch.diff
+ORIGINAL_SHA256: 583fe820573c2c01eaeb7dfb0ade370538f3765305df6c290b8b16567b513555
+================================================================================
+diff --git a/frontend/src/components/FAR.tsx b/frontend/src/components/FAR.tsx
+index e9e2a7133798a138dd2ce9a8dc78b5214b6d8b6f..2071c0551ad17bae3a207d7a2149d92ab9fd3830 100644
+--- a/frontend/src/components/FAR.tsx
++++ b/frontend/src/components/FAR.tsx
+@@ -595,6 +595,7 @@ export default function FAR() {
+ 
+   const columnDefs = useMemo(() => [
+     { 
++      colId: "selection",
+       headerName: "", 
+       width: 50,
+       checkboxSelection: true, 
+@@ -811,6 +812,7 @@ export default function FAR() {
+       hide: hiddenColumns.includes("maturity")
+     },
+     {
++      colId: "vectors",
+       headerName: "Vectors",
+       width: 160,
+       cellClass: 'text-center',
+@@ -917,6 +919,7 @@ export default function FAR() {
+       hide: hiddenColumns.includes("created_by_user_id")
+     },
+     {
++      colId: "actions",
+       headerName: "Action",
+       width: 100,
+       minWidth: 100,
+@@ -933,7 +936,10 @@ export default function FAR() {
+         </div>
+       )
+     }
+-  ], [fontSize, hiddenColumns, mutationBlocked, workspaceMode]) as any
++  ].map((column: any) => ({
++    ...column,
++    suppressAutoSize: true,
++  })), [fontSize, hiddenColumns, mutationBlocked, workspaceMode]) as any
+ 
+   const canonicalColumnLayoutState = useMemo(() => columnDefs.map((column: any, index: number) => {
+     const state: Record<string, any> = {
+@@ -942,7 +948,10 @@ export default function FAR() {
+       hide: Boolean(column.hide),
+     }
+     if (typeof column.flex === 'number') state.flex = column.flex
+-    else if (typeof column.width === 'number') state.width = column.width
++    else if (typeof column.width === 'number') {
++      state.width = column.width
++      state.flex = null
++    }
+     return state
+   }), [columnDefs])
+ 
+@@ -1055,7 +1064,7 @@ export default function FAR() {
+     <OperationalWorkspaceShell
+       archetype="analytical"
+       workspace="far"
+-      className="overflow-hidden"
++      className="min-w-0 overflow-hidden [contain:inline-size]"
+       header={{
+         eyebrow: 'Analysis',
+         title: (

@@ -1,0 +1,4 @@
+ORIGINAL_PATH: /Users/haewonkim/.local/share/sysgrid-campaign-platform/v1.1.1/templates/LINEAR_STATE_EXPECTATION.template.json
+ORIGINAL_SHA256: a88d9938621548f566df0b2754713b36b383563ff8f64c90f84aa37067318ac5
+================================================================================
+{"schema_version":"1.0","campaign_id":"<campaign-id>","project":"SysGrid","master":"OUT-5","issue":"OUT-31","product_attempt":12,"active_issue_count":1,"unaccepted_product_mutation_count":1,"expected_stage":"<stage>","latest_relevant_comment_updated_at":"<ISO-8601>"}

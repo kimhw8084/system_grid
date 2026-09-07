@@ -1,0 +1,4 @@
+$ df -h .
+
+Filesystem      Size    Used   Avail Capacity iused ifree %iused  Mounted on
+/dev/disk3s5   460Gi   372Gi    29Gi    93%    3.0M  308M    1%   /System/Volumes/Data

@@ -1,0 +1,109 @@
+ORIGINAL_PATH: /Users/haewonkim/.local/share/sysgrid-supervisor/v1.3.4/RESEARCH_AND_DESIGN.md
+ORIGINAL_SHA256: 9bdcaefc23db0d918a090a494dce2091c8b7b92005c66e9ce6b7a56dd2a038b7
+================================================================================
+# Research and Design Record
+
+## Stable mechanisms
+
+The implementation uses standard-library and Git primitives with narrow, testable semantics:
+
+- `fcntl.flock(LOCK_EX | LOCK_NB)` for one live execution owner.
+- `os.replace`, file `fsync`, and directory `fsync` for durable atomic state and publication.
+- `subprocess` argument vectors with `shell=False`, closed descriptors, sanitized environment, and direct child ownership.
+- `ThreadPoolExecutor` for independent read-only preflight with complete aggregate reporting.
+- ZIP member validation, CRC, complete path equality, streamed SHA-256, size limits, and decompression-ratio limits.
+- NUL-delimited Git path output for exact dirty-path handling.
+- `git apply --check` and `--reverse` for non-mutating patch-state classification.
+- `ps` plus `kill(pid, 0)` for exact interrupted-process liveness and command-identity verification on the supported macOS execution platform.
+
+Primary references used during design:
+
+- Python documentation: `fcntl`, `os`, `subprocess`, `concurrent.futures`, `zipfile`.
+- Git documentation: `git status`, `git ls-files`, `git apply`, `git worktree`.
+
+## Resume verification contract
+
+Stable Engine v1.0.4 defines `resume_verify` as verification and delivery from an exact retained post-state. A resume capsule carries state ledgers and trusted recipes, but no mutation patch. The supervisor therefore:
+
+1. validates a patch only for `mutation`;
+2. rejects patches on every non-mutation mode;
+3. proves exact branch, HEAD, upstream, dirty paths, pre hashes, and protected hashes;
+4. skips all Git patch applicability checks for resume;
+5. invokes the engine once, where the engine verifies post-state, runs recipes, and owns commit/push.
+
+This prevents both replay of already-retained product bytes and false schema stops before useful verification.
+
+## Telegram destination discovery
+
+Telegram `sendMessage` needs an exact destination chat identifier. Manual chat-ID entry was a preventable operator failure, so v1.3.4 derives the private destination safely:
+
+1. validate the bot token locally and through `getMe`;
+2. verify that no webhook is active, because Bot API long polling and webhooks are mutually exclusive;
+3. record the highest current update identifier;
+4. open the bot conversation and wait for one fresh private `/start` message;
+5. accept only updates newer than the recorded baseline;
+6. deduplicate chat identities and require a choice only when multiple fresh private chats appear;
+7. store the selected numeric chat ID with mode `0600`;
+8. prove delivery before and after installation.
+
+The discovery path never writes the bot token to logs, evidence, or qualification artifacts. Existing numeric environment configuration remains the non-interactive path.
+
+## Failure-elimination model
+
+### Before engine start
+
+Independent trust prerequisites run concurrently and non-short-circuit: capsule identity, exact engine verification, repository identity/state proof, storage, and writeability. Patch applicability is intentionally sequenced after exact repository-state proof because it is dependent on those bytes; this prevents misleading duplicate failures and never evaluates a mutation patch against an unproven worktree. No product mutation begins.
+
+### While the exact engine is running
+
+The supervisor records a durable launch identity before process creation. A later `sg` invocation will not start a second process when the exact recorded PID and command are still active; it waits for the authorized process to finish.
+
+### After engine execution
+
+A private local Outbox isolates engine evidence from cloud synchronization and stale shared outputs. If the supervisor stops after the engine produced evidence, the next invocation verifies and publishes those exact bytes without replay.
+
+### Safe automatic retry boundary
+
+An engine-start marker alone does not authorize retry. Retry is permitted at most once and only when all of the following are proven again:
+
+1. exact capsule identity;
+2. exact baseline branch, HEAD, and upstream;
+3. exact declared dirty-path set;
+4. exact pre-state and protected hashes;
+5. mutation patch uniquely forward-applicable and not reverse-applicable;
+6. no complete engine artifact exists;
+7. no exact engine process remains active.
+
+This proves the product patch did not apply. Any post-state, reverse-applicable patch, state mismatch, unknown process identity, or missing proof blocks replay and produces evidence.
+
+## Resource use
+
+The supervisor derives CPU and physical-memory capacity. Platform preflight uses up to `min(32, max(4, 2 × CPU))` workers and exports conservative resource hints to the trusted engine environment. Product-test parallelism remains capsule/recipe-owned because the supervisor may not invent per-run commands or weaken deterministic isolation.
+
+## Released-byte verification
+
+The 74-test suite covers:
+
+- archive and manifest safety;
+- package/staged/installed-tree identity;
+- capsule schema, patch identity, JSON state ledgers, canonical newline path ledgers, and GNU-style SHA-256 ledgers;
+- Git baseline, dirty paths, pre/protected hashes, dependency-ordered patch classification, and bounded forward/reverse diagnostics;
+- lock behavior, process identity, resource planning, and JSON-safe structured diagnostics;
+- exact duplicate Inbox convergence and distinct-identity rejection;
+- complete-output recovery without replay;
+- exact live-process wait before finalization;
+- safe single retry from proven pre-state;
+- blocked replay from post/ambiguous state;
+- canonical diagnostic production for recovery failure;
+- end-to-end success and application failure with exactly one engine invocation;
+- end-to-end canonical `.txt`/`.sha256` capsule-state compatibility.
+- exact no-patch `resume_verify` schema, no patch precheck, patch rejection on non-mutation modes, and end-to-end resume execution.
+
+
+## v1.3.4 notification and runtime design
+
+Telegram delivery uses the official Bot API `sendMessage` HTTPS method with only `chat_id` and bounded plain text. Secrets are read from environment or a local mode-0600 JSON file and are never included in qualification evidence. The installer proves live delivery before activation and from installed bytes.
+
+Every numbered progress transition is keyed by run ID and event ID in a durable local ledger, so interruption recovery does not duplicate already-delivered Telegram messages. Steps before engine launch are mandatory and fail closed after bounded retries. Once the engine has started, notification failures are recorded but never terminate, replay, or corrupt the authorized product execution. A five-minute heartbeat closes the long-silent-step gap without creating high-frequency noise.
+
+Runtime analysis is observational only: the supervisor reads `RESULT.json` and `COMMANDS.json` from already verified engine evidence, records timings locally, and leaves the canonical evidence ZIP byte-identical. This preserves the Stable Engine trust boundary while making every subsequent review performance-aware.

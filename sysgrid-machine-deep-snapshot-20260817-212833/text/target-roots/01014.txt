@@ -1,0 +1,521 @@
+ORIGINAL_PATH: /Users/haewonkim/.local/state/sysgrid-supervisor/runs/20260803T153234Z-11248-288000/SUPERVISOR_STATE.json
+ORIGINAL_SHA256: 2ef594397c3b17fb1fe83f6083ce0f75a31fa49192df92c17060987e0bb73fb9
+================================================================================
+{
+  "artifact": "/Users/haewonkim/Library/Mobile Documents/com~apple~CloudDocs/SysGrid-Control/Outbox/UPLOAD_THIS_TO_CHATGPT.zip",
+  "artifact_sha256": "95608dbc1bdb7c812ac4e399665bfc6d5708fc060e90c96d6a3e3c93c3c4a021",
+  "artifact_size": 32548826,
+  "attempt": 12,
+  "capsule_archive": "/Users/haewonkim/Library/Mobile Documents/com~apple~CloudDocs/SysGrid-Control/Archive/Processed-Capsules/20260803T154355Z__3b2480df31bb__SYSGRID_OUT31_PA12_PS1_FAR_RENDERED_RUNTIME_PRODUCT_CORRECTION_v1.0.0.sgcap",
+  "capsule_cross_ledger": {
+    "changed_path_count": 2,
+    "execution_profile": "promotion_qualification",
+    "execution_scope": {
+      "changed_paths": [
+        "frontend/src/components/FAR.tsx",
+        "frontend/src/components/shared/OperationalDataGrid.tsx"
+      ],
+      "execution_profile": "promotion_qualification",
+      "targeted_tests": [
+        "backend:far-mode-create-http-201-contract",
+        "playwright:far-golden-workspace",
+        "playwright:far-workflows",
+        "playwright:golden-eight-seeded-visual-matrix",
+        "playwright:far-chaos"
+      ],
+      "targeted_views": [
+        "monitoring",
+        "far"
+      ]
+    },
+    "patch_paths": [
+      "frontend/src/components/FAR.tsx",
+      "frontend/src/components/shared/OperationalDataGrid.tsx"
+    ],
+    "post_path_count": 95,
+    "pre_path_count": 95,
+    "protected_path_count": 93,
+    "recipe_ids": [
+      "backend-pytest",
+      "frontend-build",
+      "frontend-typecheck",
+      "frontend-vitest",
+      "full-app-gate"
+    ]
+  },
+  "capsule_file": "SYSGRID_OUT31_PA12_PS1_FAR_RENDERED_RUNTIME_PRODUCT_CORRECTION_v1.0.0.sgcap",
+  "capsule_sha256": "3b2480df31bb7ff4a257d9e9c7c5d941b6ce7e3a9607079604490864abd0e7f5",
+  "capsule_size": 24019,
+  "capsule_stage": "Product Attempt 12 evidence-matched FAR rendered-runtime correction PS1",
+  "capsule_title": "Product Attempt 12 Product-Source Correction PS1 \u2014 FAR grid, deep-link, and Insights operability",
+  "classification": "AGGREGATE_VERIFICATION_FAILURE",
+  "dirty_path_count": 95,
+  "engine_command": [
+    "/opt/anaconda3/bin/python3",
+    "<exact-engine>",
+    "execute",
+    "<exact-capsule>",
+    "--repo",
+    "/Users/haewonkim/home/development/sysgrid",
+    "--outbox",
+    "/Users/haewonkim/.local/state/sysgrid-supervisor/runs/20260803T153234Z-11248-288000/engine-outbox"
+  ],
+  "engine_completed": true,
+  "engine_completed_utc": "2026-08-03T15:43:54Z",
+  "engine_elapsed_seconds": 600.4,
+  "engine_exit_code": 1,
+  "engine_last_activity_age_seconds": 118.47005605697632,
+  "engine_last_heartbeat_utc": "2026-08-03T15:42:35Z",
+  "engine_path": "/Users/haewonkim/.local/share/sysgrid-runner/engine-v1.1.1/sysgrid_runner.py",
+  "engine_pid": 11285,
+  "engine_process_metrics": {
+    "available": true,
+    "cpu_percent": 280.5,
+    "process_count": 13,
+    "rss_bytes": 1618116608,
+    "states": [
+      "R   ",
+      "S   ",
+      "S+  ",
+      "Ss  "
+    ]
+  },
+  "engine_sha256": "66b082fec1e9f6c49152e5ecb4cbb3f998e60ce27d53a2325e5f658634a8d032",
+  "engine_stall_suspected": false,
+  "engine_started": true,
+  "engine_started_utc": "2026-08-03T15:32:35Z",
+  "event_timeline": [
+    {
+      "details": {},
+      "elapsed_seconds": 0.018,
+      "event_id": "capsule_selected",
+      "message": "Selecting the one immutable capsule and converging only byte-identical Inbox duplicates.",
+      "notification": {
+        "event_id": "capsule_selected",
+        "presentation_mode": "summary",
+        "required": false,
+        "status": "local_only",
+        "updated_utc": "2026-08-03T15:32:34Z"
+      },
+      "status": "started",
+      "utc": "2026-08-03T15:32:34Z"
+    },
+    {
+      "details": {
+        "changed_path_count": 2,
+        "execution_profile": "promotion_qualification",
+        "execution_scope": {
+          "changed_paths": [
+            "frontend/src/components/FAR.tsx",
+            "frontend/src/components/shared/OperationalDataGrid.tsx"
+          ],
+          "execution_profile": "promotion_qualification",
+          "targeted_tests": [
+            "backend:far-mode-create-http-201-contract",
+            "playwright:far-golden-workspace",
+            "playwright:far-workflows",
+            "playwright:golden-eight-seeded-visual-matrix",
+            "playwright:far-chaos"
+          ],
+          "targeted_views": [
+            "monitoring",
+            "far"
+          ]
+        },
+        "patch_paths": [
+          "frontend/src/components/FAR.tsx",
+          "frontend/src/components/shared/OperationalDataGrid.tsx"
+        ],
+        "post_path_count": 95,
+        "pre_path_count": 95,
+        "protected_path_count": 93,
+        "recipe_ids": [
+          "backend-pytest",
+          "frontend-build",
+          "frontend-typecheck",
+          "frontend-vitest",
+          "full-app-gate"
+        ]
+      },
+      "elapsed_seconds": 0.033,
+      "event_id": "capsule_verified",
+      "message": "Capsule archive, manifest, schema, patch identity, and cross-ledger contract are exact.",
+      "notification": {
+        "attempts": 1,
+        "chat_id_suffix": "1055",
+        "event_id": "run_started",
+        "first_attempt_utc": "2026-08-03T15:32:34Z",
+        "message_id": 575,
+        "payload_sha256": "392253d5094e43dae1bbed6ac7b221b2118fa60a2dba4a9aa9c19f68a9b916ea",
+        "required": false,
+        "status": "delivered",
+        "updated_utc": "2026-08-03T15:32:35Z"
+      },
+      "status": "passed",
+      "utc": "2026-08-03T15:32:35Z"
+    },
+    {
+      "details": {},
+      "elapsed_seconds": 0.866,
+      "event_id": "preflight_started",
+      "message": "Running independent platform checks and exact repository-state proof.",
+      "notification": {
+        "event_id": "preflight_started",
+        "presentation_mode": "summary",
+        "required": false,
+        "status": "local_only",
+        "updated_utc": "2026-08-03T15:32:35Z"
+      },
+      "status": "started",
+      "utc": "2026-08-03T15:32:35Z"
+    },
+    {
+      "details": {
+        "dirty_paths": 95,
+        "head": "dbc3f870b5b37dbd53de7ac82697221270e19381",
+        "patch": {
+          "applicable": true,
+          "forward_diagnostic": "Checking patch frontend/src/components/FAR.tsx...\nChecking patch frontend/src/components/shared/OperationalDataGrid.tsx...",
+          "forward_exit_code": 0,
+          "reverse_applicable": false,
+          "reverse_diagnostic": "Checking patch frontend/src/components/shared/OperationalDataGrid.tsx...\nerror: while searching for:\n      loadingLabel={loadingLabel}\n      variant={surfaceVariant}\n    >\n      <div className=\"flex min-h-0 flex-1 flex-col\">\n        {notice}\n        <div className=\"min-h-0 flex-1\">\n          <OperationalGridMatrix\n            gridRef={gridRef}\n            rowData={rows}\n            columnDefs={columnDefs}\n            autoSizeStrategy={autoSizeStrategy}\n            colResizeDefault=\"normal\"\n            fontSize={fontSize}\n            rowDensity={rowDensity}\n            context={context}\n            quickFilterText={quickFilterText}\n            getRowId={getRowId}\n            getRowClass={getRowClass}\n            selectionScopeKey={selectionScopeKey}\n            onGridReady={runtime.handleGridReady}\n            onSelectionChanged={onSelectionChanged}\n            onColumnResized={runtime.handleColumnResized}\n            onColumnMoved={runtime.handleColumnMoved}\n            onDragStopped={runtime.handleDragStopped}\n            onColumnPinned={runtime.handleColumnPinned}\n            onColumnVisible={runtime.handleColumnVisible}\n            onFilterChanged={runtime.handleFilterChanged}\n            onSortChanged={runtime.handleSortChanged}\n            onRowClicked={rowInteractions?.handleRowClicked}\n            onRowDoubleClicked={rowInteractions?.handleRowDoubleClicked}\n            onCellContextMenu={contextMenu?.handleCellContextMenu}\n            onFirstDataRendered={onFirstDataRendered}\n            onRowDataUpdated={onRowDataUpdated}\n            noRowsLabel={dataState?.noRowsLabel || noRowsLabel}\n            suppressRowClickSelection={suppressRowClickSelection}\n          />\n        </div>\n      </div>\n    </OperationalGridSurface>\n  )\n\nerror: patch failed: frontend/src/components/shared/OperationalDataGrid.tsx:158\nerror: frontend/src/components/shared/OperationalDataGrid.tsx: patch does not apply\nChecking patch frontend/src/components/FAR.tsx...\nerror: while searching f",
+          "reverse_exit_code": 1
+        }
+      },
+      "elapsed_seconds": 1.271,
+      "event_id": "preflight_completed",
+      "message": "Exact engine, repository, storage, state, protected hashes, and patch state passed.",
+      "notification": {
+        "event_id": "preflight_completed",
+        "presentation_mode": "summary",
+        "required": false,
+        "status": "local_only",
+        "updated_utc": "2026-08-03T15:32:35Z"
+      },
+      "status": "passed",
+      "utc": "2026-08-03T15:32:35Z"
+    },
+    {
+      "details": {},
+      "elapsed_seconds": 1.273,
+      "event_id": "engine_launch",
+      "message": "Launching the exact Stable Engine once; ambiguous mutation replay remains prohibited.",
+      "notification": {
+        "event_id": "engine_launch",
+        "presentation_mode": "summary",
+        "required": false,
+        "status": "local_only",
+        "updated_utc": "2026-08-03T15:32:35Z"
+      },
+      "status": "started",
+      "utc": "2026-08-03T15:32:35Z"
+    },
+    {
+      "details": {
+        "engine_exit_code": 1
+      },
+      "elapsed_seconds": 680.223,
+      "event_id": "engine_completed",
+      "message": "Stable Engine exited with code 1; verifying its complete evidence.",
+      "notification": {
+        "event_id": "engine_completed",
+        "presentation_mode": "summary",
+        "required": false,
+        "status": "local_only",
+        "updated_utc": "2026-08-03T15:43:54Z"
+      },
+      "status": "failed",
+      "utc": "2026-08-03T15:43:54Z"
+    },
+    {
+      "details": {
+        "artifact_size": 32548826,
+        "manifest_entries": 966
+      },
+      "elapsed_seconds": 680.357,
+      "event_id": "evidence_verified",
+      "message": "Engine evidence is complete and exactly correlated to capsule, engine, and process exit.",
+      "notification": {
+        "event_id": "evidence_verified",
+        "presentation_mode": "summary",
+        "required": false,
+        "status": "local_only",
+        "updated_utc": "2026-08-03T15:43:54Z"
+      },
+      "status": "passed",
+      "utc": "2026-08-03T15:43:54Z"
+    },
+    {
+      "details": {},
+      "elapsed_seconds": 680.362,
+      "event_id": "publication_started",
+      "message": "Publishing one content-addressed, fsynced, atomic canonical review ZIP.",
+      "notification": {
+        "event_id": "publication_started",
+        "presentation_mode": "summary",
+        "required": false,
+        "status": "local_only",
+        "updated_utc": "2026-08-03T15:43:54Z"
+      },
+      "status": "started",
+      "utc": "2026-08-03T15:43:54Z"
+    },
+    {
+      "details": {
+        "artifact_sha256": "95608dbc1bdb7c812ac4e399665bfc6d5708fc060e90c96d6a3e3c93c3c4a021",
+        "exit_code": 1
+      },
+      "elapsed_seconds": 680.805,
+      "event_id": "publication_completed",
+      "message": "Run complete. Engine runtime: 677.0s. Canonical review ZIP is ready for upload.",
+      "notification": {
+        "attempts": 1,
+        "chat_id_suffix": "1055",
+        "event_id": "run_completed",
+        "first_attempt_utc": "2026-08-03T15:43:55Z",
+        "message_id": 576,
+        "payload_sha256": "1528dddaf48905b72cd3bc9e502cbac85dd8c8e41965185ca19751f19f4abf87",
+        "required": false,
+        "status": "delivered",
+        "updated_utc": "2026-08-03T15:43:55Z"
+      },
+      "status": "failed",
+      "utc": "2026-08-03T15:43:55Z"
+    }
+  ],
+  "execution_profile": "promotion_qualification",
+  "execution_scope": {
+    "changed_paths": [
+      "frontend/src/components/FAR.tsx",
+      "frontend/src/components/shared/OperationalDataGrid.tsx"
+    ],
+    "execution_profile": "promotion_qualification",
+    "targeted_tests": [
+      "backend:far-mode-create-http-201-contract",
+      "playwright:far-golden-workspace",
+      "playwright:far-workflows",
+      "playwright:golden-eight-seeded-visual-matrix",
+      "playwright:far-chaos"
+    ],
+    "targeted_views": [
+      "monitoring",
+      "far"
+    ]
+  },
+  "issue": "OUT-31",
+  "iteration": 12,
+  "last_progress_event": "publication_completed",
+  "last_progress_message": "Run complete. Engine runtime: 677.0s. Canonical review ZIP is ready for upload.",
+  "last_progress_status": "failed",
+  "last_progress_utc": "2026-08-03T15:43:55Z",
+  "message": "required recipes failed or blocked: ['full-app-gate']",
+  "monotonic_started": 4046381.467626416,
+  "notification_events": {
+    "capsule_selected": {
+      "event_id": "capsule_selected",
+      "presentation_mode": "summary",
+      "required": false,
+      "status": "local_only",
+      "updated_utc": "2026-08-03T15:32:34Z"
+    },
+    "capsule_verified": {
+      "attempts": 1,
+      "chat_id_suffix": "1055",
+      "event_id": "run_started",
+      "first_attempt_utc": "2026-08-03T15:32:34Z",
+      "message_id": 575,
+      "payload_sha256": "392253d5094e43dae1bbed6ac7b221b2118fa60a2dba4a9aa9c19f68a9b916ea",
+      "required": false,
+      "status": "delivered",
+      "updated_utc": "2026-08-03T15:32:35Z"
+    },
+    "engine-heartbeat-1": {
+      "event_id": "engine-heartbeat-1",
+      "presentation_mode": "summary",
+      "required": false,
+      "status": "local_only",
+      "updated_utc": "2026-08-03T15:37:35Z"
+    },
+    "engine-heartbeat-2": {
+      "event_id": "engine-heartbeat-2",
+      "presentation_mode": "summary",
+      "required": false,
+      "status": "local_only",
+      "updated_utc": "2026-08-03T15:42:35Z"
+    },
+    "engine_completed": {
+      "event_id": "engine_completed",
+      "presentation_mode": "summary",
+      "required": false,
+      "status": "local_only",
+      "updated_utc": "2026-08-03T15:43:54Z"
+    },
+    "engine_launch": {
+      "event_id": "engine_launch",
+      "presentation_mode": "summary",
+      "required": false,
+      "status": "local_only",
+      "updated_utc": "2026-08-03T15:32:35Z"
+    },
+    "evidence_verified": {
+      "event_id": "evidence_verified",
+      "presentation_mode": "summary",
+      "required": false,
+      "status": "local_only",
+      "updated_utc": "2026-08-03T15:43:54Z"
+    },
+    "preflight_completed": {
+      "event_id": "preflight_completed",
+      "presentation_mode": "summary",
+      "required": false,
+      "status": "local_only",
+      "updated_utc": "2026-08-03T15:32:35Z"
+    },
+    "preflight_started": {
+      "event_id": "preflight_started",
+      "presentation_mode": "summary",
+      "required": false,
+      "status": "local_only",
+      "updated_utc": "2026-08-03T15:32:35Z"
+    },
+    "publication_completed": {
+      "attempts": 1,
+      "chat_id_suffix": "1055",
+      "event_id": "run_completed",
+      "first_attempt_utc": "2026-08-03T15:43:55Z",
+      "message_id": 576,
+      "payload_sha256": "1528dddaf48905b72cd3bc9e502cbac85dd8c8e41965185ca19751f19f4abf87",
+      "required": false,
+      "status": "delivered",
+      "updated_utc": "2026-08-03T15:43:55Z"
+    },
+    "publication_started": {
+      "event_id": "publication_started",
+      "presentation_mode": "summary",
+      "required": false,
+      "status": "local_only",
+      "updated_utc": "2026-08-03T15:43:54Z"
+    }
+  },
+  "notification_policy": {
+    "delivery_semantics": "durably-deduplicated-at-least-once",
+    "engine_heartbeat_seconds": 300,
+    "max_messages_per_run": 3,
+    "presentation_mode": "summary",
+    "registered_events": 21,
+    "required_before_engine": false,
+    "telegram_heartbeats": false
+  },
+  "original_capsule": "/Users/haewonkim/Library/Mobile Documents/com~apple~CloudDocs/SysGrid-Control/Inbox/SYSGRID_OUT31_PA12_PS1_FAR_RENDERED_RUNTIME_PRODUCT_CORRECTION_v1.0.0.sgcap",
+  "pid": 11248,
+  "preflight": {
+    "declared_state": {
+      "dirty_path_count": 95,
+      "pre_hash_count": 95,
+      "protected_hash_count": 93
+    },
+    "engine_self_test": {
+      "engine_version": "1.1.1",
+      "result": "PASS",
+      "tests": [
+        "safe-path",
+        "manifest",
+        "corruption",
+        "canonical-dirty-paths",
+        "aggregate-recipes"
+      ]
+    },
+    "patch": {
+      "applicable": true,
+      "forward_diagnostic": "Checking patch frontend/src/components/FAR.tsx...\nChecking patch frontend/src/components/shared/OperationalDataGrid.tsx...",
+      "forward_exit_code": 0,
+      "reverse_applicable": false,
+      "reverse_diagnostic": "Checking patch frontend/src/components/shared/OperationalDataGrid.tsx...\nerror: while searching for:\n      loadingLabel={loadingLabel}\n      variant={surfaceVariant}\n    >\n      <div className=\"flex min-h-0 flex-1 flex-col\">\n        {notice}\n        <div className=\"min-h-0 flex-1\">\n          <OperationalGridMatrix\n            gridRef={gridRef}\n            rowData={rows}\n            columnDefs={columnDefs}\n            autoSizeStrategy={autoSizeStrategy}\n            colResizeDefault=\"normal\"\n            fontSize={fontSize}\n            rowDensity={rowDensity}\n            context={context}\n            quickFilterText={quickFilterText}\n            getRowId={getRowId}\n            getRowClass={getRowClass}\n            selectionScopeKey={selectionScopeKey}\n            onGridReady={runtime.handleGridReady}\n            onSelectionChanged={onSelectionChanged}\n            onColumnResized={runtime.handleColumnResized}\n            onColumnMoved={runtime.handleColumnMoved}\n            onDragStopped={runtime.handleDragStopped}\n            onColumnPinned={runtime.handleColumnPinned}\n            onColumnVisible={runtime.handleColumnVisible}\n            onFilterChanged={runtime.handleFilterChanged}\n            onSortChanged={runtime.handleSortChanged}\n            onRowClicked={rowInteractions?.handleRowClicked}\n            onRowDoubleClicked={rowInteractions?.handleRowDoubleClicked}\n            onCellContextMenu={contextMenu?.handleCellContextMenu}\n            onFirstDataRendered={onFirstDataRendered}\n            onRowDataUpdated={onRowDataUpdated}\n            noRowsLabel={dataState?.noRowsLabel || noRowsLabel}\n            suppressRowClickSelection={suppressRowClickSelection}\n          />\n        </div>\n      </div>\n    </OperationalGridSurface>\n  )\n\nerror: patch failed: frontend/src/components/shared/OperationalDataGrid.tsx:158\nerror: frontend/src/components/shared/OperationalDataGrid.tsx: patch does not apply\nChecking patch frontend/src/components/FAR.tsx...\nerror: while searching f",
+      "reverse_exit_code": 1
+    },
+    "storage": {
+      "control_free": 56981688320,
+      "local_free": 56981688320,
+      "required": 3221225472
+    }
+  },
+  "product_progress_error": {
+    "classification": "PRODUCT_PROGRESS_FAILURE",
+    "message": "unregistered product progress event: static_started",
+    "utc": "2026-08-03T15:34:33Z"
+  },
+  "recovered_without_product_replay": false,
+  "repo": "/Users/haewonkim/home/development/sysgrid",
+  "repo_branch": "main",
+  "repo_head": "dbc3f870b5b37dbd53de7ac82697221270e19381",
+  "resource_plan": {
+    "backend_workers": 5,
+    "cpu_count": 12,
+    "e2e_workers": 2,
+    "frontend_workers": 5,
+    "memory_bytes": 19327352832,
+    "preflight_workers": 24,
+    "reserve_memory_bytes": 2147483648,
+    "test_cpu_budget": 11,
+    "usable_memory_bytes": 17179869184
+  },
+  "run_id": "20260803T153234Z-11248-288000",
+  "runtime_summary": {
+    "artifact": "/Users/haewonkim/.local/state/sysgrid-supervisor/runs/20260803T153234Z-11248-288000/engine-outbox/UPLOAD_THIS_TO_CHATGPT.zip",
+    "classification": "AGGREGATE_VERIFICATION_FAILURE",
+    "commands": [
+      {
+        "duration_seconds": 42.194,
+        "exit_code": 0,
+        "recipe_id": "backend-pytest",
+        "timed_out": false
+      },
+      {
+        "duration_seconds": 8.094,
+        "exit_code": 0,
+        "recipe_id": "frontend-vitest",
+        "timed_out": false
+      },
+      {
+        "duration_seconds": 47.203,
+        "exit_code": 0,
+        "recipe_id": "frontend-typecheck",
+        "timed_out": false
+      },
+      {
+        "duration_seconds": 18.686,
+        "exit_code": 0,
+        "recipe_id": "frontend-build",
+        "timed_out": false
+      },
+      {
+        "duration_seconds": 556.717,
+        "exit_code": 1,
+        "recipe_id": "full-app-gate",
+        "timed_out": false
+      }
+    ],
+    "engine_total_seconds": 677.0,
+    "failed_stage": "verification-plan",
+    "finished_utc": "2026-08-03T15:43:52Z",
+    "result": "failure",
+    "started_utc": "2026-08-03T15:32:35Z"
+  },
+  "safe_cleanup": {
+    "inspected": 0,
+    "removed": 0
+  },
+  "safe_retry_count": 0,
+  "stage": "complete",
+  "staged_capsule": "/Users/haewonkim/.local/state/sysgrid-supervisor/runs/20260803T153234Z-11248-288000/input/SYSGRID_OUT31_PA12_PS1_FAR_RENDERED_RUNTIME_PRODUCT_CORRECTION_v1.0.0.sgcap",
+  "started_utc": "2026-08-03T15:32:34Z",
+  "state": "FAILED_REVIEW_READY",
+  "supervisor_version": "2.2.1",
+  "telegram": {
+    "chat_id_suffix": "1055",
+    "configured": true,
+    "source": "/Users/haewonkim/.config/sysgrid-supervisor/telegram.json"
+  },
+  "updated_utc": "2026-08-03T15:43:55Z",
+  "work_dir": "/Users/haewonkim/.local/state/sysgrid-supervisor/runs/20260803T153234Z-11248-288000"
+}

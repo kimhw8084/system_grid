@@ -1,0 +1,22 @@
+{
+  "observed_repair3": {
+    "later_regression_failure": "Slice G transient accessibility test timed out waiting for [data-project-quick-add=\"true\"] summary",
+    "local_application": "NOT_ATTEMPTED",
+    "slice_h": "5/5 PASS"
+  },
+  "parent_result_sha256": "f7632c17c25631a462e1d4acdfe6027cf84e14fb2b7a8b05a749f47ca0a12ac6",
+  "product_feature_scope_changed": false,
+  "repair_iteration": 4,
+  "repair_scope": [
+    "frontend/tests/projects-out40-slice-h-gantt-modernization.spec.ts",
+    "frontend/tests/projects-out40-slice-g-accessible-name-audit.spec.ts",
+    "frontend/tests/projects-out40-slice-e-timeline-dependency-a11y.spec.ts",
+    "frontend/tests/projects-navigation.spec.ts",
+    "frontend/src/components/ProjectsVisualRepair.css"
+  ],
+  "schema": "SYSGRID_PROJECT_VIEW_REPAIR_FAILURE_SIGNATURE_V1",
+  "source_reconciliation": {
+    "r4_shell": "current Projects shell exposes Workspace actions, Add / edit, Project info, and six-intent primary navigation instead of the removed quick-add/jump menus",
+    "r4_timeline": "dependency connectors are inspect controls; removal occurs inside Dependency details dialog; task bars use stable semantic IDs"
+  }
+}

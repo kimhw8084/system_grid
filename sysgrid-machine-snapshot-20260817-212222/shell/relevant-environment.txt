@@ -1,0 +1,9 @@
+CONDA_DEFAULT_ENV=base
+CONDA_EXE=/opt/anaconda3/bin/conda
+CONDA_PREFIX=/opt/anaconda3
+CONDA_PROMPT_MODIFIER=(base) 
+CONDA_PYTHON_EXE=/opt/anaconda3/bin/python
+CONDA_SHLVL=1
+HOME=/Users/haewonkim
+PATH=/Users/haewonkim/.local/bin:/Users/haewonkim/.local/bin:/Users/haewonkim/.local/bin:/Users/haewonkim/.opencode/bin:/Users/haewonkim/.opencode/bin:/Users/haewonkim/.antigravity/antigravity/bin:/Users/haewonkim/.local/bin:/opt/homebrew/bin:/opt/homebrew/sbin:/usr/local/bin:/System/Cryptexes/App/usr/bin:/usr/bin:/bin:/usr/sbin:/sbin:/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/local/bin:/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/bin:/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/appleinternal/bin:/Library/Apple/usr/bin:/Users/haewonkim/.local/bin:/Users/haewonkim/.opencode/bin:/Users/haewonkim/.antigravity/antigravity/bin:/opt/anaconda3/bin:/opt/anaconda3/condabin:/Applications/Externals/iTerm.app/Contents/Resources/utilities:/Users/haewonkim/.orbstack/bin:/Applications/Visual Studio Code.app/Contents/Resources/app/bin:/Users/haewonkim/.local/bin:/Users/haewonkim/.orbstack/bin:/Applications/Visual Studio Code.app/Contents/Resources/app/bin
+SHELL=/bin/zsh

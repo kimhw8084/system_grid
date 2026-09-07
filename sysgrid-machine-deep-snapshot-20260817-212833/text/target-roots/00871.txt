@@ -1,0 +1,481 @@
+ORIGINAL_PATH: /Users/haewonkim/.local/state/sysgrid-supervisor/runs/20260805T001326Z-82098-392000/SUPERVISOR_STATE.json
+ORIGINAL_SHA256: 4f4ff524ffb9b00b652d3d834f7c15df24a3399dfb279ca2e4ecd1c2839d1f79
+================================================================================
+{
+  "artifact": "/Users/haewonkim/Library/Mobile Documents/com~apple~CloudDocs/SysGrid-Control/Outbox/UPLOAD_THIS_TO_CHATGPT.zip",
+  "artifact_sha256": "4a5a656114de7563640365c016bf65f60f9b1138cc413b10cbcc61c0af78c85f",
+  "artifact_size": 13476666,
+  "attempt": 14,
+  "capsule_archive": "/Users/haewonkim/Library/Mobile Documents/com~apple~CloudDocs/SysGrid-Control/Archive/Processed-Capsules/20260805T002118Z__b7eb5ccb6ee8__SYSGRID_OUT31_PA14_PS5_NARROW_ANALYTICAL_PRIORITY_AND_ANCHORED_VIEWS_PRODUCT_SOURCE_CORRECTION_v1.0.0.sgcap",
+  "capsule_cross_ledger": {
+    "changed_path_count": 2,
+    "execution_profile": "promotion_qualification",
+    "execution_scope": {
+      "changed_paths": [
+        "frontend/src/components/FAR.tsx",
+        "frontend/tests/far-golden-workspace.spec.ts"
+      ],
+      "execution_profile": "promotion_qualification",
+      "targeted_tests": [
+        "frontend/tests/far-golden-workspace.spec.ts",
+        "frontend/tests/far-workflows.spec.ts"
+      ],
+      "targeted_views": [
+        "FAR",
+        "Monitoring"
+      ]
+    },
+    "patch_paths": [
+      "frontend/src/components/FAR.tsx",
+      "frontend/tests/far-golden-workspace.spec.ts"
+    ],
+    "post_path_count": 96,
+    "pre_path_count": 96,
+    "protected_path_count": 715,
+    "recipe_ids": [
+      "frontend-test-linter",
+      "full-app-gate"
+    ]
+  },
+  "capsule_file": "SYSGRID_OUT31_PA14_PS5_NARROW_ANALYTICAL_PRIORITY_AND_ANCHORED_VIEWS_PRODUCT_SOURCE_CORRECTION_v1.0.0.sgcap",
+  "capsule_sha256": "b7eb5ccb6ee8bc6ce1dcbeab3e2df6b52133ae1250fe40154fa13f8e838ca6f7",
+  "capsule_size": 66427,
+  "capsule_stage": "Product Attempt 14 Product-Source Correction PS5 \u2014 narrow analytical priority and anchored FAR views",
+  "capsule_title": "Product Attempt 14 Product-Source Correction PS5 \u2014 narrow analytical priority and anchored FAR views",
+  "classification": "AGGREGATE_VERIFICATION_FAILURE",
+  "dirty_path_count": 96,
+  "engine_command": [
+    "/opt/anaconda3/bin/python3",
+    "<exact-engine>",
+    "execute",
+    "<exact-capsule>",
+    "--repo",
+    "/Users/haewonkim/home/development/sysgrid",
+    "--outbox",
+    "/Users/haewonkim/.local/state/sysgrid-supervisor/runs/20260805T001326Z-82098-392000/engine-outbox"
+  ],
+  "engine_completed": true,
+  "engine_completed_utc": "2026-08-05T00:21:18Z",
+  "engine_elapsed_seconds": 300.4,
+  "engine_exit_code": 1,
+  "engine_last_activity_age_seconds": 298.6453411579132,
+  "engine_last_heartbeat_utc": "2026-08-05T00:18:29Z",
+  "engine_path": "/Users/haewonkim/.local/share/sysgrid-runner/engine-v1.1.1/sysgrid_runner.py",
+  "engine_pid": 82138,
+  "engine_process_metrics": {
+    "available": true,
+    "cpu_percent": 89.1,
+    "process_count": 5,
+    "rss_bytes": 247185408,
+    "states": [
+      "R   ",
+      "S   ",
+      "S+  ",
+      "Ss  "
+    ]
+  },
+  "engine_sha256": "66b082fec1e9f6c49152e5ecb4cbb3f998e60ce27d53a2325e5f658634a8d032",
+  "engine_stall_suspected": false,
+  "engine_started": true,
+  "engine_started_utc": "2026-08-05T00:13:29Z",
+  "event_timeline": [
+    {
+      "details": {},
+      "elapsed_seconds": 0.034,
+      "event_id": "capsule_selected",
+      "message": "Selecting the one immutable capsule and converging only byte-identical Inbox duplicates.",
+      "notification": {
+        "event_id": "capsule_selected",
+        "presentation_mode": "summary",
+        "required": false,
+        "status": "local_only",
+        "updated_utc": "2026-08-05T00:13:26Z"
+      },
+      "status": "started",
+      "utc": "2026-08-05T00:13:26Z"
+    },
+    {
+      "details": {
+        "changed_path_count": 2,
+        "execution_profile": "promotion_qualification",
+        "execution_scope": {
+          "changed_paths": [
+            "frontend/src/components/FAR.tsx",
+            "frontend/tests/far-golden-workspace.spec.ts"
+          ],
+          "execution_profile": "promotion_qualification",
+          "targeted_tests": [
+            "frontend/tests/far-golden-workspace.spec.ts",
+            "frontend/tests/far-workflows.spec.ts"
+          ],
+          "targeted_views": [
+            "FAR",
+            "Monitoring"
+          ]
+        },
+        "patch_paths": [
+          "frontend/src/components/FAR.tsx",
+          "frontend/tests/far-golden-workspace.spec.ts"
+        ],
+        "post_path_count": 96,
+        "pre_path_count": 96,
+        "protected_path_count": 715,
+        "recipe_ids": [
+          "frontend-test-linter",
+          "full-app-gate"
+        ]
+      },
+      "elapsed_seconds": 1.323,
+      "event_id": "capsule_verified",
+      "message": "Capsule archive, manifest, schema, patch identity, and cross-ledger contract are exact.",
+      "notification": {
+        "attempts": 1,
+        "chat_id_suffix": "1055",
+        "event_id": "run_started",
+        "first_attempt_utc": "2026-08-05T00:13:28Z",
+        "message_id": 618,
+        "payload_sha256": "298865f5fb766127f570f862a8f976463a8b9e1557031c7465fa469f32040d9f",
+        "required": false,
+        "status": "delivered",
+        "updated_utc": "2026-08-05T00:13:28Z"
+      },
+      "status": "passed",
+      "utc": "2026-08-05T00:13:28Z"
+    },
+    {
+      "details": {},
+      "elapsed_seconds": 2.056,
+      "event_id": "preflight_started",
+      "message": "Running independent platform checks and exact repository-state proof.",
+      "notification": {
+        "event_id": "preflight_started",
+        "presentation_mode": "summary",
+        "required": false,
+        "status": "local_only",
+        "updated_utc": "2026-08-05T00:13:28Z"
+      },
+      "status": "started",
+      "utc": "2026-08-05T00:13:28Z"
+    },
+    {
+      "details": {
+        "dirty_paths": 96,
+        "head": "78da610377e5cfbb5a2b7986c1cb7d56397d0ca2",
+        "patch": {
+          "applicable": true,
+          "forward_diagnostic": "Checking patch frontend/src/components/FAR.tsx...\nChecking patch frontend/tests/far-golden-workspace.spec.ts...",
+          "forward_exit_code": 0,
+          "reverse_applicable": false,
+          "reverse_diagnostic": "Checking patch frontend/tests/far-golden-workspace.spec.ts...\nerror: while searching for:\n    expect(findMissingHeaders(failureModeHeaders, canonicalHeaders)).toEqual([])\n\n    await workspace.getByRole('tab', { name: 'Causes' }).click()\n    await expect(grid.getByRole('columnheader', { name: 'Causes', exact: true })).toBeVisible()\n    await expectReachableHeaders(page, grid, [...canonicalHeaders, 'Causes'])\n    await workspace.getByRole('tab', { name: 'Mitigations' }).click()\n    await expectReachableHeaders(page, grid, [...canonicalHeaders, 'Mitigations'])\n\nerror: patch failed: frontend/tests/far-golden-workspace.spec.ts:116\nerror: frontend/tests/far-golden-workspace.spec.ts: patch does not apply\nChecking patch frontend/src/components/FAR.tsx...\nerror: while searching for:\nimport React, { useState, useMemo, useEffect, useCallback, useRef } from 'react'\nimport { WorkspaceEmptyState, useWorkspaceAnchoredLayer } from \"./shared/OperationalWorkspacePrimitives\";\nimport { useNavigate, useSearchParams } from 'react-router-dom'\nimport { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'\nimport { \n\nerror: patch failed: frontend/src/components/FAR.tsx:1\nerror: frontend/src/components/FAR.tsx: patch does not apply",
+          "reverse_exit_code": 1
+        }
+      },
+      "elapsed_seconds": 2.634,
+      "event_id": "preflight_completed",
+      "message": "Exact engine, repository, storage, state, protected hashes, and patch state passed.",
+      "notification": {
+        "event_id": "preflight_completed",
+        "presentation_mode": "summary",
+        "required": false,
+        "status": "local_only",
+        "updated_utc": "2026-08-05T00:13:29Z"
+      },
+      "status": "passed",
+      "utc": "2026-08-05T00:13:29Z"
+    },
+    {
+      "details": {},
+      "elapsed_seconds": 2.637,
+      "event_id": "engine_launch",
+      "message": "Launching the exact Stable Engine once; ambiguous mutation replay remains prohibited.",
+      "notification": {
+        "event_id": "engine_launch",
+        "presentation_mode": "summary",
+        "required": false,
+        "status": "local_only",
+        "updated_utc": "2026-08-05T00:13:29Z"
+      },
+      "status": "started",
+      "utc": "2026-08-05T00:13:29Z"
+    },
+    {
+      "details": {
+        "engine_exit_code": 1
+      },
+      "elapsed_seconds": 471.718,
+      "event_id": "engine_completed",
+      "message": "Stable Engine exited with code 1; verifying its complete evidence.",
+      "notification": {
+        "event_id": "engine_completed",
+        "presentation_mode": "summary",
+        "required": false,
+        "status": "local_only",
+        "updated_utc": "2026-08-05T00:21:18Z"
+      },
+      "status": "failed",
+      "utc": "2026-08-05T00:21:18Z"
+    },
+    {
+      "details": {
+        "artifact_size": 13476666,
+        "manifest_entries": 858
+      },
+      "elapsed_seconds": 471.792,
+      "event_id": "evidence_verified",
+      "message": "Engine evidence is complete and exactly correlated to capsule, engine, and process exit.",
+      "notification": {
+        "event_id": "evidence_verified",
+        "presentation_mode": "summary",
+        "required": false,
+        "status": "local_only",
+        "updated_utc": "2026-08-05T00:21:18Z"
+      },
+      "status": "passed",
+      "utc": "2026-08-05T00:21:18Z"
+    },
+    {
+      "details": {},
+      "elapsed_seconds": 471.797,
+      "event_id": "publication_started",
+      "message": "Publishing one content-addressed, fsynced, atomic canonical review ZIP.",
+      "notification": {
+        "event_id": "publication_started",
+        "presentation_mode": "summary",
+        "required": false,
+        "status": "local_only",
+        "updated_utc": "2026-08-05T00:21:18Z"
+      },
+      "status": "started",
+      "utc": "2026-08-05T00:21:18Z"
+    },
+    {
+      "details": {
+        "artifact_sha256": "4a5a656114de7563640365c016bf65f60f9b1138cc413b10cbcc61c0af78c85f",
+        "exit_code": 1
+      },
+      "elapsed_seconds": 472.117,
+      "event_id": "publication_completed",
+      "message": "Run complete. Engine runtime: 467.0s. Canonical review ZIP is ready for upload.",
+      "notification": {
+        "attempts": 1,
+        "chat_id_suffix": "1055",
+        "event_id": "run_completed",
+        "first_attempt_utc": "2026-08-05T00:21:18Z",
+        "message_id": 619,
+        "payload_sha256": "1d11ecf92e7754082b3f957ef9c0a95248776937f6154e37b428c6e19cfb4cc7",
+        "required": false,
+        "status": "delivered",
+        "updated_utc": "2026-08-05T00:21:21Z"
+      },
+      "status": "failed",
+      "utc": "2026-08-05T00:21:21Z"
+    }
+  ],
+  "execution_profile": "promotion_qualification",
+  "execution_scope": {
+    "changed_paths": [
+      "frontend/src/components/FAR.tsx",
+      "frontend/tests/far-golden-workspace.spec.ts"
+    ],
+    "execution_profile": "promotion_qualification",
+    "targeted_tests": [
+      "frontend/tests/far-golden-workspace.spec.ts",
+      "frontend/tests/far-workflows.spec.ts"
+    ],
+    "targeted_views": [
+      "FAR",
+      "Monitoring"
+    ]
+  },
+  "issue": "OUT-31",
+  "iteration": 21,
+  "last_progress_event": "publication_completed",
+  "last_progress_message": "Run complete. Engine runtime: 467.0s. Canonical review ZIP is ready for upload.",
+  "last_progress_status": "failed",
+  "last_progress_utc": "2026-08-05T00:21:21Z",
+  "message": "required recipes failed or blocked: ['full-app-gate']",
+  "monotonic_started": 4158842.471494541,
+  "notification_events": {
+    "capsule_selected": {
+      "event_id": "capsule_selected",
+      "presentation_mode": "summary",
+      "required": false,
+      "status": "local_only",
+      "updated_utc": "2026-08-05T00:13:26Z"
+    },
+    "capsule_verified": {
+      "attempts": 1,
+      "chat_id_suffix": "1055",
+      "event_id": "run_started",
+      "first_attempt_utc": "2026-08-05T00:13:28Z",
+      "message_id": 618,
+      "payload_sha256": "298865f5fb766127f570f862a8f976463a8b9e1557031c7465fa469f32040d9f",
+      "required": false,
+      "status": "delivered",
+      "updated_utc": "2026-08-05T00:13:28Z"
+    },
+    "engine-heartbeat-1": {
+      "event_id": "engine-heartbeat-1",
+      "presentation_mode": "summary",
+      "required": false,
+      "status": "local_only",
+      "updated_utc": "2026-08-05T00:18:29Z"
+    },
+    "engine_completed": {
+      "event_id": "engine_completed",
+      "presentation_mode": "summary",
+      "required": false,
+      "status": "local_only",
+      "updated_utc": "2026-08-05T00:21:18Z"
+    },
+    "engine_launch": {
+      "event_id": "engine_launch",
+      "presentation_mode": "summary",
+      "required": false,
+      "status": "local_only",
+      "updated_utc": "2026-08-05T00:13:29Z"
+    },
+    "evidence_verified": {
+      "event_id": "evidence_verified",
+      "presentation_mode": "summary",
+      "required": false,
+      "status": "local_only",
+      "updated_utc": "2026-08-05T00:21:18Z"
+    },
+    "preflight_completed": {
+      "event_id": "preflight_completed",
+      "presentation_mode": "summary",
+      "required": false,
+      "status": "local_only",
+      "updated_utc": "2026-08-05T00:13:29Z"
+    },
+    "preflight_started": {
+      "event_id": "preflight_started",
+      "presentation_mode": "summary",
+      "required": false,
+      "status": "local_only",
+      "updated_utc": "2026-08-05T00:13:28Z"
+    },
+    "publication_completed": {
+      "attempts": 1,
+      "chat_id_suffix": "1055",
+      "event_id": "run_completed",
+      "first_attempt_utc": "2026-08-05T00:21:18Z",
+      "message_id": 619,
+      "payload_sha256": "1d11ecf92e7754082b3f957ef9c0a95248776937f6154e37b428c6e19cfb4cc7",
+      "required": false,
+      "status": "delivered",
+      "updated_utc": "2026-08-05T00:21:21Z"
+    },
+    "publication_started": {
+      "event_id": "publication_started",
+      "presentation_mode": "summary",
+      "required": false,
+      "status": "local_only",
+      "updated_utc": "2026-08-05T00:21:18Z"
+    }
+  },
+  "notification_policy": {
+    "delivery_semantics": "durably-deduplicated-at-least-once",
+    "engine_heartbeat_seconds": 300,
+    "max_messages_per_run": 3,
+    "presentation_mode": "summary",
+    "registered_events": 21,
+    "required_before_engine": false,
+    "telegram_heartbeats": false
+  },
+  "original_capsule": "/Users/haewonkim/Library/Mobile Documents/com~apple~CloudDocs/SysGrid-Control/Inbox/SYSGRID_OUT31_PA14_PS5_NARROW_ANALYTICAL_PRIORITY_AND_ANCHORED_VIEWS_PRODUCT_SOURCE_CORRECTION_v1.0.0.sgcap",
+  "pid": 82098,
+  "preflight": {
+    "declared_state": {
+      "dirty_path_count": 96,
+      "pre_hash_count": 96,
+      "protected_hash_count": 715
+    },
+    "engine_self_test": {
+      "engine_version": "1.1.1",
+      "result": "PASS",
+      "tests": [
+        "safe-path",
+        "manifest",
+        "corruption",
+        "canonical-dirty-paths",
+        "aggregate-recipes"
+      ]
+    },
+    "patch": {
+      "applicable": true,
+      "forward_diagnostic": "Checking patch frontend/src/components/FAR.tsx...\nChecking patch frontend/tests/far-golden-workspace.spec.ts...",
+      "forward_exit_code": 0,
+      "reverse_applicable": false,
+      "reverse_diagnostic": "Checking patch frontend/tests/far-golden-workspace.spec.ts...\nerror: while searching for:\n    expect(findMissingHeaders(failureModeHeaders, canonicalHeaders)).toEqual([])\n\n    await workspace.getByRole('tab', { name: 'Causes' }).click()\n    await expect(grid.getByRole('columnheader', { name: 'Causes', exact: true })).toBeVisible()\n    await expectReachableHeaders(page, grid, [...canonicalHeaders, 'Causes'])\n    await workspace.getByRole('tab', { name: 'Mitigations' }).click()\n    await expectReachableHeaders(page, grid, [...canonicalHeaders, 'Mitigations'])\n\nerror: patch failed: frontend/tests/far-golden-workspace.spec.ts:116\nerror: frontend/tests/far-golden-workspace.spec.ts: patch does not apply\nChecking patch frontend/src/components/FAR.tsx...\nerror: while searching for:\nimport React, { useState, useMemo, useEffect, useCallback, useRef } from 'react'\nimport { WorkspaceEmptyState, useWorkspaceAnchoredLayer } from \"./shared/OperationalWorkspacePrimitives\";\nimport { useNavigate, useSearchParams } from 'react-router-dom'\nimport { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'\nimport { \n\nerror: patch failed: frontend/src/components/FAR.tsx:1\nerror: frontend/src/components/FAR.tsx: patch does not apply",
+      "reverse_exit_code": 1
+    },
+    "storage": {
+      "control_free": 55967924224,
+      "local_free": 55967920128,
+      "required": 3221225472
+    }
+  },
+  "product_progress_error": {
+    "classification": "PRODUCT_PROGRESS_FAILURE",
+    "message": "unregistered product progress event: static_started",
+    "utc": "2026-08-05T00:13:31Z"
+  },
+  "recovered_without_product_replay": false,
+  "repo": "/Users/haewonkim/home/development/sysgrid",
+  "repo_branch": "main",
+  "repo_head": "78da610377e5cfbb5a2b7986c1cb7d56397d0ca2",
+  "resource_plan": {
+    "backend_workers": 5,
+    "cpu_count": 12,
+    "e2e_workers": 2,
+    "frontend_workers": 5,
+    "memory_bytes": 19327352832,
+    "preflight_workers": 24,
+    "reserve_memory_bytes": 2147483648,
+    "test_cpu_budget": 11,
+    "usable_memory_bytes": 17179869184
+  },
+  "run_id": "20260805T001326Z-82098-392000",
+  "runtime_summary": {
+    "artifact": "/Users/haewonkim/.local/state/sysgrid-supervisor/runs/20260805T001326Z-82098-392000/engine-outbox/UPLOAD_THIS_TO_CHATGPT.zip",
+    "classification": "AGGREGATE_VERIFICATION_FAILURE",
+    "commands": [
+      {
+        "duration_seconds": 0.487,
+        "exit_code": 0,
+        "recipe_id": "frontend-test-linter",
+        "timed_out": false
+      },
+      {
+        "duration_seconds": 462.784,
+        "exit_code": 1,
+        "recipe_id": "full-app-gate",
+        "timed_out": false
+      }
+    ],
+    "engine_total_seconds": 467.0,
+    "failed_stage": "verification-plan",
+    "finished_utc": "2026-08-05T00:21:16Z",
+    "result": "failure",
+    "started_utc": "2026-08-05T00:13:29Z"
+  },
+  "safe_cleanup": {
+    "inspected": 0,
+    "removed": 0
+  },
+  "safe_retry_count": 0,
+  "stage": "complete",
+  "staged_capsule": "/Users/haewonkim/.local/state/sysgrid-supervisor/runs/20260805T001326Z-82098-392000/input/SYSGRID_OUT31_PA14_PS5_NARROW_ANALYTICAL_PRIORITY_AND_ANCHORED_VIEWS_PRODUCT_SOURCE_CORRECTION_v1.0.0.sgcap",
+  "started_utc": "2026-08-05T00:13:26Z",
+  "state": "FAILED_REVIEW_READY",
+  "supervisor_version": "2.2.1",
+  "telegram": {
+    "chat_id_suffix": "1055",
+    "configured": true,
+    "source": "/Users/haewonkim/.config/sysgrid-supervisor/telegram.json"
+  },
+  "updated_utc": "2026-08-05T00:21:21Z",
+  "work_dir": "/Users/haewonkim/.local/state/sysgrid-supervisor/runs/20260805T001326Z-82098-392000"
+}

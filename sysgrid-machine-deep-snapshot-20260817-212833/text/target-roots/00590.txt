@@ -1,0 +1,648 @@
+ORIGINAL_PATH: /Users/haewonkim/.local/state/sysgrid-supervisor/runs/20260805T142128Z-55754-337000/patch.diff
+ORIGINAL_SHA256: 62ed7e55236ca1aff8d6ac7e10acb3cfcef203c1f67a12263a2dd6453bb228cd
+================================================================================
+diff --git a/frontend/scripts/check-canonical-verification-contract.cjs b/frontend/scripts/check-canonical-verification-contract.cjs
+index cfe9b1a..ae09d1b 100644
+--- a/frontend/scripts/check-canonical-verification-contract.cjs
++++ b/frontend/scripts/check-canonical-verification-contract.cjs
+@@ -39,7 +39,12 @@ requireText(verify, '"SYSGRID_EXPECTED_API_BASE=$BACKEND_ORIGIN/api/v1"', 'verif
+ requireText(verify, 'assert_local_playwright_runtime', 'verify-app.sh must verify the exact local Playwright package identity before expensive application verification')
+ requireText(verify, "require('./node_modules/@playwright/test/package.json').version", 'verify-app.sh must inspect the local @playwright/test version')
+ requireText(verify, "require('./node_modules/playwright/package.json').version", 'verify-app.sh must inspect the local Playwright runner version')
+-requireText(verify, '"${PLAYWRIGHT_ENV_COMMAND[@]}" "$FRONTEND_DIR/node_modules/.bin/playwright" test "${PLAYWRIGHT_SPECS[@]}"', 'verify-app.sh must execute the exact local Playwright runner through the environment array')
++requireText(verify, '"${PLAYWRIGHT_ENV_COMMAND[@]}" "$FRONTEND_DIR/node_modules/.bin/playwright" test "${specs[@]}" --workers="$PLAYWRIGHT_WORKERS"', 'verify-app.sh must execute each canonical Playwright group through the exact local runner and environment array')
++requireText(verify, 'split_playwright_specs', 'verify-app.sh must split affected promotion specs from the non-duplicated remaining canonical suite')
++requireText(verify, 'REMAINING_SPECS', 'verify-app.sh must retain every non-promoted canonical spec for final acceptance')
++requireText(verify, 'PLAYWRIGHT_WORKERS=1', 'verify-app.sh must preserve single-worker shared-tenant Playwright safety')
++requireText(verify, 'cancel_heavy_validation_lanes', 'verify-app.sh must cancel independent expensive lanes after a deterministic affected-browser failure')
++requireText(verify, 'verify_accelerator.py', 'verify-app.sh must bind the universal resource and impact planner')
+ if (verify.includes('npx playwright')) failures.push('Canonical Playwright must not use npx or permit network package substitution')
+ requireText(verify, 'run_validation_lanes', 'verify-app.sh must run independent static, backend, and frontend lanes concurrently')
+ requireText(verify, 'emit_progress static_started', 'verify-app.sh must publish static-lane progress')
+diff --git a/scripts/sysgrid/verify_accelerator.py b/scripts/sysgrid/verify_accelerator.py
+new file mode 100644
+index 0000000..928fa0b
+--- /dev/null
++++ b/scripts/sysgrid/verify_accelerator.py
+@@ -0,0 +1,281 @@
++#!/usr/bin/env python3
++"""SysGrid universal verification planning and resource telemetry.
++
++Standard-library only. It never mutates source, Git state, tests, or runtime data.
++"""
++from __future__ import annotations
++
++import argparse
++import json
++import math
++import os
++import platform
++import re
++import subprocess
++import sys
++import time
++from pathlib import Path
++from typing import Any
++
++
++def run_text(command: list[str]) -> str:
++    try:
++        return subprocess.run(command, check=False, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, text=True).stdout.strip()
++    except OSError:
++        return ""
++
++
++def sysctl_int(name: str) -> int | None:
++    raw = run_text(["sysctl", "-n", name])
++    try:
++        return int(raw)
++    except (TypeError, ValueError):
++        return None
++
++
++def parse_vm_stat() -> dict[str, int]:
++    raw = run_text(["vm_stat"])
++    if not raw:
++        return {}
++    page_size = 4096
++    first = raw.splitlines()[0] if raw.splitlines() else ""
++    match = re.search(r"page size of (\d+) bytes", first)
++    if match:
++        page_size = int(match.group(1))
++    values: dict[str, int] = {}
++    for line in raw.splitlines()[1:]:
++        if ":" not in line:
++            continue
++        key, value = line.split(":", 1)
++        digits = re.sub(r"[^0-9]", "", value)
++        if digits:
++            values[key.strip()] = int(digits) * page_size
++    return values
++
++
++def parse_swap_usage() -> dict[str, int | None]:
++    raw = run_text(["sysctl", "-n", "vm.swapusage"])
++    result: dict[str, int | None] = {"total_bytes": None, "used_bytes": None, "free_bytes": None}
++    for label, key in (("total", "total_bytes"), ("used", "used_bytes"), ("free", "free_bytes")):
++        match = re.search(rf"{label}\s*=\s*([0-9.]+)([MG])", raw)
++        if match:
++            scale = 1024 ** (2 if match.group(2) == "M" else 3)
++            result[key] = int(float(match.group(1)) * scale)
++    return result
++
++
++def thermal_snapshot() -> dict[str, Any]:
++    raw = run_text(["pmset", "-g", "therm"])
++    speed = None
++    match = re.search(r"CPU_Speed_Limit\s*=\s*(\d+)", raw)
++    if match:
++        speed = int(match.group(1))
++    pressure = "unknown"
++    if speed is not None:
++        pressure = "nominal" if speed >= 95 else "elevated" if speed >= 75 else "critical"
++    return {"pressure": pressure, "cpu_speed_limit_percent": speed}
++
++
++def resource_snapshot() -> dict[str, Any]:
++    logical = os.cpu_count() or 1
++    physical = sysctl_int("hw.physicalcpu") or logical
++    total = sysctl_int("hw.memsize")
++    vm = parse_vm_stat()
++    available = sum(vm.get(key, 0) for key in ("Pages free", "Pages inactive", "Pages speculative", "Pages purgeable")) or None
++    swap = parse_swap_usage()
++    load = os.getloadavg() if hasattr(os, "getloadavg") else (0.0, 0.0, 0.0)
++    thermal = thermal_snapshot()
++    return {
++        "captured_unix": time.time(),
++        "platform": platform.platform(),
++        "machine": platform.machine(),
++        "cpu": {"logical": logical, "physical": physical, "load_1m": load[0], "load_5m": load[1], "load_15m": load[2]},
++        "memory": {"total_bytes": total, "available_bytes": available},
++        "swap": swap,
++        "thermal": thermal,
++        "disk": disk_snapshot(Path.cwd()),
++    }
++
++
++def disk_snapshot(path: Path) -> dict[str, int]:
++    stat = os.statvfs(path)
++    return {"total_bytes": stat.f_blocks * stat.f_frsize, "free_bytes": stat.f_bavail * stat.f_frsize}
++
++
++def changed_paths(root: Path) -> list[str]:
++    commands = [
++        ["git", "-C", str(root), "diff", "--name-only", "--diff-filter=ACMRTUXB", "HEAD"],
++        ["git", "-C", str(root), "ls-files", "--others", "--exclude-standard"],
++    ]
++    paths: set[str] = set()
++    for command in commands:
++        for line in run_text(command).splitlines():
++            value = line.strip().replace("\\", "/")
++            if value:
++                paths.add(value)
++    return sorted(paths)
++
++
++def classify(paths: list[str]) -> list[str]:
++    surfaces: set[str] = set()
++    for path in paths:
++        if path.startswith("frontend/"):
++            surfaces.add("frontend")
++            if "/shared/" in path or "OperationalWorkspace" in path or "WorkspaceCommandBar" in path:
++                surfaces.add("frontend-shared-platform")
++            if path.startswith("frontend/tests/") or path.endswith((".test.ts", ".test.tsx", ".spec.ts")):
++                surfaces.add("verification")
++            if "far" in path.lower():
++                surfaces.add("far")
++            if "network" in path.lower():
++                surfaces.add("network")
++            if "research" in path.lower() or "investigation" in path.lower():
++                surfaces.add("research")
++        elif path.startswith("backend/"):
++            surfaces.add("backend")
++            if "alembic/versions/" in path or "migration" in path.lower():
++                surfaces.add("database-migration")
++            if "/tests" in path or Path(path).name.startswith("test_"):
++                surfaces.add("verification")
++        elif path.startswith("scripts/") or path.startswith(".github/"):
++            surfaces.add("platform")
++        else:
++            surfaces.add("repository-other")
++    return sorted(surfaces or {"unknown"})
++
++
++def promotion_specs(paths: list[str], surfaces: list[str]) -> list[str]:
++    # Promotion specs must be safe to execute before the remaining canonical suite.
++    # Do not select sentinel or Golden Eight here because their canonical evidence
++    # is intentionally produced by the final remaining-suite invocation.
++    specs: list[str] = []
++    joined = "\n".join(paths).lower()
++    if "far" in surfaces or "frontend-shared-platform" in surfaces or "operationalworkspace" in joined:
++        specs.append("tests/far-golden-workspace.spec.ts")
++    return specs
++
++
++def recommendations(snapshot: dict[str, Any]) -> dict[str, Any]:
++    cpu = snapshot["cpu"]
++    mem = snapshot["memory"]
++    swap = snapshot["swap"]
++    thermal = snapshot["thermal"]
++    logical = max(1, int(cpu["logical"]))
++    available = mem.get("available_bytes") or 0
++    available_gib = available / (1024 ** 3) if available else 0.0
++    reserve_cores = 2 if logical >= 8 else 1
++    cpu_budget = max(1, logical - reserve_cores)
++    memory_budget = max(1, int(available_gib // 1.25)) if available_gib else max(1, cpu_budget // 2)
++    frontend_workers = max(2 if logical >= 6 else 1, min(8, cpu_budget, memory_budget))
++    swap_used = swap.get("used_bytes") or 0
++    thermal_ok = thermal.get("pressure") not in {"critical"}
++    load_ok = float(cpu.get("load_1m", 0.0)) < logical * 1.15
++    memory_ok = available_gib >= 6.0 if available else True
++    swap_ok = swap_used < 4 * 1024 ** 3
++    aggressive = bool(thermal_ok and load_ok and memory_ok and swap_ok)
++    return {
++        "profile": "adaptive_turbo" if aggressive else "guarded",
++        "frontend_workers": frontend_workers if aggressive else max(1, min(4, frontend_workers)),
++        "parallel_heavy_lanes": aggressive,
++        "playwright_workers": 1,
++        "reserved_logical_cores": reserve_cores,
++        "healthy_headroom": {"thermal": thermal_ok, "load": load_ok, "memory": memory_ok, "swap": swap_ok},
++        "reason": "Canonical Playwright remains single-worker because the suite shares one mutable disposable tenant; affected specs are promoted first instead of unsafe worker fan-out.",
++    }
++
++
++def write_json(path: Path, payload: Any) -> None:
++    path.parent.mkdir(parents=True, exist_ok=True)
++    tmp = path.with_suffix(path.suffix + ".tmp")
++    tmp.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n", encoding="utf-8")
++    os.replace(tmp, path)
++
++
++def command_plan(args: argparse.Namespace) -> int:
++    root = Path(args.root).resolve()
++    paths = changed_paths(root)
++    surfaces = classify(paths)
++    snapshot = resource_snapshot()
++    rec = recommendations(snapshot)
++    specs = promotion_specs(paths, surfaces)
++    payload = {
++        "schema_version": 1,
++        "mode": "active_fast_fail_planner",
++        "root": str(root),
++        "changed_paths": paths,
++        "surfaces": surfaces,
++        "promotion_specs": specs,
++        "resource_snapshot": snapshot,
++        "recommendations": rec,
++        "full_delivery_gate_required": True,
++        "uncertainty_policy": "expand_scope_and_preserve_full_gate",
++    }
++    write_json(Path(args.output), payload)
++    if args.env_output:
++        env = Path(args.env_output)
++        env.parent.mkdir(parents=True, exist_ok=True)
++        env.write_text(
++            "\n".join([
++                f"SYSGRID_ACCEL_FRONTEND_WORKERS={int(rec['frontend_workers'])}",
++                f"SYSGRID_ACCEL_PARALLEL_HEAVY={1 if rec['parallel_heavy_lanes'] else 0}",
++                "SYSGRID_ACCEL_PLAYWRIGHT_WORKERS=1",
++                "SYSGRID_ACCEL_PROMOTION_SPECS=" + ":".join(specs),
++                "SYSGRID_ACCEL_PROFILE=" + str(rec["profile"]),
++            ]) + "\n",
++            encoding="utf-8",
++        )
++    print(json.dumps(payload, sort_keys=True))
++    return 0
++
++
++def command_resource(args: argparse.Namespace) -> int:
++    snapshot = resource_snapshot()
++    snapshot["recommendations"] = recommendations(snapshot)
++    if args.output:
++        write_json(Path(args.output), snapshot)
++    print(json.dumps(snapshot, indent=2, sort_keys=True))
++    return 0
++
++
++def command_record(args: argparse.Namespace) -> int:
++    path = Path(args.output)
++    row = {
++        "schema_version": 1,
++        "event": args.event,
++        "status": args.status,
++        "started_unix": float(args.started),
++        "ended_unix": time.time(),
++        "duration_seconds": max(0.0, time.time() - float(args.started)),
++        "resource_snapshot": resource_snapshot(),
++    }
++    path.parent.mkdir(parents=True, exist_ok=True)
++    with path.open("a", encoding="utf-8") as stream:
++        stream.write(json.dumps(row, sort_keys=True) + "\n")
++        stream.flush()
++        os.fsync(stream.fileno())
++    return 0
++
++
++def main() -> int:
++    parser = argparse.ArgumentParser()
++    sub = parser.add_subparsers(dest="command", required=True)
++    plan = sub.add_parser("plan")
++    plan.add_argument("--root", required=True)
++    plan.add_argument("--output", required=True)
++    plan.add_argument("--env-output")
++    plan.set_defaults(func=command_plan)
++    resource = sub.add_parser("resource")
++    resource.add_argument("--output")
++    resource.set_defaults(func=command_resource)
++    record = sub.add_parser("record")
++    record.add_argument("--output", required=True)
++    record.add_argument("--event", required=True)
++    record.add_argument("--status", required=True)
++    record.add_argument("--started", required=True)
++    record.set_defaults(func=command_record)
++    args = parser.parse_args()
++    return int(args.func(args))
++
++
++if __name__ == "__main__":
++    raise SystemExit(main())
+diff --git a/scripts/verify-app.sh b/scripts/verify-app.sh
+index 734e402..cd76d31 100644
+--- a/scripts/verify-app.sh
++++ b/scripts/verify-app.sh
+@@ -29,6 +29,20 @@ LANE_DIR="$(mktemp -d "${TMPDIR:-/tmp}/sysgrid-verify-lanes.XXXXXX")"
+ PROGRESS_SEQUENCE=0
+ FRONTEND_WORKERS="${SYSGRID_FRONTEND_WORKERS:-4}"
+ EXECUTION_PROFILE="${SYSGRID_EXECUTION_PROFILE:-promotion_qualification}"
++ACCELERATOR="$ROOT_DIR/scripts/sysgrid/verify_accelerator.py"
++ACCEL_PY="$BACKEND_DIR/venv/bin/python"
++ACCEL_DIR="$FRONTEND_DIR/test-results/sysgrid-accelerator"
++ACCEL_PLAN="$ACCEL_DIR/impact-plan.json"
++ACCEL_ENV="$ACCEL_DIR/accelerator.env"
++ACCEL_TIMELINE="$ACCEL_DIR/timeline.jsonl"
++ACCEL_PARALLEL_HEAVY=0
++ACCEL_PROFILE="legacy"
++PLAYWRIGHT_WORKERS=1
++PROMOTION_SPECS=()
++REMAINING_SPECS=()
++BACKEND_COVERAGE_PID=""
++FRONTEND_COVERAGE_PID=""
++FRONTEND_COVERAGE_DEFERRED=0
+ 
+ GOLDEN_WORKSPACE_KEYS=(monitoring assets services external network far research vendors)
+ PLAYWRIGHT_SPECS=(
+@@ -87,6 +101,12 @@ remove_sqlite_database_files() {
+ }
+ 
+ cleanup() {
++  local heavy_pid
++  for heavy_pid in "$BACKEND_COVERAGE_PID" "$FRONTEND_COVERAGE_PID"; do
++    if [[ -n "$heavy_pid" ]] && kill -0 "$heavy_pid" 2>/dev/null; then
++      terminate_process_tree "$heavy_pid"
++    fi
++  done
+   if [[ -n "$FRONTEND_PID" ]] && kill -0 "$FRONTEND_PID" 2>/dev/null; then
+     terminate_process_tree "$FRONTEND_PID"
+   fi
+@@ -696,23 +716,244 @@ run_validation_lanes() {
+   return "$overall"
+ }
+ 
++
++accel_now() {
++  "$ACCEL_PY" -c 'import time; print(time.time())'
++}
++
++accel_record() {
++  local event_id="$1"
++  local status="$2"
++  local started="$3"
++  "$ACCEL_PY" "$ACCELERATOR" record \
++    --output "$ACCEL_TIMELINE" \
++    --event "$event_id" \
++    --status "$status" \
++    --started "$started" >/dev/null 2>&1 || true
++}
++
++load_accelerator_plan() {
++  local key value promotion_value=""
++  [[ -f "$ACCELERATOR" ]] || { echo "Missing universal verification accelerator: $ACCELERATOR" >&2; return 1; }
++  "$ACCEL_PY" -m py_compile "$ACCELERATOR"
++  mkdir -p "$ACCEL_DIR"
++  "$ACCEL_PY" "$ACCELERATOR" plan --root "$ROOT_DIR" --output "$ACCEL_PLAN" --env-output "$ACCEL_ENV" >/dev/null
++  while IFS='=' read -r key value; do
++    case "$key" in
++      SYSGRID_ACCEL_FRONTEND_WORKERS) FRONTEND_WORKERS="$value" ;;
++      SYSGRID_ACCEL_PARALLEL_HEAVY) ACCEL_PARALLEL_HEAVY="$value" ;;
++      SYSGRID_ACCEL_PLAYWRIGHT_WORKERS) PLAYWRIGHT_WORKERS="$value" ;;
++      SYSGRID_ACCEL_PROMOTION_SPECS) promotion_value="$value" ;;
++      SYSGRID_ACCEL_PROFILE) ACCEL_PROFILE="$value" ;;
++    esac
++  done < "$ACCEL_ENV"
++  [[ "$FRONTEND_WORKERS" =~ ^[1-9][0-9]*$ ]] || { echo "Invalid accelerator frontend worker count: $FRONTEND_WORKERS" >&2; return 1; }
++  [[ "$PLAYWRIGHT_WORKERS" == "1" ]] || { echo "Canonical shared-tenant Playwright must remain single-worker." >&2; return 1; }
++  PROMOTION_SPECS=()
++  if [[ -n "$promotion_value" ]]; then
++    IFS=':' read -r -a PROMOTION_SPECS <<< "$promotion_value"
++  fi
++  echo "[sysgrid-accelerator] profile=$ACCEL_PROFILE frontend_workers=$FRONTEND_WORKERS parallel_heavy=$ACCEL_PARALLEL_HEAVY playwright_workers=$PLAYWRIGHT_WORKERS"
++  echo "[sysgrid-accelerator] impact plan: $ACCEL_PLAN"
++}
++
++run_fast_preflight() {
++  local started
++  local syntax_pid canonical_pid lint_pid contracts_pid typecheck_pid
++  local syntax_status canonical_status lint_status contracts_status typecheck_status
++  local overall=0
++  started="$(accel_now)"
++  emit_progress accelerator_preflight_started started "Universal fast-fail syntax, contracts, lint, and typecheck preflight started."
++  (
++    cd "$ROOT_DIR"
++    /bin/bash -n scripts/verify-app.sh
++    "$ACCEL_PY" -m py_compile scripts/sysgrid/verify_accelerator.py
++  ) > "$LANE_DIR/accelerator-syntax.log" 2>&1 & syntax_pid=$!
++  (cd "$FRONTEND_DIR" && npm run check:canonical-verification) > "$LANE_DIR/accelerator-canonical.log" 2>&1 & canonical_pid=$!
++  (cd "$FRONTEND_DIR" && npm run test:lint) > "$LANE_DIR/accelerator-lint.log" 2>&1 & lint_pid=$!
++  (cd "$FRONTEND_DIR" && npm run check:operational-contracts) > "$LANE_DIR/accelerator-contracts.log" 2>&1 & contracts_pid=$!
++  (cd "$FRONTEND_DIR" && npm run typecheck) > "$LANE_DIR/accelerator-typecheck.log" 2>&1 & typecheck_pid=$!
++  set +e
++  wait "$syntax_pid"; syntax_status=$?
++  wait "$canonical_pid"; canonical_status=$?
++  wait "$lint_pid"; lint_status=$?
++  wait "$contracts_pid"; contracts_status=$?
++  wait "$typecheck_pid"; typecheck_status=$?
++  set -e
++  printf '\n===== Accelerator syntax lane =====\n'; cat "$LANE_DIR/accelerator-syntax.log"
++  printf '\n===== Accelerator canonical contract lane =====\n'; cat "$LANE_DIR/accelerator-canonical.log"
++  printf '\n===== Accelerator architecture linter lane =====\n'; cat "$LANE_DIR/accelerator-lint.log"
++  printf '\n===== Accelerator operational contracts lane =====\n'; cat "$LANE_DIR/accelerator-contracts.log"
++  printf '\n===== Accelerator TypeScript lane =====\n'; cat "$LANE_DIR/accelerator-typecheck.log"
++  for status in "$syntax_status" "$canonical_status" "$lint_status" "$contracts_status" "$typecheck_status"; do
++    [[ "$status" == "0" ]] || overall=1
++  done
++  if [[ "$overall" == "0" ]]; then
++    emit_progress accelerator_preflight_completed passed "Universal fast-fail preflight passed."
++    accel_record preflight passed "$started"
++  else
++    emit_progress accelerator_preflight_completed failed "Universal fast-fail preflight failed before expensive verification."
++    accel_record preflight failed "$started"
++  fi
++  return "$overall"
++}
++
++run_frontend_build_accelerated() {
++  local started status=0
++  started="$(accel_now)"
++  emit_progress build_started started "Canonical production frontend build started before runtime promotion."
++  if (cd "$FRONTEND_DIR" && VITE_API_BASE_URL="$BACKEND_ORIGIN" VITE_FRONTEND_ORIGIN="$FRONTEND_ORIGIN" npm run build); then
++    emit_progress build_completed passed "Canonical production frontend build completed."
++    accel_record frontend_build passed "$started"
++  else
++    status=$?
++    emit_progress build_completed failed "Canonical production frontend build failed."
++    accel_record frontend_build failed "$started"
++  fi
++  return "$status"
++}
++
++run_frontend_coverage_lane() {
++  cd "$FRONTEND_DIR"
++  npm run test:coverage -- --maxWorkers "$FRONTEND_WORKERS"
++}
++
++start_heavy_validation_lanes() {
++  emit_progress backend_started started "Backend full coverage lane started."
++  run_backend_lane > "$LANE_DIR/backend.log" 2>&1 &
++  BACKEND_COVERAGE_PID=$!
++  if [[ "$ACCEL_PARALLEL_HEAVY" == "1" ]]; then
++    emit_progress frontend_started started "Frontend full coverage lane started concurrently with runtime promotion."
++    run_frontend_coverage_lane > "$LANE_DIR/frontend-coverage.log" 2>&1 &
++    FRONTEND_COVERAGE_PID=$!
++    FRONTEND_COVERAGE_DEFERRED=0
++  else
++    FRONTEND_COVERAGE_DEFERRED=1
++    : > "$LANE_DIR/frontend-coverage.log"
++    echo "[sysgrid-accelerator] Frontend coverage deferred until affected browser promotion passes because current resource headroom is guarded." >> "$LANE_DIR/frontend-coverage.log"
++  fi
++}
++
++cancel_heavy_validation_lanes() {
++  local pid
++  for pid in "$BACKEND_COVERAGE_PID" "$FRONTEND_COVERAGE_PID"; do
++    if [[ -n "$pid" ]] && kill -0 "$pid" 2>/dev/null; then
++      terminate_process_tree "$pid"
++    fi
++  done
++  set +e
++  [[ -n "$BACKEND_COVERAGE_PID" ]] && wait "$BACKEND_COVERAGE_PID" 2>/dev/null
++  [[ -n "$FRONTEND_COVERAGE_PID" ]] && wait "$FRONTEND_COVERAGE_PID" 2>/dev/null
++  set -e
++}
++
++wait_heavy_validation_lanes() {
++  local backend_status frontend_status overall=0
++  local backend_started frontend_started
++  backend_started="$(accel_now)"
++  set +e
++  wait "$BACKEND_COVERAGE_PID"; backend_status=$?
++  set -e
++  BACKEND_COVERAGE_PID=""
++  if [[ "$FRONTEND_COVERAGE_DEFERRED" == "1" ]]; then
++    frontend_started="$(accel_now)"
++    set +e
++    run_frontend_coverage_lane > "$LANE_DIR/frontend-coverage.log" 2>&1
++    frontend_status=$?
++    set -e
++    accel_record frontend_coverage "$([[ "$frontend_status" == "0" ]] && echo passed || echo failed)" "$frontend_started"
++  else
++    set +e
++    wait "$FRONTEND_COVERAGE_PID"; frontend_status=$?
++    set -e
++    FRONTEND_COVERAGE_PID=""
++  fi
++  printf '\n===== Backend full coverage lane =====\n'; cat "$LANE_DIR/backend.log"
++  printf '\n===== Frontend full coverage lane =====\n'; cat "$LANE_DIR/frontend-coverage.log"
++  if [[ "$backend_status" == "0" ]]; then
++    emit_progress backend_completed passed "Backend full coverage lane passed."
++  else
++    emit_progress backend_completed failed "Backend full coverage lane failed."
++    overall=1
++  fi
++  if [[ "$frontend_status" == "0" ]]; then
++    emit_progress frontend_completed passed "Frontend full coverage lane passed."
++  else
++    emit_progress frontend_completed failed "Frontend full coverage lane failed."
++    overall=1
++  fi
++  return "$overall"
++}
++
++split_playwright_specs() {
++  local spec candidate selected
++  REMAINING_SPECS=()
++  local admitted=()
++  for candidate in "${PROMOTION_SPECS[@]}"; do
++    selected=0
++    for spec in "${PLAYWRIGHT_SPECS[@]}"; do
++      if [[ "$candidate" == "$spec" ]]; then selected=1; break; fi
++    done
++    [[ "$selected" == "1" ]] || { echo "Accelerator selected a non-canonical promotion spec: $candidate" >&2; return 1; }
++    admitted+=("$candidate")
++  done
++  PROMOTION_SPECS=("${admitted[@]}")
++  for spec in "${PLAYWRIGHT_SPECS[@]}"; do
++    selected=0
++    for candidate in "${PROMOTION_SPECS[@]}"; do
++      if [[ "$spec" == "$candidate" ]]; then selected=1; break; fi
++    done
++    [[ "$selected" == "1" ]] || REMAINING_SPECS+=("$spec")
++  done
++}
++
++run_playwright_group() {
++  local label="$1"; shift
++  local started status
++  local specs=("$@")
++  [[ "${#specs[@]}" -gt 0 ]] || return 0
++  started="$(accel_now)"
++  echo "[sysgrid-accelerator] $label specs (${#specs[@]}): ${specs[*]}"
++  set +e
++  (
++    cd "$FRONTEND_DIR"
++    "${PLAYWRIGHT_ENV_COMMAND[@]}" "$FRONTEND_DIR/node_modules/.bin/playwright" test "${specs[@]}" --workers="$PLAYWRIGHT_WORKERS"
++  )
++  status=$?
++  set -e
++  accel_record "$label" "$([[ "$status" == "0" ]] && echo passed || echo failed)" "$started"
++  return "$status"
++}
++
+ assert_canonical_playwright_suite
+ assert_local_playwright_runtime
+ configure_campaign_scope
++
+ if [[ "$EXECUTION_PROFILE" == "development_campaign" ]]; then
+   run_campaign_validation_lanes
++  prepare_disposable_runtime
++  launch_backend
++  wait_for_listener "$BACKEND_PORT" "isolated backend" "$BACKEND_PID" "$BACKEND_LOG" 240
++  wait_for_http "$BACKEND_URL" "isolated backend" "$BACKEND_PID" "$BACKEND_PORT" "$BACKEND_LOG" 240
++  launch_frontend_with_readiness
++  assert_seeded_fixture_contract
++  emit_progress runtime_ready passed "Disposable tenant, backend, and exact production frontend are ready."
+ else
+-  run_validation_lanes
++  reset_generated_evidence
++  mkdir -p "$ACCEL_DIR"
++  load_accelerator_plan
++  run_fast_preflight
++  run_frontend_build_accelerated
++  start_heavy_validation_lanes
++  prepare_disposable_runtime
++  launch_backend
++  wait_for_listener "$BACKEND_PORT" "isolated backend" "$BACKEND_PID" "$BACKEND_LOG" 240
++  wait_for_http "$BACKEND_URL" "isolated backend" "$BACKEND_PID" "$BACKEND_PORT" "$BACKEND_LOG" 240
++  launch_frontend_with_readiness
++  assert_seeded_fixture_contract
++  emit_progress runtime_ready passed "Disposable tenant, backend, and exact production frontend are ready."
+ fi
+ 
+-prepare_disposable_runtime
+-launch_backend
+-wait_for_listener "$BACKEND_PORT" "isolated backend" "$BACKEND_PID" "$BACKEND_LOG" 240
+-wait_for_http "$BACKEND_URL" "isolated backend" "$BACKEND_PID" "$BACKEND_PORT" "$BACKEND_LOG" 240
+-launch_frontend_with_readiness
+-assert_seeded_fixture_contract
+-emit_progress runtime_ready passed "Disposable tenant, backend, and exact production frontend are ready."
+-
+ PLAYWRIGHT_ENV_COMMAND=(
+   env
+   -u CONFIG_DATABASE_URL
+@@ -742,20 +983,33 @@ PLAYWRIGHT_ENV_COMMAND=(
+   "PLAYWRIGHT_BASE_URL=$FRONTEND_ORIGIN"
+ )
+ 
+-emit_progress playwright_started started "Canonical Playwright and Golden Eight evidence matrix started."
+-set +e
+-(
+-  cd "$FRONTEND_DIR"
+-  "${PLAYWRIGHT_ENV_COMMAND[@]}" "$FRONTEND_DIR/node_modules/.bin/playwright" test "${PLAYWRIGHT_SPECS[@]}"
+-)
+-PLAYWRIGHT_STATUS=$?
+-set -e
+-if [[ "$PLAYWRIGHT_STATUS" != "0" ]]; then
+-  emit_progress playwright_completed failed "Canonical Playwright matrix failed; complete evidence remains available."
+-  exit "$PLAYWRIGHT_STATUS"
+-fi
+-emit_progress playwright_completed passed "Canonical Playwright matrix passed."
+-if [[ "$EXECUTION_PROFILE" == "promotion_qualification" ]]; then
++if [[ "$EXECUTION_PROFILE" == "development_campaign" ]]; then
++  emit_progress playwright_started started "Campaign Playwright promotion started."
++  if ! run_playwright_group campaign_playwright "${PLAYWRIGHT_SPECS[@]}"; then
++    emit_progress playwright_completed failed "Campaign Playwright promotion failed."
++    exit 1
++  fi
++  emit_progress playwright_completed passed "Campaign Playwright promotion passed."
++else
++  split_playwright_specs
++  emit_progress playwright_started started "Affected browser promotion started before the remaining canonical matrix."
++  if [[ "${#PROMOTION_SPECS[@]}" -gt 0 ]]; then
++    if ! run_playwright_group affected_browser_promotion "${PROMOTION_SPECS[@]}"; then
++      emit_progress playwright_completed failed "Affected browser promotion failed; independent expensive lanes were cancelled."
++      cancel_heavy_validation_lanes
++      exit 1
++    fi
++    echo "[sysgrid-accelerator] Affected browser promotion passed. Completing full non-duplicated acceptance proof."
++  fi
++  if ! wait_heavy_validation_lanes; then
++    emit_progress playwright_completed failed "Full backend or frontend coverage failed after affected browser promotion."
++    exit 1
++  fi
++  if ! run_playwright_group remaining_canonical_playwright "${REMAINING_SPECS[@]}"; then
++    emit_progress playwright_completed failed "Remaining canonical Playwright matrix failed."
++    exit 1
++  fi
++  emit_progress playwright_completed passed "Affected promotion and complete non-duplicated canonical Playwright matrix passed."
+   assert_final_tenant_contract
+   assert_canonical_runtime_evidence
+   assert_populated_golden_eight_evidence

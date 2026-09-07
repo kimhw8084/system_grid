@@ -1,0 +1,14 @@
+ORIGINAL_PATH=/Users/haewonkim/sysgrid-actions-runner/.runner
+221aaa85a5cfd8abcd055d9edff522a1278c721f7a6049fa596aa40ceff9a605  /Users/haewonkim/sysgrid-actions-runner/.runner
+================================================================
+﻿{
+  "agentId": 21,
+  "agentName": "sysgrid-relay-HaeBook-Pro-M3-1785852110",
+  "poolId": 1,
+  "poolName": "Default",
+  "serverUrl": "https://pipelinesghubeus23.actions.githubusercontent.com/yNoBgargdmrBEyFLzMjM0idPCqflIqhp1CEGn1KUL6AyxE1OjX/",
+  "gitHubUrl": "https://github.com/kimhw8084/system_grid",
+  "workFolder": "_work",
+  "useV2Flow": true,
+  "serverUrlV2": "https://broker.actions.githubusercontent.com/"
+}

@@ -1,0 +1,4 @@
+$ spctl -a -vv /Users/haewonkim/.local/bin/sg
+
+/Users/haewonkim/.local/bin/sg: rejected
+source=no usable signature

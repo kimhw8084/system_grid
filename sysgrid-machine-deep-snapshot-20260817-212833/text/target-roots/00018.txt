@@ -1,0 +1,85 @@
+ORIGINAL_PATH: /Users/haewonkim/.local/share/sysgrid-runner/continuity-v1.0.4/sg
+ORIGINAL_SHA256: d2735f800f2b60182db6329bfdc86c6659fdfee7fc2c166797ed72fce7b9b73c
+================================================================================
+#!/usr/bin/env bash
+set -Eeuo pipefail
+IFS=$'\n\t'
+
+VERSION="1.0.4"
+PAYLOAD_DIR="${SYSGRID_CONTINUITY_PAYLOAD_DIR:-$HOME/.local/share/sysgrid-runner/continuity-v1.0.4}"
+CORE_DIR="${SYSGRID_CONTINUITY_CORE_DIR:-$HOME/.local/share/sysgrid-runner/core-v1.0.3}"
+CORE_SG="$CORE_DIR/sg"
+CORE_SGWATCH="$CORE_DIR/sgwatch"
+PACKAGER="$PAYLOAD_DIR/continuity_packager.py"
+WATCHER="$PAYLOAD_DIR/continuity_watcher.py"
+CONTROL_ROOT="${SYSGRID_CONTROL_ROOT:-$HOME/Library/Mobile Documents/com~apple~CloudDocs/SysGrid-Control}"
+
+case "${1:-}" in
+  --continuity-version)
+    printf 'SysGrid continuity wrapper %s\n' "$VERSION"
+    exit 0
+    ;;
+  --help-continuity)
+    cat <<EOF
+SysGrid continuity wrapper $VERSION
+Delegates execution to qualified Stable Engine v1.0.3 and prelaunches an independent continuity watcher before every run.
+EOF
+    exit 0
+    ;;
+esac
+
+[[ -x "$CORE_SG" ]] || { printf 'FAIL: missing qualified core sg: %s\n' "$CORE_SG" >&2; exit 2; }
+[[ -x "$CORE_SGWATCH" ]] || { printf 'FAIL: missing qualified core sgwatch: %s\n' "$CORE_SGWATCH" >&2; exit 2; }
+[[ -x "$PACKAGER" && -x "$WATCHER" ]] || { printf 'FAIL: continuity payload incomplete\n' >&2; exit 2; }
+
+# Utility invocations never create run state or continuity watchers.
+case "${1:-}" in
+  --help|-h|--version)
+    exec "$CORE_SG" "$@"
+    ;;
+esac
+
+if repo="$(git rev-parse --show-toplevel 2>/dev/null)"; then
+  pre_head="$(git -C "$repo" rev-parse HEAD 2>/dev/null || printf unknown)"
+else
+  repo="$PWD"
+  pre_head="unknown"
+fi
+
+foreground=0
+for arg in "$@"; do
+  [[ "$arg" == "--foreground" ]] && foreground=1
+done
+
+mkdir -p "$CONTROL_ROOT/State" "$CONTROL_ROOT/Outbox" "$CONTROL_ROOT/Continuity"
+launch_id="$(date -u +%Y%m%dT%H%M%SZ)-$$-$RANDOM"
+launch_json="$CONTROL_ROOT/State/continuity-launch-$launch_id.json"
+started_epoch="$(date +%s)"
+watcher_log="$CONTROL_ROOT/State/continuity-launcher-$launch_id.log"
+
+# Start the watcher in its own session before invoking the core. The watcher creates
+# the launch record itself, so no synchronous Python bootstrap can delay protection.
+nohup /bin/sh -c 'trap "" HUP INT TERM; exec python3 "$@"' sh \
+  "$WATCHER" "$launch_json" \
+  --initialize \
+  --launch-id "$launch_id" \
+  --repo "$repo" \
+  --pre-head "$pre_head" \
+  --started-epoch "$started_epoch" \
+  --control-root "$CONTROL_ROOT" \
+  --core-sgwatch "$CORE_SGWATCH" \
+  --packager "$PACKAGER" \
+  --payload-dir "$PAYLOAD_DIR" \
+  --foreground "$foreground" \
+  --argument-count "$#" \
+  --launch-reason prelaunched-before-core \
+  >"$watcher_log" 2>&1 </dev/null &
+watcher_pid=$!
+printf 'Continuity watcher: %s\n' "$watcher_pid"
+printf 'Final handoff: %s\n' "$CONTROL_ROOT/Outbox/UPLOAD_THIS_TO_CHATGPT.zip"
+
+set +e
+"$CORE_SG" "$@"
+core_rc=$?
+set -e
+exit "$core_rc"

@@ -1,0 +1,255 @@
+ORIGINAL_PATH: /Users/haewonkim/.local/share/sysgrid-runner/continuity-v1.0.7/active_law.old/03_LEAN_WORKHORSE_CONTROL_CONTEXT_AND_REVIEW_LAW_v1.2.md
+ORIGINAL_SHA256: bcff0326ae57feafdbfe76cdd43860b8ca30bca629db635ae7b3a79bd6287dcc
+================================================================================
+# Lean Workhorse Control, Context, Execution, and Review Law v1.2
+
+**Status:** Draft pending explicit activation  
+**Proposed effective date:** 2026-07-30
+
+## 1. Cycle and ownership
+
+```text
+BOOTSTRAP → DECIDE → AUTHOR → COMPILE → ISSUE → EXECUTE → REVIEW → ACCEPT/RECOVER
+```
+
+The control room owns BOOTSTRAP, DECIDE, AUTHOR, COMPILE, ISSUE, REVIEW, and recovery design. The qualified engine owns deterministic execution on the operator machine.
+
+## 2. Active GPT Project budget
+
+Maximum eight active Project files:
+
+1. `00_ACTIVE_LAW_MANIFEST_v1.2.yaml`
+2. `01_AI_Controlled_Delivery_Constitution_v1.2.md`
+3. `02_SYSGRID_PRODUCT_GOLDEN_CONTRACT_v1.2.md`
+4. `03_LEAN_WORKHORSE_CONTROL_CONTEXT_AND_REVIEW_LAW_v1.2.md`
+5. current safe source snapshot
+6. latest independently accepted platform qualification record, or the sole authorized platform artifact while qualification is pending
+7. at most one active product capsule
+8. the current uploaded review artifact while it is being reviewed
+
+Do not keep a manually maintained current-state file. Live Linear and immutable artifacts are current-state authority.
+
+Archive/remove superseded laws, old installers, platform patches, failed/historical ZIPs, consumed capsules, old source snapshots, historical questionnaires, duplicate reports, debugging files and temporary builds.
+
+## 3. Bootstrap once, refresh narrowly
+
+At the first substantive SysGrid turn in a new chat:
+
+1. read the manifest and three active law files once;
+2. run the live Linear scope/bootstrap gate;
+3. inspect only the current source snapshot identity, current qualification/authorized platform artifact, and active capsule/review artifact;
+4. return the required snapshot and safe next action.
+
+Required snapshot:
+
+```text
+Project:
+Master context:
+Sole active issue:
+Current stage:
+Latest reviewed iteration/attempt:
+Latest verdict and score:
+Accepted source baseline:
+Actual repository HEAD/state:
+Qualified engine version/digest:
+Installed continuity version/qualification:
+Current gate or blocker:
+Safe next action:
+State read timestamp/source:
+```
+
+Within the same chat, do not reread unchanged law or replay full Linear history. Before a state claim, artifact issuance, Linear write, or mutation decision, refresh only live Linear and changed current artifacts. Reread law only when a manifest digest changes or the task directly concerns that law section.
+
+Unknowns are labeled unknown. Chat memory never replaces live state.
+
+## 4. Decision
+
+Use the Product Contract's five-question approval packet only when required. Otherwise state the already-approved objective and proceed without another approval loop.
+
+## 5. Authoring
+
+Author one cumulative immutable patch against verified source authority. Declare:
+
+- behavior, proof and protection deltas;
+- risk tier;
+- exact changed paths;
+- protected paths/behaviors;
+- baseline and expected state hashes;
+- focused, routed and full proof endpoints;
+- commit/push policy.
+
+Product authoring may continue while capsule execution is blocked by an executor issue, but no second unaccepted product mutation may be created.
+
+## 6. Deterministic capsule compiler
+
+A capsule is issuable only after a qualified deterministic compiler/validator proves the exact final bytes:
+
+- match the exact qualified engine schema;
+- contain declarative metadata and immutable payloads only;
+- contain no executable member, arbitrary command, dynamic shell, embedded program, symlink, absolute/traversal path, or unlisted member;
+- have complete manifest coverage;
+- declare exact project/master/issue, baseline, patch digest/size, pre/post/protected state, trusted recipes, acceptance mapping and delivery policy;
+- dry-apply exactly once and reverse cleanly in isolated source authority;
+- produce the exact declared changed-path and post-hash set.
+
+The operator is never used to discover capsule schema errors.
+
+## 7. Operator execution
+
+Normal commands:
+
+```text
+sg run /path/to/one-capsule.sgcap
+```
+
+or, when exactly one safe capsule is already staged:
+
+```text
+sg
+```
+
+The platform identifies capsule filename, SHA-256 and size before creating any lifecycle, and correlates them through launch, result, archived capsule, evidence copy and final ZIP. Zero/multiple/unsafe capsules fail immediately without product mutation. A concurrent run exits with a clear status instead of silently blocking.
+
+Progress is numbered and phone-readable. Failure output gives classification, mutation state, ZIP path, and one safe next action.
+
+## 8. Economic fail-fast proof
+
+Run cheap, high-signal checks first and the comprehensive acceptance gate last:
+
+1. capsule/schema/path/manifest safety;
+2. live issue, repository baseline and protected hashes;
+3. patch dry-apply and exact transition;
+4. focused architecture/static tests;
+5. focused unit/contract/integration tests;
+6. typecheck and build;
+7. runtime identity, routes, tenant/profile and fixtures;
+8. critical routed workflow and relevant off-nominal states;
+9. bounded adjacent regressions;
+10. full `verify-app.sh` or qualified equivalent;
+11. exact final/protected hashes;
+12. commit, push, remote equality and clean state;
+13. canonical packaging.
+
+Risk tier changes early feedback and required focused proof, not the final acceptance bar.
+
+## 9. Platform stop-the-line and freeze
+
+A reproduced operator-visible critical executor defect freezes product execution. Recovery must add a released-byte regression for the exact failure, preserve product bytes, pass complete platform qualification, and receive independent review.
+
+After PASS, platform bytes are frozen. Product, fixture and ordinary environment failures do not authorize platform redesign.
+
+## 10. Canonical artifact handling
+
+Every run produces exactly one atomic, safe, complete:
+
+```text
+SysGrid-Control/Outbox/UPLOAD_THIS_TO_CHATGPT.zip
+```
+
+For every uploaded capsule or ZIP:
+
+- compute digest and size independently;
+- reject duplicates, unsafe paths, symlinks, prohibited executables, CRC errors and manifest mismatch;
+- read internal identity rather than trusting filename;
+- reconcile project/master/issue/cycle/baseline/engine/capsule with live Linear;
+- stop on stale, duplicate-reviewed, cross-issue or cross-lane contradiction.
+
+Prefer one flat identity chain over duplicate nested review packages. Success without the canonical ZIP is failure.
+
+## 11. Machine-first review
+
+Review in this order:
+
+1. ZIP safety, CRC and complete manifest;
+2. project/master/issue/cycle and capsule identity;
+3. result and stage ledger;
+4. baseline/final Git identity;
+5. exact changed/protected transition;
+6. proof-to-criterion mapping;
+7. routed/off-nominal evidence appropriate to risk;
+8. commit/push/remote equality and clean state;
+9. contradictions.
+
+### Fast path
+
+When deterministic evidence reconciles and no sensitive contract changed, return a concise verdict, accepted behavior/proof/protection, delivery identity and next slice.
+
+### Deep path
+
+Use forensic source/log review only for failure, contradiction, changed platform bytes, changed golden/shared contract, tenant/permission/migration/destructive risk, or a new failure class.
+
+## 12. Verdicts and recovery
+
+- **PASS:** complete accepted value slice and delivery state.
+- **PARTIAL:** correct bounded progress but missing required value/proof; no final acceptance.
+- **FAIL:** objective or required proof/delivery not achieved.
+- **WORSE:** accepted baseline or trust boundary materially regressed.
+
+Use the narrowest evidence-matched recovery:
+
+- product defect → cumulative product correction;
+- exact retained post-state → `resume_verify`, never reapply;
+- stale test/fixture → bounded test-contract correction;
+- environment drift → environment resolution without source mutation;
+- executor defect → platform lane only, product bytes frozen.
+
+## 13. Concise Linear record
+
+A normal cycle comment contains only iteration/attempt, artifact filename/SHA/size, verdict/score, behavior/proof/protection summary, delivery identity, a new root cause/lesson only when genuinely new, and one safe next action.
+
+The canonical ZIP is detailed evidence authority. Do not duplicate full manifests, logs or settled lessons in Linear prose.
+
+## 14. Law changes and engine impact
+
+Every law revision includes complete replacement files, manifest/digests, crosswalk, archive plan, activation/rollback steps, first-use tests, rationale and engine-impact classification.
+
+### Control-room/context-only
+
+No engine requalification is required when only GPT context loading, approval policy, review depth, Linear prose, telemetry or active-file retention changes, while capsule schema, trusted recipes, engine behavior, evidence layout, commit/push order and safety boundaries remain unchanged. Activation requires an existing independent platform PASS and read-only identity reconciliation.
+
+### Engine-contract-impacting
+
+Full qualification is required when capsule schema, recipe semantics, execution behavior, identity correlation, evidence layout, process ownership, commit/push behavior, redaction or packaging safety changes.
+
+## 15. Activation and rollback
+
+v1.2 activates only after:
+
+1. v1.0.7 receives independent PASS under v1.1;
+2. the intact v1.1 Project is retained as rollback;
+3. a clean Project is created with only the allowed current files;
+4. supplied Project Instructions are installed;
+5. read-only first-use tests pass;
+6. the user says:
+
+```text
+Approve and activate AI Controlled Delivery Law Kit v1.2 — Lean Workhorse for SysGrid.
+```
+
+Rollback means returning to the intact v1.1 Project. Never mix v1.1 and v1.2 active files.
+
+## 16. Telemetry experiment
+
+Measure at least three consecutive product cycles:
+
+- decision-to-patch;
+- patch-to-valid-capsule;
+- `sg`-to-first-feedback;
+- `sg`-to-Outbox;
+- upload-to-verdict;
+- approval-to-accepted-remote-commit;
+- operator actions and control-plane retries;
+- first-attempt PASS;
+- product versus platform/process effort;
+- accepted regressions.
+
+Targets:
+
+- operator actions ≤ 3;
+- active Project files ≤ 8;
+- schema retries = 0;
+- cross-attachment/finality incidents = 0;
+- product effort ≥ 80%;
+- platform/process effort ≤ 20%;
+- first-attempt product PASS ≥ 80% after the first three-cycle baseline;
+- accepted regressions = 0.

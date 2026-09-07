@@ -1,0 +1,63 @@
+ORIGINAL_PATH: /Users/haewonkim/.local/share/sysgrid-campaign-platform/v1.1.1/DIFFS/engine_v1.1.0_to_v1.1.1.patch
+ORIGINAL_SHA256: 8626964bc248c40e8572ad904001a387701d7cb75ecede9bcddb2c18c3c36c09
+================================================================================
+--- /mnt/data/p2_work/base/SYSGRID_CAMPAIGN_PLATFORM_v1.0.0/payload/sysgrid_runner.py	2026-08-02 00:00:00.000000000 +0000
++++ /mnt/data/p2_work/build/SYSGRID_CAMPAIGN_PLATFORM_v1.1.0/payload/sysgrid_runner.py	2026-08-02 15:09:59.278711067 +0000
+@@ -1,5 +1,5 @@
+ #!/usr/bin/env python3
+-"""SysGrid stable execution engine v1.1.0.
++"""SysGrid stable execution engine v1.1.1.
+ 
+ Standard-library-only reference implementation. Capsules are declarative ZIPs;
+ trusted commands live in this engine distribution.
+@@ -29,7 +29,7 @@
+ 
+ from sysgrid_state_identity import canonical_dirty_paths, all_repository_files, StateIdentityError
+ 
+-ENGINE_VERSION = "1.1.0"
++ENGINE_VERSION = "1.1.1"
+ SCHEMA_VERSION = "1.1"
+ CANONICAL_ZIP = "UPLOAD_THIS_TO_CHATGPT.zip"
+ MAX_CAPSULE_BYTES = 50 * 1024 * 1024
+@@ -42,6 +42,7 @@
+ MAX_SOURCE_AUTHORITY_BYTES = 1536 * 1024 * 1024
+ MAX_SOURCE_AUTHORITY_FILE_BYTES = 32 * 1024 * 1024
+ CAMPAIGN_METADATA_FILES = ("QUESTIONNAIRE.json", "QUESTIONNAIRE_CLOSURE.json", "APPROVAL_LOCK.json", "CHANGE_SPEC.json", "RISK_MATRIX.json", "TEST_PLAN.json", "VISUAL_MATRIX.json", "IMPROVEMENT_LEDGER.json", "NEXT_CAMPAIGN_SEED.json")
++HANDOFF_METADATA_FILES = ("CHAT_HANDOFF.json", "LAW_IDENTITY.json", "LINEAR_STATE_EXPECTATION.json", "PLATFORM_IDENTITY.json", "SOURCE_IDENTITY.json", "ACTIVE_ARTIFACT_IDENTITY.json", "CURRENT_GATE.json", "NEXT_PERMITTED_ACTION.json")
+ SAFE_ID = re.compile(r"^[A-Za-z0-9_.:/+-]{1,200}$")
+ SHA256_RE = re.compile(r"^[0-9a-f]{64}$")
+ PROHIBITED_CAPSULE_SUFFIXES = {".sh", ".bash", ".zsh", ".py", ".pyc", ".js", ".mjs", ".cjs", ".ts", ".tsx", ".exe", ".command"}
+@@ -224,7 +225,7 @@
+     actual_files = sorted(
+         p.relative_to(root).as_posix()
+         for p in root.rglob("*")
+-        if p.is_file() and p.name != "MANIFEST.sha256"
++        if p.is_file() and p != root / "MANIFEST.sha256"
+     )
+     if sorted(expected) != actual_files:
+         missing = sorted(set(expected) - set(actual_files))
+@@ -637,7 +638,7 @@
+ def make_manifest(root: Path) -> None:
+     lines = []
+     for p in sorted(root.rglob("*")):
+-        if p.is_file() and p.name != "MANIFEST.sha256":
++        if p.is_file() and p != root / "MANIFEST.sha256":
+             lines.append(f"{sha256_file(p)}  {p.relative_to(root).as_posix()}")
+     (root / "MANIFEST.sha256").write_text("\n".join(lines) + "\n", encoding="utf-8")
+ 
+@@ -778,6 +779,15 @@
+     for rel in CAMPAIGN_METADATA_FILES:
+         src=capsule/rel
+         if src.is_file(): shutil.copy2(src,campaign_dir/rel)
++    handoff_dir=evidence/"HANDOFF"; handoff_dir.mkdir(parents=True,exist_ok=True)
++    for rel in HANDOFF_METADATA_FILES:
++        src=capsule/rel
++        if src.is_file(): shutil.copy2(src,handoff_dir/rel)
++    handoff_lines=[]
++    for path in sorted(handoff_dir.iterdir()):
++        if path.is_file() and path.name!='MANIFEST.sha256':
++            handoff_lines.append(f'{sha256_file(path)}  {path.name}')
++    (handoff_dir/'MANIFEST.sha256').write_text('\n'.join(handoff_lines)+'\n',encoding='utf-8')
+ 
+ 
+ def _copy_bounded_evidence(src: Path, dst: Path, budget: dict[str, int], captured: list[dict[str, Any]], skipped: list[dict[str, Any]]) -> None:

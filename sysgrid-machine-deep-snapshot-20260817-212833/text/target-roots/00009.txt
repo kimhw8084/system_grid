@@ -1,0 +1,768 @@
+ORIGINAL_PATH: /Users/haewonkim/.local/share/sysgrid-delivery-v1.3.0/sg_runner.py.fresh-rev2.rollback
+ORIGINAL_SHA256: 0cf92efcb19a4c4534855da43d2923fae4b8e6829eb04379bc335ed7a0e31198
+================================================================================
+from __future__ import annotations
+
+import hashlib
+import json
+import os
+import re
+import shutil
+import subprocess
+import sys
+import tempfile
+import time
+import zipfile
+from dataclasses import dataclass, replace
+from io import BytesIO
+from pathlib import Path
+from typing import Callable, Iterable, Mapping, Sequence
+
+from linear_text_capsule import (
+    IntegrityError,
+    MEMBER_ORDER,
+    SchemaError,
+    TextMember,
+    TransportAuthenticationError,
+    TransportUnavailable,
+    reconstruct_from_comments,
+    sha256_bytes,
+    validate_cross_bindings,
+)
+
+RUNNER_VERSION = "fresh-text-1.0.0"
+RUNNER_CLASSIFICATION = "SYSGRID_DELIVERY_RUNNER"
+WIRE_VERSION = "1.3.0"
+EXPECTED_REPOSITORY = "kimhw8084/system_grid"
+EXPECTED_ATTEMPT_BRANCH = "sysgrid/out-31/pa18"
+EXPECTED_APPROVAL_LOCK = "PA18-FAR-PRODUCTION-READINESS"
+CURRENT_FASTPATH_SHA256 = "800bd87a59d46572cd1d218d4c01857e97080838d5ee54d349c25f257191d00b"
+
+COMMAND_START = "<!-- SYSGRID_VNEXT_COMMAND_START -->"
+COMMAND_END = "<!-- SYSGRID_VNEXT_COMMAND_END -->"
+APPROVAL_START = "<!-- SYSGRID_VNEXT_APPROVAL_START -->"
+APPROVAL_END = "<!-- SYSGRID_VNEXT_APPROVAL_END -->"
+RESULT_START = "<!-- SYSGRID_VNEXT_RESULT_START -->"
+RESULT_END = "<!-- SYSGRID_VNEXT_RESULT_END -->"
+HEX40 = re.compile(r"^[0-9a-f]{40}$")
+HEX64 = re.compile(r"^[0-9a-f]{64}$")
+UUID36 = re.compile(r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$")
+
+
+class RunnerError(RuntimeError):
+    code = "RUNNER_ERROR"
+
+
+class AuthorityError(RunnerError):
+    code = "AUTHORITY_ERROR"
+
+
+class ReplayError(RunnerError):
+    code = "REPLAY_ERROR"
+
+
+class SourceRaceError(RunnerError):
+    code = "SOURCE_RACE"
+
+
+class ApplyError(RunnerError):
+    code = "APPLY_FAILED"
+
+
+class VerificationError(RunnerError):
+    code = "VERIFICATION_FAILED"
+
+
+class PublicationError(RunnerError):
+    code = "PUBLICATION_FAILED"
+
+
+class RemoteVerificationError(RunnerError):
+    code = "REMOTE_VERIFICATION_FAILED"
+
+
+@dataclass(frozen=True)
+class Command:
+    comment_id: str
+    issue: str
+    product_attempt: str
+    patch_id: str
+    base_sha: str
+    attempt_branch: str
+    bundle_sha256: str
+    bundle_size: int
+    replay_id: str
+    approval_lock: str
+    approval_comment_id: str
+    content_locator: str
+    content_title: str
+
+
+@dataclass(frozen=True)
+class Approval:
+    comment_id: str
+    issue: str
+    product_attempt: str
+    patch_id: str
+    base_sha: str
+    bundle_sha256: str
+    bundle_size: int
+    replay_id: str
+    approval_lock: str
+    content_locator: str
+    content_title: str
+    patch_sha256: str
+    verification_action_id: str
+
+
+@dataclass(frozen=True)
+class PreparedMutation:
+    worktree: Path
+    candidate_sha: str
+    candidate_tree: str
+    verification_count: int
+
+
+def _extract_json(body: str, start: str, end: str) -> dict:
+    if body.count(start) != 1 or body.count(end) != 1:
+        raise SchemaError("control marker cardinality mismatch")
+    raw = body.split(start, 1)[1].split(end, 1)[0].strip()
+    if raw.startswith("```json"):
+        raw = raw[len("```json"):]
+        if raw.endswith("```"):
+            raw = raw[:-3]
+        raw = raw.strip()
+    try:
+        value = json.loads(raw)
+    except json.JSONDecodeError as exc:
+        raise SchemaError("control JSON parse failed") from exc
+    if not isinstance(value, dict):
+        raise SchemaError("control object must be JSON object")
+    return value
+
+
+def _require_exact_keys(value: Mapping[str, object], keys: set[str], label: str) -> None:
+    if set(value) != keys:
+        raise SchemaError(f"{label} keys mismatch")
+
+
+def _require_sha(value: object, n: int, label: str) -> str:
+    if not isinstance(value, str) or not (HEX40 if n == 40 else HEX64).match(value):
+        raise SchemaError(f"{label} invalid")
+    return value
+
+
+def parse_active_command(comment: Mapping[str, object]) -> Command:
+    cid = comment.get("id")
+    body = comment.get("body")
+    if not isinstance(cid, str) or not isinstance(body, str):
+        raise SchemaError("command comment invalid")
+    obj = _extract_json(body, COMMAND_START, COMMAND_END)
+    keys = {
+        "schema_version", "classification", "status", "issue", "product_attempt", "patch_id",
+        "base_sha", "attempt_branch", "bundle_sha256", "bundle_size", "replay_id",
+        "approval_lock", "approval_comment_id", "attachment_id", "attachment_title",
+    }
+    _require_exact_keys(obj, keys, "ACTIVE command")
+    if obj["schema_version"] != WIRE_VERSION or obj["classification"] != "SYSGRID_VNEXT_COMMAND" or obj["status"] != "ACTIVE":
+        raise AuthorityError("command classification/status/version mismatch")
+    if not isinstance(obj["bundle_size"], int) or isinstance(obj["bundle_size"], bool) or obj["bundle_size"] <= 0:
+        raise SchemaError("command bundle_size invalid")
+    for key in ("issue", "product_attempt", "patch_id", "attempt_branch", "replay_id", "approval_lock", "approval_comment_id", "attachment_id", "attachment_title"):
+        if not isinstance(obj[key], str) or not obj[key]:
+            raise SchemaError(f"command {key} invalid")
+    return Command(
+        cid, obj["issue"], obj["product_attempt"], obj["patch_id"],
+        _require_sha(obj["base_sha"], 40, "command base_sha"), obj["attempt_branch"],
+        _require_sha(obj["bundle_sha256"], 64, "command bundle_sha256"), obj["bundle_size"],
+        obj["replay_id"], obj["approval_lock"], obj["approval_comment_id"],
+        obj["attachment_id"], obj["attachment_title"],
+    )
+
+
+def resolve_single_active_command(comments: Iterable[Mapping[str, object]]) -> Command:
+    candidates: list[Mapping[str, object]] = []
+    for comment in comments:
+        body = comment.get("body")
+        if isinstance(body, str) and COMMAND_START in body and '"status":"ACTIVE"' in body.replace(" ", ""):
+            candidates.append(comment)
+    if len(candidates) != 1:
+        raise AuthorityError(f"expected exactly one ACTIVE command, found {len(candidates)}")
+    return parse_active_command(candidates[0])
+
+
+def parse_approval(comment: Mapping[str, object]) -> Approval:
+    cid = comment.get("id")
+    body = comment.get("body")
+    if not isinstance(cid, str) or not isinstance(body, str):
+        raise SchemaError("approval comment invalid")
+    obj = _extract_json(body, APPROVAL_START, APPROVAL_END)
+    keys = {
+        "schema_version", "classification", "status", "issue", "product_attempt", "patch_id",
+        "base_sha", "bundle_sha256", "bundle_size", "replay_id", "approval_lock",
+        "attachment_id", "attachment_title", "patch_sha256", "verification_action_id",
+    }
+    _require_exact_keys(obj, keys, "approval")
+    if obj["schema_version"] != WIRE_VERSION or obj["classification"] != "SYSGRID_VNEXT_APPROVAL" or obj["status"] != "APPROVED":
+        raise AuthorityError("approval classification/status/version mismatch")
+    if not isinstance(obj["bundle_size"], int) or isinstance(obj["bundle_size"], bool) or obj["bundle_size"] <= 0:
+        raise SchemaError("approval bundle_size invalid")
+    for key in ("issue", "product_attempt", "patch_id", "replay_id", "approval_lock", "attachment_id", "attachment_title", "verification_action_id"):
+        if not isinstance(obj[key], str) or not obj[key]:
+            raise SchemaError(f"approval {key} invalid")
+    return Approval(
+        cid, obj["issue"], obj["product_attempt"], obj["patch_id"],
+        _require_sha(obj["base_sha"], 40, "approval base_sha"),
+        _require_sha(obj["bundle_sha256"], 64, "approval bundle_sha256"), obj["bundle_size"],
+        obj["replay_id"], obj["approval_lock"], obj["attachment_id"], obj["attachment_title"],
+        _require_sha(obj["patch_sha256"], 64, "approval patch_sha256"), obj["verification_action_id"],
+    )
+
+
+def validate_command_approval(command: Command, approval: Approval) -> None:
+    if command.approval_comment_id != approval.comment_id:
+        raise AuthorityError("approval comment binding mismatch")
+    pairs = (
+        (command.issue, approval.issue, "issue"),
+        (command.product_attempt, approval.product_attempt, "product_attempt"),
+        (command.patch_id, approval.patch_id, "patch_id"),
+        (command.base_sha, approval.base_sha, "base_sha"),
+        (command.bundle_sha256, approval.bundle_sha256, "bundle_sha256"),
+        (command.bundle_size, approval.bundle_size, "bundle_size"),
+        (command.replay_id, approval.replay_id, "replay_id"),
+        (command.approval_lock, approval.approval_lock, "approval_lock"),
+        (command.content_locator, approval.content_locator, "content locator"),
+        (command.content_title, approval.content_title, "content title"),
+    )
+    for left, right, label in pairs:
+        if left != right:
+            raise AuthorityError(f"command/approval {label} mismatch")
+
+
+def parse_result_objects(comments: Iterable[Mapping[str, object]]) -> list[dict]:
+    out: list[dict] = []
+    for comment in comments:
+        body = comment.get("body")
+        if not isinstance(body, str) or RESULT_START not in body:
+            continue
+        try:
+            obj = _extract_json(body, RESULT_START, RESULT_END)
+        except SchemaError:
+            continue
+        if obj.get("classification") == "SYSGRID_VNEXT_RESULT" and obj.get("schema_version") == WIRE_VERSION:
+            out.append(obj)
+    return out
+
+
+def assert_replay_fresh(command: Command, comments: Iterable[Mapping[str, object]]) -> None:
+    for result in parse_result_objects(comments):
+        if result.get("replay_id") == command.replay_id:
+            if result.get("patch_id") == command.patch_id and result.get("bundle_sha256") == command.bundle_sha256:
+                raise ReplayError("replay already has a result; command must not republish")
+            raise ReplayError("replay id reused by different result")
+
+
+def capsule_from_text_root(command: Command, root_comments: Sequence[Mapping[str, object]]) -> bytes:
+    capsule = reconstruct_from_comments(
+        root_comments,
+        command.content_locator,
+        expected_zip_sha256=command.bundle_sha256,
+        expected_zip_size=command.bundle_size,
+    )
+    return capsule.zip_bytes
+
+
+def capsule_from_attachment_bytes(command: Command, data: bytes) -> bytes:
+    if len(data) != command.bundle_size or sha256_bytes(data) != command.bundle_sha256:
+        raise IntegrityError("attachment bytes do not match approved content identity")
+    parse_v13_zip(data)
+    return data
+
+
+def parse_v13_zip(data: bytes) -> tuple[dict, dict, dict[str, TextMember]]:
+    try:
+        with zipfile.ZipFile(BytesIO(data), "r") as zf:
+            infos = zf.infolist()
+            if [i.filename for i in infos] != list(MEMBER_ORDER):
+                raise SchemaError("ZIP member order mismatch")
+            if len(infos) != len(MEMBER_ORDER):
+                raise SchemaError("ZIP member cardinality mismatch")
+            members: dict[str, TextMember] = {}
+            for name in MEMBER_ORDER:
+                payload = zf.read(name)
+                members[name] = TextMember(name, payload, sha256_bytes(payload))
+    except (zipfile.BadZipFile, KeyError) as exc:
+        raise SchemaError("invalid v1.3.0 ZIP capsule") from exc
+    validate_cross_bindings(members)
+    try:
+        manifest = json.loads(members["MANIFEST.json"].payload)
+        verify = json.loads(members["VERIFY.json"].payload)
+    except (UnicodeDecodeError, json.JSONDecodeError) as exc:
+        raise SchemaError("v1.3.0 capsule JSON invalid") from exc
+    return manifest, verify, members
+
+
+def validate_capsule_authority(command: Command, approval: Approval, zip_bytes: bytes) -> tuple[dict, dict]:
+    manifest, verify, members = parse_v13_zip(zip_bytes)
+    checks = (
+        (manifest["repository"], EXPECTED_REPOSITORY, "repository"),
+        (manifest["attempt_branch"], command.attempt_branch, "attempt_branch"),
+        (manifest["base_sha"], command.base_sha, "base_sha"),
+        (manifest["expected_attempt_sha"], command.base_sha, "expected_attempt_sha"),
+        (manifest["issue"], command.issue, "issue"),
+        (manifest["product_attempt"], command.product_attempt, "product_attempt"),
+        (manifest["patch_id"], command.patch_id, "patch_id"),
+        (manifest["replay_id"], command.replay_id, "replay_id"),
+        (manifest["approval_lock"], command.approval_lock, "approval_lock"),
+        (members["CHANGE.patch"].sha256, approval.patch_sha256, "patch_sha256"),
+    )
+    for left, right, label in checks:
+        if left != right:
+            raise AuthorityError(f"capsule authority {label} mismatch")
+    if manifest["repository"] != EXPECTED_REPOSITORY or command.attempt_branch != EXPECTED_ATTEMPT_BRANCH:
+        raise AuthorityError("wrong repository/attempt branch")
+    if command.approval_lock != EXPECTED_APPROVAL_LOCK:
+        raise AuthorityError("wrong Approval Lock")
+    action_ids = [a["id"] for a in verify["actions"]]
+    if approval.verification_action_id not in action_ids:
+        raise AuthorityError("approval verification action not present in VERIFY")
+    return manifest, verify
+
+
+def _run(argv: Sequence[str], *, cwd: Path | None = None, env: Mapping[str, str] | None = None, check: bool = True) -> subprocess.CompletedProcess[str]:
+    cp = subprocess.run(
+        list(argv), cwd=str(cwd) if cwd else None, env=dict(env) if env else None,
+        text=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+    )
+    if check and cp.returncode != 0:
+        raise RunnerError(f"command failed ({cp.returncode}): {' '.join(argv)}\n{cp.stderr.strip()}")
+    return cp
+
+
+def _git(repo: Path, *args: str, check: bool = True) -> subprocess.CompletedProcess[str]:
+    return _run(("git", "-C", str(repo), *args), check=check)
+
+
+def remote_head(repo: Path, branch: str) -> str:
+    cp = _git(repo, "ls-remote", "--heads", "origin", f"refs/heads/{branch}")
+    parts = cp.stdout.strip().split()
+    if len(parts) != 2 or not HEX40.match(parts[0]):
+        raise SourceRaceError("attempt branch remote head not found")
+    return parts[0]
+
+
+def _verify_actions(worktree: Path, verify: Mapping[str, object]) -> int:
+    count = 0
+    for action in verify["actions"]:  # validated by adapter
+        adapter = action["adapter"]
+        paths = action["paths"]
+        timeout = action["timeout_seconds"]
+        if adapter == "frontend.vitest":
+            cwd = worktree / "frontend"
+            argv = ["npm", "run", "test:unit", "--", *paths]
+        elif adapter == "backend.pytest":
+            cwd = worktree / "backend"
+            argv = [os.environ.get("PYTHON", "python3"), "-m", "pytest", *paths]
+        else:
+            raise VerificationError(f"unsupported changed-risk adapter: {adapter}")
+        try:
+            cp = subprocess.run(argv, cwd=cwd, text=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=timeout)
+        except subprocess.TimeoutExpired as exc:
+            raise VerificationError(f"verification timed out: {action['id']}") from exc
+        if cp.returncode != 0:
+            raise VerificationError(f"verification failed: {action['id']}\n{cp.stdout}\n{cp.stderr}")
+        count += 1
+    return count
+
+
+def prepare_mutation(
+    repo: Path,
+    command: Command,
+    manifest: Mapping[str, object],
+    verify: Mapping[str, object],
+    zip_bytes: bytes,
+    *,
+    verify_actions: Callable[[Path, Mapping[str, object]], int] = _verify_actions,
+) -> PreparedMutation:
+    _, _, members = parse_v13_zip(zip_bytes)
+    patch = members["CHANGE.patch"].payload
+    tmp_root = Path(tempfile.mkdtemp(prefix="sysgrid-fresh-runner-"))
+    worktree = tmp_root / "worktree"
+    try:
+        _git(repo, "fetch", "--no-tags", "origin", command.attempt_branch)
+        if remote_head(repo, command.attempt_branch) not in {command.base_sha}:
+            # A prior exact publication can be recognized only after candidate tree is built below.
+            pass
+        _git(repo, "worktree", "add", "--detach", str(worktree), command.base_sha)
+        patch_path = tmp_root / "CHANGE.patch"
+        patch_path.write_bytes(patch)
+        cp = _git(worktree, "apply", "--check", "--whitespace=error-all", str(patch_path), check=False)
+        if cp.returncode != 0:
+            raise ApplyError(cp.stderr.strip() or "git apply --check failed")
+        cp = _git(worktree, "apply", "--whitespace=error-all", str(patch_path), check=False)
+        if cp.returncode != 0:
+            raise ApplyError(cp.stderr.strip() or "git apply failed")
+        changed = [p for p in _git(worktree, "status", "--porcelain=v1", "-z").stdout.split("\0") if p]
+        changed_paths = sorted({entry[3:] for entry in changed if len(entry) >= 4})
+        if changed_paths != sorted(manifest["changed_paths"]):
+            raise AuthorityError(f"changed path set mismatch: {changed_paths} != {sorted(manifest['changed_paths'])}")
+        verification_count = verify_actions(worktree, verify)
+        _git(worktree, "add", "--", *manifest["changed_paths"])
+        staged = sorted(p for p in _git(worktree, "diff", "--cached", "--name-only").stdout.splitlines() if p)
+        if staged != sorted(manifest["changed_paths"]):
+            raise AuthorityError("staged path set mismatch")
+        msg = f"{command.issue} {command.product_attempt} {command.patch_id}: targeted pass\n\nSYSGRID-Replay: {command.replay_id}\nSYSGRID-Bundle: {command.bundle_sha256}"
+        _git(worktree, "commit", "-m", msg)
+        candidate_sha = _git(worktree, "rev-parse", "HEAD").stdout.strip()
+        candidate_tree = _git(worktree, "rev-parse", "HEAD^{tree}").stdout.strip()
+        return PreparedMutation(worktree, candidate_sha, candidate_tree, verification_count)
+    except Exception:
+        if worktree.exists():
+            _git(repo, "worktree", "remove", "--force", str(worktree), check=False)
+        shutil.rmtree(tmp_root, ignore_errors=True)
+        raise
+
+
+def _commit_parent_and_tree(repo: Path, sha: str) -> tuple[str, str]:
+    _git(repo, "fetch", "--no-tags", "origin", sha)
+    parent = _git(repo, "rev-parse", f"{sha}^1").stdout.strip()
+    tree = _git(repo, "rev-parse", f"{sha}^{{tree}}").stdout.strip()
+    return parent, tree
+
+
+def publish_once(repo: Path, command: Command, prepared: PreparedMutation) -> tuple[str, bool]:
+    before = remote_head(repo, command.attempt_branch)
+    if before != command.base_sha:
+        try:
+            parent, tree = _commit_parent_and_tree(repo, before)
+        except RunnerError as exc:
+            raise SourceRaceError(f"attempt branch moved before publication: {before}") from exc
+        if parent == command.base_sha and tree == prepared.candidate_tree:
+            return before, True  # recovered exact prior publication; zero new push
+        raise SourceRaceError(f"attempt branch stale: {before} != {command.base_sha}")
+
+    cp = _git(
+        prepared.worktree,
+        "push",
+        f"--force-with-lease=refs/heads/{command.attempt_branch}:{command.base_sha}",
+        "origin",
+        f"{prepared.candidate_sha}:refs/heads/{command.attempt_branch}",
+        check=False,
+    )
+    after = remote_head(repo, command.attempt_branch)
+    if after != prepared.candidate_sha:
+        if cp.returncode == 0:
+            raise PublicationError(f"push acknowledged but remote head differs: {after}")
+        raise PublicationError(f"push failed and remote did not land candidate: {cp.stderr.strip()}")
+    return after, cp.returncode != 0  # nonzero + exact remote == lost ACK recovered
+
+
+def verify_remote(repo: Path, command: Command, prepared: PreparedMutation, remote_sha: str) -> None:
+    if remote_head(repo, command.attempt_branch) != remote_sha:
+        raise RemoteVerificationError("remote head changed during verification")
+    parent, tree = _commit_parent_and_tree(repo, remote_sha)
+    if parent != command.base_sha:
+        raise RemoteVerificationError("remote commit parent mismatch")
+    if tree != prepared.candidate_tree:
+        raise RemoteVerificationError("remote tree mismatch")
+
+
+def cleanup_prepared(repo: Path, prepared: PreparedMutation) -> None:
+    root = prepared.worktree.parent
+    _git(repo, "worktree", "remove", "--force", str(prepared.worktree), check=False)
+    shutil.rmtree(root, ignore_errors=True)
+
+
+def make_result(command: Command, remote_sha: str, proof_total: int, elapsed_seconds: float, *, recovered_publication: bool = False) -> dict:
+    if proof_total <= 0:
+        raise VerificationError("successful publication requires at least one changed-risk proof")
+    seed = f"{command.patch_id}|{command.replay_id}|{command.bundle_sha256}|{remote_sha}".encode()
+    run_id = "fresh-" + hashlib.sha256(seed).hexdigest()[:20]
+    result = {
+        "base_sha": command.base_sha,
+        "bundle_sha256": command.bundle_sha256,
+        "classification": "SYSGRID_VNEXT_RESULT",
+        "elapsed_seconds": round(float(elapsed_seconds), 3),
+        "failed_action": None,
+        "issue": command.issue,
+        "patch_id": command.patch_id,
+        "product_attempt": command.product_attempt,
+        "proof_passed": proof_total,
+        "proof_total": proof_total,
+        "remote_sha": remote_sha,
+        "replay_id": command.replay_id,
+        "result": "TARGETED_PASS",
+        "run_id": run_id,
+        "schema_version": WIRE_VERSION,
+        "tdre": [],
+    }
+    if recovered_publication:
+        # Keep accepted result schema unchanged. Recovery evidence belongs in surrounding prose/log, not result JSON.
+        pass
+    return result
+
+
+def render_result_comment(result: Mapping[str, object]) -> str:
+    return (
+        "## SysGrid vNext result — TARGETED_PASS\n\n"
+        f"- Patch: `{result['patch_id']}`\n"
+        f"- Proof: `{result['proof_passed']}/{result['proof_total']}`\n"
+        f"- Base: `{str(result['base_sha'])[:12]}`\n"
+        f"- Remote: `{str(result['remote_sha'])[:12]}`\n\n"
+        f"{RESULT_START}\n{json.dumps(dict(result), separators=(',', ':'), sort_keys=True)}\n{RESULT_END}"
+    )
+
+
+def render_consumed_command(original_comment_body: str, result: Mapping[str, object]) -> str:
+    obj = _extract_json(original_comment_body, COMMAND_START, COMMAND_END)
+    if obj.get("status") != "ACTIVE":
+        raise AuthorityError("only ACTIVE command may be consumed")
+    obj["status"] = "HELD"
+    obj["reason"] = (
+        f"Consumed fresh runner {result['run_id']}: TARGETED_PASS, proof "
+        f"{result['proof_passed']}/{result['proof_total']}, remote advanced to {result['remote_sha']}. "
+        "Permanently non-executable."
+    )
+    return f"{COMMAND_START}\n```json\n{json.dumps(obj, separators=(',', ':'))}\n```\n{COMMAND_END}"
+
+
+def execute_once(
+    *,
+    issue_comments: Sequence[Mapping[str, object]],
+    get_comment: Callable[[str], Mapping[str, object]],
+    get_root_comments: Callable[[str], Sequence[Mapping[str, object]]],
+    repo: Path,
+    post_result: Callable[[str], str],
+    update_command: Callable[[str, str], None],
+    verify_actions: Callable[[Path, Mapping[str, object]], int] = _verify_actions,
+) -> dict:
+    started = time.monotonic()
+    command = resolve_single_active_command(issue_comments)
+    approval = parse_approval(get_comment(command.approval_comment_id))
+    validate_command_approval(command, approval)
+    assert_replay_fresh(command, issue_comments)
+    zip_bytes = capsule_from_text_root(command, get_root_comments(command.content_locator))
+    manifest, verify = validate_capsule_authority(command, approval, zip_bytes)
+    prepared = prepare_mutation(repo, command, manifest, verify, zip_bytes, verify_actions=verify_actions)
+    try:
+        remote_sha, recovered = publish_once(repo, command, prepared)
+        verify_remote(repo, command, prepared, remote_sha)
+        result = make_result(command, remote_sha, prepared.verification_count, time.monotonic() - started, recovered_publication=recovered)
+        post_result(render_result_comment(result))
+        command_comment = get_comment(command.comment_id)
+        body = command_comment.get("body")
+        if not isinstance(body, str):
+            raise AuthorityError("command disappeared before consumption")
+        update_command(command.comment_id, render_consumed_command(body, result))
+        return result
+    finally:
+        cleanup_prepared(repo, prepared)
+
+
+
+
+def execute_text_snapshot(
+    *,
+    issue_snapshot: object,
+    repo: Path,
+    verify_actions: Callable[[Path, Mapping[str, object]], int] = _verify_actions,
+) -> tuple[dict, Command, dict]:
+    """Text-primary production transaction. Linear result/command mutation remains with the qualified host CLI helper."""
+    started = time.monotonic()
+    comments = _legacy_collect_comments(issue_snapshot)
+    command = resolve_single_active_command(comments)
+    by_id = {str(c.get("id")): c for c in comments if isinstance(c.get("id"), str)}
+    approval_comment = by_id.get(command.approval_comment_id)
+    if approval_comment is None:
+        raise AuthorityError("approved comment absent from issue snapshot")
+    approval = parse_approval(approval_comment)
+    validate_command_approval(command, approval)
+    assert_replay_fresh(command, comments)
+    zip_bytes = capsule_from_text_root(command, comments)
+    manifest, verify = validate_capsule_authority(command, approval, zip_bytes)
+    prepared = prepare_mutation(repo, command, manifest, verify, zip_bytes, verify_actions=verify_actions)
+    try:
+        remote_sha, recovered = publish_once(repo, command, prepared)
+        verify_remote(repo, command, prepared, remote_sha)
+        result = make_result(
+            command,
+            remote_sha,
+            prepared.verification_count,
+            time.monotonic() - started,
+            recovered_publication=recovered,
+        )
+        raw_command = _extract_json(str(by_id[command.comment_id]["body"]), COMMAND_START, COMMAND_END)
+        return result, command, raw_command
+    finally:
+        cleanup_prepared(repo, prepared)
+
+def _legacy_collect_comments(value: object) -> list[Mapping[str, object]]:
+    """Collect Linear comment-like mappings from the host issue snapshot without assuming its container shape."""
+    found: dict[str, Mapping[str, object]] = {}
+    seen: set[int] = set()
+
+    def walk(node: object) -> None:
+        marker = id(node)
+        if marker in seen:
+            return
+        if isinstance(node, Mapping):
+            seen.add(marker)
+            cid = node.get("id")
+            body = node.get("body")
+            if isinstance(cid, str) and isinstance(body, str):
+                found.setdefault(cid, node)
+            for child in node.values():
+                walk(child)
+        elif isinstance(node, (list, tuple)):
+            seen.add(marker)
+            for child in node:
+                walk(child)
+
+    walk(value)
+    return list(found.values())
+
+
+def _legacy_authority_from_host() -> tuple[list[Mapping[str, object]], Command, Approval]:
+    """Reuse the already-loaded production CLI's read-only Linear/config plane; never create a second credential/provider path."""
+    host = sys.modules.get("__main__")
+    if host is None:
+        raise AuthorityError("legacy CLI host unavailable")
+    required = ("load_config", "keychain_token", "issue_state")
+    for name in required:
+        if not callable(getattr(host, name, None)):
+            raise AuthorityError(f"legacy CLI host missing {name}")
+    cfg = host.load_config()
+    token = [REDACTED]
+    issue = host.issue_state(cfg, token)
+    comments = _legacy_collect_comments(issue)
+    command = resolve_single_active_command(comments)
+    by_id = {str(c.get("id")): c for c in comments if isinstance(c.get("id"), str)}
+    approval_comment = by_id.get(command.approval_comment_id)
+    if approval_comment is None:
+        raise AuthorityError("approved comment absent from host issue snapshot")
+    approval = parse_approval(approval_comment)
+    validate_command_approval(command, approval)
+    assert_replay_fresh(command, comments)
+    return comments, command, approval
+
+
+def _legacy_canonical_capsule(
+    bundle_path: Path,
+    comments: Sequence[Mapping[str, object]],
+    command: Command,
+    approval: Approval,
+) -> tuple[bytes, dict, dict]:
+    """Bind current CLI binary transport to the authoritative LINEAR_TEXT_CAPSULE root named by attachment_title."""
+    root_id = command.content_title
+    if not UUID36.fullmatch(root_id):
+        raise AuthorityError("fresh legacy bridge requires attachment_title to be the canonical text-root UUID")
+    mirror = bundle_path.read_bytes()
+    capsule_from_attachment_bytes(command, mirror)
+    logical = replace(command, content_locator=root_id)
+    canonical = capsule_from_text_root(logical, comments)
+    if canonical != mirror:
+        raise IntegrityError("binary transport mirror differs from canonical LINEAR_TEXT_CAPSULE bytes")
+    manifest, verify = validate_capsule_authority(command, approval, canonical)
+    return canonical, manifest, verify
+
+
+def redact(value: object) -> str:
+    """Legacy CLI compatibility facade: bounded credential-safe text rendering."""
+    text = str(value)
+    patterns = (
+        r"lin_api_[A-Za-z0-9_-]+",
+        r"github_pat_[A-Za-z0-9_]+",
+        r"gh[pousr]_[A-Za-z0-9]+",
+        r"Bearer\\s+[A-Za-z0-9._~+/-]+=*",
+    )
+    for pattern in patterns:
+        text = re.sub(pattern, "[REDACTED]", text, flags=re.IGNORECASE)
+    return text
+
+
+def extract_bundle(path: object, tmp: object) -> Path:
+    """Legacy CLI compatibility facade: validate the accepted v1.3 ZIP and return its exact path unchanged."""
+    del tmp
+    bundle = Path(path)
+    parse_v13_zip(bundle.read_bytes())
+    return bundle
+
+
+def _write_result_file(path: Path, result: Mapping[str, object]) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    tmp = path.with_name(path.name + ".fresh.tmp")
+    tmp.write_text(json.dumps(dict(result), separators=(",", ":"), sort_keys=True) + "\n")
+    os.replace(tmp, path)
+
+
+def execute(
+    bundle_path: object,
+    repo: object,
+    state_root: object,
+    result_file: object,
+    promotion: bool,
+    deps: object,
+    *,
+    emit: bool = False,
+) -> int:
+    """Production v1.3 CLI facade. The host remains the sole Linear result/consume writer."""
+    del repo, state_root
+    if promotion:
+        raise AuthorityError("fresh-text-1.0.0 legacy bridge does not authorize promotion")
+    started = time.monotonic()
+    comments, command, approval = _legacy_authority_from_host()
+    canonical, manifest, verify = _legacy_canonical_capsule(Path(bundle_path), comments, command, approval)
+    product_repo = Path(deps).expanduser().resolve()
+    prepared = prepare_mutation(product_repo, command, manifest, verify, canonical)
+    try:
+        remote_sha, recovered = publish_once(product_repo, command, prepared)
+        verify_remote(product_repo, command, prepared, remote_sha)
+        result = make_result(
+            command,
+            remote_sha,
+            prepared.verification_count,
+            time.monotonic() - started,
+            recovered_publication=recovered,
+        )
+        _write_result_file(Path(result_file), result)
+        if emit:
+            print_result(result)
+        return 0
+    finally:
+        cleanup_prepared(product_repo, prepared)
+
+
+def print_result(result: Mapping[str, object]) -> None:
+    """Legacy CLI compatibility facade for the bounded phone-readable result block."""
+    elapsed = float(result.get("elapsed_seconds", 0.0))
+    minutes, seconds = divmod(int(round(elapsed)), 60)
+    remote = str(result.get("remote_sha") or "UNCHANGED")
+    base = str(result.get("base_sha") or "")
+    print("=== SYSGRID RESULT ===")
+    print(f"Run: {result.get('run_id', 'unknown')}")
+    print(f"Issue: {result.get('issue', 'unknown')}")
+    print("Mode: TARGETED")
+    print(f"Base: {base[:12] if base else 'UNKNOWN'}")
+    print(f"Patch: {result.get('patch_id', 'none')}")
+    print("Apply: PASS")
+    print(f"Proof: {result.get('proof_passed', 0)}/{result.get('proof_total', 0)}")
+    print(f"Elapsed: {minutes:02d}:{seconds:02d}")
+    print(f"Remote: {remote[:12] if remote != 'UNCHANGED' else remote}")
+    print(f"Result: {result.get('result', 'RUNNER_FAIL')}")
+    print("Return: LINEAR_POSTED")
+    print("======================")
+
+def identity() -> dict:
+    source = Path(__file__).read_bytes()
+    return {
+        "classification": RUNNER_CLASSIFICATION,
+        "runner_version": RUNNER_VERSION,
+        "runner_sha256": sha256_bytes(source),
+        "wire_version": WIRE_VERSION,
+        "text_adapter_sha256": sha256_bytes((Path(__file__).parent / "linear_text_capsule.py").read_bytes()),
+        "fastpath_rollback_sha256": CURRENT_FASTPATH_SHA256,
+    }
+
+
+if __name__ == "__main__":
+    print(json.dumps(identity(), sort_keys=True))

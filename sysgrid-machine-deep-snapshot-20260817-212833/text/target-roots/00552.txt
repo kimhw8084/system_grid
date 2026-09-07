@@ -1,0 +1,115 @@
+ORIGINAL_PATH: /Users/haewonkim/.local/state/sysgrid-supervisor/runs/20260803T105811Z-80909-082000/patch.diff
+ORIGINAL_SHA256: 2431ee8fb5fc38928b74e00d588de072fd690d2c2a008d527c65f904a73ab577
+================================================================================
+diff --git a/frontend/tests/far-workflows.spec.ts b/frontend/tests/far-workflows.spec.ts
+index 4dedeb4..1744786 100644
+--- a/frontend/tests/far-workflows.spec.ts
++++ b/frontend/tests/far-workflows.spec.ts
+@@ -26,7 +26,7 @@ test.describe('FAR workflows', () => {
+ 
+     await page.goto(`/far?far=${far.id}`)
+     await expect(page.locator('[data-workspace="far"]')).toBeVisible()
+-    await expect(page).toHaveURL(new RegExp(`/far\\?id=${far.id}$`))
++    await expect(page).toHaveURL(new RegExp(`/far\\?far=${far.id}$`))
+     await expect(page.getByRole('button', { name: /Causal Forensics/i })).toBeVisible()
+     await expect(page.getByRole('heading', { name: far.title })).toBeVisible()
+ 
+@@ -53,7 +53,7 @@ test.describe('FAR workflows', () => {
+     await expect(workspace.getByRole('button', { name: /Display/i })).toBeVisible()
+     await expect(workspace.getByRole('button', { name: /Filters/i })).toBeVisible()
+     await expect(workspace.getByRole('button', { name: /Insights/i })).toBeVisible()
+-    await expect(workspace.getByTitle('Export CSV')).toBeVisible()
++    await expect(workspace.getByTitle('Export filtered FAR CSV')).toBeVisible()
+     await expect(workspace.getByTitle('Copy to Clipboard')).toBeVisible()
+     await expect(workspace.getByText(/failure vectors in scope/i)).toHaveCount(0)
+     await expect(workspace.getByText('Failure Inventory Maturity Profile')).not.toBeVisible()
+diff --git a/frontend/tests/helpers/sysgrid.ts b/frontend/tests/helpers/sysgrid.ts
+index f837445..0300b0a 100644
+--- a/frontend/tests/helpers/sysgrid.ts
++++ b/frontend/tests/helpers/sysgrid.ts
+@@ -530,14 +530,14 @@ export async function seedOperationalScenario(request: APIRequestContext) {
+     status: 'Scheduled'
+   })
+ 
+-  const far = await post(request, '/far/modes', {
++  const far = await createFarMode(request, {
+     system_name: systemName,
+     title: `PW-FAR-${nonce}`,
+     effect: 'Simulated failure mode',
+     severity: 8,
+     occurrence: 4,
+     detection: 3,
+-    affected_assets: [primary.id]
++    affected_asset_ids: [primary.id],
+   })
+ 
+   return { stamp: nonce, systemName, primary, secondary, tertiary, service, knowledge, monitoring, maintenance, far }
+diff --git a/scripts/verify-app.sh b/scripts/verify-app.sh
+index e8d74b1..c1c419c 100644
+--- a/scripts/verify-app.sh
++++ b/scripts/verify-app.sh
+@@ -37,6 +37,9 @@ PLAYWRIGHT_SPECS=(
+   tests/golden-eight-seeded-visual-matrix.spec.ts
+   tests/view-deeplink-matrix.spec.ts
+   tests/view-empty-states.spec.ts
++  tests/far-golden-workspace.spec.ts
++  tests/far-workflows.spec.ts
++  tests/resilience/far-chaos.spec.ts
+ )
+ 
+ RUNTIME_ENV_COMMAND=(
+@@ -250,6 +253,25 @@ if missing:
+     raise SystemExit(f"Missing code-managed reference options: {missing}")
+ '
+ 
++  printf '%s' "$far" | "$BACKEND_DIR/venv/bin/python" -c '
++import json
++import sys
++
++rows = json.load(sys.stdin)
++if not isinstance(rows, list) or not rows:
++    raise SystemExit("Disposable FAR fixture must contain material rows")
++for row in rows:
++    severity = row.get("severity")
++    occurrence = row.get("occurrence")
++    detection = row.get("detection")
++    rpn = row.get("rpn")
++    if any(isinstance(value, bool) or not isinstance(value, int) for value in (severity, occurrence, detection, rpn)):
++        raise SystemExit(f"FAR fixture contains non-integer scoring data: {row!r}")
++    expected = severity * occurrence * detection
++    if rpn != expected:
++        raise SystemExit(f"FAR fixture RPN mismatch for {row.get('id')}: {rpn} != {expected}")
++'
++
+   [[ "$devices" != "[]" ]] || { echo "Expected material seeded devices, observed an empty collection." >&2; exit 1; }
+   [[ "$services" != "[]" ]] || { echo "Expected material seeded services, observed an empty collection." >&2; exit 1; }
+   [[ "$external" != "[]" ]] || { echo "Expected material seeded external entities, observed an empty collection." >&2; exit 1; }
+diff --git a/seed.py b/seed.py
+index fcf9857..3c8c33d 100644
+--- a/seed.py
++++ b/seed.py
+@@ -1022,6 +1022,9 @@ async def seed_domain_data(tenant_db_url: str):
+         print(" -> FAR, RCA, and investigations")
+         far_modes = []
+         for idx in range(10):
++            severity = random.randint(5, 10)
++            occurrence = random.randint(2, 8)
++            detection = random.randint(1, 6)
+             mode = models.FarFailureMode(
+                 system_name=random.choice(systems),
+                 failure_type=random.choice(["Design", "Operational", "Dependency", "Capacity"]),
+@@ -1031,10 +1034,10 @@ async def seed_domain_data(tenant_db_url: str):
+                     "Operator login failures across the tool chain.",
+                     "Cross-site reporting degradation with stale dashboards.",
+                 ]),
+-                severity=random.randint(5, 10),
+-                occurrence=random.randint(2, 8),
+-                detection=random.randint(1, 6),
+-                rpn=random.randint(60, 320),
++                severity=severity,
++                occurrence=occurrence,
++                detection=detection,
++                rpn=severity * occurrence * detection,
+                 status=random.choice(["Analyzing", "Cause Identified", "Mitigated"]),
+                 has_incident_history=True,
+                 metadata_json={"ownerTeam": random.choice([t.name for t in teams])},

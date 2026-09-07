@@ -1,0 +1,27 @@
+ORIGINAL_PATH: /Users/haewonkim/.local/state/sysgrid-supervisor/runs/20260801T212735Z-59010-915000/patch.diff
+ORIGINAL_SHA256: 37ea14cabc8e2b90fa7bdf44cd13daa8aa5a06bb74658f912aea3a393619e2b7
+================================================================================
+diff --git a/frontend/src/components/shared/OperationalWorkspaceShells.tsx b/frontend/src/components/shared/OperationalWorkspaceShells.tsx
+--- a/frontend/src/components/shared/OperationalWorkspaceShells.tsx
++++ b/frontend/src/components/shared/OperationalWorkspaceShells.tsx
+@@ -13,7 +13,7 @@
+ 
+ export const GOLDEN_WORKSPACE_GEOMETRY_VERSION = '3'
+ export const GOLDEN_WORKSPACE_FRAME_CLASS = 'h-full min-h-0 min-w-0 w-full max-w-full box-border flex flex-col items-stretch space-y-4 overflow-hidden [&>*]:!ml-0 [&>*]:!mr-0 [&>*]:!min-w-0 [&>*]:!max-w-full [&>*]:!w-full [&>*]:self-stretch'
+-export const GOLDEN_GRID_BASE_CLASS = 'operational-grid-shell operational-grid relative box-border flex min-h-0 min-w-0 w-full max-w-full flex-1 flex-col overflow-hidden glass-panel ag-theme-alpine-dark [&_.ag-root-wrapper]:!min-w-0 [&_.ag-root-wrapper]:!w-full [&_.ag-root-wrapper]:!max-w-full [&_.ag-root]:!min-w-0 [&_.ag-root]:!w-full [&_.ag-root]:!max-w-full [&_.ag-body]:!min-w-0 [&_.ag-body]:!max-w-full [&_.ag-body-viewport]:!min-w-0 [&_.ag-body-viewport]:!max-w-full [&_.ag-center-cols-viewport]:!min-w-0 [&_.ag-center-cols-viewport]:!max-w-full [&_.ag-center-cols-container]:!min-w-full [&_.ag-center-cols-container]:!max-w-[800%] [&_.ag-center-cols-container_.ag-row]:!max-w-full'
++export const GOLDEN_GRID_BASE_CLASS = 'operational-grid-shell operational-grid relative box-border flex min-h-0 min-w-0 w-full max-w-full flex-1 flex-col overflow-hidden glass-panel ag-theme-alpine-dark [&_.ag-root-wrapper]:!min-w-0 [&_.ag-root-wrapper]:!w-full [&_.ag-root-wrapper]:!max-w-full [&_.ag-root]:!min-w-0 [&_.ag-root]:!w-full [&_.ag-root]:!max-w-full [&_.ag-body]:!min-w-0 [&_.ag-body]:!max-w-full [&_.ag-body-viewport]:!min-w-0 [&_.ag-body-viewport]:!max-w-full [&_.ag-center-cols-viewport]:!min-w-0 [&_.ag-center-cols-viewport]:!max-w-full [&_.ag-center-cols-container]:!min-w-full [&_.ag-center-cols-container]:!max-w-[400%] [&_.ag-center-cols-container_.ag-row]:!max-w-full'
+ export const GOLDEN_GRID_VARIANT_CLASS = {
+   golden: 'rounded-lg',
+   'attached-panel': 'rounded-t-none border-x border-b border-white/5',
+diff --git a/frontend/src/components/shared/GoldenWorkspaceGeometryContract.test.ts b/frontend/src/components/shared/GoldenWorkspaceGeometryContract.test.ts
+--- a/frontend/src/components/shared/GoldenWorkspaceGeometryContract.test.ts
++++ b/frontend/src/components/shared/GoldenWorkspaceGeometryContract.test.ts
+@@ -28,7 +28,7 @@
+     expect(shell).toContain("GOLDEN_GRID_CONTENT_CLASS = 'relative box-border flex min-h-0 min-w-0 w-full max-w-full flex-1 overflow-hidden")
+     expect(shell).toContain('data-golden-grid-content="true"')
+     expect(shell).toContain('[&_.ag-center-cols-container]:!min-w-full')
+-    expect(shell).toContain('[&_.ag-center-cols-container]:!max-w-[800%]')
++    expect(shell).toContain('[&_.ag-center-cols-container]:!max-w-[400%]')
+     expect(shell).toContain('[&_.ag-center-cols-container_.ag-row]:!max-w-full')
+     expect(shell).not.toContain('[&_.ag-center-cols-container]:!w-full')
+     expect(shell).toContain('[&>*]:!w-full')

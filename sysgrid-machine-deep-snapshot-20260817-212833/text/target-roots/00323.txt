@@ -1,0 +1,39 @@
+ORIGINAL_PATH: /Users/haewonkim/.local/share/sysgrid-campaign-platform/v1.0.0/README.md
+ORIGINAL_SHA256: 38d9b2057db62d750c9e884f5f327bd4edf07abb3ed3455e8c2c2ae462a3f435
+================================================================================
+# SysGrid Campaign Platform v1.0.0
+
+This platform implements the approved Evidence-Closed Change Campaign workflow.
+
+## Installed components
+
+- Stable Engine v1.1.0: canonical per-file state identity, aggregate independent recipe execution, complete safe source authority, campaign metadata evidence.
+- Supervisor v2.2.0: shared state identity and exact engine qualification.
+- Campaign Controller v1.0.0: 64+ adaptive-question gate, questionnaire closure, Approval Lock, 14-category risk closure, test mapping, visual evidence declaration, Improvement Ledger validation.
+- `sg` dispatcher: one-command campaign execution while preserving run/status/watch operations.
+
+## Install
+
+Save this ZIP to `iCloud Drive/SysGrid-Control/Platform`, extract it, then run `INSTALL_AND_QUALIFY.command` from Termius using the command supplied by ChatGPT.
+
+## Recurring workflow
+
+1. User gives direction.
+2. ChatGPT refreshes Linear and current source authority.
+3. ChatGPT generates at least 64 low-level questions and expands until zero ambiguity.
+4. User approves or modifies answers.
+5. ChatGPT emits one manifest-covered campaign `.sgcap`.
+6. User saves it to `iCloud Drive/SysGrid-Control/Campaign-Inbox`.
+7. User runs `sg campaign`.
+8. Controller validates approval artifacts and installs the sole qualified Inbox capsule.
+9. Supervisor and engine shadow-check and execute trusted recipes.
+10. Outbox contains one complete review ZIP with source authority, test results, visual/programmatic evidence, warnings, failures, and next-campaign seed.
+
+Installation never edits product source or Git state.
+
+After installation, the installer always writes machine-local activation evidence to the iCloud Outbox:
+
+- Success: `UPLOAD_THIS_TO_CHATGPT_PLATFORM_ACTIVATION.zip`
+- Failure: `UPLOAD_DIAGNOSTIC_TO_CHATGPT_PLATFORM_ACTIVATION.zip`
+
+Upload that evidence package to ChatGPT before Product Attempt 12 or any new product campaign is resumed.

@@ -1,0 +1,13 @@
+ORIGINAL_PATH: /Users/haewonkim/.local/share/sysgrid-campaign-platform/v1.1.1/tests/test_continuity_handoff.py
+ORIGINAL_SHA256: 0e636fa8e579493e0d34d2d1914516098fcaf019f533d0e26509f78a34fb6c22
+================================================================================
+import hashlib, json, tempfile, unittest, sys
+from pathlib import Path
+sys.path.insert(0,str(Path(__file__).resolve().parents[1]/"payload"))
+from sysgrid_runner import HANDOFF_METADATA_FILES
+
+class HandoffTests(unittest.TestCase):
+    def test_expected_handoff_set(self):
+        self.assertEqual(set(HANDOFF_METADATA_FILES), {"CHAT_HANDOFF.json","LAW_IDENTITY.json","LINEAR_STATE_EXPECTATION.json","PLATFORM_IDENTITY.json","SOURCE_IDENTITY.json","ACTIVE_ARTIFACT_IDENTITY.json","CURRENT_GATE.json","NEXT_PERMITTED_ACTION.json"})
+
+if __name__=="__main__": unittest.main()

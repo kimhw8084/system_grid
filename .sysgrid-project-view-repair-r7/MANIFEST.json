@@ -1,0 +1,46 @@
+{
+  "diagnostic_sweep": [
+    "Slice H",
+    "Slice G",
+    "Slice F",
+    "Slice E",
+    "Slice D",
+    "Slice C",
+    "Scheduling",
+    "Navigation",
+    "Readability"
+  ],
+  "files": {
+    "README.md": {
+      "bytes": 1905,
+      "sha256": "4f09543b2cb075743776fb93dcf0b69462a232b68424b640c061ed6c19247c9c"
+    },
+    "evidence/failure-signature.json": {
+      "bytes": 796,
+      "sha256": "9d5b4fbde735d3a8d113c8d2f867506b5057a43c52d1706bce8568d1d69d9956"
+    },
+    "repair_and_prove.py": {
+      "bytes": 48101,
+      "sha256": "2761d0c1cf0ed5ef5fde0a8adb8d39615fbdc50a29c2ee714fce2e49b98775fe"
+    },
+    "run_from_repo.sh": {
+      "bytes": 123,
+      "sha256": "fb0ab5ebece8443e95c123732e11cb41e5f3c2197274800177aba007e19356b3"
+    }
+  },
+  "objective": "Approved Project View Perfection",
+  "parent_result_sha256": "d0807b48453bc4f88872547bab9a736ec3e7d0a5391b0d34a6314d2bbca862db",
+  "product_change": "Retain the 40px Gantt toolbar correction and schedule dialog portal; edge-anchor the narrow schedule drawer to the usable viewport and directly name portaled scenario/baseline controls.",
+  "proof_before_apply": true,
+  "repair_iteration": 7,
+  "repair_paths": [
+    "frontend/tests/projects-out40-slice-h-gantt-modernization.spec.ts",
+    "frontend/tests/projects-out40-slice-g-accessible-name-audit.spec.ts",
+    "frontend/tests/projects-out40-slice-e-timeline-dependency-a11y.spec.ts",
+    "frontend/tests/projects-navigation.spec.ts",
+    "frontend/src/components/ProjectsVisualRepair.css",
+    "frontend/src/components/ProjectsSchedulingCompletion.tsx"
+  ],
+  "same_semantics": true,
+  "schema": "SYSGRID_PROJECT_VIEW_REPAIR_EXECUTOR_V1"
+}

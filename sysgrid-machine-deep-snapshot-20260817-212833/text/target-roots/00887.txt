@@ -1,0 +1,25 @@
+ORIGINAL_PATH: /Users/haewonkim/.local/state/sysgrid-supervisor/runs/20260801T004209Z-36288-524000/diagnostic/SUPERVISOR_STATE.json
+ORIGINAL_SHA256: 017db1861ba27b3cc2bc20f9b91f4d2a78e82adc99c67102504cd78f79a15906
+================================================================================
+{
+  "classification": "CAPSULE_SCHEMA_FAILURE",
+  "exit_code": 65,
+  "message": "patch must be an object for mutation/resume",
+  "pid": 36288,
+  "resource_plan": {
+    "cpu_count": 12,
+    "memory_bytes": 19327352832,
+    "preflight_workers": 24,
+    "recommended_test_workers": 12
+  },
+  "run_id": "20260801T004209Z-36288-524000",
+  "safe_cleanup": {
+    "inspected": 0,
+    "removed": 0
+  },
+  "safe_retry_count": 0,
+  "stage": "capsule-selection",
+  "started_utc": "2026-08-01T00:42:09Z",
+  "state": "FAILED_NO_ARTIFACT",
+  "work_dir": "/Users/haewonkim/.local/state/sysgrid-supervisor/runs/20260801T004209Z-36288-524000"
+}

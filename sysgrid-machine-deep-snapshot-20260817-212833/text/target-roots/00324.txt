@@ -1,0 +1,123 @@
+ORIGINAL_PATH: /Users/haewonkim/.local/share/sysgrid-campaign-platform/v1.0.0/RELEASE_DESCRIPTOR.json
+ORIGINAL_SHA256: eee468d354c283922a6782db3f0f1d4a06da73d088a7ed4faff05fcba4b573d8
+================================================================================
+{
+  "engine": {
+    "sha256": "490b3e9f2313f3b912be1b1c77d096fdb06542acf75aa0a5a737b277118dcc0b",
+    "version": "1.1.0"
+  },
+  "notification": {
+    "heartbeat_seconds": 300,
+    "mandatory": false,
+    "max_messages_per_run": 3,
+    "postlaunch_retries": 3,
+    "prelaunch_retries": 3,
+    "presentation_mode": "summary",
+    "retry_base_seconds": 0.5,
+    "summary_progress_event": "playwright_started",
+    "telegram_heartbeats": false
+  },
+  "package": {
+    "canonical_artifact": "UPLOAD_THIS_TO_CHATGPT.zip",
+    "deterministic_timestamp": "2026-08-02T00:00:00Z",
+    "diagnostic_artifact": "UPLOAD_DIAGNOSTIC_TO_CHATGPT.zip"
+  },
+  "progress_events": [
+    {
+      "id": "recovery_reattached",
+      "phase": "platform"
+    },
+    {
+      "id": "recovery_evidence_recovered",
+      "phase": "platform"
+    },
+    {
+      "id": "recovery_retry_authorized",
+      "phase": "platform"
+    },
+    {
+      "id": "capsule_selected",
+      "phase": "platform"
+    },
+    {
+      "id": "capsule_verified",
+      "phase": "platform"
+    },
+    {
+      "id": "preflight_started",
+      "phase": "platform"
+    },
+    {
+      "id": "preflight_completed",
+      "phase": "platform"
+    },
+    {
+      "id": "engine_launch",
+      "phase": "platform"
+    },
+    {
+      "id": "engine_completed",
+      "phase": "platform"
+    },
+    {
+      "id": "evidence_verified",
+      "phase": "platform"
+    },
+    {
+      "id": "publication_started",
+      "phase": "platform"
+    },
+    {
+      "id": "publication_completed",
+      "phase": "platform"
+    },
+    {
+      "id": "static_completed",
+      "phase": "product"
+    },
+    {
+      "id": "backend_completed",
+      "phase": "product"
+    },
+    {
+      "id": "frontend_completed",
+      "phase": "product"
+    },
+    {
+      "id": "build_completed",
+      "phase": "product"
+    },
+    {
+      "id": "playwright_started",
+      "phase": "product"
+    },
+    {
+      "id": "playwright_completed",
+      "phase": "product"
+    },
+    {
+      "id": "visual_completed",
+      "phase": "product"
+    },
+    {
+      "id": "accessibility_completed",
+      "phase": "product"
+    },
+    {
+      "id": "performance_completed",
+      "phase": "product"
+    }
+  ],
+  "resource_policy": {
+    "backend_worker_cap": 8,
+    "e2e_worker_cap": 4,
+    "frontend_worker_cap": 8,
+    "memory_per_backend_worker_bytes": 1073741824,
+    "memory_per_e2e_worker_bytes": 2147483648,
+    "memory_per_frontend_worker_bytes": 1073741824,
+    "preflight_worker_cap": 32,
+    "reserve_memory_bytes": 2147483648
+  },
+  "schema_version": "2.1",
+  "supervisor_version": "2.2.0"
+}

@@ -1,0 +1,54 @@
+ORIGINAL_PATH: /Users/haewonkim/.local/state/sysgrid-supervisor/runs/20260804T205644Z-43588-017000/patch.diff
+ORIGINAL_SHA256: 2872c93cbc896e50e93b9caacdc6dfa6c84f7e2f888ea7ebe15485253c4e24b6
+================================================================================
+diff --git a/frontend/src/components/FAR.tsx b/frontend/src/components/FAR.tsx
+index 8af3597..819f61b 100644
+--- a/frontend/src/components/FAR.tsx
++++ b/frontend/src/components/FAR.tsx
+@@ -1029,15 +1029,23 @@ export default function FAR() {
+   useEffect(() => {
+     if (workspaceMode === 'failure_modes') return
+     let cancelled = false
++    let frame = 0
++    let attempts = 0
+     const revealAnalyticalFocus = () => {
+       if (cancelled) return
+       const api = gridRef.current?.api
+-      if (!api?.ensureColumnVisible) return
+-      api.ensureColumnVisible('analytical_focus', 'end')
+-      api.refreshHeader?.()
++      const gridColumns = api?.getAllGridColumns?.()
++      const analyticalColumnReady = !Array.isArray(gridColumns)
++        || gridColumns.some((column: any) => column?.getColId?.() === 'analytical_focus')
++      if (api?.ensureColumnVisible && analyticalColumnReady) {
++        api.ensureColumnVisible('analytical_focus', 'end')
++        api.refreshHeader?.()
++      }
++      attempts += 1
++      if (attempts < 36) frame = window.requestAnimationFrame(revealAnalyticalFocus)
+     }
+-    const frame = window.requestAnimationFrame(() => window.requestAnimationFrame(revealAnalyticalFocus))
+-    const fallback = window.setTimeout(revealAnalyticalFocus, 120)
++    frame = window.requestAnimationFrame(revealAnalyticalFocus)
++    const fallback = window.setTimeout(revealAnalyticalFocus, 650)
+     return () => {
+       cancelled = true
+       window.cancelAnimationFrame(frame)
+diff --git a/frontend/tests/far-golden-workspace.spec.ts b/frontend/tests/far-golden-workspace.spec.ts
+index da9e5de..768962b 100644
+--- a/frontend/tests/far-golden-workspace.spec.ts
++++ b/frontend/tests/far-golden-workspace.spec.ts
+@@ -54,6 +54,13 @@ async function collectReachableHeaders(page: any, grid: any, required: string[])
+       if (findMissingHeaders([...headers], required).length === 0 && Math.max(...observedScrollPositions) >= metrics.maxScrollLeft - 2) break
+       await page.keyboard.press('ArrowRight')
+     }
++    if (Math.max(...observedScrollPositions) < metrics.maxScrollLeft - 2) {
++      await page.keyboard.press('End')
++      await expect.poll(async () => Math.round(await centerViewport.evaluate((element: HTMLElement) => element.scrollLeft))).toBeGreaterThanOrEqual(metrics.maxScrollLeft - 2)
++      await page.evaluate(() => new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve()))))
++      await collectInstantiatedHeaders()
++      observedScrollPositions.push(await centerViewport.evaluate((element: HTMLElement) => element.scrollLeft))
++    }
+     expect(Math.max(...observedScrollPositions)).toBeGreaterThanOrEqual(metrics.maxScrollLeft - 2)
+     await page.keyboard.press('Home')
+     await expect.poll(async () => Math.round(await centerViewport.evaluate((element: HTMLElement) => element.scrollLeft))).toBeLessThanOrEqual(2)

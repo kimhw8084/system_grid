@@ -1,0 +1,11 @@
+ORIGINAL_PATH: /Users/haewonkim/.local/state/sysgrid-supervisor/runs/20260803T210459Z-89376-290000/diagnostic/REVIEW_ME_FIRST.md
+ORIGINAL_SHA256: 0ac3f7f38f101d702f607f1c7488000339e588f210f00d295829f0c9ee22336d
+================================================================================
+# SysGrid Supervisor Diagnostic
+
+- Result: failure
+- Classification: SUPERVISOR_INTERNAL_FAILURE
+- Message: [Errno 5] Input/output error
+- Product mutation authority: none added by this diagnostic
+
+Review RESULT.json, SUPERVISOR_STATE.json, TRACEBACK.txt, and MANIFEST.sha256.

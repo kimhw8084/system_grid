@@ -17,7 +17,7 @@ from starlette.middleware.trustedhost import TrustedHostMiddleware
 from .api import (
     audit, dashboard, data_flows, devices, far, import_engine, intelligence,
     investigations, knowledge, logical_services, maintenance, monitoring, networks,
-    projects, racks, rca, security, settings as settings_api, sites, tenants, workspaces,
+    projects, pv1, racks, rca, security, settings as settings_api, sites, tenants, workspaces,
     troubleshoot, vendors,
 )
 from .api.error_utils import standardize_validation_errors
@@ -25,6 +25,7 @@ from .api.import_engine import ROUND_TRIP_EXPOSE_HEADER_NAMES, ROUND_TRIP_EXPOSE
 from .core.config import settings
 from .database import config_engine, default_engine
 from .runtime_diagnostics import build_readiness_payload
+from .pv1 import models as pv1_models  # noqa: F401 - register PV1 tables with Base.metadata
 
 logging.basicConfig(
     level=os.getenv("LOG_LEVEL", "INFO").upper(),
@@ -188,6 +189,8 @@ for router in (
     projects.router, vendors.router, knowledge.router, workspaces.router,
 ):
     app.include_router(router, prefix=settings.API_V1_STR)
+
+app.include_router(pv1.router, prefix="/api/v2")
 
 
 @app.get(f"{settings.API_V1_STR}/health")

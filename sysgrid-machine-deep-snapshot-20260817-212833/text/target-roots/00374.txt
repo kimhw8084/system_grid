@@ -1,0 +1,27 @@
+ORIGINAL_PATH: /Users/haewonkim/.local/share/sysgrid-campaign-platform/v1.1.1/payload/sysgrid_relay_daemon.py
+ORIGINAL_SHA256: b5eee6dd271e0275cff4eb152ced9bbea016a4739b8d5260583d1a47df4c5718
+================================================================================
+#!/usr/bin/env python3
+from __future__ import annotations
+
+import subprocess
+import sys
+from pathlib import Path
+
+from sysgrid_relay_common import dispatch_lock, relay_paths
+
+
+def main() -> int:
+    paths = relay_paths()
+    with dispatch_lock(blocking=False) as acquired:
+        if not acquired:
+            return 0
+        watcher = paths["watcher"]
+        config = paths["config"]
+        if not watcher.is_file() or not config.is_file():
+            return 0
+        return subprocess.run([sys.executable, str(watcher), str(config)]).returncode
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

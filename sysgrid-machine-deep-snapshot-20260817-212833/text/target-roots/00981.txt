@@ -1,0 +1,13 @@
+ORIGINAL_PATH: /Users/haewonkim/.local/state/sysgrid-supervisor/runs/20260804T214512Z-86863-442000/launch.json
+ORIGINAL_SHA256: 10d81cf69bc1109299e7d73f3b36c344c178e4bd581f5becfe85f9c23b77d4f2
+================================================================================
+{
+  "capsule_path": "/Users/haewonkim/.local/state/sysgrid-supervisor/runs/20260804T214512Z-86863-442000/input/SYSGRID_OUT31_PA14_PS2_FAR_INTEGRITY_AND_GOLDEN_INTERACTION_PRODUCT_SOURCE_CORRECTION_v1.0.1.sgcap",
+  "capsule_sha256": "27ce833047f44eb73de325ee19bf6049570e733b991863498000ce3b262dfdfb",
+  "command_sha256": "ee16f613dbe9492d1928ce463335707e13d826b179e24ea85558fafd5e71a285",
+  "engine_path": "/Users/haewonkim/.local/share/sysgrid-runner/engine-v1.1.1/sysgrid_runner.py",
+  "engine_sha256": "66b082fec1e9f6c49152e5ecb4cbb3f998e60ce27d53a2325e5f658634a8d032",
+  "launched_utc": "2026-08-04T21:45:14Z",
+  "repo": "/Users/haewonkim/home/development/sysgrid",
+  "run_id": "20260804T214512Z-86863-442000"
+}

@@ -1,0 +1,339 @@
+CACHE=/Users/haewonkim/Library/Caches/SysGrid
+
+================================================================
+WORKTREE: /Users/haewonkim/Library/Caches/SysGrid/operator-01610fcf6833
+01610fcf68333b0b990d3fba095a49bcbd203267
+## HEAD (no branch)
+?? frontend/node_modules
+lrwxr-xr-x  1 haewonkim  staff  83 Aug 14 10:24 /Users/haewonkim/Library/Caches/SysGrid/operator-01610fcf6833/frontend/node_modules -> /Users/haewonkim/Library/Caches/SysGrid/operator-2efc2de5325b/frontend/node_modules
+node_modules -> /Users/haewonkim/Library/Caches/SysGrid/operator-2efc2de5325b/frontend/node_modules
+59fbf36f4d69f85a706828b135c932229a5e35db9d81b4b64c8033781a73bb59  /Users/haewonkim/Library/Caches/SysGrid/operator-01610fcf6833/frontend/package-lock.json
+
+--- frontend-vite.log tail ---
+
+> system-grid-frontend@1.2.4 dev
+> vite --host --host 127.0.0.1 --port 5173
+
+Re-optimizing dependencies because vite config has changed
+
+  VITE v5.4.21  ready in 1039 ms
+
+  ➜  Local:   http://127.0.0.1:5173/
+
+================================================================
+WORKTREE: /Users/haewonkim/Library/Caches/SysGrid/operator-1617e422c88f
+1617e422c88f933e2b4189550ca76dd80dfb7369
+## HEAD (no branch)
+?? frontend/node_modules
+lrwxr-xr-x  1 haewonkim  staff  83 Aug 15 16:57 /Users/haewonkim/Library/Caches/SysGrid/operator-1617e422c88f/frontend/node_modules -> /Users/haewonkim/Library/Caches/SysGrid/operator-01610fcf6833/frontend/node_modules
+node_modules -> /Users/haewonkim/Library/Caches/SysGrid/operator-01610fcf6833/frontend/node_modules
+59fbf36f4d69f85a706828b135c932229a5e35db9d81b4b64c8033781a73bb59  /Users/haewonkim/Library/Caches/SysGrid/operator-1617e422c88f/frontend/package-lock.json
+
+--- frontend-vite.log tail ---
+
+> system-grid-frontend@1.2.4 dev
+> vite --host --host 127.0.0.1 --port 5173
+
+Re-optimizing dependencies because vite config has changed
+
+  VITE v5.4.21  ready in 316 ms
+
+  ➜  Local:   http://127.0.0.1:5173/
+
+================================================================
+WORKTREE: /Users/haewonkim/Library/Caches/SysGrid/operator-2c2343786aab
+2c2343786aabddd9365832acc6328f18b10a747d
+## HEAD (no branch)
+?? frontend/node_modules
+lrwxr-xr-x  1 haewonkim  staff  83 Aug 15 13:10 /Users/haewonkim/Library/Caches/SysGrid/operator-2c2343786aab/frontend/node_modules -> /Users/haewonkim/Library/Caches/SysGrid/operator-01610fcf6833/frontend/node_modules
+node_modules -> /Users/haewonkim/Library/Caches/SysGrid/operator-01610fcf6833/frontend/node_modules
+59fbf36f4d69f85a706828b135c932229a5e35db9d81b4b64c8033781a73bb59  /Users/haewonkim/Library/Caches/SysGrid/operator-2c2343786aab/frontend/package-lock.json
+
+--- frontend-vite.log tail ---
+
+> system-grid-frontend@1.2.4 dev
+> vite --host --host 127.0.0.1 --port 5173
+
+Re-optimizing dependencies because vite config has changed
+
+  VITE v5.4.21  ready in 427 ms
+
+  ➜  Local:   http://127.0.0.1:5173/
+
+================================================================
+WORKTREE: /Users/haewonkim/Library/Caches/SysGrid/operator-2efc2de5325b
+2efc2de5325ba31603dab8c29c650c06ea23f5cd
+## HEAD (no branch)
+?? frontend/node_modules
+lrwxr-xr-x  1 haewonkim  staff  83 Aug 14 05:42 /Users/haewonkim/Library/Caches/SysGrid/operator-2efc2de5325b/frontend/node_modules -> /Users/haewonkim/Library/Caches/SysGrid/operator-65695b050bb6/frontend/node_modules
+node_modules -> /Users/haewonkim/Library/Caches/SysGrid/operator-65695b050bb6/frontend/node_modules
+59fbf36f4d69f85a706828b135c932229a5e35db9d81b4b64c8033781a73bb59  /Users/haewonkim/Library/Caches/SysGrid/operator-2efc2de5325b/frontend/package-lock.json
+
+--- frontend-vite.log tail ---
+
+> system-grid-frontend@1.2.4 dev
+> vite --host --host 127.0.0.1 --port 5173
+
+Re-optimizing dependencies because vite config has changed
+
+  VITE v5.4.21  ready in 575 ms
+
+  ➜  Local:   http://127.0.0.1:5173/
+
+================================================================
+WORKTREE: /Users/haewonkim/Library/Caches/SysGrid/operator-2f9fee7a4d23
+2f9fee7a4d23ff35241ea81827c34499daa096f1
+## HEAD (no branch)
+?? frontend/node_modules
+lrwxr-xr-x  1 haewonkim  staff  83 Aug 16 18:32 /Users/haewonkim/Library/Caches/SysGrid/operator-2f9fee7a4d23/frontend/node_modules -> /Users/haewonkim/Library/Caches/SysGrid/operator-01610fcf6833/frontend/node_modules
+node_modules -> /Users/haewonkim/Library/Caches/SysGrid/operator-01610fcf6833/frontend/node_modules
+59fbf36f4d69f85a706828b135c932229a5e35db9d81b4b64c8033781a73bb59  /Users/haewonkim/Library/Caches/SysGrid/operator-2f9fee7a4d23/frontend/package-lock.json
+
+--- frontend-vite.log tail ---
+
+> system-grid-frontend@1.2.4 dev
+> vite --host --host 127.0.0.1 --port 5173
+
+Re-optimizing dependencies because vite config has changed
+
+  VITE v5.4.21  ready in 844 ms
+
+  ➜  Local:   http://127.0.0.1:5173/
+
+================================================================
+WORKTREE: /Users/haewonkim/Library/Caches/SysGrid/operator-4af648f963a9
+4af648f963a973d6d8e78fde9c372fecc7f33efa
+## HEAD (no branch)
+?? frontend/node_modules
+lrwxr-xr-x  1 haewonkim  staff  83 Aug 14 10:05 /Users/haewonkim/Library/Caches/SysGrid/operator-4af648f963a9/frontend/node_modules -> /Users/haewonkim/Library/Caches/SysGrid/operator-2efc2de5325b/frontend/node_modules
+node_modules -> /Users/haewonkim/Library/Caches/SysGrid/operator-2efc2de5325b/frontend/node_modules
+59fbf36f4d69f85a706828b135c932229a5e35db9d81b4b64c8033781a73bb59  /Users/haewonkim/Library/Caches/SysGrid/operator-4af648f963a9/frontend/package-lock.json
+
+--- frontend-vite.log tail ---
+
+> system-grid-frontend@1.2.4 dev
+> vite --host --host 127.0.0.1 --port 5173
+
+Re-optimizing dependencies because vite config has changed
+
+  VITE v5.4.21  ready in 790 ms
+
+  ➜  Local:   http://127.0.0.1:5173/
+
+================================================================
+WORKTREE: /Users/haewonkim/Library/Caches/SysGrid/operator-65695b050bb6
+65695b050bb6b91ec76cc7ef5da8a43b956e290f
+## HEAD (no branch)
+?? frontend/node_modules
+lrwxr-xr-x  1 haewonkim  staff  83 Aug 13 22:04 /Users/haewonkim/Library/Caches/SysGrid/operator-65695b050bb6/frontend/node_modules -> /Users/haewonkim/Library/Caches/SysGrid/operator-7c4808a17758/frontend/node_modules
+node_modules -> /Users/haewonkim/Library/Caches/SysGrid/operator-7c4808a17758/frontend/node_modules
+59fbf36f4d69f85a706828b135c932229a5e35db9d81b4b64c8033781a73bb59  /Users/haewonkim/Library/Caches/SysGrid/operator-65695b050bb6/frontend/package-lock.json
+
+--- frontend-vite.log tail ---
+
+> system-grid-frontend@1.2.4 dev
+> vite --host --host 127.0.0.1 --port 5173
+
+Re-optimizing dependencies because vite config has changed
+
+  VITE v5.4.21  ready in 5318 ms
+
+  ➜  Local:   http://127.0.0.1:5173/
+
+================================================================
+WORKTREE: /Users/haewonkim/Library/Caches/SysGrid/operator-67dad2291200
+67dad22912004c21b260e6de40200d1bf52a6fc4
+## HEAD (no branch)
+?? frontend/node_modules
+lrwxr-xr-x  1 haewonkim  staff  83 Aug 14 06:42 /Users/haewonkim/Library/Caches/SysGrid/operator-67dad2291200/frontend/node_modules -> /Users/haewonkim/Library/Caches/SysGrid/operator-2efc2de5325b/frontend/node_modules
+node_modules -> /Users/haewonkim/Library/Caches/SysGrid/operator-2efc2de5325b/frontend/node_modules
+59fbf36f4d69f85a706828b135c932229a5e35db9d81b4b64c8033781a73bb59  /Users/haewonkim/Library/Caches/SysGrid/operator-67dad2291200/frontend/package-lock.json
+
+--- frontend-vite.log tail ---
+
+> system-grid-frontend@1.2.4 dev
+> vite --host --host 127.0.0.1 --port 5173
+
+Re-optimizing dependencies because vite config has changed
+
+  VITE v5.4.21  ready in 420 ms
+
+  ➜  Local:   http://127.0.0.1:5173/
+
+================================================================
+WORKTREE: /Users/haewonkim/Library/Caches/SysGrid/operator-7c4808a17758
+7c4808a17758874682c653b76ef982646b2e40fc
+## HEAD (no branch)
+?? frontend/node_modules
+lrwxr-xr-x  1 haewonkim  staff  83 Aug 13 18:27 /Users/haewonkim/Library/Caches/SysGrid/operator-7c4808a17758/frontend/node_modules -> /Users/haewonkim/Library/Caches/SysGrid/operator-fddee7b80843/frontend/node_modules
+node_modules -> /Users/haewonkim/Library/Caches/SysGrid/operator-fddee7b80843/frontend/node_modules
+59fbf36f4d69f85a706828b135c932229a5e35db9d81b4b64c8033781a73bb59  /Users/haewonkim/Library/Caches/SysGrid/operator-7c4808a17758/frontend/package-lock.json
+
+--- frontend-vite.log tail ---
+
+> system-grid-frontend@1.2.4 dev
+> vite --host --host 127.0.0.1 --port 5173
+
+Re-optimizing dependencies because vite config has changed
+
+  VITE v5.4.21  ready in 747 ms
+
+  ➜  Local:   http://127.0.0.1:5173/
+
+================================================================
+WORKTREE: /Users/haewonkim/Library/Caches/SysGrid/operator-8a65d0a5a09a
+8a65d0a5a09a65fef09a1a88f019cdc393a1f684
+## HEAD (no branch)
+?? frontend/node_modules
+lrwxr-xr-x  1 haewonkim  staff  83 Aug 13 22:47 /Users/haewonkim/Library/Caches/SysGrid/operator-8a65d0a5a09a/frontend/node_modules -> /Users/haewonkim/Library/Caches/SysGrid/operator-65695b050bb6/frontend/node_modules
+node_modules -> /Users/haewonkim/Library/Caches/SysGrid/operator-65695b050bb6/frontend/node_modules
+59fbf36f4d69f85a706828b135c932229a5e35db9d81b4b64c8033781a73bb59  /Users/haewonkim/Library/Caches/SysGrid/operator-8a65d0a5a09a/frontend/package-lock.json
+
+--- frontend-vite.log tail ---
+
+> system-grid-frontend@1.2.4 dev
+> vite --host --host 127.0.0.1 --port 5173
+
+Re-optimizing dependencies because vite config has changed
+
+  VITE v5.4.21  ready in 515 ms
+
+  ➜  Local:   http://127.0.0.1:5173/
+
+================================================================
+WORKTREE: /Users/haewonkim/Library/Caches/SysGrid/operator-a2158f7e40d2
+a2158f7e40d23f2985c8e828d66c730c496a6b3e
+## HEAD (no branch)
+?? frontend/node_modules
+lrwxr-xr-x  1 haewonkim  staff  83 Aug 13 20:49 /Users/haewonkim/Library/Caches/SysGrid/operator-a2158f7e40d2/frontend/node_modules -> /Users/haewonkim/Library/Caches/SysGrid/operator-7c4808a17758/frontend/node_modules
+node_modules -> /Users/haewonkim/Library/Caches/SysGrid/operator-7c4808a17758/frontend/node_modules
+59fbf36f4d69f85a706828b135c932229a5e35db9d81b4b64c8033781a73bb59  /Users/haewonkim/Library/Caches/SysGrid/operator-a2158f7e40d2/frontend/package-lock.json
+
+--- frontend-vite.log tail ---
+
+> system-grid-frontend@1.2.4 dev
+> vite --host --host 127.0.0.1 --port 5173
+
+Re-optimizing dependencies because vite config has changed
+
+  VITE v5.4.21  ready in 643 ms
+
+  ➜  Local:   http://127.0.0.1:5173/
+
+================================================================
+WORKTREE: /Users/haewonkim/Library/Caches/SysGrid/operator-bedf38ae3268
+bedf38ae32680e830fa24395cbf274f5529350fa
+## HEAD (no branch)
+?? frontend/node_modules
+lrwxr-xr-x  1 haewonkim  staff  83 Aug 13 21:10 /Users/haewonkim/Library/Caches/SysGrid/operator-bedf38ae3268/frontend/node_modules -> /Users/haewonkim/Library/Caches/SysGrid/operator-7c4808a17758/frontend/node_modules
+node_modules -> /Users/haewonkim/Library/Caches/SysGrid/operator-7c4808a17758/frontend/node_modules
+59fbf36f4d69f85a706828b135c932229a5e35db9d81b4b64c8033781a73bb59  /Users/haewonkim/Library/Caches/SysGrid/operator-bedf38ae3268/frontend/package-lock.json
+
+--- frontend-vite.log tail ---
+
+> system-grid-frontend@1.2.4 dev
+> vite --host --host 127.0.0.1 --port 5173
+
+Re-optimizing dependencies because vite config has changed
+
+  VITE v5.4.21  ready in 366 ms
+
+  ➜  Local:   http://127.0.0.1:5173/
+
+================================================================
+WORKTREE: /Users/haewonkim/Library/Caches/SysGrid/operator-ca71a1bf8b96
+ca71a1bf8b96289314302f78ca6cc26d6e101694
+## HEAD (no branch)
+?? frontend/node_modules
+lrwxr-xr-x  1 haewonkim  staff  83 Aug 14 08:03 /Users/haewonkim/Library/Caches/SysGrid/operator-ca71a1bf8b96/frontend/node_modules -> /Users/haewonkim/Library/Caches/SysGrid/operator-2efc2de5325b/frontend/node_modules
+node_modules -> /Users/haewonkim/Library/Caches/SysGrid/operator-2efc2de5325b/frontend/node_modules
+59fbf36f4d69f85a706828b135c932229a5e35db9d81b4b64c8033781a73bb59  /Users/haewonkim/Library/Caches/SysGrid/operator-ca71a1bf8b96/frontend/package-lock.json
+
+--- frontend-vite.log tail ---
+
+> system-grid-frontend@1.2.4 dev
+> vite --host --host 127.0.0.1 --port 5173
+
+Re-optimizing dependencies because vite config has changed
+
+  VITE v5.4.21  ready in 677 ms
+
+  ➜  Local:   http://127.0.0.1:5173/
+
+================================================================
+WORKTREE: /Users/haewonkim/Library/Caches/SysGrid/operator-def3c74bcb8a
+def3c74bcb8aba9bcd74d8d3892b27da2dc81846
+## HEAD (no branch)
+?? frontend/node_modules
+lrwxr-xr-x  1 haewonkim  staff  83 Aug 14 10:52 /Users/haewonkim/Library/Caches/SysGrid/operator-def3c74bcb8a/frontend/node_modules -> /Users/haewonkim/Library/Caches/SysGrid/operator-01610fcf6833/frontend/node_modules
+node_modules -> /Users/haewonkim/Library/Caches/SysGrid/operator-01610fcf6833/frontend/node_modules
+59fbf36f4d69f85a706828b135c932229a5e35db9d81b4b64c8033781a73bb59  /Users/haewonkim/Library/Caches/SysGrid/operator-def3c74bcb8a/frontend/package-lock.json
+
+--- frontend-vite.log tail ---
+
+> system-grid-frontend@1.2.4 dev
+> vite --host --host 127.0.0.1 --port 5173
+
+Re-optimizing dependencies because vite config has changed
+
+  VITE v5.4.21  ready in 345 ms
+
+  ➜  Local:   http://127.0.0.1:5173/
+
+================================================================
+WORKTREE: /Users/haewonkim/Library/Caches/SysGrid/operator-f26fbc5830f7
+f26fbc5830f7630015ef82922720a5a1653a407b
+## HEAD (no branch)
+?? frontend/node_modules
+lrwxr-xr-x  1 haewonkim  staff  83 Aug 16 17:47 /Users/haewonkim/Library/Caches/SysGrid/operator-f26fbc5830f7/frontend/node_modules -> /Users/haewonkim/Library/Caches/SysGrid/operator-01610fcf6833/frontend/node_modules
+node_modules -> /Users/haewonkim/Library/Caches/SysGrid/operator-01610fcf6833/frontend/node_modules
+59fbf36f4d69f85a706828b135c932229a5e35db9d81b4b64c8033781a73bb59  /Users/haewonkim/Library/Caches/SysGrid/operator-f26fbc5830f7/frontend/package-lock.json
+
+--- frontend-vite.log tail ---
+
+> system-grid-frontend@1.2.4 dev
+> vite --host --host 127.0.0.1 --port 5173
+
+Re-optimizing dependencies because vite config has changed
+
+  VITE v5.4.21  ready in 303 ms
+
+  ➜  Local:   http://127.0.0.1:5173/
+
+================================================================
+WORKTREE: /Users/haewonkim/Library/Caches/SysGrid/operator-f5d1f9361709
+f5d1f93617090496465cdb38dc91514b4e53c37b
+## HEAD (no branch)
+?? frontend/node_modules
+lrwxr-xr-x  1 haewonkim  staff  83 Aug 15 17:23 /Users/haewonkim/Library/Caches/SysGrid/operator-f5d1f9361709/frontend/node_modules -> /Users/haewonkim/Library/Caches/SysGrid/operator-01610fcf6833/frontend/node_modules
+node_modules -> /Users/haewonkim/Library/Caches/SysGrid/operator-01610fcf6833/frontend/node_modules
+59fbf36f4d69f85a706828b135c932229a5e35db9d81b4b64c8033781a73bb59  /Users/haewonkim/Library/Caches/SysGrid/operator-f5d1f9361709/frontend/package-lock.json
+
+--- frontend-vite.log tail ---
+
+> system-grid-frontend@1.2.4 dev
+> vite --host --host 127.0.0.1 --port 5173
+
+Re-optimizing dependencies because vite config has changed
+
+  VITE v5.4.21  ready in 327 ms
+
+  ➜  Local:   http://127.0.0.1:5173/
+
+================================================================
+WORKTREE: /Users/haewonkim/Library/Caches/SysGrid/operator-fddee7b80843
+fddee7b80843bf4736fdd4722968bef10a380987
+## HEAD (no branch)
+drwxr-xr-x  268 haewonkim  staff  8576 Aug 12 12:52 /Users/haewonkim/Library/Caches/SysGrid/operator-fddee7b80843/frontend/node_modules
+59fbf36f4d69f85a706828b135c932229a5e35db9d81b4b64c8033781a73bb59  /Users/haewonkim/Library/Caches/SysGrid/operator-fddee7b80843/frontend/package-lock.json
+
+--- frontend-vite.log tail ---
+
+> system-grid-frontend@1.2.4 dev
+> vite --host --host 127.0.0.1 --port 5173
+
+
+  VITE v5.4.21  ready in 601 ms
+
+  ➜  Local:   http://127.0.0.1:5173/
+

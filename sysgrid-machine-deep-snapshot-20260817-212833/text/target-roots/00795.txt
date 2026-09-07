@@ -1,0 +1,18 @@
+ORIGINAL_PATH: /Users/haewonkim/.local/state/sysgrid-supervisor/runs/20260731T235103Z-77359-102000/diagnostic/RESULT.json
+ORIGINAL_SHA256: ecc7d385a7b532188fbf184c78ed3888dbd761dc4f12fccc0739e0435ca5a3d4
+================================================================================
+{
+  "capsule_file": "20260731T184025Z__6503857d5ffa__OUT-31_Golden-Eight_Iteration-36-Attempt-01_Full-Matrix-Physical-Closure.sgcap",
+  "capsule_sha256": "6503857d5ffa5fcdd6d9a32afd39fd5cf4649d78748b140177b8e78b0b9a2538",
+  "classification": "PREFLIGHT_AGGREGATE_FAILURE",
+  "engine_version": "1.0.4",
+  "exit_code": 70,
+  "finished_utc": "2026-07-31T23:51:04Z",
+  "lane": "execution_platform",
+  "message": "patch: PATCH_STATE_FAILURE: mutation patch is not uniquely forward-applicable; repository: CAPSULE_STATE_FAILURE: invalid state JSON: STATE/pre_expected_dirty_paths.txt",
+  "mode": "qualification",
+  "mutation_state": "not_started",
+  "result": "failure",
+  "safe_automatic_retry_performed": 0,
+  "supervisor_version": "1.3.0"
+}

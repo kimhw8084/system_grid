@@ -1,0 +1,13 @@
+ORIGINAL_PATH: /Users/haewonkim/.local/state/sysgrid-supervisor/runs/20260802T032313Z-27523-292000/diagnostic/TRACEBACK.txt
+ORIGINAL_SHA256: ad284aa8c2ea665902f55a147f55bc39dee203af638f0e308b48ea925a024739
+================================================================================
+Traceback (most recent call last):
+  File "/Users/haewonkim/.local/share/sysgrid-supervisor/v2.1.5/payload/sysgrid_supervisor.py", line 2841, in run_supervised
+    checks = parallel_checks({
+        "engine": lambda: (lambda p: {"path": str(p), "self_test": verify_engine(p)})(discover_engine()),
+        "repository": lambda: probe_repo_and_state(repo, capsule),
+        "storage": lambda: verify_storage(control, capsule.size),
+    })
+  File "/Users/haewonkim/.local/share/sysgrid-supervisor/v2.1.5/payload/sysgrid_supervisor.py", line 2377, in parallel_checks
+    raise PreflightAggregateError("; ".join(rendered), exit_code, results, failures)
+PreflightAggregateError: repository: REPOSITORY_DIRTY_STATE_FAILURE: dirty paths mismatch missing=[] extra=['patches/FAR_DIRECT_APPLY_FULL_GOLDEN_RECOVERY/APPLY_FAR_RECOVERY.command', 'patches/FAR_DIRECT_APPLY_FULL_GOLDEN_RECOVERY/FAR_FULL_GOLDEN_RECOVERY.patch', 'patches/FAR_DIRECT_APPLY_FULL_GOLDEN_RECOVERY/README.md', 'patches/FAR_DIRECT_APPLY_FULL_GOLDEN_RECOVERY/ROLLBACK_FAR_FULL_GOLDEN_RECOVERY.patch']

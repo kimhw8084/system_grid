@@ -1,0 +1,280 @@
+ORIGINAL_PATH: /Users/haewonkim/.local/state/sysgrid-supervisor/runs/20260802T032313Z-27523-292000/SUPERVISOR_STATE.json
+ORIGINAL_SHA256: 22ef05a18c6d3bb19efca014cb401e0ca994d8aee82d7dd1bbdd3081d65e8c26
+================================================================================
+{
+  "artifact": "/Users/haewonkim/Library/Mobile Documents/com~apple~CloudDocs/SysGrid-Control/Outbox/UPLOAD_DIAGNOSTIC_TO_CHATGPT.zip",
+  "artifact_sha256": "cf67dea073890d0ac8fb41befe17f05c34e7b94e0fb3f018e753b03929c5e3c5",
+  "artifact_size": 5173,
+  "attempt": 12,
+  "capsule_cross_ledger": {
+    "changed_path_count": 10,
+    "execution_profile": "development_campaign",
+    "execution_scope": {
+      "changed_paths": [
+        "backend/app/api/workspaces.py",
+        "backend/test_workspace_views.py",
+        "frontend/src/components/FAR.tsx",
+        "frontend/src/components/MonitoringGrid.tsx",
+        "frontend/src/components/far/FARGoldenWorkspace.tsx",
+        "frontend/src/components/shared/FARResearchGoldenPresentationContract.test.ts",
+        "frontend/src/components/shared/GoldenWorkspaceGeometryContract.test.ts",
+        "frontend/src/components/shared/GoldenWorkspaceShellContract.test.ts",
+        "frontend/src/components/shared/OperationalWorkspaceShells.tsx",
+        "frontend/tests/far-golden-workspace.spec.ts"
+      ],
+      "execution_profile": "development_campaign",
+      "targeted_tests": [
+        "backend:test_workspace_views",
+        "frontend:golden-workspace-contracts",
+        "playwright:far-golden-workspace",
+        "playwright:far-workflows",
+        "playwright:monitoring-workflows",
+        "playwright:workspace-collaborative-views",
+        "playwright:shell-geometry"
+      ],
+      "targeted_views": [
+        "far",
+        "monitoring"
+      ]
+    },
+    "patch_paths": [
+      "backend/app/api/workspaces.py",
+      "backend/test_workspace_views.py",
+      "frontend/src/components/FAR.tsx",
+      "frontend/src/components/MonitoringGrid.tsx",
+      "frontend/src/components/far/FARGoldenWorkspace.tsx",
+      "frontend/src/components/shared/FARResearchGoldenPresentationContract.test.ts",
+      "frontend/src/components/shared/GoldenWorkspaceGeometryContract.test.ts",
+      "frontend/src/components/shared/GoldenWorkspaceShellContract.test.ts",
+      "frontend/src/components/shared/OperationalWorkspaceShells.tsx",
+      "frontend/tests/far-golden-workspace.spec.ts"
+    ],
+    "post_path_count": 63,
+    "pre_path_count": 61,
+    "protected_path_count": 21,
+    "recipe_ids": [
+      "full-app-gate"
+    ]
+  },
+  "capsule_file": "DOWNLOAD_Attempt_12_Superseding_Cumulative_FAR_Domain_Recovery_and_Monitoring_Hydration.sgcap",
+  "capsule_sha256": "d97a577400df89f6fbb59c492b33f7f5846a516701652aea728021ee13627bee",
+  "capsule_size": 42829,
+  "capsule_stage": "Cumulative FAR Domain Runtime Recovery and Monitoring Hydration Ownership",
+  "capsule_title": "Iteration 36 Product Attempt 12: Superseding Cumulative FAR Domain Recovery and Monitoring Hydration",
+  "classification": "PREFLIGHT_AGGREGATE_FAILURE",
+  "event_timeline": [
+    {
+      "details": {},
+      "elapsed_seconds": 0.017,
+      "event_id": "capsule_selected",
+      "message": "Selecting the one immutable capsule and converging only byte-identical Inbox duplicates.",
+      "notification": {
+        "event_id": "capsule_selected",
+        "presentation_mode": "summary",
+        "required": false,
+        "status": "local_only",
+        "updated_utc": "2026-08-02T03:23:13Z"
+      },
+      "status": "started",
+      "utc": "2026-08-02T03:23:13Z"
+    },
+    {
+      "details": {
+        "changed_path_count": 10,
+        "execution_profile": "development_campaign",
+        "execution_scope": {
+          "changed_paths": [
+            "backend/app/api/workspaces.py",
+            "backend/test_workspace_views.py",
+            "frontend/src/components/FAR.tsx",
+            "frontend/src/components/MonitoringGrid.tsx",
+            "frontend/src/components/far/FARGoldenWorkspace.tsx",
+            "frontend/src/components/shared/FARResearchGoldenPresentationContract.test.ts",
+            "frontend/src/components/shared/GoldenWorkspaceGeometryContract.test.ts",
+            "frontend/src/components/shared/GoldenWorkspaceShellContract.test.ts",
+            "frontend/src/components/shared/OperationalWorkspaceShells.tsx",
+            "frontend/tests/far-golden-workspace.spec.ts"
+          ],
+          "execution_profile": "development_campaign",
+          "targeted_tests": [
+            "backend:test_workspace_views",
+            "frontend:golden-workspace-contracts",
+            "playwright:far-golden-workspace",
+            "playwright:far-workflows",
+            "playwright:monitoring-workflows",
+            "playwright:workspace-collaborative-views",
+            "playwright:shell-geometry"
+          ],
+          "targeted_views": [
+            "far",
+            "monitoring"
+          ]
+        },
+        "patch_paths": [
+          "backend/app/api/workspaces.py",
+          "backend/test_workspace_views.py",
+          "frontend/src/components/FAR.tsx",
+          "frontend/src/components/MonitoringGrid.tsx",
+          "frontend/src/components/far/FARGoldenWorkspace.tsx",
+          "frontend/src/components/shared/FARResearchGoldenPresentationContract.test.ts",
+          "frontend/src/components/shared/GoldenWorkspaceGeometryContract.test.ts",
+          "frontend/src/components/shared/GoldenWorkspaceShellContract.test.ts",
+          "frontend/src/components/shared/OperationalWorkspaceShells.tsx",
+          "frontend/tests/far-golden-workspace.spec.ts"
+        ],
+        "post_path_count": 63,
+        "pre_path_count": 61,
+        "protected_path_count": 21,
+        "recipe_ids": [
+          "full-app-gate"
+        ]
+      },
+      "elapsed_seconds": 0.034,
+      "event_id": "capsule_verified",
+      "message": "Capsule archive, manifest, schema, patch identity, and cross-ledger contract are exact.",
+      "notification": {
+        "attempts": 1,
+        "chat_id_suffix": "1055",
+        "event_id": "run_started",
+        "first_attempt_utc": "2026-08-02T03:23:13Z",
+        "message_id": 553,
+        "payload_sha256": "015ea484dae032c1136c3da90bf9dbb8326f62df157649a2cfd9dc054af4e0e7",
+        "required": true,
+        "status": "delivered",
+        "updated_utc": "2026-08-02T03:23:14Z"
+      },
+      "status": "passed",
+      "utc": "2026-08-02T03:23:14Z"
+    },
+    {
+      "details": {},
+      "elapsed_seconds": 1.14,
+      "event_id": "preflight_started",
+      "message": "Running independent platform checks and exact repository-state proof.",
+      "notification": {
+        "event_id": "preflight_started",
+        "presentation_mode": "summary",
+        "required": false,
+        "status": "local_only",
+        "updated_utc": "2026-08-02T03:23:14Z"
+      },
+      "status": "started",
+      "utc": "2026-08-02T03:23:14Z"
+    }
+  ],
+  "exit_code": 70,
+  "issue": "OUT-31",
+  "iteration": 36,
+  "last_progress_event": "preflight_started",
+  "last_progress_message": "Running independent platform checks and exact repository-state proof.",
+  "last_progress_status": "started",
+  "last_progress_utc": "2026-08-02T03:23:14Z",
+  "message": "repository: REPOSITORY_DIRTY_STATE_FAILURE: dirty paths mismatch missing=[] extra=['patches/FAR_DIRECT_APPLY_FULL_GOLDEN_RECOVERY/APPLY_FAR_RECOVERY.command', 'patches/FAR_DIRECT_APPLY_FULL_GOLDEN_RECOVERY/FAR_FULL_GOLDEN_RECOVERY.patch', 'patches/FAR_DIRECT_APPLY_FULL_GOLDEN_RECOVERY/README.md', 'patches/FAR_DIRECT_APPLY_FULL_GOLDEN_RECOVERY/ROLLBACK_FAR_FULL_GOLDEN_RECOVERY.patch']",
+  "monotonic_started": 3917543.485869083,
+  "notification_events": {
+    "capsule_selected": {
+      "event_id": "capsule_selected",
+      "presentation_mode": "summary",
+      "required": false,
+      "status": "local_only",
+      "updated_utc": "2026-08-02T03:23:13Z"
+    },
+    "capsule_verified": {
+      "attempts": 1,
+      "chat_id_suffix": "1055",
+      "event_id": "run_started",
+      "first_attempt_utc": "2026-08-02T03:23:13Z",
+      "message_id": 553,
+      "payload_sha256": "015ea484dae032c1136c3da90bf9dbb8326f62df157649a2cfd9dc054af4e0e7",
+      "required": true,
+      "status": "delivered",
+      "updated_utc": "2026-08-02T03:23:14Z"
+    },
+    "preflight_started": {
+      "event_id": "preflight_started",
+      "presentation_mode": "summary",
+      "required": false,
+      "status": "local_only",
+      "updated_utc": "2026-08-02T03:23:14Z"
+    },
+    "run_failed": {
+      "attempts": 1,
+      "chat_id_suffix": "1055",
+      "event_id": "run_failed",
+      "first_attempt_utc": "2026-08-02T03:23:15Z",
+      "message_id": 554,
+      "payload_sha256": "f9bb79c1aee3f48654a80136d7ac828ba6bb0bf820b4660289e265a5012d2feb",
+      "required": false,
+      "status": "delivered",
+      "updated_utc": "2026-08-02T03:23:16Z"
+    }
+  },
+  "notification_policy": {
+    "delivery_semantics": "durably-deduplicated-at-least-once",
+    "engine_heartbeat_seconds": 120,
+    "max_messages_per_run": 3,
+    "presentation_mode": "summary",
+    "registered_events": 24,
+    "required_before_engine": true,
+    "telegram_heartbeats": false
+  },
+  "original_capsule": "/Users/haewonkim/Library/Mobile Documents/com~apple~CloudDocs/SysGrid-Control/Inbox/DOWNLOAD_Attempt_12_Superseding_Cumulative_FAR_Domain_Recovery_and_Monitoring_Hydration.sgcap",
+  "pid": 27523,
+  "preflight": {
+    "failures": {
+      "repository": {
+        "classification": "REPOSITORY_DIRTY_STATE_FAILURE",
+        "exit_code": 69,
+        "message": "dirty paths mismatch missing=[] extra=['patches/FAR_DIRECT_APPLY_FULL_GOLDEN_RECOVERY/APPLY_FAR_RECOVERY.command', 'patches/FAR_DIRECT_APPLY_FULL_GOLDEN_RECOVERY/FAR_FULL_GOLDEN_RECOVERY.patch', 'patches/FAR_DIRECT_APPLY_FULL_GOLDEN_RECOVERY/README.md', 'patches/FAR_DIRECT_APPLY_FULL_GOLDEN_RECOVERY/ROLLBACK_FAR_FULL_GOLDEN_RECOVERY.patch']"
+      }
+    },
+    "results": {
+      "engine": {
+        "path": "/Users/haewonkim/.local/lib/sysgrid-runner/1.0.4/sysgrid_runner.py",
+        "self_test": {
+          "engine_version": "1.0.4",
+          "result": "PASS",
+          "tests": [
+            "safe-path",
+            "manifest",
+            "corruption"
+          ]
+        }
+      },
+      "storage": {
+        "control_free": 57469214720,
+        "local_free": 57469214720,
+        "required": 536870912
+      }
+    }
+  },
+  "resource_plan": {
+    "backend_workers": 4,
+    "cpu_count": 12,
+    "e2e_workers": 2,
+    "frontend_workers": 4,
+    "memory_bytes": 19327352832,
+    "preflight_workers": 24,
+    "reserve_memory_bytes": 2147483648,
+    "test_cpu_budget": 11,
+    "usable_memory_bytes": 17179869184
+  },
+  "run_id": "20260802T032313Z-27523-292000",
+  "safe_cleanup": {
+    "inspected": 0,
+    "removed": 0
+  },
+  "safe_retry_count": 0,
+  "stage": "preflight",
+  "staged_capsule": "/Users/haewonkim/.local/state/sysgrid-supervisor/runs/20260802T032313Z-27523-292000/input/DOWNLOAD_Attempt_12_Superseding_Cumulative_FAR_Domain_Recovery_and_Monitoring_Hydration.sgcap",
+  "started_utc": "2026-08-02T03:23:13Z",
+  "state": "FAILED_REVIEW_READY",
+  "supervisor_version": "2.1.5",
+  "telegram": {
+    "chat_id_suffix": "1055",
+    "configured": true,
+    "source": "/Users/haewonkim/.config/sysgrid-supervisor/telegram.json"
+  },
+  "updated_utc": "2026-08-02T03:23:16Z",
+  "work_dir": "/Users/haewonkim/.local/state/sysgrid-supervisor/runs/20260802T032313Z-27523-292000"
+}

@@ -1,0 +1,18 @@
+ORIGINAL_PATH: /Users/haewonkim/.local/state/sysgrid-workstation/profiles/work/repository-backups/20260811T024011Z/working-tree.patch
+ORIGINAL_SHA256: 2d57da9ffaea94d03fb053e327fe7d07ad97ec81fc347a9969c52dd335c73a36
+================================================================================
+diff --git a/backend/.env.local.runtime b/backend/.env.local.runtime
+index ddf20937..5a88a858 100644
+--- a/backend/.env.local.runtime
++++ b/backend/.env.local.runtime
+@@ -10,8 +10,8 @@ PUBLIC_READONLY_ENABLED=true
+ PUBLIC_READONLY_TENANT_NAME=Local Demo
+ DEFAULT_USER_ID=haewon.kim
+ AUTO_ADMIN_USER_IDS=haewon.kim
+-USER_ID_ENV_VAR=USER_ID
++USER_ID_ENV_VAR=AccessKey
+ SOURCE_OF_TRUTH_USER_ID=haewon.kim
+-USER_ID=haewon.kim
++AccessKey=haewon.kim
+ DEFAULT_EMAIL_DOMAIN=sysgrid.local
+ PORT=8000

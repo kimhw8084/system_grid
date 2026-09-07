@@ -1,0 +1,45 @@
+{
+  "diagnostic_sweep": [
+    "Slice H",
+    "Slice G",
+    "Slice F",
+    "Slice E",
+    "Slice D",
+    "Slice C",
+    "Scheduling",
+    "Navigation",
+    "Readability"
+  ],
+  "files": {
+    "README.md": {
+      "bytes": 1433,
+      "sha256": "96bc2eecc0168bf00527d18f270a66fc3adc2187abff4f261f1aad0dfe8188dd"
+    },
+    "evidence/failure-signature.json": {
+      "bytes": 1206,
+      "sha256": "47cffd1f79bccdad536c9e38363b7cc9c94e4d184b03d941384480cf5c45c13e"
+    },
+    "repair_and_prove.py": {
+      "bytes": 41206,
+      "sha256": "7678b6fbf06b7c3a7e78dc7c43af3adbb120c7403995c790aea7d468923a4b9c"
+    },
+    "run_from_repo.sh": {
+      "bytes": 123,
+      "sha256": "fb0ab5ebece8443e95c123732e11cb41e5f3c2197274800177aba007e19356b3"
+    }
+  },
+  "objective": "Approved Project View Perfection",
+  "parent_result_sha256": "36b8303d1db392d95652e85db25833bf5bc1ca12cc1d3faef9df206d2fb49f50",
+  "product_change": "Retain Repair 3 Projects-only explicit 40px rendered Gantt toolbar action/select target",
+  "proof_before_apply": true,
+  "repair_iteration": 5,
+  "repair_paths": [
+    "frontend/tests/projects-out40-slice-h-gantt-modernization.spec.ts",
+    "frontend/tests/projects-out40-slice-g-accessible-name-audit.spec.ts",
+    "frontend/tests/projects-out40-slice-e-timeline-dependency-a11y.spec.ts",
+    "frontend/tests/projects-navigation.spec.ts",
+    "frontend/src/components/ProjectsVisualRepair.css"
+  ],
+  "same_semantics": true,
+  "schema": "SYSGRID_PROJECT_VIEW_REPAIR_EXECUTOR_V1"
+}

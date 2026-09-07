@@ -1,0 +1,394 @@
+ORIGINAL_PATH: /Users/haewonkim/.local/state/sysgrid-supervisor/runs/20260801T002845Z-21272-348000/patch.diff
+ORIGINAL_SHA256: 43481a44d541fe2a18770609cf34fd57e40c62767dfbccc4453735495eb464b1
+================================================================================
+diff --git a/frontend/src/components/shared/OperationalWorkspace.ts b/frontend/src/components/shared/OperationalWorkspace.ts
+index 61800cc..bf4e59f 100644
+--- a/frontend/src/components/shared/OperationalWorkspace.ts
++++ b/frontend/src/components/shared/OperationalWorkspace.ts
+@@ -304,14 +304,14 @@ export const OPERATIONAL_WORKSPACE_CAPABILITY_MATRIX: Record<string, Operational
+   },
+   far: {
+     entityLabel: 'Failure mode',
+-    supports: ['savedViews', 'displayControls', 'grouping', 'contextMenu', 'bulkActions', 'hoverPreviews', 'history', 'compare', 'linkedRecords', 'archiveRestore', 'stickyIdentityHeader', 'frontendValidation', 'searchableSelectors'],
++    supports: ['savedViews', 'history', 'compare', 'linkedRecords', 'archiveRestore', 'stickyIdentityHeader', 'frontendValidation', 'searchableSelectors'],
+     hasAdvancedEditor: true,
+     hasLinkedKnowledge: true,
+     hasVersioning: true,
+   },
+   research: {
+     entityLabel: 'Research vector',
+-    supports: ['savedViews', 'displayControls', 'grouping', 'contextMenu', 'bulkActions', 'hoverPreviews', 'history', 'compare', 'linkedRecords', 'archiveRestore', 'stickyIdentityHeader', 'frontendValidation', 'searchableSelectors'],
++    supports: ['savedViews', 'history', 'linkedRecords', 'archiveRestore', 'stickyIdentityHeader', 'frontendValidation', 'searchableSelectors'],
+     hasAdvancedEditor: true,
+     hasLinkedKnowledge: true,
+     hasVersioning: true,
+diff --git a/frontend/src/components/shared/OperationalWorkspaceCapabilities.test.ts b/frontend/src/components/shared/OperationalWorkspaceCapabilities.test.ts
+index 3cecef4..b8941d2 100644
+--- a/frontend/src/components/shared/OperationalWorkspaceCapabilities.test.ts
++++ b/frontend/src/components/shared/OperationalWorkspaceCapabilities.test.ts
+@@ -26,4 +26,28 @@ test.describe('Operational Workspace Capabilities', () => {
+       expect(Array.isArray(adapter.supports), `Supports is not an array for ${key}`).toBe(true)
+     }
+   })
++  test('keeps FAR and Research capability declarations truthful', () => {
++    expect(OPERATIONAL_WORKSPACE_CAPABILITY_MATRIX.far.supports).toEqual([
++      'savedViews',
++      'history',
++      'compare',
++      'linkedRecords',
++      'archiveRestore',
++      'stickyIdentityHeader',
++      'frontendValidation',
++      'searchableSelectors',
++    ])
++    expect(OPERATIONAL_WORKSPACE_CAPABILITY_MATRIX.research.supports).toEqual([
++      'savedViews',
++      'history',
++      'linkedRecords',
++      'archiveRestore',
++      'stickyIdentityHeader',
++      'frontendValidation',
++      'searchableSelectors',
++    ])
++    expect(OPERATIONAL_WORKSPACE_CAPABILITY_MATRIX.research.supports).not.toContain('bulkActions')
++    expect(OPERATIONAL_WORKSPACE_CAPABILITY_MATRIX.far.supports).not.toContain('displayControls')
++  })
++
+ })
+diff --git a/frontend/src/components/shared/OperationalWorkspaceShells.tsx b/frontend/src/components/shared/OperationalWorkspaceShells.tsx
+index 8217b97..f1e707e 100644
+--- a/frontend/src/components/shared/OperationalWorkspaceShells.tsx
++++ b/frontend/src/components/shared/OperationalWorkspaceShells.tsx
+@@ -12,8 +12,8 @@ export type GoldenWorkspaceKey = 'monitoring' | 'assets' | 'services' | 'externa
+ export type GoldenWorkspaceArchetype = 'table' | 'hybrid' | 'analytical'
+ 
+ export const GOLDEN_WORKSPACE_GEOMETRY_VERSION = '1'
+-export const GOLDEN_WORKSPACE_FRAME_CLASS = 'h-full min-h-0 flex flex-col space-y-4'
+-export const GOLDEN_GRID_BASE_CLASS = 'operational-grid-shell operational-grid flex flex-1 w-full min-h-0 flex-col glass-panel overflow-hidden ag-theme-alpine-dark relative'
++export const GOLDEN_WORKSPACE_FRAME_CLASS = 'h-full min-h-0 min-w-0 w-full flex flex-col space-y-4 overflow-hidden'
++export const GOLDEN_GRID_BASE_CLASS = 'operational-grid-shell operational-grid flex flex-1 w-full min-w-0 min-h-0 flex-col glass-panel overflow-hidden ag-theme-alpine-dark relative'
+ export const GOLDEN_GRID_VARIANT_CLASS = {
+   golden: 'rounded-lg',
+   'attached-panel': 'rounded-t-none border-x border-b border-white/5',
+@@ -129,7 +129,7 @@ export function OperationalGridSurface({
+       GOLDEN_GRID_BASE_CLASS,
+       GOLDEN_GRID_VARIANT_CLASS[variant],
+       className
+-    )} style={style} data-golden-grid-surface="true" data-golden-grid-variant={variant} data-golden-geometry-version={GOLDEN_WORKSPACE_GEOMETRY_VERSION}>
++    )} style={style} data-golden-grid-surface="true" data-testid="golden-grid-surface" data-golden-grid-variant={variant} data-golden-geometry-version={GOLDEN_WORKSPACE_GEOMETRY_VERSION}>
+       {loading ? (
+         <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-[#020617]/80 backdrop-blur-sm space-y-4">
+           {loadingIcon}
+diff --git a/frontend/src/components/shared/WorkspaceCommandBar.tsx b/frontend/src/components/shared/WorkspaceCommandBar.tsx
+index 0aedf8b..b9e3b33 100644
+--- a/frontend/src/components/shared/WorkspaceCommandBar.tsx
++++ b/frontend/src/components/shared/WorkspaceCommandBar.tsx
+@@ -2,7 +2,7 @@
+ import { AnimatePresence, motion } from 'framer-motion'
+ import { PageToolbar } from './LayoutPrimitives'
+ 
+-export const GOLDEN_COMMAND_BAR_STACK_CLASS = 'space-y-4'
++export const GOLDEN_COMMAND_BAR_STACK_CLASS = 'space-y-4 min-w-0 w-full'
+ export const GOLDEN_COMMAND_BAR_SECONDARY_CLASS = 'px-4 py-3'
+ export const GOLDEN_FILTER_CHIP_ROW_CLASS = 'flex flex-wrap items-center gap-2'
+ 
+@@ -18,7 +18,7 @@
+   filterChips?: Array<{ id: string; label: string; onRemove: () => void }>
+ }) {
+   return (
+-    <div className={GOLDEN_COMMAND_BAR_STACK_CLASS} data-golden-command-bar="true">
++    <div className={GOLDEN_COMMAND_BAR_STACK_CLASS} data-golden-command-bar="true" data-workspace-command-bar="true">
+       <PageToolbar left={left} right={right} />
+       {secondary ? <PageToolbar left={secondary} className={GOLDEN_COMMAND_BAR_SECONDARY_CLASS} /> : null}
+       <AnimatePresence>
+diff --git a/frontend/tests/golden-eight-seeded-visual-matrix.spec.ts b/frontend/tests/golden-eight-seeded-visual-matrix.spec.ts
+index 3e11025..66734f4 100644
+--- a/frontend/tests/golden-eight-seeded-visual-matrix.spec.ts
++++ b/frontend/tests/golden-eight-seeded-visual-matrix.spec.ts
+@@ -1,3 +1,4 @@
++import { writeFile } from 'node:fs/promises'
+ import { expect, type APIRequestContext } from '@playwright/test'
+ import { test } from './helpers/sysgrid-test'
+ import {
+@@ -17,64 +18,94 @@ const apiBase = testApiBase
+ 
+ async function createVendor(request: APIRequestContext, stamp: string) {
+   const response = await request.post(`${apiBase}/vendors`, {
+-    data: {
+-      name: `PW-SEED-VENDOR-${stamp}`,
+-      country: 'USA',
+-    },
++    data: { name: `PW-SEED-VENDOR-${stamp}`, country: 'USA' },
+     headers: testApiHeaders,
+   })
+   expect(response.ok()).toBeTruthy()
+   return response.json()
+ }
+ 
+-test.describe('Golden Eight deterministic populated visual matrix', () => {
+-  test('renders representative populated desktop states for every completed target view', async ({ page, sysApi: request }, testInfo) => {
+-    await resetBrowserState(page)
+-    const seeded = await seedOperationalScenario(request)
+-    const stamp = seeded.stamp
+-
+-    await createConnection(request, {
+-      device_a_id: seeded.primary.id,
+-      source_port: 'eth0',
+-      device_b_id: seeded.secondary.id,
+-      target_port: 'eth1',
+-      link_type: 'Data',
+-      speed_gbps: 10,
+-      unit: 'Gbps',
+-      status: 'Active',
+-      farm: 'Prod',
+-    })
+-
+-    await createExternalEntity(request, {
+-      name: `PW-SEED-EXTERNAL-${stamp}`,
+-      external_key: `pw-seed-external-${stamp}`.toLowerCase(),
+-      type: 'API',
+-      owner_organization: 'Seed Partner',
+-      ownership_mode: 'individual',
+-      status: 'Active',
+-      environment: 'Production',
+-      description: 'Representative populated external dependency',
+-      business_purpose: 'Golden Eight deterministic visual validation',
+-      metadata_json: { fixture: 'golden-eight-populated' },
+-    })
++async function seedGoldenEight(request: APIRequestContext) {
++  const seeded = await seedOperationalScenario(request)
++  const stamp = seeded.stamp
++  await createConnection(request, {
++    device_a_id: seeded.primary.id,
++    source_port: 'eth0',
++    device_b_id: seeded.secondary.id,
++    target_port: 'eth1',
++    link_type: 'Data',
++    speed_gbps: 10,
++    unit: 'Gbps',
++    status: 'Active',
++    farm: 'Prod',
++  })
++  await createExternalEntity(request, {
++    name: `PW-SEED-EXTERNAL-${stamp}`,
++    external_key: `pw-seed-external-${stamp}`.toLowerCase(),
++    type: 'API',
++    owner_organization: 'Seed Partner',
++    ownership_mode: 'individual',
++    status: 'Active',
++    environment: 'Production',
++    description: 'Representative populated external dependency',
++    business_purpose: 'Golden Eight deterministic visual validation',
++    metadata_json: { fixture: 'golden-eight-populated' },
++  })
++  await createInvestigation(request, {
++    title: `PW-SEED-RESEARCH-${stamp}`,
++    problem_statement: 'Representative populated research investigation',
++    category: 'Research',
++    status: 'Analyzing',
++    priority: 'High',
++    systems: [seeded.systemName],
++    initiation_at: '2037-02-03T04:05:00',
++  })
++  await createVendor(request, stamp)
++}
+ 
+-    await createInvestigation(request, {
+-      title: `PW-SEED-RESEARCH-${stamp}`,
+-      problem_statement: 'Representative populated research investigation',
+-      category: 'Research',
+-      status: 'Analyzing',
+-      priority: 'High',
+-      systems: [seeded.systemName],
+-      initiation_at: '2037-02-03T04:05:00',
++async function paintedPixelEvidence(locator: any) {
++  return locator.evaluate((element: HTMLElement) => {
++    const rect = element.getBoundingClientRect()
++    const style = getComputedStyle(element)
++    const rows = [...element.querySelectorAll<HTMLElement>('.ag-center-cols-container .ag-row')]
++      .map((row) => {
++        const box = row.getBoundingClientRect()
++        const rowStyle = getComputedStyle(row)
++        return {
++          left: box.left,
++          right: box.right,
++          top: box.top,
++          bottom: box.bottom,
++          width: box.width,
++          height: box.height,
++          opacity: Number(rowStyle.opacity || '1'),
++          visibility: rowStyle.visibility,
++          display: rowStyle.display,
++          intersectsViewport: box.bottom > rect.top && box.top < rect.bottom && box.right > rect.left && box.left < rect.right,
++        }
++      })
++    const headers = [...element.querySelectorAll<HTMLElement>('.ag-header-cell')].map((header) => {
++      const box = header.getBoundingClientRect()
++      return { width: box.width, height: box.height, intersectsViewport: box.bottom > rect.top && box.top < rect.bottom }
+     })
++    return {
++      box: { left: rect.left, right: rect.right, top: rect.top, bottom: rect.bottom, width: rect.width, height: rect.height },
++      style: { display: style.display, visibility: style.visibility, opacity: Number(style.opacity || '1'), overflowX: style.overflowX, overflowY: style.overflowY },
++      rowCount: rows.length,
++      paintedRows: rows.filter((row) => row.intersectsViewport && row.width > 1 && row.height > 1 && row.opacity > 0 && row.visibility !== 'hidden' && row.display !== 'none').length,
++      paintedHeaders: headers.filter((header) => header.intersectsViewport && header.width > 1 && header.height > 1).length,
++      rows,
++    }
++  })
++}
+ 
+-    await createVendor(request, stamp)
+-
+-    const routes = goldenWorkspaceRouteMatrix.map((route) => ({ ...route, workspace: route.key }))
+-
+-    await page.setViewportSize({ width: 1440, height: 1000 })
++test.describe.parallel('Golden Eight non-short-circuit populated validation matrix', () => {
++  for (const route of goldenWorkspaceRouteMatrix) {
++    test(`${route.key}: geometry, tenant, paint, and populated evidence`, async ({ page, sysApi: request }, testInfo) => {
++      await resetBrowserState(page)
++      await seedGoldenEight(request)
++      await page.setViewportSize({ width: 1440, height: 1000 })
+ 
+-    for (const route of routes) {
+       const routeTenantIds = new Set<string>()
+       const captureTenant = (response: any) => {
+         const url = new URL(response.url())
+@@ -83,21 +114,65 @@ test.describe('Golden Eight deterministic populated visual matrix', () => {
+         if (tenantId) routeTenantIds.add(tenantId)
+       }
+       page.on('response', captureTenant)
+-      await page.goto(route.path)
+-      await waitForAppIdle(page)
+-      await expect(page.getByTestId('active-tenant-name')).toHaveText('Playwright Gate')
+-      const workspace = page.locator(`[data-workspace="${route.workspace}"]`)
+-      await expect(workspace, `${route.key} workspace should render`).toBeVisible()
+-      await expect.poll(() => [...routeTenantIds]).toEqual([testTenantId])
+-      await expect(
+-        workspace.locator('.ag-center-cols-container .ag-row').first(),
+-        `${route.key} should render at least one representative seeded row`,
+-      ).toBeVisible()
+-      await page.screenshot({
+-        path: testInfo.outputPath(`${route.key}-populated-desktop.png`),
+-        fullPage: true,
+-      })
+-      page.off('response', captureTenant)
+-    }
+-  })
++
++      const failures: string[] = []
++      try {
++        await page.goto(route.path)
++        await waitForAppIdle(page)
++        const workspace = page.locator(`[data-workspace="${route.key}"]`)
++        const grid = workspace.getByTestId('golden-grid-surface').first()
++        const commandBar = workspace.locator('[data-workspace-command-bar="true"]').first()
++
++        const tenantName = await page.getByTestId('active-tenant-name').textContent().catch(() => null)
++        if (tenantName?.trim() !== 'Playwright Gate') failures.push(`tenant label: expected Playwright Gate, got ${tenantName}`)
++        if (JSON.stringify([...routeTenantIds]) !== JSON.stringify([testTenantId])) failures.push(`response tenants: ${JSON.stringify([...routeTenantIds])}`)
++        if (!(await workspace.isVisible().catch(() => false))) failures.push('workspace not visible')
++        if (!(await grid.isVisible().catch(() => false))) failures.push('shared grid surface not visible')
++
++        const shellBox = await workspace.boundingBox()
++        const gridBox = await grid.boundingBox()
++        const commandBox = await commandBar.boundingBox()
++        if (!shellBox || !gridBox) failures.push('missing shell/grid bounding box')
++        if (shellBox && gridBox) {
++          const leftDelta = Math.abs(gridBox.x - shellBox.x)
++          const rightDelta = Math.abs((gridBox.x + gridBox.width) - (shellBox.x + shellBox.width))
++          if (leftDelta > 2) failures.push(`grid left delta ${leftDelta}`)
++          if (rightDelta > 2) failures.push(`grid right delta ${rightDelta}`)
++        }
++        if (shellBox && commandBox) {
++          const leftDelta = Math.abs(commandBox.x - shellBox.x)
++          const rightDelta = Math.abs((commandBox.x + commandBox.width) - (shellBox.x + shellBox.width))
++          if (leftDelta > 2) failures.push(`command left delta ${leftDelta}`)
++          if (rightDelta > 2) failures.push(`command right delta ${rightDelta}`)
++        }
++
++        const paint = await paintedPixelEvidence(grid)
++        if (paint.paintedHeaders < 1) failures.push('no painted header cells in grid viewport')
++        if (paint.paintedRows < 1) failures.push('no painted rows in grid viewport')
++        if (paint.box.width < 100 || paint.box.height < 100) failures.push(`invalid grid viewport ${paint.box.width}x${paint.box.height}`)
++        if (paint.style.opacity <= 0 || paint.style.visibility === 'hidden' || paint.style.display === 'none') failures.push('grid hidden by computed style')
++
++        const result = {
++          schemaVersion: 1,
++          workspace: route.key,
++          route: route.path,
++          tenantName,
++          responseTenantIds: [...routeTenantIds],
++          shellBox,
++          commandBox,
++          gridBox,
++          paint,
++          failures,
++          status: failures.length ? 'FAIL' : 'PASS',
++        }
++        await writeFile(testInfo.outputPath(`${route.key}-matrix-result.json`), JSON.stringify(result, null, 2))
++        await testInfo.attach(`${route.key}-matrix-result`, { path: testInfo.outputPath(`${route.key}-matrix-result.json`), contentType: 'application/json' })
++        await grid.screenshot({ path: testInfo.outputPath(`${route.key}-grid-populated-desktop.png`), animations: 'disabled' })
++        await page.screenshot({ path: testInfo.outputPath(`${route.key}-populated-desktop.png`), fullPage: false, animations: 'disabled' })
++        expect(failures, JSON.stringify(result, null, 2)).toEqual([])
++      } finally {
++        page.off('response', captureTenant)
++      }
++    })
++  }
+ })
+diff --git a/scripts/verify-app.sh b/scripts/verify-app.sh
+index 067c77b..69cba6d 100755
+--- a/scripts/verify-app.sh
++++ b/scripts/verify-app.sh
+@@ -288,13 +288,51 @@ PY_RUNTIME
+ assert_populated_golden_eight_evidence() {
+   local key
+   local count
++  local matrix_count=0
+   for key in "${GOLDEN_WORKSPACE_KEYS[@]}"; do
+     count="$(find "$FRONTEND_DIR/test-results" -type f -name "${key}-populated-desktop.png" | wc -l | tr -d ' ')"
+     [[ "$count" == "1" ]] || {
+       echo "Expected exactly one populated desktop screenshot for $key, found $count." >&2
+       exit 1
+     }
++    count="$(find "$FRONTEND_DIR/test-results" -type f -name "${key}-grid-populated-desktop.png" | wc -l | tr -d ' ')"
++    [[ "$count" == "1" ]] || {
++      echo "Expected exactly one fixed-viewport grid screenshot for $key, found $count." >&2
++      exit 1
++    }
++    count="$(find "$FRONTEND_DIR/test-results" -type f -name "${key}-matrix-result.json" | wc -l | tr -d ' ')"
++    [[ "$count" == "1" ]] || {
++      echo "Expected exactly one matrix result for $key, found $count." >&2
++      exit 1
++    }
++    matrix_count=$((matrix_count + count))
+   done
++  [[ "$matrix_count" == "${#GOLDEN_WORKSPACE_KEYS[@]}" ]] || {
++    echo "Golden Eight matrix result count mismatch: $matrix_count." >&2
++    exit 1
++  }
++  "$BACKEND_DIR/venv/bin/python" - "$FRONTEND_DIR/test-results" "${GOLDEN_WORKSPACE_KEYS[@]}" <<'PY_MATRIX'
++import json
++import sys
++from pathlib import Path
++
++root = Path(sys.argv[1])
++keys = sys.argv[2:]
++records = []
++for key in keys:
++    matches = list(root.rglob(f"{key}-matrix-result.json"))
++    if len(matches) != 1:
++        raise SystemExit(f"Expected one matrix record for {key}, found {len(matches)}")
++    record = json.loads(matches[0].read_text())
++    records.append(record)
++    if record.get("workspace") != key:
++        raise SystemExit(f"Workspace mismatch for {key}: {record!r}")
++    if record.get("status") != "PASS" or record.get("failures"):
++        raise SystemExit(f"Matrix failure for {key}: {record!r}")
++if len(records) != len(keys):
++    raise SystemExit(f"Required/returned matrix mismatch: {len(keys)} != {len(records)}")
++(root / "golden-eight-complete-matrix.json").write_text(json.dumps({"schemaVersion": 1, "required": keys, "returned": [r["workspace"] for r in records], "records": records}, indent=2))
++PY_MATRIX
+ }
+ 
+ assert_canonical_playwright_suite

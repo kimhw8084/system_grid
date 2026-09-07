@@ -1,0 +1,10 @@
+ORIGINAL_PATH: /Users/haewonkim/.local/state/sysgrid-supervisor/runs/20260804T213933Z-81054-910000/diagnostic/TRACEBACK.txt
+ORIGINAL_SHA256: e0217e77da373c62e8b6e1dd3565397fee21d4353d8ad0fd26162bdabc15d222
+================================================================================
+Traceback (most recent call last):
+  File "/Users/haewonkim/.local/share/sysgrid-campaign-platform/v1.1.1/payload/sysgrid_supervisor.py", line 2828, in run_supervised
+    checks = parallel_checks({
+             ^^^^^^^^^^^^^^^^^
+  File "/Users/haewonkim/.local/share/sysgrid-campaign-platform/v1.1.1/payload/sysgrid_supervisor.py", line 2364, in parallel_checks
+    raise PreflightAggregateError("; ".join(rendered), exit_code, results, failures)
+PreflightAggregateError: repository: REPOSITORY_HASH_FAILURE: pre_hashes mismatch (2 paths): {'frontend/src/components/FAR.tsx': {'expected': '5625994900c557c4d9d195dfed265203f017945c84827fe1e93269d47c477ac3', 'actual': '24d36215c271e3f63a696e724b9fa232e04e125c4f87e5ef80c45227832be7f0'}, 'frontend/tests/far-golden-workspace.spec.ts': {'expected': '77140f3b57ec9d280e79b788b69c1423cabe7d761313782f2665866d36ba5b7a', 'actual': '1db1c984e3af53f8f1276925b29b1f2bb8543961afb8144a565df7187d7edd69'}}

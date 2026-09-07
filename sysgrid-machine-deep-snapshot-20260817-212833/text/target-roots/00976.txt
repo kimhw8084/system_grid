@@ -1,0 +1,10 @@
+ORIGINAL_PATH: /Users/haewonkim/.local/state/sysgrid-supervisor/runs/20260731T234843Z-74618-073000/diagnostic/TRACEBACK.txt
+ORIGINAL_SHA256: 2dc52874fc6894329545d94260b629db6f93be8596a6bbb747f0366c8466ae18
+================================================================================
+Traceback (most recent call last):
+  File "/Users/haewonkim/.local/share/sysgrid-supervisor/v1.3.0/payload/sysgrid_supervisor.py", line 1445, in run_supervised
+    checks = parallel_checks({
+             ^^^^^^^^^^^^^^^^^
+  File "/Users/haewonkim/.local/share/sysgrid-supervisor/v1.3.0/payload/sysgrid_supervisor.py", line 1140, in parallel_checks
+    raise PreflightAggregateError("; ".join(rendered), exit_code, results, failures)
+PreflightAggregateError: patch: PATCH_STATE_FAILURE: mutation patch is not uniquely forward-applicable; repository: CAPSULE_STATE_FAILURE: invalid state JSON: STATE/pre_expected_dirty_paths.txt

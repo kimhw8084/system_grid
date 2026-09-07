@@ -1,0 +1,953 @@
+import React, { useEffect, useMemo, useRef, useState } from 'react'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useSearchParams } from 'react-router-dom'
+import { AlertTriangle, BarChart3, CalendarDays, CheckCircle2, ChevronRight, GitBranch, Layers3, Save, SlidersHorizontal, X } from 'lucide-react'
+import toast from 'react-hot-toast'
+import ProjectsGolden from './ProjectsGolden'
+import { apiFetch } from '../api/apiClient'
+import { PROJECT_TASK_STATUSES, buildProjectTaskHierarchy, projectFingerprint, type ProjectTaskStatus } from './ProjectsGolden.model'
+import {
+  PROJECT_DEPENDENCY_TYPES,
+  analyzeProjectSchedule,
+  applyProjectScheduleScenario,
+  buildProjectCapacityView,
+  captureProjectScheduleBaselineV2,
+  compareProjectScheduleBaseline,
+  getProjectScheduleState,
+  getProjectTaskConstraint,
+  normalizeProjectTaskDependencies,
+  saveProjectScheduleScenario,
+  setProjectTaskConstraint,
+  setProjectWorkingDays,
+  setTypedProjectDependency,
+  simulateNamedProjectScenario,
+  type ProjectConstraintType,
+  type ProjectDependencyType,
+} from './ProjectsSchedulingCompletion.model'
+
+const controlStyle = { minHeight: 40, minWidth: 40 } as const
+const inputClass = 'w-full rounded-md border border-white/10 bg-[#0b1222] px-2 py-2 text-xs text-white outline-none focus:border-blue-500/40'
+const buttonClass = 'inline-flex min-h-[40px] min-w-[40px] items-center justify-center gap-1.5 rounded-md border border-white/10 bg-white/[0.04] px-2.5 py-2 text-xs font-black uppercase tracking-wider text-slate-300 hover:border-blue-500/30 hover:text-white disabled:cursor-not-allowed disabled:opacity-40'
+const primaryButtonClass = `${buttonClass} border-blue-500/30 bg-blue-500/10 text-blue-300`
+const sectionClass = 'rounded-lg border border-white/5 bg-black/25 p-3'
+const dayLabels = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
+const constraintTypes: ProjectConstraintType[] = ['ASAP', 'SNET', 'FNLT', 'MUST_START', 'MUST_FINISH']
+type BoardPendingMove = { taskId: string; taskName: string; fromStatus: ProjectTaskStatus; toStatus: ProjectTaskStatus }
+type TaskKeyboardMoveDirection = 'earlier' | 'later'
+type TaskKeyboardMovePlan = { taskId: string; direction: TaskKeyboardMoveDirection; neighborId: string; dragTaskId: string; dropTargetId: string }
+type TaskPendingMove = TaskKeyboardMovePlan & { taskName: string }
+type TimelinePendingDependency = { action: 'add' | 'remove'; sourceId: string; sourceName: string; targetId: string; targetName: string }
+
+export const syncTimelineDependencyButtonGlyph = (button: { textContent: string | null }): string => {
+  const glyph = '↗'
+  if (button.textContent !== glyph) button.textContent = glyph
+  return glyph
+}
+
+export const timelineDependencyControlLabel = (source: { id: string; name: string } | null, taskIdValue: number | string, taskName: string): string => {
+  const taskId = String(taskIdValue)
+  if (!source) return `Start dependency from ${taskName}`
+  if (source.id === taskId) return `Cancel dependency from ${taskName}`
+  return `Add dependency from ${source.name} to ${taskName}`
+}
+
+export const timelineDependencyRelationMatches = (project: any, sourceIdValue: number | string, targetIdValue: number | string, expected = true): boolean => {
+  const sourceId = String(sourceIdValue)
+  const targetId = String(targetIdValue)
+  const target = (Array.isArray(project?.tasks) ? project.tasks : []).find((task: any) => String(task?.id) === targetId)
+  if (!target) return false
+  const exists = normalizeProjectTaskDependencies(target).some((dependency) => String(dependency.id) === sourceId)
+  return expected ? exists : !exists
+}
+
+export const syncTaskKeyboardMoveButtonGlyph = (button: { textContent: string | null }, direction: TaskKeyboardMoveDirection): string => {
+  const glyph = direction === 'earlier' ? '↑' : '↓'
+  if (button.textContent !== glyph) button.textContent = glyph
+  return glyph
+}
+
+export const buildTaskKeyboardMovePlan = (project: any, taskIdValue: number | string, direction: TaskKeyboardMoveDirection): TaskKeyboardMovePlan | null => {
+  const taskId = String(taskIdValue)
+  const rows = buildProjectTaskHierarchy(project)
+  const row = rows.find((candidate: any) => String(candidate?.task?.id ?? candidate?.id ?? '') === taskId)
+  if (!row) return null
+  const sameParent = (candidate: any) => String(candidate?.parentId ?? '') === String(row?.parentId ?? '')
+  const siblings = rows.filter(sameParent)
+  const index = siblings.findIndex((candidate: any) => String(candidate?.task?.id ?? candidate?.id ?? '') === taskId)
+  if (index < 0) return null
+  if (direction === 'earlier') {
+    const previousId = String(siblings[index - 1]?.task?.id ?? siblings[index - 1]?.id ?? '')
+    return previousId ? { taskId, direction, neighborId: previousId, dragTaskId: taskId, dropTargetId: previousId } : null
+  }
+  const nextId = String(siblings[index + 1]?.task?.id ?? siblings[index + 1]?.id ?? '')
+  return nextId ? { taskId, direction, neighborId: nextId, dragTaskId: nextId, dropTargetId: taskId } : null
+}
+
+export const taskKeyboardMoveRelationMatches = (project: any, pending: Pick<TaskPendingMove, 'taskId' | 'neighborId' | 'direction'>): boolean => {
+  const list = Array.isArray(project?.tasks) ? project.tasks : []
+  const moving = list.find((task: any) => String(task?.id) === pending.taskId)
+  const neighbor = list.find((task: any) => String(task?.id) === pending.neighborId)
+  if (!moving || !neighbor) return false
+  const movingOrder = Number(moving?.order_index) || 0
+  const neighborOrder = Number(neighbor?.order_index) || 0
+  return pending.direction === 'earlier' ? movingOrder < neighborOrder : movingOrder > neighborOrder
+}
+
+
+type ProjectTaskDrawerAccessibleNameControl = {
+  getAttribute: (name: string) => string | null
+  setAttribute: (name: string, value: string) => void
+}
+
+export const syncProjectTaskDrawerAccessibleName = (control: ProjectTaskDrawerAccessibleNameControl, label: string): boolean => {
+  if (control.getAttribute('aria-label') === label) return false
+  control.setAttribute('aria-label', label)
+  return true
+}
+
+export const projectTaskDrawerChecklistLabels = (taskName: string, itemName: string) => ({
+  toggle: `Toggle checklist item ${itemName}`,
+  remove: `Remove checklist item ${itemName}`,
+  addInput: `Add checklist item for ${taskName}`,
+  addButton: `Add checklist item for ${taskName}`,
+})
+
+export const projectTaskDrawerDependencyLabel = (taskName: string, dependencyName: string | null, action: 'add' | 'remove'): string =>
+  action === 'remove' && dependencyName ? `Remove dependency ${dependencyName}` : `Add selected dependency to ${taskName}`
+
+
+const readProjects = async () => {
+  const response = await apiFetch('/api/v1/projects')
+  if (!response.ok) throw new Error(await response.text())
+  return response.json()
+}
+
+const capacityTone = (status: string) => status === 'OVER' ? 'text-rose-300 border-rose-500/20 bg-rose-500/[0.04]' : status === 'WITHIN' ? 'text-emerald-300 border-emerald-500/20 bg-emerald-500/[0.04]' : 'text-amber-300 border-amber-500/20 bg-amber-500/[0.04]'
+const signed = (value: number | null) => value == null ? 'Unknown' : `${value > 0 ? '+' : ''}${value}d`
+
+export default function ProjectsSchedulingCompletion() {
+  const [searchParams] = useSearchParams()
+  const queryClient = useQueryClient()
+  const view = String(searchParams.get('view') || 'overview').toLowerCase()
+  const selectedId = String(searchParams.get('id') || '')
+  const [open, setOpen] = useState(false)
+  const [taskId, setTaskId] = useState('')
+  const [predecessorId, setPredecessorId] = useState('')
+  const [dependencyType, setDependencyType] = useState<ProjectDependencyType>('FS')
+  const [lagDays, setLagDays] = useState(0)
+  const [constraintType, setConstraintType] = useState<ProjectConstraintType>('ASAP')
+  const [constraintDate, setConstraintDate] = useState('')
+  const [workingDays, setWorkingDays] = useState<number[] | null>(null)
+  const [baselineName, setBaselineName] = useState('')
+  const [baselineId, setBaselineId] = useState('')
+  const [scenarioName, setScenarioName] = useState('')
+  const [scenarioTaskId, setScenarioTaskId] = useState('')
+  const [scenarioSlipDays, setScenarioSlipDays] = useState(5)
+  const [previewNonce, setPreviewNonce] = useState(0)
+  const [liveMessage, setLiveMessage] = useState('')
+  const [boardLiveMessage, setBoardLiveMessage] = useState('')
+  const [taskLiveMessage, setTaskLiveMessage] = useState('')
+  const [timelineLiveMessage, setTimelineLiveMessage] = useState('')
+  const timelineDependencySourceRef = useRef<{ id: string; name: string } | null>(null)
+  const timelinePendingDependencyRef = useRef<TimelinePendingDependency | null>(null)
+  const boardPendingMoveRef = useRef<BoardPendingMove | null>(null)
+  const taskPendingMoveRef = useRef<TaskPendingMove | null>(null)
+  const workspaceRootRef = useRef<HTMLDivElement | null>(null)
+  const scheduleToggleRef = useRef<HTMLButtonElement | null>(null)
+  const scheduleCloseRef = useRef<HTMLButtonElement | null>(null)
+
+  const { data: projects = [] } = useQuery<any[]>({ queryKey: ['projects'], queryFn: readProjects, staleTime: 30_000 })
+  const selectedProject = useMemo(() => {
+    const list = Array.isArray(projects) ? projects : []
+    if (selectedId) return list.find((project: any) => String(project?.id) === selectedId) || null
+    return list.find((project: any) => !['Completed', 'Cancelled'].includes(project?.status)) || list[0] || null
+  }, [projects, selectedId])
+  const tasks = Array.isArray(selectedProject?.tasks) ? selectedProject.tasks : []
+  const selectedTask = tasks.find((task: any) => String(task?.id) === taskId) || null
+  const scheduleState = getProjectScheduleState(selectedProject)
+  const analysis = useMemo(() => analyzeProjectSchedule(selectedProject), [selectedProject])
+  const capacity = useMemo(() => buildProjectCapacityView(selectedProject), [selectedProject])
+  const baselineComparison = useMemo(() => baselineId ? compareProjectScheduleBaseline(selectedProject, baselineId) : [], [selectedProject, baselineId])
+  const preview = useMemo(() => scenarioTaskId && scenarioSlipDays ? simulateNamedProjectScenario(selectedProject, scenarioTaskId, scenarioSlipDays) : null, [selectedProject, scenarioTaskId, scenarioSlipDays, previewNonce])
+
+  useEffect(() => {
+    const first = String(tasks[0]?.id || '')
+    if (!taskId || !tasks.some((task: any) => String(task?.id) === taskId)) setTaskId(first)
+    if (!scenarioTaskId || !tasks.some((task: any) => String(task?.id) === scenarioTaskId)) setScenarioTaskId(first)
+  }, [selectedProject?.id, tasks.length]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    if (!selectedTask) return
+    const constraint = getProjectTaskConstraint(selectedTask)
+    setConstraintType(constraint.type)
+    setConstraintDate(constraint.date || '')
+    const firstPred = normalizeProjectTaskDependencies(selectedTask)[0]
+    if (firstPred) { setPredecessorId(firstPred.id); setDependencyType(firstPred.type); setLagDays(firstPred.lag_days) }
+    else { setPredecessorId(tasks.find((task: any) => String(task?.id) !== String(selectedTask?.id)) ? String(tasks.find((task: any) => String(task?.id) !== String(selectedTask?.id))?.id) : ''); setDependencyType('FS'); setLagDays(0) }
+  }, [selectedTask?.id]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    setWorkingDays(Array.isArray(scheduleState.working_days) ? [...scheduleState.working_days] : null)
+    const firstBaseline = scheduleState.baselines?.[0]?.id || ''; setBaselineId((current) => scheduleState.baselines?.some((item) => item.id === current) ? current : firstBaseline)
+  }, [selectedProject?.id, JSON.stringify(scheduleState.working_days), scheduleState.baselines?.length]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    if (!open) return
+    const frame = requestAnimationFrame(() => scheduleCloseRef.current?.focus())
+    return () => cancelAnimationFrame(frame)
+  }, [open])
+
+  useEffect(() => {
+    if (view !== 'board') {
+      boardPendingMoveRef.current = null
+      setBoardLiveMessage('')
+      return
+    }
+    const root = workspaceRootRef.current
+    if (!root) return
+
+    const selectorValue = (value: string) => typeof CSS !== 'undefined' && typeof CSS.escape === 'function'
+      ? CSS.escape(value)
+      : value.replace(/["\\]/g, '\\$&')
+
+    const decorateBoard = () => {
+      root.querySelectorAll<HTMLElement>('[data-project-board-card="true"]').forEach((card) => {
+        const taskId = String(card.getAttribute('data-task-id') || '')
+        if (!taskId) return
+        const taskName = card.querySelector('h4')?.textContent?.trim() || `Task ${taskId}`
+        const column = card.closest<HTMLElement>('[data-project-board-column]')
+        const status = String(column?.getAttribute('data-project-board-column') || '') as ProjectTaskStatus
+        const statusIndex = PROJECT_TASK_STATUSES.indexOf(status)
+        if (statusIndex < 0) return
+
+        card.tabIndex = -1
+        card.setAttribute('data-project-board-focus-target', 'true')
+        card.setAttribute('aria-label', `${taskName}, ${status}`)
+        const buttons = Array.from(card.querySelectorAll<HTMLButtonElement>('button'))
+        if (buttons.length < 3) return
+        const previousButton = buttons[buttons.length - 2]
+        const nextButton = buttons[buttons.length - 1]
+
+        const decorateMoveButton = (button: HTMLButtonElement, direction: 'previous' | 'next', destination: ProjectTaskStatus | null) => {
+          button.style.minHeight = '40px'
+          button.style.minWidth = '40px'
+          button.setAttribute('data-project-board-move', direction)
+          button.setAttribute('data-project-board-move-task', taskId)
+          if (destination) {
+            button.setAttribute('data-project-board-move-destination', destination)
+            button.setAttribute('aria-label', `Move ${taskName} to ${destination}`)
+          } else {
+            button.removeAttribute('data-project-board-move-destination')
+            button.setAttribute('aria-label', `${taskName} has no ${direction} status`)
+          }
+        }
+
+        decorateMoveButton(previousButton, 'previous', statusIndex > 0 ? PROJECT_TASK_STATUSES[statusIndex - 1] : null)
+        decorateMoveButton(nextButton, 'next', statusIndex < PROJECT_TASK_STATUSES.length - 1 ? PROJECT_TASK_STATUSES[statusIndex + 1] : null)
+      })
+    }
+
+    const focusTaskCard = (taskId: string) => {
+      let attempts = 0
+      const focus = () => {
+        decorateBoard()
+        const card = root.querySelector<HTMLElement>(`[data-project-board-card="true"][data-task-id="${selectorValue(taskId)}"]`)
+        if (card) {
+          card.focus({ preventScroll: true })
+          return
+        }
+        attempts += 1
+        if (attempts < 5) requestAnimationFrame(focus)
+      }
+      requestAnimationFrame(focus)
+    }
+
+    const handleMoveActivation = (event: Event) => {
+      const target = event.target instanceof Element ? event.target : null
+      const button = target?.closest<HTMLButtonElement>('button[data-project-board-move]') || null
+      if (!button || !root.contains(button) || button.disabled) return
+      const taskId = String(button.getAttribute('data-project-board-move-task') || '')
+      const destination = button.getAttribute('data-project-board-move-destination') as ProjectTaskStatus | null
+      const card = button.closest<HTMLElement>('[data-project-board-card="true"]')
+      const column = card?.closest<HTMLElement>('[data-project-board-column]')
+      const fromStatus = String(column?.getAttribute('data-project-board-column') || '') as ProjectTaskStatus
+      const taskName = card?.querySelector('h4')?.textContent?.trim() || `Task ${taskId}`
+      if (!taskId || !destination || !PROJECT_TASK_STATUSES.includes(destination) || !PROJECT_TASK_STATUSES.includes(fromStatus)) return
+      boardPendingMoveRef.current = { taskId, taskName, fromStatus, toStatus: destination }
+      setBoardLiveMessage(`Moving ${taskName} to ${destination}…`)
+    }
+
+    const unsubscribe = queryClient.getMutationCache().subscribe((event: any) => {
+      const pending = boardPendingMoveRef.current
+      const mutation = event?.mutation
+      if (!pending || mutation?.options?.scope?.id !== 'projects-authoritative-write') return
+      const variables = mutation?.state?.variables as any
+      const requestedTask = variables?.nextProject?.tasks?.find((task: any) => String(task?.id) === pending.taskId)
+      if (!requestedTask || requestedTask.status !== pending.toStatus) return
+
+      if (mutation.state.status === 'success') {
+        const savedTask = mutation.state.data?.tasks?.find((task: any) => String(task?.id) === pending.taskId)
+        if (!savedTask || savedTask.status !== pending.toStatus) return
+        boardPendingMoveRef.current = null
+        setBoardLiveMessage(`${pending.taskName} moved to ${pending.toStatus}`)
+        focusTaskCard(pending.taskId)
+      } else if (mutation.state.status === 'error') {
+        const message = mutation.state.error?.message || 'Project update failed'
+        boardPendingMoveRef.current = null
+        setBoardLiveMessage(`Could not move ${pending.taskName} to ${pending.toStatus}: ${message}`)
+        focusTaskCard(pending.taskId)
+      }
+    })
+
+    decorateBoard()
+    root.addEventListener('click', handleMoveActivation, true)
+    const observer = new MutationObserver(decorateBoard)
+    observer.observe(root, { childList: true, subtree: true })
+    return () => {
+      observer.disconnect()
+      root.removeEventListener('click', handleMoveActivation, true)
+      unsubscribe()
+    }
+  }, [view, queryClient])
+
+  useEffect(() => {
+    if (view !== 'tasks') {
+      taskPendingMoveRef.current = null
+      setTaskLiveMessage('')
+      return
+    }
+    const root = workspaceRootRef.current
+    if (!root || !selectedProject) return
+
+    const selectorValue = (value: string) => typeof CSS !== 'undefined' && typeof CSS.escape === 'function'
+      ? CSS.escape(value)
+      : value.replace(/["\\]/g, '\\$&')
+    const currentProject = () => queryClient.getQueryData<any[]>(['projects'])?.find((project: any) => String(project?.id) === String(selectedProject?.id)) || selectedProject
+    const taskRow = (taskId: string) => root.querySelector<HTMLElement>(`[data-project-task-row="true"][data-task-id="${selectorValue(taskId)}"]`)
+
+    const decorateTasks = () => {
+      const project = currentProject()
+      const rows = buildProjectTaskHierarchy(project)
+      const byId = new Map(rows.map((row: any) => [String(row?.task?.id ?? row?.id ?? ''), row]))
+      root.querySelectorAll<HTMLElement>('[data-project-task-row="true"]').forEach((rowElement) => {
+        const taskId = String(rowElement.getAttribute('data-task-id') || '')
+        const row = byId.get(taskId)
+        const task = row?.task
+        if (!taskId || !task) return
+        const taskName = String(task?.name || `Task ${taskId}`)
+        const taskCell = rowElement.children.item(1) as HTMLElement | null
+        if (!taskCell) return
+
+        rowElement.tabIndex = -1
+        rowElement.setAttribute('data-project-task-focus-target', 'true')
+        rowElement.setAttribute('aria-label', taskName)
+
+        let controls = taskCell.querySelector<HTMLElement>('[data-project-task-keyboard-reorder="true"]')
+        if (!controls) {
+          controls = document.createElement('span')
+          controls.setAttribute('data-project-task-keyboard-reorder', 'true')
+          controls.className = 'mr-1 inline-flex shrink-0 items-center gap-0.5'
+          const dragHandle = taskCell.querySelector<HTMLElement>('[draggable="true"]')
+          if (dragHandle?.nextSibling) taskCell.insertBefore(controls, dragHandle.nextSibling)
+          else taskCell.appendChild(controls)
+        }
+
+        const ensureButton = (direction: TaskKeyboardMoveDirection) => {
+          const plan = buildTaskKeyboardMovePlan(project, taskId, direction)
+          let button = controls!.querySelector<HTMLButtonElement>(`button[data-project-task-move="${direction}"]`)
+          if (!button) {
+            button = document.createElement('button')
+            button.type = 'button'
+            button.setAttribute('data-project-task-move', direction)
+            button.className = 'inline-flex h-[40px] w-[40px] items-center justify-center rounded-md border border-white/5 text-xs font-black text-slate-600 hover:border-blue-500/25 hover:bg-blue-500/10 hover:text-blue-300 disabled:cursor-not-allowed disabled:opacity-25'
+            controls!.appendChild(button)
+          }
+          button.disabled = !plan
+          syncTaskKeyboardMoveButtonGlyph(button, direction)
+          button.setAttribute('aria-label', `Move ${taskName} ${direction}`)
+          button.setAttribute('data-project-task-move-task', taskId)
+        }
+
+        ensureButton('earlier')
+        ensureButton('later')
+      })
+    }
+
+    const focusTaskRow = (taskId: string) => {
+      let attempts = 0
+      const focus = () => {
+        decorateTasks()
+        const row = taskRow(taskId)
+        if (row) {
+          row.focus({ preventScroll: true })
+          return
+        }
+        attempts += 1
+        if (attempts < 6) requestAnimationFrame(focus)
+      }
+      requestAnimationFrame(focus)
+    }
+
+    const dispatchExistingReorder = (movingTaskId: string, targetTaskId: string) => {
+      const sourceRow = taskRow(movingTaskId)
+      const targetRow = taskRow(targetTaskId)
+      const dragHandle = sourceRow?.querySelector<HTMLElement>('[draggable="true"]')
+      if (!sourceRow || !targetRow || !dragHandle || typeof DataTransfer === 'undefined' || typeof DragEvent === 'undefined') return false
+      const transfer = new DataTransfer()
+      dragHandle.dispatchEvent(new DragEvent('dragstart', { bubbles: true, cancelable: true, dataTransfer: transfer }))
+      requestAnimationFrame(() => requestAnimationFrame(() => {
+        const currentTarget = taskRow(targetTaskId)
+        if (!currentTarget) return
+        currentTarget.dispatchEvent(new DragEvent('dragover', { bubbles: true, cancelable: true, dataTransfer: transfer }))
+        currentTarget.dispatchEvent(new DragEvent('drop', { bubbles: true, cancelable: true, dataTransfer: transfer }))
+        dragHandle.dispatchEvent(new DragEvent('dragend', { bubbles: true, cancelable: true, dataTransfer: transfer }))
+      }))
+      return true
+    }
+
+    const handleTaskMoveActivation = (event: Event) => {
+      const target = event.target instanceof Element ? event.target : null
+      const button = target?.closest<HTMLButtonElement>('button[data-project-task-move]') || null
+      if (!button || !root.contains(button) || button.disabled) return
+      event.preventDefault()
+      event.stopPropagation()
+      const direction = button.getAttribute('data-project-task-move') as TaskKeyboardMoveDirection | null
+      const taskId = String(button.getAttribute('data-project-task-move-task') || '')
+      const row = taskRow(taskId)
+      const taskName = row?.getAttribute('aria-label') || `Task ${taskId}`
+      if (!direction || !taskId) return
+      const plan = buildTaskKeyboardMovePlan(currentProject(), taskId, direction)
+      if (!plan) return
+      taskPendingMoveRef.current = { ...plan, taskName }
+      setTaskLiveMessage(`Moving ${taskName} ${direction}…`)
+      if (!dispatchExistingReorder(plan.dragTaskId, plan.dropTargetId)) {
+        taskPendingMoveRef.current = null
+        setTaskLiveMessage(`Could not move ${taskName} ${direction}: reorder control is unavailable`)
+        focusTaskRow(taskId)
+      }
+    }
+
+    const unsubscribe = queryClient.getMutationCache().subscribe((event: any) => {
+      const pending = taskPendingMoveRef.current
+      const mutation = event?.mutation
+      if (!pending || mutation?.options?.scope?.id !== 'projects-authoritative-write') return
+      const requestedProject = mutation?.state?.variables?.nextProject
+      if (!taskKeyboardMoveRelationMatches(requestedProject, pending)) return
+
+      if (mutation.state.status === 'success') {
+        const savedProject = mutation.state.data
+        if (!taskKeyboardMoveRelationMatches(savedProject, pending)) return
+        taskPendingMoveRef.current = null
+        setTaskLiveMessage(`${pending.taskName} moved ${pending.direction}`)
+        focusTaskRow(pending.taskId)
+      } else if (mutation.state.status === 'error') {
+        const message = mutation.state.error?.message || 'Project update failed'
+        taskPendingMoveRef.current = null
+        setTaskLiveMessage(`Could not move ${pending.taskName} ${pending.direction}: ${message}`)
+        focusTaskRow(pending.taskId)
+      }
+    })
+
+    decorateTasks()
+    root.addEventListener('click', handleTaskMoveActivation, true)
+    const observer = new MutationObserver(decorateTasks)
+    observer.observe(root, { childList: true, subtree: true })
+    return () => {
+      observer.disconnect()
+      root.removeEventListener('click', handleTaskMoveActivation, true)
+      unsubscribe()
+    }
+  }, [view, selectedProject?.id, queryClient])
+
+  useEffect(() => {
+    if (view !== 'timeline') {
+      timelineDependencySourceRef.current = null
+      timelinePendingDependencyRef.current = null
+      setTimelineLiveMessage('')
+      return
+    }
+    const root = workspaceRootRef.current
+    if (!root || !selectedProject) return
+
+    const selectorValue = (value: string) => typeof CSS !== 'undefined' && typeof CSS.escape === 'function'
+      ? CSS.escape(value)
+      : value.replace(/["\\]/g, '\\$&')
+    const currentProject = () => queryClient.getQueryData<any[]>(['projects'])?.find((project: any) => String(project?.id) === String(selectedProject?.id)) || selectedProject
+    const timelineRow = (taskId: string) => root.querySelector<HTMLElement>(`[data-project-timeline-row="true"][data-task-id="${selectorValue(taskId)}"]`)
+    const taskFor = (project: any, taskId: string) => (Array.isArray(project?.tasks) ? project.tasks : []).find((task: any) => String(task?.id) === taskId) || null
+
+    const dependencyRelations = (project: any) => {
+      const relations: Array<{ sourceId: string; sourceName: string; targetId: string; targetName: string }> = []
+      root.querySelectorAll<HTMLElement>('[data-project-timeline-row="true"]').forEach((row) => {
+        const targetId = String(row.getAttribute('data-task-id') || '')
+        const target = taskFor(project, targetId)
+        if (!target) return
+        normalizeProjectTaskDependencies(target).forEach((dependency) => {
+          const sourceId = String(dependency.id)
+          const source = taskFor(project, sourceId)
+          if (!source || !timelineRow(sourceId)) return
+          relations.push({ sourceId, sourceName: String(source.name || `Task ${sourceId}`), targetId, targetName: String(target.name || `Task ${targetId}`) })
+        })
+      })
+      return relations
+    }
+
+    const decorateTimeline = () => {
+      const project = currentProject()
+      const source = timelineDependencySourceRef.current
+      root.querySelectorAll<HTMLElement>('[data-project-timeline-row="true"]').forEach((row) => {
+        const taskId = String(row.getAttribute('data-task-id') || '')
+        const task = taskFor(project, taskId)
+        if (!taskId || !task) return
+        const taskName = String(task.name || `Task ${taskId}`)
+        const sticky = row.children.item(0) as HTMLElement | null
+        const taskCell = sticky?.children.item(1) as HTMLElement | null
+        if (!taskCell) return
+
+        let button = taskCell.querySelector<HTMLButtonElement>('button[data-project-timeline-dependency-keyboard="true"]')
+        if (!button) {
+          button = document.createElement('button')
+          button.type = 'button'
+          button.setAttribute('data-project-timeline-dependency-keyboard', 'true')
+          button.className = 'inline-flex h-[40px] w-[40px] shrink-0 items-center justify-center rounded-md border border-white/5 text-xs font-black text-blue-300 hover:border-blue-500/30 hover:bg-blue-500/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-400'
+          taskCell.appendChild(button)
+        }
+        syncTimelineDependencyButtonGlyph(button)
+        button.setAttribute('data-project-timeline-dependency-task', taskId)
+        button.setAttribute('aria-label', timelineDependencyControlLabel(source, taskId, taskName))
+        button.setAttribute('aria-pressed', source?.id === taskId ? 'true' : 'false')
+      })
+
+      root.querySelectorAll<HTMLElement>('[data-project-timeline-bar="true"]').forEach((bar) => {
+        const row = bar.closest<HTMLElement>('[data-project-timeline-row="true"]')
+        const taskId = String(row?.getAttribute('data-task-id') || '')
+        const task = taskFor(project, taskId)
+        if (!task) return
+        bar.setAttribute('role', 'button')
+        bar.tabIndex = 0
+        bar.setAttribute('aria-label', `Open ${String(task.name || `Task ${taskId}`)} timeline task`)
+        bar.setAttribute('data-project-timeline-keyboard-open', 'true')
+      })
+
+      const relations = dependencyRelations(project)
+      const paths = Array.from(root.querySelectorAll<SVGPathElement>('svg path.pointer-events-auto'))
+      paths.forEach((path, index) => {
+        const relation = relations[index]
+        if (!relation) return
+        path.setAttribute('role', 'button')
+        path.setAttribute('tabindex', '0')
+        path.setAttribute('aria-label', `Remove dependency ${relation.sourceName} → ${relation.targetName}`)
+        path.setAttribute('data-project-timeline-dependency-connector', 'true')
+        path.setAttribute('data-project-timeline-dependency-source', relation.sourceId)
+        path.setAttribute('data-project-timeline-dependency-target', relation.targetId)
+      })
+    }
+
+    const focusDependencyControl = (taskId: string) => {
+      let attempts = 0
+      const focus = () => {
+        decorateTimeline()
+        const button = timelineRow(taskId)?.querySelector<HTMLButtonElement>('button[data-project-timeline-dependency-keyboard="true"]') || null
+        if (button) {
+          button.focus({ preventScroll: true })
+          return
+        }
+        attempts += 1
+        if (attempts < 6) requestAnimationFrame(focus)
+      }
+      requestAnimationFrame(focus)
+    }
+
+    const dispatchExistingDependencyAdd = (sourceId: string, targetId: string) => {
+      const sourceRow = timelineRow(sourceId)
+      const targetRow = timelineRow(targetId)
+      const handle = sourceRow?.querySelector<HTMLElement>('[data-project-dependency-handle="true"]') || null
+      const targetCanvas = targetRow?.querySelector<HTMLElement>('[data-project-dependency-target="true"]')?.parentElement || null
+      if (!sourceRow || !targetRow || !handle || !targetCanvas || typeof DataTransfer === 'undefined' || typeof DragEvent === 'undefined') return false
+      const transfer = new DataTransfer()
+      handle.dispatchEvent(new DragEvent('dragstart', { bubbles: true, cancelable: true, dataTransfer: transfer }))
+      requestAnimationFrame(() => requestAnimationFrame(() => {
+        const currentTarget = timelineRow(targetId)?.querySelector<HTMLElement>('[data-project-dependency-target="true"]')?.parentElement || null
+        if (!currentTarget) return
+        currentTarget.dispatchEvent(new DragEvent('dragover', { bubbles: true, cancelable: true, dataTransfer: transfer }))
+        currentTarget.dispatchEvent(new DragEvent('drop', { bubbles: true, cancelable: true, dataTransfer: transfer }))
+        handle.dispatchEvent(new DragEvent('dragend', { bubbles: true, cancelable: true, dataTransfer: transfer }))
+      }))
+      return true
+    }
+
+    const handleDependencyActivation = (event: Event) => {
+      const target = event.target instanceof Element ? event.target : null
+      const button = target?.closest<HTMLButtonElement>('button[data-project-timeline-dependency-keyboard="true"]') || null
+      if (!button || !root.contains(button) || button.disabled) return
+      event.preventDefault()
+      event.stopPropagation()
+      const taskId = String(button.getAttribute('data-project-timeline-dependency-task') || '')
+      const project = currentProject()
+      const task = taskFor(project, taskId)
+      if (!taskId || !task) return
+      const taskName = String(task.name || `Task ${taskId}`)
+      const source = timelineDependencySourceRef.current
+      if (!source) {
+        timelineDependencySourceRef.current = { id: taskId, name: taskName }
+        setTimelineLiveMessage(`Dependency source selected: ${taskName}`)
+        decorateTimeline()
+        return
+      }
+      if (source.id === taskId) {
+        timelineDependencySourceRef.current = null
+        setTimelineLiveMessage(`Dependency selection cancelled: ${taskName}`)
+        decorateTimeline()
+        return
+      }
+      timelinePendingDependencyRef.current = { action: 'add', sourceId: source.id, sourceName: source.name, targetId: taskId, targetName: taskName }
+      setTimelineLiveMessage(`Adding dependency: ${source.name} → ${taskName}…`)
+      if (!dispatchExistingDependencyAdd(source.id, taskId)) {
+        timelinePendingDependencyRef.current = null
+        timelineDependencySourceRef.current = null
+        setTimelineLiveMessage(`Could not add dependency ${source.name} → ${taskName}: Timeline dependency control is unavailable`)
+        decorateTimeline()
+        focusDependencyControl(taskId)
+      }
+    }
+
+    const handleTimelineKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== 'Enter' && event.key !== ' ') return
+      const target = event.target instanceof Element ? event.target : null
+      if (!target) return
+      if (target.matches('[data-project-timeline-bar="true"][data-project-timeline-keyboard-open="true"]')) {
+        event.preventDefault()
+        event.stopPropagation()
+        target.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }))
+        return
+      }
+      if (target.matches('[data-project-timeline-dependency-connector="true"]')) {
+        const sourceId = String(target.getAttribute('data-project-timeline-dependency-source') || '')
+        const targetId = String(target.getAttribute('data-project-timeline-dependency-target') || '')
+        const project = currentProject()
+        const sourceTask = taskFor(project, sourceId)
+        const targetTask = taskFor(project, targetId)
+        if (!sourceId || !targetId || !sourceTask || !targetTask) return
+        event.preventDefault()
+        event.stopPropagation()
+        timelinePendingDependencyRef.current = {
+          action: 'remove',
+          sourceId,
+          sourceName: String(sourceTask.name || `Task ${sourceId}`),
+          targetId,
+          targetName: String(targetTask.name || `Task ${targetId}`),
+        }
+        setTimelineLiveMessage(`Removing dependency: ${String(sourceTask.name || `Task ${sourceId}`)} → ${String(targetTask.name || `Task ${targetId}`)}…`)
+        target.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }))
+      }
+    }
+
+    const unsubscribe = queryClient.getMutationCache().subscribe((event: any) => {
+      const pending = timelinePendingDependencyRef.current
+      const mutation = event?.mutation
+      if (!pending || mutation?.options?.scope?.id !== 'projects-authoritative-write') return
+      const requestedProject = mutation?.state?.variables?.nextProject
+      const expectedExists = pending.action === 'add'
+      if (!timelineDependencyRelationMatches(requestedProject, pending.sourceId, pending.targetId, expectedExists)) return
+
+      if (mutation.state.status === 'success') {
+        const savedProject = mutation.state.data
+        if (!timelineDependencyRelationMatches(savedProject, pending.sourceId, pending.targetId, expectedExists)) return
+        timelinePendingDependencyRef.current = null
+        timelineDependencySourceRef.current = null
+        setTimelineLiveMessage(`Dependency ${pending.action === 'add' ? 'added' : 'removed'}: ${pending.sourceName} → ${pending.targetName}`)
+        focusDependencyControl(pending.targetId)
+      } else if (mutation.state.status === 'error') {
+        const message = mutation.state.error?.message || 'Project update failed'
+        timelinePendingDependencyRef.current = null
+        timelineDependencySourceRef.current = null
+        setTimelineLiveMessage(`Could not ${pending.action} dependency ${pending.sourceName} → ${pending.targetName}: ${message}`)
+        decorateTimeline()
+        focusDependencyControl(pending.targetId)
+      }
+    })
+
+    decorateTimeline()
+    root.addEventListener('click', handleDependencyActivation, true)
+    root.addEventListener('keydown', handleTimelineKeyDown, true)
+    const observer = new MutationObserver(decorateTimeline)
+    observer.observe(root, { childList: true, subtree: true })
+    return () => {
+      observer.disconnect()
+      root.removeEventListener('click', handleDependencyActivation, true)
+      root.removeEventListener('keydown', handleTimelineKeyDown, true)
+      unsubscribe()
+    }
+  }, [view, selectedProject?.id, queryClient])
+
+
+  useEffect(() => {
+    const root = workspaceRootRef.current
+    const drawerTaskId = String(searchParams.get('task') || '')
+    if (!root || !selectedProject || !drawerTaskId) return
+
+    const currentProject = () => queryClient.getQueryData<any[]>(['projects'])?.find((project: any) => String(project?.id) === String(selectedProject?.id)) || selectedProject
+    const drawerTask = () => (Array.isArray(currentProject()?.tasks) ? currentProject().tasks : []).find((task: any) => String(task?.id) === drawerTaskId) || null
+    const ensureMinTarget = (control: HTMLElement | null) => {
+      if (!control) return
+      if (control.style.minHeight !== '40px') control.style.minHeight = '40px'
+      if (control.style.minWidth !== '40px') control.style.minWidth = '40px'
+    }
+
+    const decorateTaskDrawer = () => {
+      const drawer = root.querySelector<HTMLElement>('[data-project-task-drawer="true"]')
+      const task = drawerTask()
+      if (!drawer || !task) return
+      const taskName = String(task.name || `Task ${drawerTaskId}`)
+
+      const description = Array.from(drawer.querySelectorAll<HTMLTextAreaElement>('textarea')).find((control) => !control.getAttribute('aria-label'))
+      if (description) syncProjectTaskDrawerAccessibleName(description, `Description for ${taskName}`)
+
+      for (const label of ['Undo task change', 'Redo task change', 'Close task drawer']) {
+        ensureMinTarget(drawer.querySelector<HTMLElement>(`button[aria-label="${label}"]`))
+      }
+
+      const checklistRoot = drawer.querySelector<HTMLElement>('[data-project-task-checklist="true"]')
+      if (checklistRoot) {
+        checklistRoot.querySelectorAll<HTMLInputElement>('input[type="checkbox"]').forEach((checkbox) => {
+          const row = checkbox.parentElement
+          const itemName = row?.querySelector('span')?.textContent?.trim() || 'Checklist item'
+          const labels = projectTaskDrawerChecklistLabels(taskName, itemName)
+          syncProjectTaskDrawerAccessibleName(checkbox, labels.toggle)
+          const remove = row?.querySelector<HTMLButtonElement>('button') || null
+          if (remove) {
+            syncProjectTaskDrawerAccessibleName(remove, labels.remove)
+            ensureMinTarget(remove)
+          }
+        })
+        const addInput = Array.from(checklistRoot.querySelectorAll<HTMLInputElement>('input')).find((input) => input.type !== 'checkbox') || null
+        if (addInput) {
+          const labels = projectTaskDrawerChecklistLabels(taskName, '')
+          syncProjectTaskDrawerAccessibleName(addInput, labels.addInput)
+          const addButton = addInput.parentElement?.querySelector<HTMLButtonElement>('button') || null
+          if (addButton) {
+            syncProjectTaskDrawerAccessibleName(addButton, labels.addButton)
+            ensureMinTarget(addButton)
+          }
+        }
+      }
+
+      const dependencyRoot = drawer.querySelector<HTMLElement>('[data-project-task-dependencies="true"]')
+      if (dependencyRoot) {
+        const addSelect = dependencyRoot.querySelector<HTMLSelectElement>('select[aria-label="Add task dependency"]')
+        const addButton = addSelect?.parentElement?.querySelector<HTMLButtonElement>('button') || null
+        if (addButton) {
+          syncProjectTaskDrawerAccessibleName(addButton, projectTaskDrawerDependencyLabel(taskName, null, 'add'))
+          ensureMinTarget(addButton)
+        }
+        dependencyRoot.querySelectorAll<HTMLButtonElement>('button').forEach((button) => {
+          if (button === addButton) return
+          const row = button.parentElement
+          const dependencyName = row?.querySelector('span')?.textContent?.trim() || ''
+          if (!dependencyName) return
+          syncProjectTaskDrawerAccessibleName(button, projectTaskDrawerDependencyLabel(taskName, dependencyName, 'remove'))
+          ensureMinTarget(button)
+        })
+      }
+    }
+
+    decorateTaskDrawer()
+    const observer = new MutationObserver(decorateTaskDrawer)
+    observer.observe(root, { childList: true, subtree: true })
+    return () => observer.disconnect()
+  }, [selectedProject?.id, searchParams, queryClient])
+
+  useEffect(() => {
+    const root = workspaceRootRef.current
+    if (!root) return
+
+    const hasNativeLabel = (control: HTMLElement) => {
+      const labels = (control as HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement).labels
+      return Boolean(labels && labels.length)
+    }
+
+    const nameIfMissing = (control: HTMLElement | null, label: string) => {
+      if (!control || control.getAttribute('aria-label') || control.getAttribute('aria-labelledby') || control.getAttribute('title') || hasNativeLabel(control)) return
+      control.setAttribute('aria-label', label)
+    }
+
+    const semanticText = (element: Element | null): string => {
+      if (!element) return ''
+      const clone = element.cloneNode(true) as HTMLElement
+      clone.querySelectorAll('input, select, textarea, button, option, svg').forEach((node) => node.remove())
+      return String(clone.textContent || '').replace(/\s+/g, ' ').trim()
+    }
+
+    const inferCreateProjectControlName = (control: HTMLElement, index: number): string => {
+      const placeholder = String(control.getAttribute('placeholder') || '').replace(/[.…]+$/g, '').trim()
+      if (placeholder) return placeholder
+      const ownName = String(control.getAttribute('name') || control.getAttribute('id') || '').replace(/[_-]+/g, ' ').trim()
+      if (ownName) return ownName.replace(/\b\w/g, (letter) => letter.toUpperCase())
+
+      let sibling = control.previousElementSibling
+      while (sibling) {
+        const text = semanticText(sibling)
+        if (text && text.length <= 80) return text
+        sibling = sibling.previousElementSibling
+      }
+
+      let ancestor = control.parentElement
+      for (let depth = 0; ancestor && depth < 3; depth += 1, ancestor = ancestor.parentElement) {
+        const text = semanticText(ancestor)
+        if (text && text.length <= 80) return text
+      }
+
+      if (control instanceof HTMLSelectElement) {
+        const values = Array.from(control.options).map((option) => option.textContent?.trim() || '').filter(Boolean)
+        const joined = values.join(' | ').toLowerCase()
+        if (joined.includes('planning') && joined.includes('in progress') && joined.includes('completed')) return 'Project status'
+        if (joined.includes('low') && joined.includes('medium') && joined.includes('high')) return 'Project priority'
+        if (joined.includes('strategic') || joined.includes('operational') || joined.includes('tactical')) return 'Project type'
+        const prompt = values.find((value) => /^(select|choose)\b/i.test(value))
+        if (prompt) return prompt.replace(/^(select|choose)\s+/i, '').replace(/[.…]+$/g, '').trim() || `Create project selection ${index + 1}`
+      }
+      return `Create project ${control.tagName.toLowerCase()} ${index + 1}`
+    }
+
+    const decorateCreateProjectDialog = () => {
+      const dialog = Array.from(document.querySelectorAll<HTMLElement>('[role="dialog"]')).find((candidate) => /Create Project Outcome/i.test(candidate.textContent || ''))
+      if (!dialog) return
+      const controls = Array.from(dialog.querySelectorAll<HTMLElement>('input:not([type="hidden"]), select, textarea'))
+      controls.forEach((control, index) => {
+        if (control.getAttribute('aria-label') || control.getAttribute('aria-labelledby') || control.getAttribute('title') || hasNativeLabel(control)) return
+        nameIfMissing(control, inferCreateProjectControlName(control, index))
+      })
+    }
+
+    const decorateRemainingProjectNames = () => {
+      nameIfMissing(root.querySelector<HTMLElement>('[data-project-my-work="true"] input[placeholder="Owner name / username"]'), 'My Work owner')
+      nameIfMissing(root.querySelector<HTMLElement>('[data-project-task-paste="true"] textarea'), 'Paste tasks')
+      nameIfMissing(root.querySelector<HTMLElement>('[data-project-schedule-scenarios="true"] select'), 'Scenario task')
+      nameIfMissing(root.querySelector<HTMLElement>('[data-project-schedule-scenarios="true"] input[placeholder="Scenario name"]'), 'Scenario name')
+      nameIfMissing(root.querySelector<HTMLElement>('[data-project-schedule-baselines="true"] input[placeholder="Baseline name"]'), 'Baseline name')
+      nameIfMissing(root.querySelector<HTMLElement>('[data-project-schedule-baselines="true"] select'), 'Schedule baseline')
+      decorateCreateProjectDialog()
+    }
+
+    decorateRemainingProjectNames()
+    const observer = new MutationObserver(decorateRemainingProjectNames)
+    observer.observe(root, { childList: true, subtree: true })
+    const dialogObserver = new MutationObserver(decorateCreateProjectDialog)
+    dialogObserver.observe(document.body, { childList: true, subtree: true })
+    return () => {
+      observer.disconnect()
+      dialogObserver.disconnect()
+    }
+  }, [])
+
+  const updateMutation = useMutation({
+    mutationFn: async ({ baseProject, nextProject, label }: { baseProject: any; nextProject: any; label: string }) => {
+      const latestResponse = await apiFetch('/api/v1/projects')
+      if (!latestResponse.ok) throw new Error(await latestResponse.text())
+      const latest = await latestResponse.json(); const remote = latest.find((item: any) => String(item?.id) === String(nextProject?.id))
+      if (!remote || projectFingerprint(remote) !== projectFingerprint(baseProject)) throw new Error('Project changed since this schedule control loaded. Refresh before applying this edit.')
+      const response = await apiFetch(`/api/v1/projects/${nextProject.id}`, { method: 'PUT', body: JSON.stringify(nextProject) })
+      if (!response.ok) throw new Error(await response.text())
+      return { saved: await response.json(), label }
+    },
+    onMutate: ({ label }: any) => setLiveMessage(`Saving ${String(label || 'schedule update').toLowerCase()}…`),
+    onSuccess: ({ saved, label }: any) => {
+      queryClient.setQueryData<any[]>(['projects'], (current = []) => current.map((project: any) => String(project?.id) === String(saved?.id) ? saved : project))
+      setLiveMessage(label)
+      toast.success(label)
+    },
+    onError: (error: any) => {
+      const message = error?.message || 'Schedule update failed'
+      setLiveMessage(message)
+      toast.error(message)
+    },
+  })
+
+  const persist = (nextProject: any, label: string) => {
+    if (!selectedProject || nextProject === selectedProject || projectFingerprint(nextProject) === projectFingerprint(selectedProject)) return
+    updateMutation.mutate({ baseProject: selectedProject, nextProject, label })
+  }
+
+  const saveDependency = () => {
+    if (!selectedProject || !taskId || !predecessorId) return
+    const next = setTypedProjectDependency(selectedProject, taskId, predecessorId, dependencyType, lagDays, true)
+    if (next === selectedProject) { const message = 'Dependency was not changed. Check for a duplicate or cycle.'; setLiveMessage(message); toast.error(message); return }
+    persist(next, 'Typed dependency saved')
+  }
+  const removeDependency = (predecessor: string) => selectedProject && persist(setTypedProjectDependency(selectedProject, taskId, predecessor, 'FS', 0, false), 'Dependency removed')
+  const saveConstraint = () => selectedProject && persist(setProjectTaskConstraint(selectedProject, taskId, { type: constraintType, date: constraintType === 'ASAP' ? null : constraintDate }), 'Task constraint saved')
+  const saveCalendar = () => selectedProject && persist(setProjectWorkingDays(selectedProject, workingDays), 'Working calendar saved')
+  const captureBaseline = () => selectedProject && persist(captureProjectScheduleBaselineV2(selectedProject, baselineName), 'Schedule baseline captured')
+  const saveScenario = () => {
+    if (!selectedProject || !scenarioTaskId || !scenarioSlipDays) return
+    const result = saveProjectScheduleScenario(selectedProject, { name: scenarioName, taskId: scenarioTaskId, slipDays: scenarioSlipDays })
+    persist(result.project, 'Scenario saved without changing live dates'); setScenarioName('')
+  }
+  const applyScenario = (scenarioId: string) => {
+    if (!selectedProject) return
+    const result = applyProjectScheduleScenario(selectedProject, scenarioId)
+    if (result.project === selectedProject) { if ('blockedReason' in result && result.blockedReason) { setLiveMessage(result.blockedReason); toast.error(result.blockedReason) }; return }
+    persist(result.project, `Scenario applied to ${result.affected.length} task${result.affected.length === 1 ? '' : 's'}`)
+  }
+  const toggleDay = (day: number) => setWorkingDays((current) => {
+    const base = current == null ? [1, 2, 3, 4, 5] : current
+    return base.includes(day) ? base.filter((value) => value !== day) : [...base, day].sort()
+  })
+
+  const closeScheduleControl = () => {
+    setOpen(false)
+    requestAnimationFrame(() => scheduleToggleRef.current?.focus())
+  }
+  const handleScheduleDialogKeyDown = (event: React.KeyboardEvent<HTMLElement>) => {
+    if (event.key !== 'Escape') return
+    event.preventDefault()
+    event.stopPropagation()
+    closeScheduleControl()
+  }
+
+  const timelineActive = view === 'timeline'
+  const criticalRows = analysis.rows.filter((row) => row.critical)
+  const dependencies = normalizeProjectTaskDependencies(selectedTask)
+
+  return <div ref={workspaceRootRef} className="relative h-full min-h-0" data-projects-scheduling-completion="true">
+    <ProjectsGolden />
+    <p className="sr-only" role="status" aria-live="polite" aria-atomic="true" data-project-board-live-status="true">{boardLiveMessage}</p>
+    <p className="sr-only" role="status" aria-live="polite" aria-atomic="true" data-project-task-live-status="true">{taskLiveMessage}</p>
+    <p className="sr-only" role="status" aria-live="polite" aria-atomic="true" data-project-timeline-live-status="true">{timelineLiveMessage}</p>
+    {timelineActive && selectedProject ? <>
+      <button ref={scheduleToggleRef} type="button" onClick={() => setOpen((current) => !current)} aria-expanded={open} aria-controls="project-schedule-control-drawer" aria-haspopup="dialog" data-project-schedule-control-toggle="true" className="absolute right-4 top-3 z-40 inline-flex min-h-[40px] min-w-[40px] items-center gap-2 rounded-lg border border-blue-500/30 bg-[#0b1222]/95 px-3 py-2 text-xs font-black uppercase tracking-widest text-blue-300 shadow-xl backdrop-blur hover:bg-blue-500/10">
+        <SlidersHorizontal size={13} /> Schedule control <ChevronRight size={12} className={open ? 'rotate-180' : ''} />
+      </button>
+      {open ? <aside id="project-schedule-control-drawer" role="dialog" aria-modal="true" aria-labelledby="project-schedule-control-title" aria-describedby="project-schedule-control-description" aria-busy={updateMutation.isPending} onKeyDown={handleScheduleDialogKeyDown} className="absolute inset-x-2 bottom-2 top-14 z-50 flex flex-col overflow-hidden rounded-xl border border-blue-500/20 bg-[#08101f]/[0.98] shadow-2xl backdrop-blur sm:left-auto sm:right-3 sm:w-[470px]" data-project-schedule-control-drawer="true">
+        <header className="flex shrink-0 items-start justify-between gap-3 border-b border-white/5 px-4 py-3"><div className="min-w-0"><p className="text-xs font-black uppercase tracking-[0.2em] text-blue-400">OUT-40 · Timeline accessibility hardening</p><h2 id="project-schedule-control-title" className="mt-1 text-sm font-black text-white">Scheduling, capacity & scenarios</h2><p id="project-schedule-control-description" className="mt-1 text-xs text-slate-500">Controls extend the current Gantt. No parallel scheduler or datastore.</p></div><button ref={scheduleCloseRef} type="button" onClick={closeScheduleControl} className="inline-flex h-[40px] w-[40px] shrink-0 items-center justify-center rounded-md text-slate-400 hover:bg-white/5 hover:text-white" aria-label="Close schedule control"><X size={16} /></button></header>
+        <p className="sr-only" role="status" aria-live="polite" aria-atomic="true" data-project-schedule-live-status="true">{liveMessage}</p>
+        <div className="flex-1 space-y-3 overflow-y-auto p-3 custom-scrollbar">
+          <section className={sectionClass} data-project-schedule-network="true"><div className="flex items-center justify-between"><span><p className="text-xs font-black uppercase tracking-widest text-slate-600">Dependency network</p><h3 className="mt-1 text-xs font-black text-white">Typed relationship + lag</h3></span><GitBranch size={15} className="text-blue-400" /></div>
+            <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2"><label className="text-xs font-black uppercase text-slate-600">Task<select style={controlStyle} className={`${inputClass} mt-1`} value={taskId} onChange={(event) => setTaskId(event.target.value)}>{tasks.map((task: any) => <option key={String(task.id)} value={String(task.id)}>{task.name || task.id}</option>)}</select></label><label className="text-xs font-black uppercase text-slate-600">Predecessor<select style={controlStyle} className={`${inputClass} mt-1`} value={predecessorId} onChange={(event) => setPredecessorId(event.target.value)}><option value="">Select</option>{tasks.filter((task: any) => String(task.id) !== taskId).map((task: any) => <option key={String(task.id)} value={String(task.id)}>{task.name || task.id}</option>)}</select></label><label className="text-xs font-black uppercase text-slate-600">Type<select style={controlStyle} className={`${inputClass} mt-1`} value={dependencyType} onChange={(event) => setDependencyType(event.target.value as ProjectDependencyType)}>{PROJECT_DEPENDENCY_TYPES.map((type) => <option key={type}>{type}</option>)}</select></label><label className="text-xs font-black uppercase text-slate-600">Lag / lead days<input style={controlStyle} className={`${inputClass} mt-1`} type="number" value={lagDays} onChange={(event) => setLagDays(Number(event.target.value))} /></label></div>
+            <button className={`${primaryButtonClass} mt-2 w-full`} disabled={updateMutation.isPending || !predecessorId} onClick={saveDependency}><Save size={11} /> Save dependency</button>
+            <div className="mt-2 space-y-1">{dependencies.length ? dependencies.map((dep) => <div key={dep.id} className="flex items-center justify-between rounded-md border border-white/5 bg-white/[0.02] px-2 py-1.5 text-xs"><span className="text-slate-400">{dep.id} → {taskId} <b className="text-blue-300">{dep.type}</b> {dep.lag_days >= 0 ? '+' : ''}{dep.lag_days}d</span><button className="min-h-[40px] min-w-[40px] rounded-md px-2 text-xs text-rose-300 hover:bg-rose-500/10" onClick={() => removeDependency(dep.id)}>Remove</button></div>) : <p className="mt-2 text-xs text-slate-700">Legacy IDs display as FS +0d until edited; no migration loss.</p>}</div>
+          </section>
+
+          <section className={sectionClass} data-project-schedule-analysis="true"><div className="flex items-center justify-between"><span><p className="text-xs font-black uppercase tracking-widest text-slate-600">Critical path & slack</p><h3 className="mt-1 text-xs font-black text-white">Typed-edge CPM</h3></span><BarChart3 size={15} className="text-violet-300" /></div>
+            {analysis.cycle ? <p className="mt-2 rounded-md border border-rose-500/20 bg-rose-500/[0.04] p-2 text-xs text-rose-300"><AlertTriangle size={11} className="mr-1 inline" />Cycle detected; new cyclic edges are rejected.</p> : <div className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-3"><div className="rounded-md border border-white/5 p-2"><small className="text-xs uppercase text-slate-700">Critical</small><b className="mt-1 block text-sm text-white">{criticalRows.length}</b></div><div className="rounded-md border border-white/5 p-2"><small className="text-xs uppercase text-slate-700">Network span</small><b className="mt-1 block text-sm text-white">{analysis.makespanDays}d</b></div><div className="rounded-md border border-white/5 p-2"><small className="text-xs uppercase text-slate-700">Tasks</small><b className="mt-1 block text-sm text-white">{analysis.rows.length}</b></div></div>}
+            <div className="mt-2 max-h-36 overflow-auto"><table className="w-full text-left text-xs"><thead className="text-slate-700"><tr><th className="py-1">Task</th><th>Slack</th><th>Path</th></tr></thead><tbody>{analysis.rows.slice().sort((a, b) => a.slackDays - b.slackDays).slice(0, 30).map((row) => <tr key={row.id} className="border-t border-white/[0.03]"><td className="max-w-[250px] truncate py-1 text-slate-400">{row.name}</td><td className="tabular-nums text-slate-500">{row.slackDays}d</td><td className={row.constraintViolation ? 'font-black text-amber-300' : row.critical ? 'font-black text-rose-300' : 'text-slate-700'}>{row.constraintViolation || (row.critical ? 'Critical' : 'Flexible')}</td></tr>)}</tbody></table></div>
+          </section>
+
+          <section className={sectionClass} data-project-schedule-constraints="true"><div className="flex items-center justify-between"><span><p className="text-xs font-black uppercase tracking-widest text-slate-600">Calendar & constraints</p><h3 className="mt-1 text-xs font-black text-white">Explicit schedule authority</h3></span><CalendarDays size={15} className="text-emerald-300" /></div>
+            <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2"><label className="text-xs font-black uppercase text-slate-600">Constraint<select style={controlStyle} className={`${inputClass} mt-1`} value={constraintType} onChange={(event) => setConstraintType(event.target.value as ProjectConstraintType)}>{constraintTypes.map((type) => <option key={type}>{type}</option>)}</select></label><label className="text-xs font-black uppercase text-slate-600">Constraint date<input style={controlStyle} className={`${inputClass} mt-1`} type="date" disabled={constraintType === 'ASAP'} value={constraintDate} onChange={(event) => setConstraintDate(event.target.value)} /></label></div><button className={`${buttonClass} mt-2 w-full`} disabled={updateMutation.isPending || (constraintType !== 'ASAP' && !constraintDate)} onClick={saveConstraint}>Save task constraint</button>
+            <div className="mt-3"><div className="flex items-center justify-between"><p className="text-xs font-black uppercase text-slate-600">Project working days</p><button className="min-h-[40px] min-w-[40px] rounded-md px-2 text-xs font-black text-amber-300 hover:bg-amber-500/10" onClick={() => setWorkingDays(null)}>No explicit calendar</button></div><div className="mt-2 grid grid-cols-2 gap-1 sm:grid-cols-7">{dayLabels.map((label, day) => <button key={label} type="button" aria-pressed={workingDays?.includes(day) ?? false} onClick={() => toggleDay(day)} className={`min-h-[40px] min-w-[40px] rounded-md border px-1 py-1.5 text-xs font-black ${workingDays?.includes(day) ? 'border-blue-500/30 bg-blue-500/10 text-blue-300' : 'border-white/5 text-slate-700'}`}>{label}</button>)}</div><p className="mt-2 text-xs text-slate-700">{workingDays == null ? 'No working calendar is inferred. Existing project dates remain authoritative.' : `Explicit project calendar: ${workingDays.map((day) => dayLabels[day]).join(', ')}`}</p><button className={`${buttonClass} mt-2 w-full`} disabled={updateMutation.isPending || (workingDays != null && !workingDays.length)} onClick={saveCalendar}>Save calendar</button></div>
+          </section>
+
+          <section className={sectionClass} data-project-schedule-scenarios="true"><div className="flex items-center justify-between"><span><p className="text-xs font-black uppercase tracking-widest text-slate-600">What-if scenarios</p><h3 className="mt-1 text-xs font-black text-white">Preview first · explicit Apply</h3></span><Layers3 size={15} className="text-cyan-300" /></div>
+            <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-[1fr_90px]"><select style={controlStyle} className={inputClass} value={scenarioTaskId} onChange={(event) => setScenarioTaskId(event.target.value)}>{tasks.map((task: any) => <option key={String(task.id)} value={String(task.id)}>{task.name || task.id}</option>)}</select><input style={controlStyle} className={inputClass} type="number" value={scenarioSlipDays} onChange={(event) => setScenarioSlipDays(Number(event.target.value))} aria-label="Scenario slip days" /></div><input style={controlStyle} className={`${inputClass} mt-2`} placeholder="Scenario name" value={scenarioName} onChange={(event) => setScenarioName(event.target.value)} /><div className="mt-2 rounded-md border border-cyan-500/10 bg-cyan-500/[0.025] p-2 text-xs text-slate-500" data-project-scenario-preview="true">Preview is mutation-free: <b className="text-slate-300">{preview?.affected.length || 0}</b> affected · finish <b className="text-cyan-300">{signed(preview?.finishDeltaDays ?? 0)}</b>{preview?.constraintViolations?.length ? <span className="ml-1 text-rose-300">· {preview.constraintViolations.length} constraint violation(s); Apply is blocked</span> : null}.</div><div className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-2"><button className={buttonClass} onClick={() => setPreviewNonce((value) => value + 1)}>Refresh preview</button><button className={primaryButtonClass} disabled={updateMutation.isPending || !scenarioTaskId || !scenarioSlipDays} onClick={saveScenario}>Save scenario</button></div>
+            <div className="mt-2 space-y-1">{(scheduleState.scenarios || []).slice(0, 8).map((scenario) => <div key={scenario.id} className="flex items-center justify-between rounded-md border border-white/5 bg-white/[0.02] p-2"><span className="min-w-0"><b className="block truncate text-xs text-slate-300">{scenario.name}</b><small className="text-xs text-slate-700">{scenario.task_id} · {scenario.slip_days >= 0 ? '+' : ''}{scenario.slip_days}d · {scenario.status}</small></span>{scenario.status === 'PROPOSED' ? <button className={primaryButtonClass} disabled={updateMutation.isPending} onClick={() => applyScenario(scenario.id)}><CheckCircle2 size={10} /> Apply</button> : <span className="text-xs font-black text-emerald-300">Applied</span>}</div>)}</div>
+          </section>
+
+          <section className={sectionClass} data-project-schedule-baselines="true"><div className="flex items-center justify-between"><span><p className="text-xs font-black uppercase tracking-widest text-slate-600">Baseline history</p><h3 className="mt-1 text-xs font-black text-white">Immutable comparisons</h3></span><Save size={15} className="text-amber-300" /></div><div className="mt-2 flex flex-col gap-2 sm:flex-row"><input style={controlStyle} className={inputClass} value={baselineName} onChange={(event) => setBaselineName(event.target.value)} placeholder="Baseline name" /><button className={primaryButtonClass} disabled={updateMutation.isPending} onClick={captureBaseline}>Capture</button></div>{(scheduleState.baselines || []).length ? <><select style={controlStyle} className={`${inputClass} mt-2`} value={baselineId} onChange={(event) => setBaselineId(event.target.value)}>{(scheduleState.baselines || []).map((baseline) => <option key={baseline.id} value={baseline.id}>{baseline.name} · {baseline.captured_at.slice(0, 10)}</option>)}</select><div className="mt-2 max-h-28 overflow-y-auto text-xs">{baselineComparison.slice(0, 30).map((row) => <div key={row.id} className="grid grid-cols-[1fr_55px_55px] border-t border-white/[0.03] py-1"><span className="truncate text-slate-500">{row.name}</span><span className="text-right text-slate-600">S {signed(row.startDeltaDays)}</span><span className="text-right text-slate-600">F {signed(row.endDeltaDays)}</span></div>)}</div></> : <p className="mt-2 text-xs text-slate-700">No schedule baseline captured yet.</p>}</section>
+
+          <section className={sectionClass} data-project-schedule-capacity="true"><div className="flex items-center justify-between"><span><p className="text-xs font-black uppercase tracking-widest text-slate-600">Resource pressure</p><h3 className="mt-1 text-xs font-black text-white">Workload ≠ invented capacity</h3></span><BarChart3 size={15} className="text-amber-300" /></div><p className="mt-2 text-xs text-slate-700">Capacity is only evaluated when canonical project metadata provides an explicit owner limit. Otherwise it remains Unknown.</p><div className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-2">{capacity.slice(0, 12).map((row) => <div key={row.owner} className={`rounded-md border p-2 ${capacityTone(row.status)}`}><b className="block truncate text-xs">{row.owner}</b><span className="mt-1 block text-xs">Workload {row.workload} · Capacity {row.capacity == null ? 'Unknown' : row.capacity} · {row.status}</span></div>)}</div></section>
+        </div>
+      </aside> : null}
+    </> : null}
+  </div>
+}

@@ -1,0 +1,11 @@
+ORIGINAL_PATH: /Users/haewonkim/.local/state/sysgrid-supervisor/runs/20260801T200531Z-64552-381000/diagnostic/REVIEW_ME_FIRST.md
+ORIGINAL_SHA256: 4b56acaab5c09bfeac29201c60c1f48cdce50fe43058f237332b8f2ad72a4135
+================================================================================
+# SysGrid Supervisor Diagnostic
+
+- Result: failure
+- Classification: CAPSULE_CROSS_LEDGER_FAILURE
+- Message: mutation patch contains no canonical diff paths
+- Product mutation authority: none added by this diagnostic
+
+Review RESULT.json, SUPERVISOR_STATE.json, TRACEBACK.txt, and MANIFEST.sha256.

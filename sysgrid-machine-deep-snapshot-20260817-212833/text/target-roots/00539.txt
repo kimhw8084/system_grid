@@ -1,0 +1,11 @@
+ORIGINAL_PATH: /Users/haewonkim/.local/state/sysgrid-supervisor/runs/20260803T141636Z-47121-836000/diagnostic/REVIEW_ME_FIRST.md
+ORIGINAL_SHA256: 0c0db988b5ac24c5e101e16fe4e6c4565291d82f53eaf81ab49a136dde275893
+================================================================================
+# SysGrid Supervisor Diagnostic
+
+- Result: failure
+- Classification: CAPSULE_SCHEMA_FAILURE
+- Message: unsupported schema_version: '1.0'
+- Product mutation authority: none added by this diagnostic
+
+Review RESULT.json, SUPERVISOR_STATE.json, TRACEBACK.txt, and MANIFEST.sha256.

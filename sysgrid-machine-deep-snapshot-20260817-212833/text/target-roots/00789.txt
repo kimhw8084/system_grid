@@ -1,0 +1,83 @@
+ORIGINAL_PATH: /Users/haewonkim/.local/state/sysgrid-supervisor/runs/20260805T160049Z-71898-509000/patch.diff
+ORIGINAL_SHA256: 9b12cef208d947ff5e84109c7c1cf3f5b66397c91006f0e0d7d94899e13b8cca
+================================================================================
+diff --git a/frontend/src/components/FAR.tsx b/frontend/src/components/FAR.tsx
+--- a/frontend/src/components/FAR.tsx
++++ b/frontend/src/components/FAR.tsx
+@@ -1294,41 +1294,42 @@
+           ) : null}
+         </div>
+       )}
++      floatingPanels={(
++        <OperationalSavedViewsPanel
++          isOpen={showSavedViews}
++          panelRef={viewsPanelRef}
++          panelStyle={viewsPanelStyle}
++          entityLabel="FAR"
++          onClose={() => setShowSavedViews(false)}
++          activeViewId={activeViewId}
++          currentViewName={currentSavedView?.name || 'FAR default'}
++          newViewName={newViewName}
++          onNewViewNameChange={setNewViewName}
++          onCreateView={() => void createSavedView()}
++          onApplySystemDefault={applySystemDefault}
++          savedViews={savedViews}
++          defaultViewIds={FAR_SYSTEM_VIEW_IDS}
++          onApplyView={(id) => {
++            const view = savedViews.find((candidate) => candidate.id === id)
++            if (view) applySavedView(view)
++          }}
++          onOverwriteView={(id) => void overwriteSavedView(id)}
++          onRenameView={renameSavedView}
++          onDeleteView={(id) => void deleteSavedView(id)}
++          describeView={(view) => {
++            const config = sanitizeFARSavedViewDefinition(view.config)
++            const mode = FAR_WORKSPACE_MODES.find((item) => item.id === config.filters.mode)?.label || 'Failure Modes'
++            return `${mode} · ${config.filters.preset} · ${config.filters.riskBand === 'all' ? 'all risks' : config.filters.riskBand}`
++          }}
++          syncStatus={collaborativeViews.status}
++          syncMessage={syncMessage}
++          onCopyViewLink={(id) => void collaborativeViews.copyViewLink(id)}
++          conflictMessage={collaborativeViews.conflict?.message}
++          onReloadConflict={collaborativeViews.reloadConflict}
++          onSaveConflictCopy={() => void collaborativeViews.saveConflictCopy()}
++        />
++      )}
+     >
+-      <OperationalSavedViewsPanel
+-        isOpen={showSavedViews}
+-        panelRef={viewsPanelRef}
+-        panelStyle={viewsPanelStyle}
+-        entityLabel="FAR"
+-        onClose={() => setShowSavedViews(false)}
+-        activeViewId={activeViewId}
+-        currentViewName={currentSavedView?.name || 'FAR default'}
+-        newViewName={newViewName}
+-        onNewViewNameChange={setNewViewName}
+-        onCreateView={() => void createSavedView()}
+-        onApplySystemDefault={applySystemDefault}
+-        savedViews={savedViews}
+-        defaultViewIds={FAR_SYSTEM_VIEW_IDS}
+-        onApplyView={(id) => {
+-          const view = savedViews.find((candidate) => candidate.id === id)
+-          if (view) applySavedView(view)
+-        }}
+-        onOverwriteView={(id) => void overwriteSavedView(id)}
+-        onRenameView={renameSavedView}
+-        onDeleteView={(id) => void deleteSavedView(id)}
+-        describeView={(view) => {
+-          const config = sanitizeFARSavedViewDefinition(view.config)
+-          const mode = FAR_WORKSPACE_MODES.find((item) => item.id === config.filters.mode)?.label || 'Failure Modes'
+-          return `${mode} · ${config.filters.preset} · ${config.filters.riskBand === 'all' ? 'all risks' : config.filters.riskBand}`
+-        }}
+-        syncStatus={collaborativeViews.status}
+-        syncMessage={syncMessage}
+-        onCopyViewLink={(id) => void collaborativeViews.copyViewLink(id)}
+-        conflictMessage={collaborativeViews.conflict?.message}
+-        onReloadConflict={collaborativeViews.reloadConflict}
+-        onSaveConflictCopy={() => void collaborativeViews.saveConflictCopy()}
+-      />
+-
+       <AnimatePresence>
+         {showStyleLab && (
+           <motion.div data-far-display-controls="true" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 20 }} role="dialog" aria-label="FAR display controls" className="fixed inset-x-3 bottom-3 z-[110] max-h-[70vh] overflow-auto md:inset-x-auto md:bottom-auto md:right-4 md:top-36 md:w-[680px]">

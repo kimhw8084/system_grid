@@ -1,0 +1,85 @@
+ORIGINAL_PATH: /Users/haewonkim/.local/share/sysgrid-supervisor/v1.3.2/README.md
+ORIGINAL_SHA256: 17b890a8f021abe514ef4237c8d71e02417c2c4af49506003cdf10706aa71752
+================================================================================
+# SysGrid Execution Supervisor v1.3.2
+
+This is the qualified-wrapper candidate for the independently accepted **SysGrid Stable Engine v1.0.4**. It invokes only exact engine bytes with SHA-256:
+
+`ab63bb20c0de32771e20b0159475205f685f28910a0956c217fb3693c02f96e1`
+
+The supervisor does not generate product code, weaken tests, improvise commands, or commit/push outside the engine's immutable capsule contract.
+
+## One-command installation and qualification
+
+Run from the directory containing the ZIP:
+
+```bash
+rm -rf SYSGRID_EXECUTION_SUPERVISOR_v1.3.2 && unzip -q SYSGRID_EXECUTION_SUPERVISOR_v1.3.2.zip && cd SYSGRID_EXECUTION_SUPERVISOR_v1.3.2 && ./INSTALL_AND_QUALIFY.command
+```
+
+The installer verifies the complete extracted tree before importing payload code, runs the 61-test released-byte suite, locates and self-tests the exact accepted engine, installs immutable versioned bytes and atomic wrappers, reruns the same suite from staged bytes, verifies the final installed tree, and creates:
+
+`~/Library/Mobile Documents/com~apple~CloudDocs/SysGrid-Control/Outbox/UPLOAD_THIS_TO_CHATGPT.zip`
+
+Upload that qualification ZIP for independent review. Installation never starts a product mutation.
+
+## Normal operation after independent PASS
+
+With one safe capsule in `SysGrid-Control/Inbox`:
+
+```bash
+sg
+```
+
+Or provide the capsule explicitly:
+
+```bash
+sg run /absolute/path/to/capsule.sgcap
+```
+
+Status:
+
+```bash
+sgs
+sgwatch
+```
+
+## What v1.3.2 changes
+
+### Exact `resume_verify` schema correction
+
+- `resume_verify` now matches Stable Engine v1.0.4 exactly: it carries state ledgers and trusted recipes, but **no mutation patch**.
+- Resume capsules are inspected, copied, and launched without patch-member lookup or digest validation.
+- Git forward/reverse patch checks run only for `mutation`.
+- Non-mutation modes that attempt to carry a patch fail closed.
+- Exact repository branch, HEAD, upstream, dirty paths, pre hashes, and protected hashes remain proven before engine launch.
+- The Stable Engine then verifies the retained post-state, executes every trusted recipe, and alone owns commit, push, remote equality, and clean-state proof.
+
+### Existing convergence protections retained
+
+- Exact live-engine reattachment after supervisor interruption.
+- Verified completed-output recovery without product replay.
+- One safe mutation retry only from complete exact pre-state proof.
+- Replay refusal for post-state, unknown state, or ambiguity.
+- Byte-identical Inbox duplicate convergence.
+- Complete canonical diagnostic ZIP on platform failure.
+
+### Existing safety and performance retained
+
+- One non-blocking kernel lock.
+- Exact engine SHA-256 and self-test.
+- Complete capsule and package manifest coverage.
+- Strict ZIP safety, CRC, decompression, and executable-member defenses.
+- Canonical `.txt`, GNU-style `.sha256`, and JSON state-ledger compatibility.
+- Resource-aware concurrent independent preflight with complete aggregate reporting.
+- Content-addressed, SHA-verified, fsynced, atomic evidence publication.
+
+## Performance boundary
+
+The supervisor maximizes safe platform concurrency and exports detected CPU/memory capacity as resource hints. The immutable capsule and Stable Engine remain authoritative for product-test ordering and parallel test workers. The supervisor cannot safely invent new tests, skip gates, force-apply a patch, or replay an ambiguous mutation.
+
+The intended useful outcomes are:
+
+1. **PASS:** all declared product gates complete and delivery succeeds.
+2. **Application findings:** the complete trusted test matrix returns review-ready product defects.
+3. **Rare trust stop:** continuing would risk wrong or duplicate product mutation; one diagnostic ZIP is produced for exact recovery.

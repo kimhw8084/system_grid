@@ -1,0 +1,442 @@
+ORIGINAL_PATH: /Users/haewonkim/.local/state/sysgrid-supervisor/runs/20260807T111629Z-27092-450000/SUPERVISOR_STATE.json
+ORIGINAL_SHA256: f8a528b7befcb0316052035e05f9b1cfc9cf142ff6c4e36b284fe475c73d2404
+================================================================================
+{
+  "artifact": "/Users/haewonkim/Library/Mobile Documents/com~apple~CloudDocs/SysGrid-Control/Outbox/UPLOAD_THIS_TO_CHATGPT.zip",
+  "artifact_sha256": "4311e99e30755d7dfe668f093f68b73722f37855689d16e2b2223bb74b6569c0",
+  "artifact_size": 28529021,
+  "attempt": 15,
+  "capsule_archive": "/Users/haewonkim/Library/Mobile Documents/com~apple~CloudDocs/SysGrid-Control/Archive/Processed-Capsules/20260807T112042Z__aea533a56e8b__SYSGRID_OUT31_PA15_VR1_CUMULATIVE_VERIFICATION_STABILIZATION_v1.0.2.sgcap",
+  "capsule_cross_ledger": {
+    "changed_path_count": 2,
+    "execution_profile": "promotion_qualification",
+    "execution_scope": {
+      "changed_paths": [],
+      "execution_profile": "promotion_qualification",
+      "targeted_tests": [],
+      "targeted_views": []
+    },
+    "patch_paths": [
+      "frontend/src/components/shared/ServicesDirtyGuardRecovery.test.tsx",
+      "frontend/tests/shell-and-search.spec.ts"
+    ],
+    "post_path_count": 3,
+    "pre_path_count": 1,
+    "protected_path_count": 1,
+    "recipe_ids": [
+      "frontend-test-linter",
+      "frontend-vitest",
+      "full-app-gate",
+      "playwright-specs"
+    ]
+  },
+  "capsule_file": "SYSGRID_OUT31_PA15_VR1_CUMULATIVE_VERIFICATION_STABILIZATION_v1.0.2.sgcap",
+  "capsule_sha256": "aea533a56e8bb6c9276a00b91541a6932d0a875c5b87a10c574f3963a33ba5ab",
+  "capsule_size": 4655,
+  "capsule_stage": "Product Attempt 15 Verification Repair VR1 \u2014 cumulative verification stabilization",
+  "capsule_title": "PA15 Verification Repair VR1 \u2014 stabilize dirty-guard timeout and Golden Eight JSON body evidence",
+  "classification": "AGGREGATE_VERIFICATION_FAILURE",
+  "dirty_path_count": 1,
+  "engine_command": [
+    "/opt/homebrew/opt/python@3.14/bin/python3.14",
+    "<exact-engine>",
+    "execute",
+    "<exact-capsule>",
+    "--repo",
+    "/Users/haewonkim/home/development/sysgrid",
+    "--outbox",
+    "/Users/haewonkim/.local/state/sysgrid-supervisor/runs/20260807T111629Z-27092-450000/engine-outbox"
+  ],
+  "engine_completed": true,
+  "engine_completed_utc": "2026-08-07T11:20:41Z",
+  "engine_exit_code": 1,
+  "engine_path": "/Users/haewonkim/.local/share/sysgrid-runner/engine-v1.1.1/sysgrid_runner.py",
+  "engine_pid": 27133,
+  "engine_sha256": "66b082fec1e9f6c49152e5ecb4cbb3f998e60ce27d53a2325e5f658634a8d032",
+  "engine_started": true,
+  "engine_started_utc": "2026-08-07T11:16:30Z",
+  "event_timeline": [
+    {
+      "details": {},
+      "elapsed_seconds": 0.038,
+      "event_id": "capsule_selected",
+      "message": "Selecting the one immutable capsule and converging only byte-identical Inbox duplicates.",
+      "notification": {
+        "event_id": "capsule_selected",
+        "presentation_mode": "summary",
+        "required": false,
+        "status": "local_only",
+        "updated_utc": "2026-08-07T11:16:29Z"
+      },
+      "status": "started",
+      "utc": "2026-08-07T11:16:29Z"
+    },
+    {
+      "details": {
+        "changed_path_count": 2,
+        "execution_profile": "promotion_qualification",
+        "execution_scope": {
+          "changed_paths": [],
+          "execution_profile": "promotion_qualification",
+          "targeted_tests": [],
+          "targeted_views": []
+        },
+        "patch_paths": [
+          "frontend/src/components/shared/ServicesDirtyGuardRecovery.test.tsx",
+          "frontend/tests/shell-and-search.spec.ts"
+        ],
+        "post_path_count": 3,
+        "pre_path_count": 1,
+        "protected_path_count": 1,
+        "recipe_ids": [
+          "frontend-test-linter",
+          "frontend-vitest",
+          "full-app-gate",
+          "playwright-specs"
+        ]
+      },
+      "elapsed_seconds": 0.048,
+      "event_id": "capsule_verified",
+      "message": "Capsule archive, manifest, schema, patch identity, and cross-ledger contract are exact.",
+      "notification": {
+        "attempts": 1,
+        "chat_id_suffix": "1055",
+        "event_id": "run_started",
+        "first_attempt_utc": "2026-08-07T11:16:29Z",
+        "message_id": 670,
+        "payload_sha256": "43b6969d6ef517b5243efb12c1b36464620e97413484948b26ab7e920d249a98",
+        "required": false,
+        "status": "delivered",
+        "updated_utc": "2026-08-07T11:16:30Z"
+      },
+      "status": "passed",
+      "utc": "2026-08-07T11:16:30Z"
+    },
+    {
+      "details": {},
+      "elapsed_seconds": 0.797,
+      "event_id": "preflight_started",
+      "message": "Running independent platform checks and exact repository-state proof.",
+      "notification": {
+        "event_id": "preflight_started",
+        "presentation_mode": "summary",
+        "required": false,
+        "status": "local_only",
+        "updated_utc": "2026-08-07T11:16:30Z"
+      },
+      "status": "started",
+      "utc": "2026-08-07T11:16:30Z"
+    },
+    {
+      "details": {
+        "dirty_paths": 1,
+        "head": "3c286ff96da8aeb53b029b767bcd358556ec4fda",
+        "patch": {
+          "applicable": true,
+          "forward_diagnostic": "Checking patch frontend/src/components/shared/ServicesDirtyGuardRecovery.test.tsx...\nChecking patch frontend/tests/shell-and-search.spec.ts...",
+          "forward_exit_code": 0,
+          "reverse_applicable": false,
+          "reverse_diagnostic": "Checking patch frontend/tests/shell-and-search.spec.ts...\nerror: while searching for:\ntest.describe('Golden Eight rendered geometry', () => {\n\n\n  test('records authoritative API response shapes for comprehensive Golden Eight seed fixtures', async ({ page, sysApi }, testInfo) => {\n    await resetBrowserState(page)\n    await page.setViewportSize({ width: 1440, height: 1000 })\n\n\nerror: patch failed: frontend/tests/shell-and-search.spec.ts:151\nerror: frontend/tests/shell-and-search.spec.ts: patch does not apply\nChecking patch frontend/src/components/shared/ServicesDirtyGuardRecovery.test.tsx...\nerror: while searching for:\n\n    expect(screen.getByTestId('services-dirty-state')).toHaveTextContent('false')\n    expect(screen.getByPlaceholderText('e.g. ERP DB Prod 01')).toHaveValue('')\n  }, 15_000)\n\n  it('keeps clean close clean', () => {\n    renderHarness({ name: 'Existing Service' })\n\nerror: patch failed: frontend/src/components/shared/ServicesDirtyGuardRecovery.test.tsx:99\nerror: frontend/src/components/shared/ServicesDirtyGuardRecovery.test.tsx: patch does not apply",
+          "reverse_exit_code": 1
+        }
+      },
+      "elapsed_seconds": 1.296,
+      "event_id": "preflight_completed",
+      "message": "Exact engine, repository, storage, state, protected hashes, and patch state passed.",
+      "notification": {
+        "event_id": "preflight_completed",
+        "presentation_mode": "summary",
+        "required": false,
+        "status": "local_only",
+        "updated_utc": "2026-08-07T11:16:30Z"
+      },
+      "status": "passed",
+      "utc": "2026-08-07T11:16:30Z"
+    },
+    {
+      "details": {},
+      "elapsed_seconds": 1.298,
+      "event_id": "engine_launch",
+      "message": "Launching the exact Stable Engine once; ambiguous mutation replay remains prohibited.",
+      "notification": {
+        "event_id": "engine_launch",
+        "presentation_mode": "summary",
+        "required": false,
+        "status": "local_only",
+        "updated_utc": "2026-08-07T11:16:30Z"
+      },
+      "status": "started",
+      "utc": "2026-08-07T11:16:30Z"
+    },
+    {
+      "details": {
+        "engine_exit_code": 1
+      },
+      "elapsed_seconds": 252.189,
+      "event_id": "engine_completed",
+      "message": "Stable Engine exited with code 1; verifying its complete evidence.",
+      "notification": {
+        "event_id": "engine_completed",
+        "presentation_mode": "summary",
+        "required": false,
+        "status": "local_only",
+        "updated_utc": "2026-08-07T11:20:41Z"
+      },
+      "status": "failed",
+      "utc": "2026-08-07T11:20:41Z"
+    },
+    {
+      "details": {
+        "artifact_size": 28529021,
+        "manifest_entries": 797
+      },
+      "elapsed_seconds": 252.298,
+      "event_id": "evidence_verified",
+      "message": "Engine evidence is complete and exactly correlated to capsule, engine, and process exit.",
+      "notification": {
+        "event_id": "evidence_verified",
+        "presentation_mode": "summary",
+        "required": false,
+        "status": "local_only",
+        "updated_utc": "2026-08-07T11:20:41Z"
+      },
+      "status": "passed",
+      "utc": "2026-08-07T11:20:41Z"
+    },
+    {
+      "details": {},
+      "elapsed_seconds": 252.31,
+      "event_id": "publication_started",
+      "message": "Publishing one content-addressed, fsynced, atomic canonical review ZIP.",
+      "notification": {
+        "event_id": "publication_started",
+        "presentation_mode": "summary",
+        "required": false,
+        "status": "local_only",
+        "updated_utc": "2026-08-07T11:20:41Z"
+      },
+      "status": "started",
+      "utc": "2026-08-07T11:20:41Z"
+    },
+    {
+      "details": {
+        "artifact_sha256": "4311e99e30755d7dfe668f093f68b73722f37855689d16e2b2223bb74b6569c0",
+        "exit_code": 1
+      },
+      "elapsed_seconds": 252.706,
+      "event_id": "publication_completed",
+      "message": "Run complete. Engine runtime: 249.0s. Canonical review ZIP is ready for upload.",
+      "notification": {
+        "attempts": 1,
+        "chat_id_suffix": "1055",
+        "event_id": "run_completed",
+        "first_attempt_utc": "2026-08-07T11:20:42Z",
+        "message_id": 671,
+        "payload_sha256": "60b01eb2ccdebd3d7c14c52b0791b16cec5204a70fc464dcd2ce18cfd5ab7580",
+        "required": false,
+        "status": "delivered",
+        "updated_utc": "2026-08-07T11:20:42Z"
+      },
+      "status": "failed",
+      "utc": "2026-08-07T11:20:42Z"
+    }
+  ],
+  "execution_profile": "promotion_qualification",
+  "execution_scope": {
+    "changed_paths": [],
+    "execution_profile": "promotion_qualification",
+    "targeted_tests": [],
+    "targeted_views": []
+  },
+  "issue": "OUT-31",
+  "iteration": 39,
+  "last_progress_event": "publication_completed",
+  "last_progress_message": "Run complete. Engine runtime: 249.0s. Canonical review ZIP is ready for upload.",
+  "last_progress_status": "failed",
+  "last_progress_utc": "2026-08-07T11:20:42Z",
+  "message": "required recipes failed or blocked: ['playwright-specs', 'full-app-gate']",
+  "monotonic_started": 4371424.664161291,
+  "notification_events": {
+    "capsule_selected": {
+      "event_id": "capsule_selected",
+      "presentation_mode": "summary",
+      "required": false,
+      "status": "local_only",
+      "updated_utc": "2026-08-07T11:16:29Z"
+    },
+    "capsule_verified": {
+      "attempts": 1,
+      "chat_id_suffix": "1055",
+      "event_id": "run_started",
+      "first_attempt_utc": "2026-08-07T11:16:29Z",
+      "message_id": 670,
+      "payload_sha256": "43b6969d6ef517b5243efb12c1b36464620e97413484948b26ab7e920d249a98",
+      "required": false,
+      "status": "delivered",
+      "updated_utc": "2026-08-07T11:16:30Z"
+    },
+    "engine_completed": {
+      "event_id": "engine_completed",
+      "presentation_mode": "summary",
+      "required": false,
+      "status": "local_only",
+      "updated_utc": "2026-08-07T11:20:41Z"
+    },
+    "engine_launch": {
+      "event_id": "engine_launch",
+      "presentation_mode": "summary",
+      "required": false,
+      "status": "local_only",
+      "updated_utc": "2026-08-07T11:16:30Z"
+    },
+    "evidence_verified": {
+      "event_id": "evidence_verified",
+      "presentation_mode": "summary",
+      "required": false,
+      "status": "local_only",
+      "updated_utc": "2026-08-07T11:20:41Z"
+    },
+    "preflight_completed": {
+      "event_id": "preflight_completed",
+      "presentation_mode": "summary",
+      "required": false,
+      "status": "local_only",
+      "updated_utc": "2026-08-07T11:16:30Z"
+    },
+    "preflight_started": {
+      "event_id": "preflight_started",
+      "presentation_mode": "summary",
+      "required": false,
+      "status": "local_only",
+      "updated_utc": "2026-08-07T11:16:30Z"
+    },
+    "publication_completed": {
+      "attempts": 1,
+      "chat_id_suffix": "1055",
+      "event_id": "run_completed",
+      "first_attempt_utc": "2026-08-07T11:20:42Z",
+      "message_id": 671,
+      "payload_sha256": "60b01eb2ccdebd3d7c14c52b0791b16cec5204a70fc464dcd2ce18cfd5ab7580",
+      "required": false,
+      "status": "delivered",
+      "updated_utc": "2026-08-07T11:20:42Z"
+    },
+    "publication_started": {
+      "event_id": "publication_started",
+      "presentation_mode": "summary",
+      "required": false,
+      "status": "local_only",
+      "updated_utc": "2026-08-07T11:20:41Z"
+    }
+  },
+  "notification_policy": {
+    "delivery_semantics": "durably-deduplicated-at-least-once",
+    "engine_heartbeat_seconds": 300,
+    "max_messages_per_run": 3,
+    "presentation_mode": "summary",
+    "registered_events": 21,
+    "required_before_engine": false,
+    "telegram_heartbeats": false
+  },
+  "original_capsule": "/Users/haewonkim/Library/Mobile Documents/com~apple~CloudDocs/SysGrid-Control/Inbox/SYSGRID_OUT31_PA15_VR1_CUMULATIVE_VERIFICATION_STABILIZATION_v1.0.2.sgcap",
+  "pid": 27092,
+  "preflight": {
+    "declared_state": {
+      "dirty_path_count": 1,
+      "pre_hash_count": 1,
+      "protected_hash_count": 1
+    },
+    "engine_self_test": {
+      "engine_version": "1.1.1",
+      "result": "PASS",
+      "tests": [
+        "safe-path",
+        "manifest",
+        "corruption",
+        "canonical-dirty-paths",
+        "aggregate-recipes"
+      ]
+    },
+    "patch": {
+      "applicable": true,
+      "forward_diagnostic": "Checking patch frontend/src/components/shared/ServicesDirtyGuardRecovery.test.tsx...\nChecking patch frontend/tests/shell-and-search.spec.ts...",
+      "forward_exit_code": 0,
+      "reverse_applicable": false,
+      "reverse_diagnostic": "Checking patch frontend/tests/shell-and-search.spec.ts...\nerror: while searching for:\ntest.describe('Golden Eight rendered geometry', () => {\n\n\n  test('records authoritative API response shapes for comprehensive Golden Eight seed fixtures', async ({ page, sysApi }, testInfo) => {\n    await resetBrowserState(page)\n    await page.setViewportSize({ width: 1440, height: 1000 })\n\n\nerror: patch failed: frontend/tests/shell-and-search.spec.ts:151\nerror: frontend/tests/shell-and-search.spec.ts: patch does not apply\nChecking patch frontend/src/components/shared/ServicesDirtyGuardRecovery.test.tsx...\nerror: while searching for:\n\n    expect(screen.getByTestId('services-dirty-state')).toHaveTextContent('false')\n    expect(screen.getByPlaceholderText('e.g. ERP DB Prod 01')).toHaveValue('')\n  }, 15_000)\n\n  it('keeps clean close clean', () => {\n    renderHarness({ name: 'Existing Service' })\n\nerror: patch failed: frontend/src/components/shared/ServicesDirtyGuardRecovery.test.tsx:99\nerror: frontend/src/components/shared/ServicesDirtyGuardRecovery.test.tsx: patch does not apply",
+      "reverse_exit_code": 1
+    },
+    "storage": {
+      "control_free": 13098938368,
+      "local_free": 13098938368,
+      "required": 3221225472
+    }
+  },
+  "recovered_without_product_replay": false,
+  "repo": "/Users/haewonkim/home/development/sysgrid",
+  "repo_branch": "main",
+  "repo_head": "3c286ff96da8aeb53b029b767bcd358556ec4fda",
+  "resource_plan": {
+    "backend_workers": 5,
+    "cpu_count": 12,
+    "e2e_workers": 2,
+    "frontend_workers": 5,
+    "memory_bytes": 19327352832,
+    "preflight_workers": 24,
+    "reserve_memory_bytes": 2147483648,
+    "test_cpu_budget": 11,
+    "usable_memory_bytes": 17179869184
+  },
+  "run_id": "20260807T111629Z-27092-450000",
+  "runtime_summary": {
+    "artifact": "/Users/haewonkim/.local/state/sysgrid-supervisor/runs/20260807T111629Z-27092-450000/engine-outbox/UPLOAD_THIS_TO_CHATGPT.zip",
+    "classification": "AGGREGATE_VERIFICATION_FAILURE",
+    "commands": [
+      {
+        "duration_seconds": 0.6,
+        "exit_code": 0,
+        "recipe_id": "frontend-test-linter",
+        "timed_out": false
+      },
+      {
+        "duration_seconds": 15.125,
+        "exit_code": 0,
+        "recipe_id": "frontend-vitest",
+        "timed_out": false
+      },
+      {
+        "duration_seconds": 228.783,
+        "exit_code": 1,
+        "recipe_id": "playwright-specs",
+        "timed_out": false
+      },
+      {
+        "duration_seconds": null,
+        "exit_code": null,
+        "recipe_id": "full-app-gate",
+        "timed_out": null
+      }
+    ],
+    "engine_total_seconds": 249.0,
+    "failed_stage": "verification-plan",
+    "finished_utc": "2026-08-07T11:20:39Z",
+    "result": "failure",
+    "started_utc": "2026-08-07T11:16:30Z"
+  },
+  "safe_cleanup": {
+    "inspected": 0,
+    "removed": 0
+  },
+  "safe_retry_count": 0,
+  "stage": "complete",
+  "staged_capsule": "/Users/haewonkim/.local/state/sysgrid-supervisor/runs/20260807T111629Z-27092-450000/input/SYSGRID_OUT31_PA15_VR1_CUMULATIVE_VERIFICATION_STABILIZATION_v1.0.2.sgcap",
+  "started_utc": "2026-08-07T11:16:29Z",
+  "state": "FAILED_REVIEW_READY",
+  "supervisor_version": "2.2.1",
+  "telegram": {
+    "chat_id_suffix": "1055",
+    "configured": true,
+    "source": "/Users/haewonkim/.config/sysgrid-supervisor/telegram.json"
+  },
+  "updated_utc": "2026-08-07T11:20:42Z",
+  "work_dir": "/Users/haewonkim/.local/state/sysgrid-supervisor/runs/20260807T111629Z-27092-450000"
+}

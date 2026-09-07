@@ -1,0 +1,574 @@
+ORIGINAL_PATH: /Users/haewonkim/.local/share/sysgrid-campaign-platform/v1.1.1/payload/sysgrid_source_authority.py
+ORIGINAL_SHA256: 106a1b16f429ab9893781d037a302184f7c626fb3d4134b9e8f5df315c624158
+================================================================================
+#!/usr/bin/env python3
+"""Read-only, complete safe source-authority capture for SysGrid.
+
+This tool never edits the product repository. It captures every tracked and valid
+untracked source/config/test file, exact Git state, dependency and route/test maps,
+and a non-mutation proof into one canonical iCloud Outbox ZIP.
+"""
+from __future__ import annotations
+
+import argparse
+import hashlib
+import json
+import os
+import platform
+import re
+import shutil
+import subprocess
+import sys
+import tempfile
+import zipfile
+from datetime import datetime, timezone
+from pathlib import Path
+from typing import Any, Iterable
+
+from sysgrid_state_identity import (
+    StateIdentityError,
+    all_repository_files,
+    canonical_dirty_paths,
+)
+
+VERSION = "1.0.0"
+PLATFORM_VERSION = "1.1.1"
+CANONICAL_ZIP = "UPLOAD_THIS_TO_CHATGPT_SOURCE_AUTHORITY.zip"
+DIAGNOSTIC_ZIP = "UPLOAD_DIAGNOSTIC_TO_CHATGPT_SOURCE_AUTHORITY.zip"
+ACTIVATION_ARTIFACT = "UPLOAD_THIS_TO_CHATGPT_SOURCE_AUTHORITY_ACTIVATION.zip"
+MAX_TOTAL_SOURCE_BYTES = 1536 * 1024 * 1024
+MAX_SINGLE_SOURCE_BYTES = 32 * 1024 * 1024
+SOURCE_SUFFIXES = {
+    ".py", ".pyi", ".ts", ".tsx", ".js", ".jsx", ".mjs", ".cjs",
+    ".sh", ".bash", ".zsh", ".json", ".jsonc", ".md", ".txt",
+    ".csv", ".yaml", ".yml", ".toml", ".ini", ".cfg", ".html",
+    ".css", ".scss", ".svg", ".sql", ".xml", ".lock", ".graphql",
+    ".gql", ".properties", ".proto", ".env.example", ".sample",
+}
+SOURCE_SPECIAL_NAMES = {
+    "Dockerfile", "Makefile", "Procfile", "Pipfile", "Gemfile",
+    "package.json", "requirements.txt", "pyproject.toml", "tsconfig.json",
+    "vite.config.ts", "playwright.config.ts", "alembic.ini", ".env.example", ".env.sample",
+}
+SOURCE_EXCLUDED_DIRS = {
+    ".git", "node_modules", "venv", ".venv", "dist", "build", "coverage",
+    "playwright-report", "test-results", ".cache", "__pycache__",
+    ".pytest_cache", ".mypy_cache", ".ruff_cache", ".next", "target",
+}
+SECRET_BASENAMES = [REDACTED]
+    ".env", ".env.local", ".env.production", ".env.development",
+    "credentials.json", "secrets.json", "id_rsa", "id_ed25519",
+    "service-account.json", "firebase-adminsdk.json",
+}
+TEXT_SCAN_LIMIT = 4 * 1024 * 1024
+ROUTE_RE = re.compile(r"(?:path|route)\s*[:=]\s*['\"]([^'\"]+)")
+API_RE = re.compile(r"@(router|app)\.(get|post|put|patch|delete)\(['\"]([^'\"]+)")
+IMPORT_RE = re.compile(
+    r"(?:from\s+['\"]([^'\"]+)['\"]|import\s+[^'\"]*?from\s+['\"]([^'\"]+)['\"]|require\(['\"]([^'\"]+)['\"]\)|^\s*(?:from|import)\s+([A-Za-z0-9_\.]+))",
+    re.MULTILINE,
+)
+TEST_MARKERS = ("test", "spec", "e2e", "playwright")
+
+class CaptureError(RuntimeError):
+    def __init__(self, classification: str, message: str, exit_code: int = 1):
+        super().__init__(message)
+        self.classification = classification
+        self.exit_code = exit_code
+
+
+def sha256_file(path: Path) -> str:
+    digest = hashlib.sha256()
+    with path.open("rb") as handle:
+        for chunk in iter(lambda: handle.read(1024 * 1024), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
+def sha256_bytes(data: bytes) -> str:
+    return hashlib.sha256(data).hexdigest()
+
+
+def write_json(path: Path, value: Any) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(value, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+
+
+def safe_env() -> dict[str, str]:
+    allowed = {"PATH", "HOME", "USER", "LOGNAME", "TMPDIR", "LANG", "LC_ALL", "SSH_AUTH_SOCK"}
+    env = {key: value for key, value in os.environ.items() if key in allowed}
+    env.setdefault("PATH", "/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin")
+    env["GIT_OPTIONAL_LOCKS"] = "0"
+    return env
+
+
+def git(repo: Path, *args: str, text: bool = True, timeout: int = 120) -> subprocess.CompletedProcess[Any]:
+    completed = subprocess.run(
+        ["git", "-C", str(repo), "-c", "core.quotepath=false", *args],
+        stdin=subprocess.DEVNULL,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        text=text,
+        timeout=timeout,
+        check=False,
+        env=safe_env(),
+    )
+    if completed.returncode:
+        stderr = completed.stderr if text else completed.stderr.decode("utf-8", "replace")
+        raise CaptureError("GIT_READ_FAILURE", f"git {' '.join(args)} failed: {stderr[:1200]}", 65)
+    return completed
+
+
+def discover_repo(explicit: Path | None) -> Path:
+    candidates: list[Path] = []
+    if explicit is not None:
+        candidates.append(explicit)
+    env_repo = os.environ.get("SYSGRID_REPO")
+    if env_repo:
+        candidates.append(Path(env_repo))
+    candidates.extend([
+        Path.cwd(),
+        Path.home() / "home/development/sysgrid",
+        Path.home() / "development/sysgrid",
+    ])
+    seen: set[Path] = set()
+    for candidate in candidates:
+        candidate = candidate.expanduser().resolve()
+        if candidate in seen:
+            continue
+        seen.add(candidate)
+        completed = subprocess.run(
+            ["git", "-C", str(candidate), "rev-parse", "--show-toplevel"],
+            stdin=subprocess.DEVNULL,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.DEVNULL,
+            text=True,
+            check=False,
+            env=safe_env(),
+        )
+        if completed.returncode == 0:
+            root = Path(completed.stdout.strip()).resolve()
+            if root.name.lower() == "sysgrid":
+                return root
+    raise CaptureError(
+        "SOURCE_REPOSITORY_NOT_FOUND",
+        "SysGrid repository was not found in the qualified default locations. Set SYSGRID_REPO only if the repository was intentionally moved.",
+        66,
+    )
+
+
+def outbox_path() -> Path:
+    icloud = Path.home() / "Library/Mobile Documents/com~apple~CloudDocs/SysGrid-Control/Outbox"
+    try:
+        icloud.mkdir(parents=True, exist_ok=True)
+        probe = icloud / ".source-authority-write-probe"
+        probe.write_text("ok", encoding="utf-8")
+        probe.unlink()
+        return icloud
+    except OSError:
+        fallback = Path.home() / "SysGrid-Control/Outbox"
+        fallback.mkdir(parents=True, exist_ok=True)
+        return fallback
+
+
+def platform_identity() -> dict[str, Any]:
+    home = Path.home()
+    paths = {
+        "dispatcher": home / ".local/bin/sg",
+        "source_authority": home / ".local/share/sysgrid-campaign-platform/v1.1.1/payload/sysgrid_source_authority.py",
+        "engine": home / ".local/share/sysgrid-runner/engine-v1.1.1/sysgrid_runner.py",
+        "supervisor": home / ".local/share/sysgrid-supervisor/v2.2.1/payload/sysgrid_supervisor.py",
+        "campaign_controller": home / ".local/share/sysgrid-supervisor/v2.2.1/payload/sysgrid_campaign.py",
+        "state_identity": home / ".local/share/sysgrid-runner/engine-v1.1.1/sysgrid_state_identity.py",
+    }
+    return {
+        "platform_version": PLATFORM_VERSION,
+        "source_authority_version": VERSION,
+        "files": {
+            name: {"path": str(path), "exists": path.is_file(), "sha256": sha256_file(path) if path.is_file() else None}
+            for name, path in paths.items()
+        },
+    }
+
+
+def source_role(rel: str) -> str:
+    path = Path(rel)
+    lowered = rel.lower()
+    if "test" in path.name.lower() or any(part.lower() in {"tests", "test", "e2e", "specs"} for part in path.parts):
+        return "test"
+    if "migration" in lowered or "alembic" in lowered:
+        return "migration"
+    if path.name in SOURCE_SPECIAL_NAMES or path.suffix == ".lock":
+        return "dependency_configuration"
+    if any(part in {"scripts", ".github"} for part in path.parts):
+        return "automation"
+    if path.suffix.lower() in {".md", ".rst", ".txt"}:
+        return "documentation"
+    return "product_source"
+
+
+def source_allowed(rel: str, path: Path) -> tuple[bool, str]:
+    parts = set(Path(rel).parts)
+    if parts & SOURCE_EXCLUDED_DIRS:
+        return False, "excluded_directory"
+    if path.name in SECRET_BASENAMES or path.name.startswith(".env") and path.name not in {".env.example", ".env.sample"}:
+        return False, "secret_basename"
+    if path.is_symlink() or not path.is_file():
+        return False, "unsupported_path_type"
+    if path.stat().st_size > MAX_SINGLE_SOURCE_BYTES:
+        return False, "file_size_limit"
+    suffix = path.suffix.lower()
+    if suffix not in SOURCE_SUFFIXES and path.name not in SOURCE_SPECIAL_NAMES:
+        return False, "non_source_file"
+    return True, "included"
+
+
+def read_text_bounded(path: Path) -> str | None:
+    if path.stat().st_size > TEXT_SCAN_LIMIT:
+        return None
+    try:
+        return path.read_text(encoding="utf-8")
+    except (UnicodeDecodeError, OSError):
+        return None
+
+
+def build_maps(repo: Path, included: list[dict[str, Any]]) -> tuple[dict[str, Any], dict[str, Any], dict[str, Any]]:
+    entry_by_path = {entry["path"]: entry for entry in included}
+    paths = sorted(entry_by_path)
+    shared = [
+        p for p in paths
+        if any(token in p.lower() for token in ("shared", "operationalworkspace", "workspace", "api/client", "shell", "monitoringgrid"))
+    ]
+    tests: list[dict[str, Any]] = []
+    routes: list[dict[str, str]] = []
+    apis: list[dict[str, str]] = []
+    imports: list[dict[str, Any]] = []
+    for rel in paths:
+        role = entry_by_path[rel]["role"]
+        if role == "test" or any(marker in Path(rel).name.lower() for marker in TEST_MARKERS):
+            tests.append({"path": rel, "size": entry_by_path[rel]["size"], "sha256": entry_by_path[rel]["sha256"]})
+        text = read_text_bounded(repo / rel)
+        if text is None:
+            continue
+        for match in ROUTE_RE.finditer(text):
+            routes.append({"route": match.group(1), "owner": rel})
+        for match in API_RE.finditer(text):
+            apis.append({"method": match.group(2).upper(), "path": match.group(3), "owner": rel})
+        deps = sorted({next(group for group in match.groups() if group) for match in IMPORT_RE.finditer(text)})
+        if deps:
+            imports.append({"owner": rel, "imports": deps[:500]})
+    ownership = {
+        "shared_high_blast_radius": sorted(shared),
+        "role_counts": {
+            role: sum(1 for entry in included if entry["role"] == role)
+            for role in sorted({entry["role"] for entry in included})
+        },
+        "files": [{"path": entry["path"], "role": entry["role"]} for entry in included],
+    }
+    route_api_test = {"routes": routes[:10000], "api_endpoints": apis[:10000], "tests": tests}
+    dependency_graph = {"imports": imports}
+    return ownership, route_api_test, dependency_graph
+
+
+def dependency_inventory(repo: Path, included_paths: set[str]) -> dict[str, Any]:
+    likely = [
+        "package.json", "package-lock.json", "pnpm-lock.yaml", "yarn.lock",
+        "frontend/package.json", "frontend/package-lock.json", "frontend/pnpm-lock.yaml",
+        "backend/requirements.txt", "backend/pyproject.toml", "requirements.txt",
+        "pyproject.toml", "Pipfile", "poetry.lock", "Cargo.toml", "Cargo.lock",
+    ]
+    inventory: dict[str, Any] = {}
+    for rel in likely:
+        if rel not in included_paths:
+            continue
+        path = repo / rel
+        inventory[rel] = {
+            "sha256": sha256_file(path),
+            "size": path.stat().st_size,
+            "content": path.read_text(encoding="utf-8", errors="replace") if path.stat().st_size < 8 * 1024 * 1024 else None,
+        }
+    return inventory
+
+
+def git_snapshot(repo: Path, target: Path) -> dict[str, Any]:
+    target.mkdir(parents=True, exist_ok=True)
+    commands = {
+        "working.patch": ("diff", "--binary"),
+        "staged.patch": ("diff", "--cached", "--binary"),
+        "name_status.txt": ("diff", "--name-status", "HEAD"),
+        "tracked_index.txt": ("ls-files", "-s"),
+        "recent_commits.txt": ("log", "-n", "30", "--date=iso-strict", "--pretty=format:%H%x09%ad%x09%an%x09%s"),
+        "submodules.txt": ("submodule", "status", "--recursive"),
+    }
+    hashes: dict[str, Any] = {}
+    for name, args in commands.items():
+        try:
+            data = git(repo, *args).stdout.encode("utf-8")
+            (target / name).write_bytes(data)
+            hashes[name] = {"sha256": sha256_bytes(data), "size": len(data)}
+        except CaptureError as exc:
+            if name == "submodules.txt":
+                data = f"unavailable: {exc}\n".encode("utf-8")
+                (target / name).write_bytes(data)
+                hashes[name] = {"sha256": sha256_bytes(data), "size": len(data), "status": "unavailable"}
+            else:
+                raise
+    return hashes
+
+
+def source_fingerprint(entries: Iterable[dict[str, Any]], identity: dict[str, Any]) -> str:
+    digest = hashlib.sha256()
+    digest.update(identity["branch"].encode())
+    digest.update(b"\0")
+    digest.update(identity["head"].encode())
+    for path in identity["dirty_paths"]:
+        digest.update(path.encode())
+        digest.update(b"\0")
+    for entry in sorted(entries, key=lambda row: row["path"]):
+        digest.update(entry["path"].encode())
+        digest.update(b"\0")
+        digest.update(entry["sha256"].encode())
+        digest.update(b"\0")
+    return digest.hexdigest()
+
+
+def current_identity(repo: Path) -> dict[str, Any]:
+    branch = git(repo, "branch", "--show-current").stdout.strip()
+    head = git(repo, "rev-parse", "HEAD").stdout.strip()
+    upstream_result = subprocess.run(
+        ["git", "-C", str(repo), "rev-parse", "--abbrev-ref", "--symbolic-full-name", "@{u}"],
+        stdin=subprocess.DEVNULL,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.DEVNULL,
+        text=True,
+        check=False,
+        env=safe_env(),
+    )
+    upstream = upstream_result.stdout.strip() if upstream_result.returncode == 0 else None
+    return {"repository": str(repo), "branch": branch, "head": head, "upstream": upstream, "dirty_paths": list(canonical_dirty_paths(repo))}
+
+
+def create_manifest(root: Path) -> None:
+    members = sorted(path for path in root.rglob("*") if path.is_file() and path != root / "MANIFEST.sha256")
+    (root / "MANIFEST.sha256").write_text(
+        "".join(f"{sha256_file(path)}  {path.relative_to(root).as_posix()}\n" for path in members),
+        encoding="utf-8",
+    )
+
+
+def write_zip(root: Path, output: Path) -> None:
+    output.parent.mkdir(parents=True, exist_ok=True)
+    if output.exists():
+        output.unlink()
+    with zipfile.ZipFile(output, "w", compression=zipfile.ZIP_DEFLATED, compresslevel=9, allowZip64=True) as archive:
+        for path in sorted(root.rglob("*")):
+            if not path.is_file():
+                continue
+            info = zipfile.ZipInfo(path.relative_to(root).as_posix(), (2026, 8, 2, 0, 0, 0))
+            info.external_attr = 0o100644 << 16
+            info.compress_type = zipfile.ZIP_DEFLATED
+            archive.writestr(info, path.read_bytes())
+
+
+def capture(repo: Path, output: Path) -> dict[str, Any]:
+    started = datetime.now(timezone.utc)
+    before_identity = current_identity(repo)
+    try:
+        paths = all_repository_files(repo)
+    except StateIdentityError as exc:
+        raise CaptureError("SOURCE_ENUMERATION_FAILURE", str(exc), 67) from exc
+    with tempfile.TemporaryDirectory(prefix="sysgrid-source-authority-") as tmp:
+        root = Path(tmp)
+        source_root = root / "SOURCE_AUTHORITY"
+        files_root = source_root / "files"
+        files_root.mkdir(parents=True, exist_ok=True)
+        included: list[dict[str, Any]] = []
+        excluded: list[dict[str, Any]] = []
+        total = 0
+        for rel in paths:
+            src = repo / rel
+            allowed, reason = source_allowed(rel, src)
+            entry: dict[str, Any] = {
+                "path": rel,
+                "role": source_role(rel),
+                "size": src.stat().st_size if src.exists() and src.is_file() else None,
+                "reason": reason,
+            }
+            if src.is_file():
+                entry["sha256"] = sha256_file(src)
+            if not allowed:
+                excluded.append(entry)
+                continue
+            size = int(entry["size"])
+            if total + size > MAX_TOTAL_SOURCE_BYTES:
+                raise CaptureError(
+                    "SOURCE_AUTHORITY_SIZE_LIMIT",
+                    f"Safe source authority exceeds {MAX_TOTAL_SOURCE_BYTES} bytes at {rel}; no incomplete production snapshot was issued.",
+                    68,
+                )
+            dst = files_root / rel
+            dst.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(src, dst)
+            total += size
+            included.append(entry)
+        if not included:
+            raise CaptureError("SOURCE_AUTHORITY_EMPTY", "No eligible source files were captured.", 69)
+        manifest_lines = [f"{entry['sha256']}  {entry['path']}" for entry in included]
+        (source_root / "SOURCE_MANIFEST.sha256").write_text("\n".join(manifest_lines) + "\n", encoding="utf-8")
+        ownership, route_api_test, dependency_graph = build_maps(repo, included)
+        write_json(source_root / "OWNERSHIP_GRAPH.json", ownership)
+        write_json(source_root / "ROUTE_API_TEST_MAP.json", route_api_test)
+        write_json(source_root / "DEPENDENCY_GRAPH.json", dependency_graph)
+        write_json(source_root / "DEPENDENCY_INVENTORY.json", dependency_inventory(repo, {entry["path"] for entry in included}))
+        write_json(source_root / "FILE_INDEX.json", {"included": included, "excluded": excluded})
+        git_hashes = git_snapshot(repo, root / "GIT_STATE")
+        after_entries: list[dict[str, Any]] = []
+        for entry in included:
+            src = repo / entry["path"]
+            if not src.is_file() or sha256_file(src) != entry["sha256"]:
+                raise CaptureError("SOURCE_CHANGED_DURING_CAPTURE", f"Source changed during capture: {entry['path']}", 70)
+            after_entries.append(entry)
+        after_identity = current_identity(repo)
+        if before_identity != after_identity:
+            raise CaptureError("REPOSITORY_CHANGED_DURING_CAPTURE", "Repository identity changed during capture; retry after the external writer finishes.", 71)
+        fingerprint = source_fingerprint(included, before_identity)
+        source_identity = {
+            **before_identity,
+            "source_fingerprint": fingerprint,
+            "included_files": len(included),
+            "excluded_files": len(excluded),
+            "included_bytes": total,
+            "captured_utc": started.isoformat(),
+        }
+        write_json(source_root / "SOURCE_IDENTITY.json", source_identity)
+        write_json(root / "PLATFORM_IDENTITY.json", platform_identity())
+        activation_path = output.parent / ACTIVATION_ARTIFACT
+        activation_identity = {"artifact": ACTIVATION_ARTIFACT, "included": False, "sha256": None, "size": None}
+        if activation_path.is_file() and not activation_path.is_symlink():
+            activation_dir = root / "PLATFORM_ACTIVATION"
+            activation_dir.mkdir(parents=True, exist_ok=True)
+            nested = activation_dir / ACTIVATION_ARTIFACT
+            shutil.copy2(activation_path, nested)
+            activation_identity.update({"included": True, "sha256": sha256_file(nested), "size": nested.stat().st_size})
+        write_json(root / "PLATFORM_ACTIVATION_IDENTITY.json", activation_identity)
+        write_json(root / "NON_MUTATION_PROOF.json", {
+            "result": "PASS",
+            "before": before_identity,
+            "after": after_identity,
+            "source_fingerprint_before": fingerprint,
+            "source_fingerprint_after": source_fingerprint(after_entries, after_identity),
+            "git_optional_locks": "0",
+        })
+        result = {
+            "schema_version": "1.0",
+            "result": "PASS",
+            "classification": "READ_ONLY_SOURCE_AUTHORITY_CAPTURE",
+            "artifact": CANONICAL_ZIP,
+            "repository": str(repo),
+            "branch": before_identity["branch"],
+            "head": before_identity["head"],
+            "source_fingerprint": fingerprint,
+            "included_files": len(included),
+            "excluded_files": len(excluded),
+            "included_bytes": total,
+            "git_evidence": git_hashes,
+            "captured_utc": started.isoformat(),
+            "product_repository_mutation": "none",
+            "next_use": "Upload this ZIP as the first message in a new SysGrid Project chat with the instruction to bootstrap and begin production source analysis.",
+        }
+        write_json(root / "RESULT.json", result)
+        (root / "REVIEW_ME_FIRST.md").write_text(
+            "# SysGrid Production Source Authority\n\n"
+            "This package contains the complete safe current source authority required for GPT production analysis: source files, exact hashes, Git state and diffs, ownership/dependency maps, route/API/test inventory, platform identity, and a non-mutation proof.\n\n"
+            "Live Linear remains authoritative for the current operational gate. Secrets, caches, dependency directories, generated outputs, and unrelated binaries are excluded and enumerated in `SOURCE_AUTHORITY/FILE_INDEX.json`.\n",
+            encoding="utf-8",
+        )
+        create_manifest(root)
+        write_zip(root, output)
+    return {**result, "zip_path": str(output), "zip_sha256": sha256_file(output), "zip_size": output.stat().st_size}
+
+
+def diagnostic(output: Path, repo: Path | None, classification: str, message: str) -> Path:
+    with tempfile.TemporaryDirectory(prefix="sysgrid-source-authority-failure-") as tmp:
+        root = Path(tmp)
+        write_json(root / "RESULT.json", {
+            "schema_version": "1.0",
+            "result": "FAIL",
+            "classification": classification,
+            "message": message,
+            "repository": str(repo) if repo else None,
+            "captured_utc": datetime.now(timezone.utc).isoformat(),
+            "product_repository_mutation": "none",
+        })
+        (root / "REVIEW_ME_FIRST.md").write_text(f"# Source Authority Capture Blocked\n\n{classification}: {message}\n", encoding="utf-8")
+        create_manifest(root)
+        write_zip(root, output)
+    return output
+
+
+def self_test() -> int:
+    with tempfile.TemporaryDirectory(prefix="sysgrid-source-authority-self-test-") as tmp:
+        repo = Path(tmp) / "sysgrid"
+        repo.mkdir()
+        subprocess.run(["git", "init", "-q", str(repo)], check=True)
+        subprocess.run(["git", "-C", str(repo), "config", "user.email", "test@example.com"], check=True)
+        subprocess.run(["git", "-C", str(repo), "config", "user.name", "Test"], check=True)
+        (repo / "frontend/src").mkdir(parents=True)
+        (repo / "frontend/src/App.tsx").write_text("export const App=()=>null;\n", encoding="utf-8")
+        (repo / "frontend/package.json").write_text('{"scripts":{"test":"vitest"}}\n', encoding="utf-8")
+        (repo / ".env").write_text("SECRET=never-copy\n", encoding="utf-8")
+        subprocess.run(["git", "-C", str(repo), "add", "frontend"], check=True)
+        subprocess.run(["git", "-C", str(repo), "commit", "-qm", "init"], check=True)
+        (repo / "frontend/src/new feature.ts").write_text("export const value=1;\n", encoding="utf-8")
+        output = Path(tmp) / "out.zip"
+        report = capture(repo, output)
+        assert report["result"] == "PASS"
+        with zipfile.ZipFile(output) as archive:
+            names = set(archive.namelist())
+            assert "SOURCE_AUTHORITY/files/frontend/src/App.tsx" in names
+            assert "SOURCE_AUTHORITY/files/frontend/src/new feature.ts" in names
+            assert "SOURCE_AUTHORITY/files/.env" not in names
+            assert "SOURCE_AUTHORITY/SOURCE_IDENTITY.json" in names
+            assert "NON_MUTATION_PROOF.json" in names
+            assert "MANIFEST.sha256" in names
+    print("SysGrid Source Authority self-test: PASS")
+    return 0
+
+
+def main(argv: list[str] | None = None) -> int:
+    parser = argparse.ArgumentParser(prog="sysgrid-source-authority")
+    parser.add_argument("--repo", type=Path)
+    parser.add_argument("--output", type=Path)
+    parser.add_argument("--self-test", action="store_true")
+    args = parser.parse_args(argv)
+    if args.self_test:
+        return self_test()
+    repo: Path | None = None
+    outbox = outbox_path()
+    try:
+        repo = discover_repo(args.repo)
+        output = args.output.expanduser().resolve() if args.output else outbox / CANONICAL_ZIP
+        report = capture(repo, output)
+        print("SysGrid source authority: PASS")
+        print(f"Repository: {report['repository']}")
+        print(f"Branch/HEAD: {report['branch']} / {report['head']}")
+        print(f"Included files: {report['included_files']}")
+        print(f"Source fingerprint: {report['source_fingerprint']}")
+        print(f"Output: {report['zip_path']}")
+        print(f"SHA-256: {report['zip_sha256']}")
+        return 0
+    except CaptureError as exc:
+        output = outbox / DIAGNOSTIC_ZIP
+        diagnostic(output, repo, exc.classification, str(exc))
+        print(f"SysGrid source authority blocked: {exc.classification}", file=sys.stderr)
+        print(str(exc), file=sys.stderr)
+        print(f"Diagnostic: {output}", file=sys.stderr)
+        return exc.exit_code
+    except Exception as exc:
+        output = outbox / DIAGNOSTIC_ZIP
+        diagnostic(output, repo, "UNEXPECTED_CAPTURE_FAILURE", str(exc))
+        print(f"SysGrid source authority blocked: UNEXPECTED_CAPTURE_FAILURE\n{exc}\nDiagnostic: {output}", file=sys.stderr)
+        return 1
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

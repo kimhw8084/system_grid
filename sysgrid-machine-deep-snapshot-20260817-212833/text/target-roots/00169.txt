@@ -1,0 +1,28 @@
+ORIGINAL_PATH: /Users/haewonkim/.local/share/sysgrid-supervisor/v1.3.1/RELEASE_TEST_REPORT.json
+ORIGINAL_SHA256: 96fa864c98af2da84f6e9a91d795d02696c6e140ea748b5c2fce23fea41884c3
+================================================================================
+{
+  "coverage": [
+    "archive safety and complete manifest coverage",
+    "capsule schema, patch identity, JSON state ledgers, canonical newline path ledgers, and GNU-style SHA-256 ledgers",
+    "strict UTF-8, duplicate, malformed-line, repository-escape, and Git-metadata state rejection",
+    "Git baseline, dirty-path, protected-hash, and dependency-ordered patch-state verification",
+    "bounded forward and reverse git-apply diagnostics",
+    "resource-aware non-short-circuit independent preflight with structured partial results",
+    "non-blocking run serialization and exact process identity",
+    "interrupted engine reattachment and verified-output recovery without replay",
+    "single safe retry only from exact proven pre-mutation state",
+    "post-state and ambiguous-state replay prevention",
+    "bounded diagnostic logs and canonical failure artifact publication",
+    "end-to-end JSON-ledger and canonical text-ledger execution paths",
+    "complete distribution, staged-tree, existing-target, and installed-tree identity"
+  ],
+  "engine_contract_sha256": "ab63bb20c0de32771e20b0159475205f685f28910a0956c217fb3693c02f96e1",
+  "engine_contract_version": "1.0.4",
+  "installer_tests_sha256": "ea8d7e0edba492e9f0540b8bb58e013788036658804ca8ffe63e4e5097aee203",
+  "result": "PASS",
+  "source_sha256": "ce0c1efdcfcc1f0dff0165a727b1d052445531ddf4ff2d0c9fbc3433e32551ed",
+  "supervisor_version": "1.3.1",
+  "tests": 57,
+  "tests_sha256": "b3d5298c27abf674faaa47c33b933ed7811d1f386615c74276aef18365a71046"
+}

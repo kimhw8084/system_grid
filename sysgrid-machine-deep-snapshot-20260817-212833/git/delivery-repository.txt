@@ -1,0 +1,963 @@
+=== top level ===
+/Users/haewonkim/.local/share/sysgrid-delivery-v1.3.0/repository
+
+=== HEAD ===
+3c286ff96da8aeb53b029b767bcd358556ec4fda
+
+=== symbolic HEAD ===
+refs/heads/main
+
+=== branch ===
+main
+
+=== status ===
+## main...origin/main [behind 8]
+D  .github/workflows/ai-review-packet.yml
+D  .github/workflows/sysgrid-public-outbox-relay.yml
+D  .gitignore
+D  AGENTS.md
+D  COMMAND_OUTPUTS/OUT-22/iteration-06/assets-revert.txt
+D  COMMAND_OUTPUTS/OUT-22/iteration-06/typecheck.txt
+D  COMMAND_OUTPUTS/OUT-22/iteration-06/vendors-golden-flow.txt
+D  COMMAND_OUTPUTS/OUT-22/iteration-07/assets-revert.txt
+D  COMMAND_OUTPUTS/OUT-22/iteration-07/vendors-golden-flow.txt
+D  COMMAND_OUTPUTS/OUT-22/iteration-08/assets-critical.txt
+D  COMMAND_OUTPUTS/OUT-22/iteration-08/typecheck.txt
+D  COMMAND_OUTPUTS/OUT-22/iteration-08/vendors-critical.txt
+D  COMMAND_OUTPUTS/OUT-22/iteration-09/assets-critical.txt
+D  COMMAND_OUTPUTS/OUT-22/iteration-09/typecheck.txt
+D  COMMAND_OUTPUTS/OUT-22/iteration-09/vendors-critical.txt
+D  COMMAND_OUTPUTS/OUT-22/iteration-10/assets-toast-revert.txt
+D  COMMAND_OUTPUTS/OUT-22/iteration-10/typecheck.txt
+D  COMMAND_OUTPUTS/OUT-22/iteration-10/vendors-golden-critical.txt
+D  COMMAND_OUTPUTS/assets-smoke.log
+D  COMMAND_OUTPUTS/assets.before.log
+D  COMMAND_OUTPUTS/assets.iter02.regression.log
+D  COMMAND_OUTPUTS/canonical-routes.txt
+D  COMMAND_OUTPUTS/detail-hook.iter04.before.log
+D  COMMAND_OUTPUTS/detail-hook.iter04.loop-1.log
+D  COMMAND_OUTPUTS/detail-hook.iter04.loop-10.log
+D  COMMAND_OUTPUTS/detail-hook.iter04.loop-2.log
+D  COMMAND_OUTPUTS/detail-hook.iter04.loop-3.log
+D  COMMAND_OUTPUTS/detail-hook.iter04.loop-4.log
+D  COMMAND_OUTPUTS/detail-hook.iter04.loop-5.log
+D  COMMAND_OUTPUTS/detail-hook.iter04.loop-6.log
+D  COMMAND_OUTPUTS/detail-hook.iter04.loop-7.log
+D  COMMAND_OUTPUTS/detail-hook.iter04.loop-8.log
+D  COMMAND_OUTPUTS/detail-hook.iter04.loop-9.log
+D  COMMAND_OUTPUTS/detail-hook.log
+D  COMMAND_OUTPUTS/far-chaos-before.txt
+D  COMMAND_OUTPUTS/far-chaos-loop-1.txt
+D  COMMAND_OUTPUTS/far-chaos-loop-2.txt
+D  COMMAND_OUTPUTS/far-chaos-loop-3.txt
+D  COMMAND_OUTPUTS/far-chaos.txt
+D  COMMAND_OUTPUTS/far-typecheck-before.txt
+D  COMMAND_OUTPUTS/far-workflows-before.txt
+D  COMMAND_OUTPUTS/far-workflows-loop-1.txt
+D  COMMAND_OUTPUTS/far-workflows-loop-2.txt
+D  COMMAND_OUTPUTS/far-workflows-loop-3.txt
+D  COMMAND_OUTPUTS/far-workflows.txt
+D  COMMAND_OUTPUTS/iteration-04-proof-sha256.txt
+D  COMMAND_OUTPUTS/locked-workspaces.txt
+D  COMMAND_OUTPUTS/monitoring-smoke.log
+D  COMMAND_OUTPUTS/monitoring.before.log
+D  COMMAND_OUTPUTS/monitoring.iter02.before.log
+D  COMMAND_OUTPUTS/monitoring.iter02.loop-1.log
+D  COMMAND_OUTPUTS/monitoring.iter02.loop-2.log
+D  COMMAND_OUTPUTS/monitoring.iter02.loop-3.log
+D  COMMAND_OUTPUTS/monitoring.iter02.loop-4.log
+D  COMMAND_OUTPUTS/monitoring.iter02.loop-5.log
+D  COMMAND_OUTPUTS/monitoring.iter02.loop-6.log
+D  COMMAND_OUTPUTS/monitoring.iter02.loop-7.log
+D  COMMAND_OUTPUTS/monitoring.iter02.loop-8.log
+D  COMMAND_OUTPUTS/monitoring.iter03.final.log
+D  COMMAND_OUTPUTS/monitoring.iter03.loop-1.log
+D  COMMAND_OUTPUTS/monitoring.iter03.loop-2.log
+D  COMMAND_OUTPUTS/monitoring.iter03.loop-3.log
+D  COMMAND_OUTPUTS/monitoring.iter03.loop-4.log
+D  COMMAND_OUTPUTS/monitoring.iter04.before.log
+D  COMMAND_OUTPUTS/monitoring.iter04.loop-1.log
+D  COMMAND_OUTPUTS/monitoring.iter04.loop-10.log
+D  COMMAND_OUTPUTS/monitoring.iter04.loop-2.log
+D  COMMAND_OUTPUTS/monitoring.iter04.loop-3.log
+D  COMMAND_OUTPUTS/monitoring.iter04.loop-6.log
+D  COMMAND_OUTPUTS/monitoring.iter04.loop-7.log
+D  COMMAND_OUTPUTS/monitoring.iter04.loop-8.log
+D  COMMAND_OUTPUTS/monitoring.iter04.loop-9.log
+D  COMMAND_OUTPUTS/monitoring.iteration-1.log
+D  COMMAND_OUTPUTS/monitoring.iteration-10.log
+D  COMMAND_OUTPUTS/monitoring.iteration-11.log
+D  COMMAND_OUTPUTS/monitoring.iteration-12.log
+D  COMMAND_OUTPUTS/monitoring.iteration-2.log
+D  COMMAND_OUTPUTS/monitoring.iteration-3.log
+D  COMMAND_OUTPUTS/monitoring.iteration-4.log
+D  COMMAND_OUTPUTS/monitoring.iteration-5.log
+D  COMMAND_OUTPUTS/monitoring.iteration-6.log
+D  COMMAND_OUTPUTS/monitoring.iteration-7.log
+D  COMMAND_OUTPUTS/monitoring.iteration-8.log
+D  COMMAND_OUTPUTS/monitoring.iteration-9.log
+D  COMMAND_OUTPUTS/network-playwright.log
+D  COMMAND_OUTPUTS/network.before.log
+D  COMMAND_OUTPUTS/network.iter02.regression.log
+D  COMMAND_OUTPUTS/operational-contracts.txt
+D  COMMAND_OUTPUTS/out22-contract-tests-before.txt
+D  COMMAND_OUTPUTS/out22-route-smoke-before.txt
+D  COMMAND_OUTPUTS/out22-static-guards-before.txt
+D  COMMAND_OUTPUTS/out22-typecheck-before.txt
+D  COMMAND_OUTPUTS/research-typecheck-before.txt
+D  COMMAND_OUTPUTS/research-workflows-before.txt
+D  COMMAND_OUTPUTS/research-workflows-loop-1.txt
+D  COMMAND_OUTPUTS/research-workflows.txt
+D  COMMAND_OUTPUTS/settings-standards-loop-1.txt
+D  COMMAND_OUTPUTS/settings-standards-loop-2.txt
+D  COMMAND_OUTPUTS/settings-standards-loop-3.txt
+D  COMMAND_OUTPUTS/settings-standards-loop-4.txt
+D  COMMAND_OUTPUTS/settings-standards-proof-sha256.txt
+D  COMMAND_OUTPUTS/settings-standards-typecheck-before.txt
+D  COMMAND_OUTPUTS/settings-standards-workflows.txt
+D  COMMAND_OUTPUTS/typecheck.before.log
+D  COMMAND_OUTPUTS/typecheck.iter02.before.log
+D  COMMAND_OUTPUTS/typecheck.iter02.loop-1.log
+D  COMMAND_OUTPUTS/typecheck.iter02.loop-2.log
+D  COMMAND_OUTPUTS/typecheck.iter02.loop-3.log
+D  COMMAND_OUTPUTS/typecheck.iter02.loop-4.log
+D  COMMAND_OUTPUTS/typecheck.iter03.final.log
+D  COMMAND_OUTPUTS/typecheck.iter03.loop-1.log
+D  COMMAND_OUTPUTS/typecheck.iter04.before.log
+D  COMMAND_OUTPUTS/typecheck.iteration-1.log
+D  COMMAND_OUTPUTS/typecheck.iteration-10.log
+D  COMMAND_OUTPUTS/typecheck.iteration-11.log
+D  COMMAND_OUTPUTS/typecheck.iteration-12.log
+D  COMMAND_OUTPUTS/typecheck.iteration-2.log
+D  COMMAND_OUTPUTS/typecheck.iteration-3.log
+D  COMMAND_OUTPUTS/typecheck.iteration-4.log
+D  COMMAND_OUTPUTS/typecheck.iteration-5.log
+D  COMMAND_OUTPUTS/typecheck.iteration-6.log
+D  COMMAND_OUTPUTS/typecheck.iteration-7.log
+D  COMMAND_OUTPUTS/typecheck.iteration-8.log
+D  COMMAND_OUTPUTS/typecheck.iteration-9.log
+D  COMMAND_OUTPUTS/typecheck.log
+D  COMMAND_OUTPUTS/typecheck.txt
+D  DEPLOYMENT.md
+D  OUT-8-ITERATION-06-SELECTION-FINALIZATION-REPORT.md
+D  OUT-8-ITERATION-11-RECOVERY-REPORT.md
+D  README.md
+D  SysGrid
+D  api_routes.txt
+D  audit_check.txt
+D  backend.log
+D  backend/.env
+D  backend/.env.example
+D  backend/.env.local.runtime
+D  backend/alembic.ini
+D  backend/alembic/README
+D  backend/alembic/env.py
+D  backend/alembic/script.py.mako
+D  backend/alembic/versions/020a1b0da120_sync_projects_schema_v2.py
+D  backend/alembic/versions/057a20e6c065_add_owner_team_status_env_to_external_.py
+D  backend/alembic/versions/066668880dda_add_far_and_bkm_modules.py
+D  backend/alembic/versions/09b3ab8d3866_add_troubleshooting_fields_to_.py
+D  backend/alembic/versions/0acb3f5dc538_add_global_settings_and_user_preferences.py
+D  backend/alembic/versions/0d7c82f2d2a9_sync_rca_and_investigation_schema_v4.py
+D  backend/alembic/versions/1038b4c0ad51_add_aisle_and_row_to_racks.py
+D  backend/alembic/versions/1050956bd84e_add_failure_type_to_far.py
+D  backend/alembic/versions/1234567890ab_add_site_color_and_rack_pdu.py
+D  backend/alembic/versions/17a97a934a75_sync_rca_and_investigation_v3.py
+D  backend/alembic/versions/1f9dc5823025_sync_projects_roi_and_owners.py
+D  backend/alembic/versions/256902a5e7d9_add_external_intelligence_tables.py
+D  backend/alembic/versions/26f7a74f2a4d_add_monitoring_reliability_fields.py
+D  backend/alembic/versions/354ac7f55257_add_initiation_at_to_investigations_and_.py
+D  backend/alembic/versions/370e69388728_add_risk_to_firewall.py
+D  backend/alembic/versions/3860f2d3a61b_add_projects_table.py
+D  backend/alembic/versions/3e604a042903_add_actual_dates_to_project_tasks.py
+D  backend/alembic/versions/45d2a3a171dc_add_monitoring_owners_table.py
+D  backend/alembic/versions/485b2b4beada_add_dependencies_to_project_tasks_v2.py
+D  backend/alembic/versions/4a9d7a1a2b3c_monitoring_ownership_and_team_controls.py
+D  backend/alembic/versions/4bf78a8a9f23_add_teams_to_operators.py
+D  backend/alembic/versions/4fb7471f58a3_sync_far_mitigation_and_prevention_.py
+D  backend/alembic/versions/5383bf931a78_add_ip_to_connections.py
+D  backend/alembic/versions/5855d04ab558_revamp_monitoring_fields.py
+D  backend/alembic/versions/5b8f2a4c9d10_add_team_management_to_settings.py
+D  backend/alembic/versions/5ff12d0da4c3_add_metadata_json_to_external_entities.py
+D  backend/alembic/versions/60cee6033e86_add_order_index_to_projects.py
+D  backend/alembic/versions/63ee971aa974_add_images_to_rca_timeline.py
+D  backend/alembic/versions/640471344358_add_roles_and_operators_for_granular_.py
+D  backend/alembic/versions/6483543c6234_add_is_admin_to_operators.py
+D  backend/alembic/versions/6c1d2e3f4a5b_harden_settings_options_and_tenant_access.py
+D  backend/alembic/versions/71b0cc9b1997_add_metadata_json_to_project_tasks.py
+D  backend/alembic/versions/77eb5cdb6c8a_add_monitored_services_to_monitoring_.py
+D  backend/alembic/versions/8089cfa51347_revamp_external_entities_for_metadata_.py
+D  backend/alembic/versions/8320f53ea417_merge_rack_and_site_heads.py
+D  backend/alembic/versions/8596642f109d_initial_schema.py
+D  backend/alembic/versions/8847b4d2f9b7_merge_heads.py
+D  backend/alembic/versions/8b355eb20621_add_rca_module.py
+D  backend/alembic/versions/8dbb85b0243e_remove_redundant_vendor_contact_fields.py
+D  backend/alembic/versions/8f60472be553_add_logic_json_and_traces_json_columns.py
+D  backend/alembic/versions/988d728e925c_sync_missing_columns.py
+D  backend/alembic/versions/99c650300ac3_add_roi_types_to_projects.py
+D  backend/alembic/versions/9c4d6e7f8a10_perfect_external_entity_schema.py
+D  backend/alembic/versions/9f2d4d0aa321_add_metadata_json_to_data_flows.py
+D  backend/alembic/versions/a7c9e1b4d2f6_harden_user_preferences_storage.py
+D  backend/alembic/versions/a9d4c7b2e1f0_sync_far_rca_runtime_schema.py
+D  backend/alembic/versions/aa3d4e5f6a7b_add_license_key_to_logical_services.py
+D  backend/alembic/versions/b258baee2a92_add_user_pool_versioning.py
+D  backend/alembic/versions/b29df7d2ec3c_add_primary_personnel_id_to_vendors.py
+D  backend/alembic/versions/b33081b478f8_add_tenant_id_to_devices.py
+D  backend/alembic/versions/b474b807d83a_add_mac_vlan_to_connections.py
+D  backend/alembic/versions/b50f3c68f0a2_revamp_vendors.py
+D  backend/alembic/versions/bc27645123c4_add_farm_and_request_link_to_port_.py
+D  backend/alembic/versions/c1d2e3f4a5b6_add_workspace_saved_views.py
+D  backend/alembic/versions/c31c0f6f5d10_add_data_flow_history.py
+D  backend/alembic/versions/c3d4e5f6a7b8_harden_external_integrity.py
+D  backend/alembic/versions/c4ebee015e2d_add_vendor_knowledge_investigation_.py
+D  backend/alembic/versions/cd1dc3f9356b_add_service_fields.py
+D  backend/alembic/versions/d16649b5c596_add_monitoring_versioning.py
+D  backend/alembic/versions/d1e55c4db1ab_add_status_to_port_connections.py
+D  backend/alembic/versions/d2e3f4a5b6c7_harden_workspace_saved_views.py
+D  backend/alembic/versions/dc85bd757294_add_impact_to_monitoring_items.py
+D  backend/alembic/versions/e30fab364540_add_role_to_device.py
+D  backend/alembic/versions/e72b9b8626d3_add_is_deleted_and_owner_id_to_.py
+D  backend/alembic/versions/e8a537d7e66c_add_knowledge_qa_and_update_entries.py
+D  backend/alembic/versions/ead971574174_add_completed_at_to_projects.py
+D  backend/alembic/versions/f25553f893a1_add_forensic_classification_columns.py
+D  backend/alembic/versions/f2b7c1d9e4a8_harden_monitoring_integrity.py
+D  backend/alembic/versions/f3b4e2f663c9_add_infrastructure_plans.py
+D  backend/alembic/versions/f7a7a7f2a4d0_add_external_entity_secrets.py
+D  backend/alembic/versions/fd2f8a526cfe_sync_vendor_contracts_schema.py
+D  backend/app/__init__.py
+D  backend/app/api/__init__.py
+D  backend/app/api/audit.py
+D  backend/app/api/dashboard.py
+D  backend/app/api/data_flows.py
+D  backend/app/api/devices.py
+D  backend/app/api/error_utils.py
+D  backend/app/api/far.py
+D  backend/app/api/import_engine.py
+D  backend/app/api/intelligence.py
+D  backend/app/api/investigations.py
+D  backend/app/api/knowledge.py
+D  backend/app/api/logical_services.py
+D  backend/app/api/maintenance.py
+D  backend/app/api/monitoring.py
+D  backend/app/api/networks.py
+D  backend/app/api/operational_bulk.py
+D  backend/app/api/projects.py
+D  backend/app/api/racks.py
+D  backend/app/api/rca.py
+D  backend/app/api/security.py
+D  backend/app/api/settings.py
+D  backend/app/api/sites.py
+D  backend/app/api/tenants.py
+D  backend/app/api/troubleshoot.py
+D  backend/app/api/utils.py
+D  backend/app/api/vendors.py
+D  backend/app/api/workspaces.py
+D  backend/app/core/config.py
+D  backend/app/database.py
+D  backend/app/database_base.py
+D  backend/app/main.py
+D  backend/app/models/__init__.py
+D  backend/app/models/config.py
+D  backend/app/models/models.py
+D  backend/app/reference_data.py
+D  backend/app/runtime_diagnostics.py
+D  backend/app/schemas/__init__.py
+D  backend/app/schemas/config.py
+D  backend/app/schemas/schemas.py
+D  backend/check_options.py
+D  backend/clear_db.py
+D  backend/conftest.py
+D  backend/find_internal_conns.py
+D  backend/pytest.ini
+D  backend/requirements.lock
+D  backend/requirements.txt
+D  backend/test_architecture_workflows.py
+D  backend/test_asset_vendor_bulk_workflows.py
+D  backend/test_cross_module_integrations.py
+D  backend/test_dashboard_metrics.py
+D  backend/test_devices_api_edges.py
+D  backend/test_external_workflows.py
+D  backend/test_far_workflows.py
+D  backend/test_forensic_lineage.py
+D  backend/test_import_workflows.py
+D  backend/test_knowledge_workflows.py
+D  backend/test_main.py
+D  backend/test_monitoring_query_and_bulk_edges.py
+D  backend/test_monitoring_restore_edges.py
+D  backend/test_monitoring_workflows.py
+D  backend/test_network_workflows.py
+D  backend/test_production_evolution.py
+D  backend/test_production_startup_policy.py
+D  backend/test_projects_workflows.py
+D  backend/test_racks_api_edges.py
+D  backend/test_racks_workflows.py
+D  backend/test_reference_data.py
+D  backend/test_research_workflows.py
+D  backend/test_revert_logic.py
+D  backend/test_runtime_diagnostics.py
+D  backend/test_service_workflows.py
+D  backend/test_settings_api_edges.py
+D  backend/test_settings_workflows.py
+D  backend/test_startup_migrations.py
+D  backend/test_tenant_isolation.py
+D  backend/test_tenant_workflows.py
+D  backend/test_workspace_views.py
+D  backend/tests/payload_generator.py
+D  backend/tests/test_api_utils.py
+D  backend/tests/test_error_utils.py
+D  backend/tests/test_monitoring_helpers.py
+D  backend/tests/test_negative_api.py
+D  backend/tests/test_payload_generator.py
+D  backend/tests/test_settings_helpers.py
+D  backend/update_enums.py
+D  backend_risks.txt
+D  backend_routes.txt
+D  base_final_p1.txt
+D  base_final_p2.txt
+D  base_final_p3.txt
+D  check_perms.py
+D  commit-push-zip.sh
+D  components_list.txt
+D  db_debug.log
+D  debug_page.js
+D  debug_startup.py
+D  deploy/backend.env.production.example
+D  deploy/frontend.env.production.example
+D  diagnose_binding.py
+D  diagnose_db.py
+D  diagnose_db_seeding.py
+D  docs/MANUAL_ACCEPTANCE_GAPS.md
+D  docs/OUT-13-deployment-risk-register.md
+D  docs/OUT-13-final-review-manifest.md
+D  docs/OUT-13-rollback-plan.md
+D  docs/OUT-13-team-pilot-checklist.md
+D  docs/OUT-13-temporary-conclusion-handoff.md
+D  docs/OUT-14-external-acceptance-matrix.md
+D  docs/OUT-14-external-domain-preservation-inventory.md
+D  docs/OUT-14-run8-implementation-sequence.md
+D  docs/OUT-14-run8-proof-plan.md
+D  docs/OUT-14-run8-risk-register.md
+D  docs/OUT-14-run8-stage0-cutline.md
+D  docs/OUT-14-run8-stage1-baseline-gap-map.md
+D  docs/OUT-14-run8-stage1-next-step.md
+D  docs/OUT-14-run8-stage2-prompt.md
+D  docs/OUT-14-run8-stage2-questionnaire.md
+D  docs/SYSGRID_PUBLIC_GITHUB_RELAY.md
+D  docs/operational-workspace-law.md
+D  frontend/.codex-stage18-asset.png
+D  frontend/.codex-stage18-monitoring.png
+D  frontend/.env.example
+D  frontend/.nvmrc
+D  frontend/OUT-10-ITERATION-01-TABLE-INTERACTION-CONTRACT-AUDIT.md
+D  frontend/OUT-10-ITERATION-02-PROOF.md
+D  frontend/OUT-10-ITERATION-03-PROOF.md
+D  frontend/OUT-10-ITERATION-03B-PROOF-ONLY.md
+D  frontend/OUT-10-ITERATION-04-RUNTIME-VALIDATION.md
+D  frontend/OUT-10-ITERATION-04B-RUNTIME-VALIDATION-RETRY.md
+D  frontend/OUT-10-ITERATION-05-PROOF.md
+D  frontend/OUT-11-ITERATION-01-FLOATING-PANEL-CONTRACT-AUDIT.md
+D  frontend/OUT-11-ITERATION-02-PROOF.md
+D  frontend/OUT-11-ITERATION-03-RUNTIME-VALIDATION.md
+D  frontend/OUT-11-ITERATION-03B-RUNTIME-VALIDATION-RETRY.md
+D  frontend/OUT-11-ITERATION-04-RECOVERY-PROOF.md
+D  frontend/OUT-11-ITERATION-05-CLOSE-READINESS-REVIEW.md
+D  frontend/OUT-12-ITERATION-01-MODAL-FORM-DIRTY-STATE-AUDIT.md
+D  frontend/OUT-12-ITERATION-02-PROOF.md
+D  frontend/OUT-12-ITERATION-03-RUNTIME-VALIDATION.md
+D  frontend/OUT-12-ITERATION-03B-RUNTIME-VALIDATION-RETRY.md
+D  frontend/OUT-12-ITERATION-04-GOLDEN-TEMPLATE-ADOPTION-PROOF.md
+D  frontend/OUT-12-ITERATION-06-SERVICES-DIRTY-GUARD-RECOVERY-PROOF.md
+D  frontend/OUT-13-EXACT-SOURCE-PROOF.md
+D  frontend/OUT-13-EXTERNAL-EXPORT-ROUNDTRIP-PROOF.md
+D  frontend/OUT-14-EXTERNAL-WORKSPACE-LOCK-AUDIT.md
+D  frontend/OUT-18_ITERATION_03_VERIFICATION_SUMMARY.md
+D  frontend/OUT-26-emergency-blocker-validation-transcript.md
+D  frontend/OUT-26-high-score-validation-transcript.md
+D  frontend/OUT-26-proof-summary.md
+D  frontend/OUT-26-release-candidate-raw-validation.md
+D  frontend/OUT-26-release-candidate-validation-transcript.md
+D  frontend/OUT-26_ITERATION_02_STAGE1_SHELL_HEADER_SUMMARY.md
+D  frontend/OUT-26_ITERATION_03_STAGE2_GRID_TABLE_SUMMARY.md
+D  frontend/OUT-26_ITERATION_04_STAGE3_ROW_BULK_ACTIONS_SUMMARY.md
+D  frontend/OUT-26_ITERATION_05_STAGE4_FLOATING_PANELS_SUMMARY.md
+D  frontend/OUT-26_ITERATION_06_STAGE5_MODAL_FORM_LIFECYCLE_SUMMARY.md
+D  frontend/OUT-26_ITERATION_07_STAGE6_LIFECYCLE_STATES_SUMMARY.md
+D  frontend/OUT-26_ITERATION_08_STAGE7_SAVED_DISPLAY_VIEWS_SUMMARY.md
+D  frontend/OUT-26_ITERATION_09_STAGE8_ROUTE_VIEW_PERSISTENCE_SUMMARY.md
+D  frontend/OUT-26_ITERATION_10_STAGE9_IMPORT_EXPORT_SUMMARY.md
+D  frontend/OUT-26_ITERATION_11_STAGE10_SERVICE_NETWORK_MODAL_LIFECYCLE_SUMMARY.md
+D  frontend/OUT-26_ITERATION_12_STAGE10A_SERVICE_NETWORK_DIRTY_CLOSE_BYPASS_SUMMARY.md
+D  frontend/OUT-26_ITERATION_13_STAGE11_FINAL_ASSETS_REGRESSION_READINESS_SUMMARY.md
+D  frontend/OUT-26_ITERATION_14_STAGE12_ASSET_VISIBLE_BASELINE_MANUAL_UAT.md
+D  frontend/OUT-26_ITERATION_14_STAGE12_ASSET_VISIBLE_BASELINE_RECOVERY_SUMMARY.md
+D  frontend/OUT-26_ITERATION_15_STAGE13_NO_DEVIATION_GOLDEN_AUDIT_SUMMARY.md
+D  frontend/OUT-26_ITERATION_15_STAGE13_NO_DEVIATION_LEDGER.md
+D  frontend/OUT-26_ITERATION_15_STAGE13_NO_DEVIATION_RENDERED_EVIDENCE.md
+D  frontend/OUT-26_ITERATION_16_STAGE14_MAJOR_DEVIATION_RECOVERY_SUMMARY.md
+D  frontend/OUT-26_ITERATION_16_STAGE14_MAJOR_DEVIATION_RENDERED_EVIDENCE.md
+D  frontend/OUT-26_ITERATION_16_STAGE14_MAJOR_DEVIATION_RESOLUTION_LEDGER.md
+D  frontend/OUT-26_ITERATION_17_STAGE15_REMAINING_PARTIALS_RECOVERY_SUMMARY.md
+D  frontend/OUT-26_ITERATION_17_STAGE15_REMAINING_PARTIALS_RENDERED_EVIDENCE.md
+D  frontend/OUT-26_ITERATION_17_STAGE15_REMAINING_PARTIALS_RESOLUTION_LEDGER.md
+D  frontend/OUT-26_ITERATION_18_STAGE16_RENDER_ONLY_EVIDENCE.md
+D  frontend/OUT-26_ITERATION_18_STAGE16_RENDER_ONLY_VERIFICATION_LEDGER.md
+D  frontend/OUT-26_ITERATION_18_STAGE16_RENDER_ONLY_VERIFICATION_SUMMARY.md
+D  frontend/OUT-26_ITERATION_19_STAGE17_FINAL_ACCEPTANCE_MATRIX.md
+D  frontend/OUT-26_ITERATION_19_STAGE17_FINAL_EVIDENCE_INDEX.md
+D  frontend/OUT-26_ITERATION_19_STAGE17_FINAL_LOCK_READINESS_SUMMARY.md
+D  frontend/OUT-26_ITERATION_19_STAGE17_WARNING_DECISION_LEDGER.md
+D  frontend/OUT-26_ITERATION_20_STAGE18_DUPLICATE_KEY_CLEANUP_SUMMARY.md
+D  frontend/OUT-26_ITERATION_20_STAGE18_DUPLICATE_KEY_EVIDENCE.md
+D  frontend/OUT-26_ITERATION_20_STAGE18_DUPLICATE_KEY_REGRESSION_MATRIX.md
+D  frontend/OUT-26_ITERATION_20_STAGE18_GOLDEN_DIVERGENCE_GUARD.md
+D  frontend/OUT-26_ITERATION_21_STAGE19_VALIDATION_CONTRACT_EVIDENCE.md
+D  frontend/OUT-26_ITERATION_21_STAGE19_VALIDATION_CONTRACT_RECOVERY_SUMMARY.md
+D  frontend/OUT-26_ITERATION_21_STAGE19_VALIDATION_CONTRACT_REGRESSION_MATRIX.md
+D  frontend/OUT-26_ITERATION_22_STAGE20_GOLDEN_ASSET_VIEW_ACCEPTANCE_MATRIX.md
+D  frontend/OUT-26_ITERATION_22_STAGE20_GOLDEN_ASSET_VIEW_ALIGNMENT_SUMMARY.md
+D  frontend/OUT-26_ITERATION_22_STAGE20_GOLDEN_ASSET_VIEW_GAP_MAP.md
+D  frontend/OUT-26_ITERATION_22_STAGE20_GOLDEN_ASSET_VIEW_RENDERED_EVIDENCE.md
+D  frontend/OUT-26_ITERATION_24_STAGE22_GLOBAL_FEATURE_PARITY_MATRIX.md
+D  frontend/OUT-26_ITERATION_24_STAGE22_GLOBAL_TEMPLATE_RECONSUMPTION_MAP.md
+D  frontend/OUT-26_ITERATION_24_STAGE22_RENDERED_UAT_EVIDENCE.md
+D  frontend/OUT-26_ITERATION_24_STAGE22_TABLE_PARITY_MATRIX.md
+D  frontend/OUT-26_ITERATION_24_STAGE22_USER_VISIBLE_GOLDEN_REJECTION_RECOVERY_SUMMARY.md
+D  frontend/OUT-26_ITERATION_25_STAGE23_ASSET_FEATURE_PRESERVATION_MATRIX.md
+D  frontend/OUT-26_ITERATION_25_STAGE23_FULL_PAGE_RENDER_EVIDENCE.md
+D  frontend/OUT-26_ITERATION_25_STAGE23_GLOBAL_FEATURE_PARITY_MATRIX.md
+D  frontend/OUT-26_ITERATION_25_STAGE23_OPTION_B_ARCHITECTURE_DECISION.md
+D  frontend/OUT-26_ITERATION_25_STAGE23_OPTION_B_GOLDEN_WORKSPACE_REBUILD_SUMMARY.md
+D  frontend/OUT-26_ITERATION_25_STAGE23_TABLE_PARITY_MATRIX.md
+D  frontend/OUT-26_ITERATION_25_STAGE23_VALIDATION_LEDGER.md
+D  frontend/OUT-26_ITERATION_26_STAGE24_ASSET_FEATURE_PRESERVATION_EVIDENCE.md
+D  frontend/OUT-26_ITERATION_26_STAGE24_GLOBAL_FEATURE_PARITY_EVIDENCE.md
+D  frontend/OUT-26_ITERATION_26_STAGE24_GOLDEN_SKELETON_OWNERSHIP_MAP.md
+D  frontend/OUT-26_ITERATION_26_STAGE24_OLD_PAGE_REUSE_AUDIT.md
+D  frontend/OUT-26_ITERATION_26_STAGE24_RENDERED_PARITY_EVIDENCE.md
+D  frontend/OUT-26_ITERATION_26_STAGE24_TABLE_PARITY_EVIDENCE.md
+D  frontend/OUT-26_ITERATION_26_STAGE24_TRUE_GOLDEN_SKELETON_REBUILD_SUMMARY.md
+D  frontend/OUT-26_ITERATION_26_STAGE24_VALIDATION_AND_WARNING_LEDGER.md
+D  frontend/OUT-26_ITERATION_27_STAGE25_ASSET_DOMAIN_ADAPTER_MAP.md
+D  frontend/OUT-26_ITERATION_27_STAGE25_ASSET_FEATURE_PRESERVATION_MATRIX.md
+D  frontend/OUT-26_ITERATION_27_STAGE25_GLOBAL_FEATURE_PARITY_MATRIX.md
+D  frontend/OUT-26_ITERATION_27_STAGE25_GOLDEN_CLONE_SCAFFOLD_EVIDENCE.md
+D  frontend/OUT-26_ITERATION_27_STAGE25_GOLDEN_GENOME_MAP.md
+D  frontend/OUT-26_ITERATION_27_STAGE25_OLD_PAGE_BODY_EXCLUSION_AUDIT.md
+D  frontend/OUT-26_ITERATION_27_STAGE25_RENDERED_EVIDENCE.md
+D  frontend/OUT-26_ITERATION_27_STAGE25_RENDER_BOOTSTRAP_GATE.md
+D  frontend/OUT-26_ITERATION_27_STAGE25_TABLE_PARITY_MATRIX.md
+D  frontend/OUT-26_ITERATION_27_STAGE25_VALIDATION_AND_WARNING_LEDGER.md
+D  frontend/OUT-26_ITERATION_28_STAGE26_FEATURE_MOUNTING_MATRIX.md
+D  frontend/OUT-26_ITERATION_28_STAGE26_GEOMETRY_FIRST_SHELL_TRANSPLANT_SUMMARY.md
+D  frontend/OUT-26_ITERATION_28_STAGE26_GEOMETRY_PARITY_MATRIX.md
+D  frontend/OUT-26_ITERATION_28_STAGE26_GOLDEN_GEOMETRY_BASELINE.md
+D  frontend/OUT-26_ITERATION_28_STAGE26_OLD_BODY_EXCLUSION_AUDIT.md
+D  frontend/OUT-26_ITERATION_28_STAGE26_RENDERED_EVIDENCE.md
+D  frontend/OUT-26_ITERATION_28_STAGE26_SCAFFOLD_ARCHITECTURE.md
+D  frontend/OUT-26_ITERATION_28_STAGE26_TEST_COVERAGE_LEDGER.md
+D  frontend/OUT-26_ITERATION_28_STAGE26_WARNING_CLASSIFICATION_LEDGER.md
+D  frontend/OUT-26_ITERATION_29_STAGE27_EVIDENCE_HARNESS_REPAIR.md
+D  frontend/OUT-26_ITERATION_30_STAGE28_960X720_PROOF.md
+D  frontend/OUT-26_ITERATION_30_STAGE28_COMMAND_BOUNDS_PROOF.md
+D  frontend/OUT-26_ITERATION_30_STAGE28_GEOMETRY_CAPTURE_PROOF.md
+D  frontend/OUT-26_ITERATION_30_STAGE28_PRODUCT_CODE_LOCK_AUDIT.md
+D  frontend/OUT-26_ITERATION_30_STAGE28_PROOF_COMPLETION_SUMMARY.md
+D  frontend/OUT-26_ITERATION_30_STAGE28_ROUTE_RENDER_PROOF.md
+D  frontend/OUT-26_ITERATION_30_STAGE28_VALIDATION_LEDGER.md
+D  frontend/OUT-26_ITERATION_30_STAGE28_WARNING_CLASSIFICATION_PROOF.md
+D  frontend/OUT-26_ITERATION_31_STAGE29_ASSETS_GOLDEN_PRODUCT_LOCK_SUMMARY.md
+D  frontend/OUT-26_ITERATION_32_STAGE30_GOLDEN_RECONSTRUCTION_SUMMARY.md
+D  frontend/OUT-26_ITERATION_33_STAGE31_HARD_ARCHITECTURE_CUTOVER_SUMMARY.md
+D  frontend/OUT-26_ITERATION_34_STAGE32_CLONE_PROOF_DECOMPOSITION_SUMMARY.md
+D  frontend/OUT-26_ITERATION_35_STAGE33_LOCK_PROOF_CORRECTION_SUMMARY.md
+D  frontend/OUT-26_ITERATION_36_STAGE34_EVIDENCE_EXECUTION_RECOVERY_SUMMARY.md
+D  frontend/OUT-26_ITERATION_37_STAGE35_USER_QA_PRODUCT_CORRECTION_SUMMARY.md
+D  frontend/OUT-26_STAGE0_ASSETS_GOLDEN_TEMPLATE_GAP_SUMMARY.md
+D  frontend/OUT-8-PARALLEL-A-FULLSTACK-ARTIFACT-PACKAGING-AUDIT.md
+D  frontend/OUT-8-PARALLEL-B-RUNTIME-EVIDENCE-CAPTURE-PACKET.md
+D  frontend/OUT-8-PARALLEL-C-BACKEND-CONTRACT-INVENTORY-AUDIT.md
+D  frontend/OUT-8-PARALLEL-D-REGRESSION-GUARD-CHECKLIST.md
+D  frontend/OUT-8-PARALLEL-E-CLOSE-LOCK-SKELETON-PACKET.md
+D  frontend/OUT-8-evidence-gap-closure.md
+D  frontend/OUT-8-golden-lifecycle-contract-audit.md
+D  frontend/OUT-8-human-validation-packet.md
+D  frontend/OUT-8-support-package-index.md
+D  frontend/OUT-9-LIFECYCLE-DATA-STATE-CONTRACT-PROOF.md
+D  frontend/RUN3-A-workspace-drift-matrix.md
+D  frontend/RUN3-B-bulk-contract-testpack.md
+D  frontend/RUN3-C-row-action-contract-testpack.md
+D  frontend/RUN3-D-api-action-contract-audit.md
+D  frontend/RUN3-E-ui-standard-acceptance-checklist.md
+D  frontend/RUN3-F-typecheck-build-blockers.md
+D  frontend/RUN3-G-implementation-roadmap.md
+D  frontend/all_ts_errors.txt
+D  frontend/audit/monitoring-master-goldenization-audit.mjs
+D  frontend/audit/monitoring-master-goldenization-audit.test.mjs
+D  frontend/audit/monitoring-master-goldenization.spec.ts
+D  frontend/audit/monitoring-master-targets.json
+D  frontend/full_errors.txt
+D  frontend/full_tsc_report.txt
+D  frontend/index.html
+D  frontend/inject_aggrid_empty_states.cjs
+D  frontend/llm-reporter.ts
+D  frontend/migrate_tests.cjs
+D  frontend/package-lock.json
+D  frontend/package.json
+D  frontend/patch_resilience.cjs
+D  frontend/playwright.chaos.config.ts
+D  frontend/playwright.click-contract.config.ts
+D  frontend/playwright.config.ts
+D  frontend/playwright.evidence.config.ts
+D  frontend/playwright.goldenization.config.ts
+D  frontend/playwright.release.config.ts
+D  frontend/postcss.config.js
+D  frontend/refactor_smart.cjs
+D  frontend/scripts/check-form-contracts.cjs
+D  frontend/scripts/check-operational-registry-drift.cjs
+D  frontend/scripts/check-row-action-contracts.cjs
+D  frontend/scripts/check-shell-contracts.cjs
+D  frontend/scripts/generate-stage28-proof.mjs
+D  frontend/scripts/stage32_capture.mjs
+D  frontend/scripts/stage32_clone_audit.mjs
+D  frontend/scripts/stage33_clone_audit.mjs
+D  frontend/src/App.tsx
+D  frontend/src/api/apiClient.test.ts
+D  frontend/src/api/apiClient.ts
+D  frontend/src/api/bootstrapDiagnostics.test.ts
+D  frontend/src/api/bootstrapDiagnostics.ts
+D  frontend/src/components/AssetGrid_Legacy.tsx
+D  frontend/src/components/AssetReal.tsx
+D  frontend/src/components/Assets.tsx
+D  frontend/src/components/AuditLogs.tsx
+D  frontend/src/components/ConfigRegistry.tsx
+D  frontend/src/components/Dashboard.tsx
+D  frontend/src/components/DataFlowDesigner.tsx
+D  frontend/src/components/External.savedViewState.test.ts
+D  frontend/src/components/External.tsx
+D  frontend/src/components/FAR.tsx
+D  frontend/src/components/Intelligence.tsx
+D  frontend/src/components/Knowledge.tsx
+D  frontend/src/components/Maintenance.tsx
+D  frontend/src/components/MonitoringGrid.tsx
+D  frontend/src/components/NetworkReal.tsx
+D  frontend/src/components/Projects.tsx
+D  frontend/src/components/Racks.tsx
+D  frontend/src/components/Research.tsx
+D  frontend/src/components/ServiceRegistry.tsx
+D  frontend/src/components/ServicesReal.tsx
+D  frontend/src/components/Settings.tsx
+D  frontend/src/components/SettingsStandards.tsx
+D  frontend/src/components/Temp1.tsx
+D  frontend/src/components/Vendor.tsx
+D  frontend/src/components/VendorsReal.tsx
+D  frontend/src/components/assets/AssetBulkActionsPanel.test.tsx
+D  frontend/src/components/assets/AssetBulkActionsPanel.tsx
+D  frontend/src/components/assets/AssetCompareModal.test.tsx
+D  frontend/src/components/assets/AssetCompareModal.tsx
+D  frontend/src/components/assets/AssetDetailsView.tsx
+D  frontend/src/components/assets/AssetGoldenDialogs.tsx
+D  frontend/src/components/assets/AssetGoldenFeatureSurfaces.tsx
+D  frontend/src/components/assets/AssetGoldenOperationalWorkspace.tsx
+D  frontend/src/components/assets/AssetGoldenQuickLookPanel.tsx
+D  frontend/src/components/assets/AssetGoldenShellRoute.tsx
+D  frontend/src/components/assets/AssetGoldenShellScaffold.tsx
+D  frontend/src/components/assets/AssetGridSelectionParity.test.tsx
+D  frontend/src/components/assets/AssetImportParity.test.tsx
+D  frontend/src/components/assets/AssetLegacyMapSurface.tsx
+D  frontend/src/components/assets/AssetLegacyReportSurface.tsx
+D  frontend/src/components/assets/AssetsGoldenWorkspace.tsx
+D  frontend/src/components/assets/CopyButton.test.tsx
+D  frontend/src/components/assets/CopyButton.tsx
+D  frontend/src/components/assets/assetGoldenColumns.test.tsx
+D  frontend/src/components/assets/assetGoldenColumns.tsx
+D  frontend/src/components/assets/assetGoldenData.ts
+D  frontend/src/components/assets/assetGoldenRowActions.test.tsx
+D  frontend/src/components/assets/assetGoldenRowActions.tsx
+D  frontend/src/components/monitoring/BkmDetailModal.tsx
+D  frontend/src/components/monitoring/BkmListModal.tsx
+D  frontend/src/components/monitoring/Modals.ts
+D  frontend/src/components/monitoring/MonitoringDetailModal.tsx
+D  frontend/src/components/monitoring/MonitoringForm.tsx
+D  frontend/src/components/monitoring/test.ts
+D  frontend/src/components/monitoring/test2.ts
+D  frontend/src/components/settings/ConfigHistoryModal.tsx
+D  frontend/src/components/settings/SystemDiagnosticsPanel.test.tsx
+D  frontend/src/components/settings/SystemDiagnosticsPanel.tsx
+D  frontend/src/components/settings/externalExportDiagnostics.test.ts
+D  frontend/src/components/settings/externalExportDiagnostics.ts
+D  frontend/src/components/settings/systemDiagnostics.test.ts
+D  frontend/src/components/settings/systemDiagnostics.ts
+D  frontend/src/components/shared/AppDropdown.test.tsx
+D  frontend/src/components/shared/AppDropdown.tsx
+D  frontend/src/components/shared/BulkImportModal.tsx
+D  frontend/src/components/shared/CollaborativeWorkspaceViews.hook.test.tsx
+D  frontend/src/components/shared/CollaborativeWorkspaceViews.test.ts
+D  frontend/src/components/shared/CollaborativeWorkspaceViews.ts
+D  frontend/src/components/shared/ConfirmationModal.tsx
+D  frontend/src/components/shared/ConnectionForensicsModal.tsx
+D  frontend/src/components/shared/ConnectionsListModal.tsx
+D  frontend/src/components/shared/ErrorConsole.tsx
+D  frontend/src/components/shared/ErrorDetailModal.tsx
+D  frontend/src/components/shared/ErrorSentinel.tsx
+D  frontend/src/components/shared/FARModals.tsx
+D  frontend/src/components/shared/FARResearchGoldenPresentationContract.test.ts
+D  frontend/src/components/shared/FormContractsGuard.test.ts
+D  frontend/src/components/shared/GlobalSearch.tsx
+D  frontend/src/components/shared/GoldenWorkspaceGeometryContract.test.ts
+D  frontend/src/components/shared/GoldenWorkspaceShellContract.test.ts
+D  frontend/src/components/shared/InvestigationTab.tsx
+D  frontend/src/components/shared/LayoutPrimitives.test.tsx
+D  frontend/src/components/shared/LayoutPrimitives.tsx
+D  frontend/src/components/shared/OUT12DirtyWiring.contract.test.ts
+D  frontend/src/components/shared/OperationalActionLabels.ts
+D  frontend/src/components/shared/OperationalBulkContract.test.ts
+D  frontend/src/components/shared/OperationalBulkContract.ts
+D  frontend/src/components/shared/OperationalBulkPreviewModal.test.tsx
+D  frontend/src/components/shared/OperationalBulkPreviewModal.tsx
+D  frontend/src/components/shared/OperationalDataGrid.contract.test.ts
+D  frontend/src/components/shared/OperationalDataGrid.tsx
+D  frontend/src/components/shared/OperationalDataState.test.ts
+D  frontend/src/components/shared/OperationalDataState.ts
+D  frontend/src/components/shared/OperationalDataStatus.test.ts
+D  frontend/src/components/shared/OperationalDataStatus.tsx
+D  frontend/src/components/shared/OperationalDependencyGuard.test.ts
+D  frontend/src/components/shared/OperationalDependencyGuard.ts
+D  frontend/src/components/shared/OperationalDisabledActionTooltip.tsx
+D  frontend/src/components/shared/OperationalFieldValidation.test.ts
+D  frontend/src/components/shared/OperationalFieldValidation.ts
+D  frontend/src/components/shared/OperationalFormContracts.test.tsx
+D  frontend/src/components/shared/OperationalFormContracts.ts
+D  frontend/src/components/shared/OperationalGridContract.ts
+D  frontend/src/components/shared/OperationalGridInteractions.test.tsx
+D  frontend/src/components/shared/OperationalGridInteractions.ts
+D  frontend/src/components/shared/OperationalGridMatrix.tsx
+D  frontend/src/components/shared/OperationalGridSizing.test.ts
+D  frontend/src/components/shared/OperationalGridSizing.ts
+D  frontend/src/components/shared/OperationalGridStandard.tsx
+D  frontend/src/components/shared/OperationalImportExport.test.ts
+D  frontend/src/components/shared/OperationalImportExport.ts
+D  frontend/src/components/shared/OperationalImportModal.tsx
+D  frontend/src/components/shared/OperationalLifecycleContract.ts
+D  frontend/src/components/shared/OperationalLifecycleToasts.test.ts
+D  frontend/src/components/shared/OperationalLifecycleToasts.ts
+D  frontend/src/components/shared/OperationalRowActionGeometry.ts
+D  frontend/src/components/shared/OperationalRowActionMenu.tsx
+D  frontend/src/components/shared/OperationalSavedViewsPanel.test.tsx
+D  frontend/src/components/shared/OperationalValidationWiring.contract.test.ts
+D  frontend/src/components/shared/OperationalWorkspace.ts
+D  frontend/src/components/shared/OperationalWorkspaceCapabilities.test.ts
+D  frontend/src/components/shared/OperationalWorkspaceHooks.test.tsx
+D  frontend/src/components/shared/OperationalWorkspaceHooks.ts
+D  frontend/src/components/shared/OperationalWorkspacePrimitives.tsx
+D  frontend/src/components/shared/OperationalWorkspaceShells.tsx
+D  frontend/src/components/shared/ServicesDirtyGuardRecovery.test.tsx
+D  frontend/src/components/shared/StatusPill.tsx
+D  frontend/src/components/shared/StyledSelect.test.tsx
+D  frontend/src/components/shared/StyledSelect.tsx
+D  frontend/src/components/shared/TenantSelector.tsx
+D  frontend/src/components/shared/WorkspaceCommandBar.tsx
+D  frontend/src/components/shared/WorkspaceFlyout.tsx
+D  frontend/src/components/shared/WorkspaceModal.tsx
+D  frontend/src/components/shared/WorkspaceModalDirtyContract.test.tsx
+D  frontend/src/components/shared/WorkspaceModalShells.tsx
+D  frontend/src/components/shared/WorkspaceShareHeader.tsx
+D  frontend/src/components/shared/WorkspaceToast.tsx
+D  frontend/src/components/shared/__tests__/row-action-menu.test.tsx
+D  frontend/src/components/shared/__tests__/row-action.test.ts
+D  frontend/src/components/shared/useOperationalBulkWorkflow.test.tsx
+D  frontend/src/components/shared/useOperationalBulkWorkflow.ts
+D  frontend/src/components/vendors/VendorGoldenDetails.tsx
+D  frontend/src/components/vendors/VendorGoldenOperationalWorkspace.tsx
+D  frontend/src/components/vendors/vendorGoldenColumns.tsx
+D  frontend/src/components/vendors/vendorGoldenData.ts
+D  frontend/src/components/vendors/vendorGoldenTypes.ts
+D  frontend/src/index.css
+D  frontend/src/main.tsx
+D  frontend/src/metadata.json
+D  frontend/src/stores/errorStore.test.tsx
+D  frontend/src/stores/errorStore.ts
+D  frontend/src/test/setup.ts
+D  frontend/src/utils/dataParsers.test.ts
+D  frontend/src/utils/dataParsers.ts
+D  frontend/src/utils/dateUtils.test.ts
+D  frontend/src/utils/dateUtils.ts
+D  frontend/src/utils/monitoring.test.ts
+D  frontend/src/utils/monitoring.ts
+D  frontend/src/utils/monitoringPurgeRevertCapability.test.ts
+D  frontend/src/utils/monitoringPurgeRevertCapability.ts
+D  frontend/src/utils/monitoringValidation.test.ts
+D  frontend/src/utils/monitoringValidation.ts
+D  frontend/src/utils/payloadGenerator.test.ts
+D  frontend/src/utils/payloadGenerator.ts
+D  frontend/src/vite-env.d.ts
+D  frontend/standardize_views.cjs
+D  frontend/tailwind.config.js
+D  frontend/target_errors.txt
+D  frontend/test_linter.cjs
+D  frontend/tests/architecture-workflows.spec.ts
+D  frontend/tests/assets-golden-evidence.spec.ts
+D  frontend/tests/assets-revert.spec.ts
+D  frontend/tests/assets-stage33-evidence.spec.ts
+D  frontend/tests/assets-stage34-evidence.spec.ts
+D  frontend/tests/assets-stage35-evidence.spec.ts
+D  frontend/tests/assets-stage36-evidence.spec.ts
+D  frontend/tests/assets-vendors-bulk-preview.spec.ts
+D  frontend/tests/assets-workflows.spec.ts
+D  frontend/tests/audit-logs-workflows.spec.ts
+D  frontend/tests/blank-slate-audit.spec.ts
+D  frontend/tests/crud-api-contracts.spec.ts
+D  frontend/tests/dashboard-workflows.spec.ts
+D  frontend/tests/debug.spec.ts
+D  frontend/tests/external-services-bulk-preview.spec.ts
+D  frontend/tests/external-workflows.spec.ts
+D  frontend/tests/far-workflows.spec.ts
+D  frontend/tests/golden-eight-seeded-visual-matrix.spec.ts
+D  frontend/tests/helpers/chaosController.ts
+D  frontend/tests/helpers/chaosInteractions.ts
+D  frontend/tests/helpers/chaosNetwork.ts
+D  frontend/tests/helpers/chaosState.ts
+D  frontend/tests/helpers/coverage-injector.cjs
+D  frontend/tests/helpers/operational-matrix.ts
+D  frontend/tests/helpers/routeMatrix.ts
+D  frontend/tests/helpers/sentinel.ts
+D  frontend/tests/helpers/sysgrid-test.ts
+D  frontend/tests/helpers/sysgrid.ts
+D  frontend/tests/knowledge-workflows.spec.ts
+D  frontend/tests/monitoring-comprehensive.spec.ts
+D  frontend/tests/monitoring-workflows.spec.ts
+D  frontend/tests/network-workflows.spec.ts
+D  frontend/tests/pom/AssetView.ts
+D  frontend/tests/pom/AuditLogsView.ts
+D  frontend/tests/pom/BaseView.ts
+D  frontend/tests/pom/DashboardView.ts
+D  frontend/tests/pom/MonitoringView.ts
+D  frontend/tests/pom/ProjectView.ts
+D  frontend/tests/pom/SettingsView.ts
+D  frontend/tests/pre-test-check.spec.ts
+D  frontend/tests/projects-creation-flow.spec.ts
+D  frontend/tests/projects-overhaul.spec.ts
+D  frontend/tests/projects-workflows.spec.ts
+D  frontend/tests/racks-workflows.spec.ts
+D  frontend/tests/research-workflows.spec.ts
+D  frontend/tests/resilience/click-resilient-button.contract.spec.ts
+D  frontend/tests/resilience/dataflow-chaos.spec.ts
+D  frontend/tests/resilience/far-chaos.spec.ts
+D  frontend/tests/resilience/monitoring-chaos.spec.ts
+D  frontend/tests/resilience/projects-chaos.spec.ts
+D  frontend/tests/resilience/services-chaos.spec.ts
+D  frontend/tests/sentinel_comprehensive.spec.ts
+D  frontend/tests/sentinel_smoke.spec.ts
+D  frontend/tests/service-workflows.spec.ts
+D  frontend/tests/settings-and-audit.spec.ts
+D  frontend/tests/settings-standards.spec.ts
+D  frontend/tests/shell-and-search.spec.ts
+D  frontend/tests/smoke.spec.ts
+D  frontend/tests/universal-crawler.spec.ts
+D  frontend/tests/vendor-workflows.spec.ts
+D  frontend/tests/vendors-real-runtime.spec.ts
+D  frontend/tests/view-deeplink-matrix.spec.ts
+D  frontend/tests/view-empty-states.spec.ts
+D  frontend/tests/workspace-collaborative-views.spec.ts
+D  frontend/ts_errors.txt
+D  frontend/tsconfig.json
+D  frontend/tsconfig.node.json
+D  frontend/vite.config.ts
+D  frontend/vitest.setup.ts
+D  frontend_actions.txt
+D  issue_feature.graphql
+D  llm-pytest-report.json
+D  migrate_perms.py
+D  old_registry.tsx
+D  page_content.html
+D  patch_all.py
+D  patch_monitoring.py
+D  patch_projects_fix_jsx.py
+D  patch_row_action.py
+D  patch_row_action_api.py
+D  patch_services.py
+D  patch_tones.py
+D  repro_name_error.py
+D  rewrite_far.py
+D  rewrite_far_robust.py
+D  rewrite_import_modal.py
+D  runtime_adoption.txt
+D  scripts/ai-review-capsule-ignore.json
+D  scripts/ai-review-capsule-rules.json
+D  scripts/archived/ship-review.sh
+D  scripts/corporate_publishability_guard.py
+D  scripts/create-ai-review-capsule.cjs
+D  scripts/preflight.py
+D  scripts/production-preflight.py
+D  scripts/production_data_guard.py
+D  scripts/review-main.sh
+D  scripts/review-pr.sh
+D  scripts/runtime_origin_config.py
+D  scripts/ship-ai-review.sh
+D  scripts/start-local.sh
+D  scripts/sysgrid-relay/prepare_outbox_relay.py
+D  scripts/sysgrid-relay/watch_and_dispatch.py
+D  scripts/tests/test_corporate_publishability_guard.py
+D  scripts/tests/test_production_data_guard.py
+D  scripts/tests/test_runtime_origin_config.py
+D  scripts/validate-all.sh
+D  scripts/verify-app.sh
+D  scripts/workstation-up.sh
+D  seed.py
+D  start_backend_fixed.py
+D  stress_test_db.py
+D  test.txt
+D  test_db_access.py
+D  tests_list.txt
+
+=== remotes ===
+origin	https://github.com/kimhw8084/system_grid.git (fetch)
+origin	https://github.com/kimhw8084/system_grid.git (push)
+
+=== worktrees ===
+worktree /Users/haewonkim/.local/share/sysgrid-delivery-v1.3.0/repository
+HEAD 3c286ff96da8aeb53b029b767bcd358556ec4fda
+branch refs/heads/main
+
+worktree /Users/haewonkim/Library/Caches/SysGrid/operator-01610fcf6833
+HEAD 01610fcf68333b0b990d3fba095a49bcbd203267
+detached
+
+worktree /Users/haewonkim/Library/Caches/SysGrid/operator-1617e422c88f
+HEAD 1617e422c88f933e2b4189550ca76dd80dfb7369
+detached
+
+worktree /Users/haewonkim/Library/Caches/SysGrid/operator-2c2343786aab
+HEAD 2c2343786aabddd9365832acc6328f18b10a747d
+detached
+
+worktree /Users/haewonkim/Library/Caches/SysGrid/operator-2efc2de5325b
+HEAD 2efc2de5325ba31603dab8c29c650c06ea23f5cd
+detached
+
+worktree /Users/haewonkim/Library/Caches/SysGrid/operator-2f9fee7a4d23
+HEAD 2f9fee7a4d23ff35241ea81827c34499daa096f1
+detached
+
+worktree /Users/haewonkim/Library/Caches/SysGrid/operator-4af648f963a9
+HEAD 4af648f963a973d6d8e78fde9c372fecc7f33efa
+detached
+
+worktree /Users/haewonkim/Library/Caches/SysGrid/operator-65695b050bb6
+HEAD 65695b050bb6b91ec76cc7ef5da8a43b956e290f
+detached
+
+worktree /Users/haewonkim/Library/Caches/SysGrid/operator-67dad2291200
+HEAD 67dad22912004c21b260e6de40200d1bf52a6fc4
+detached
+
+worktree /Users/haewonkim/Library/Caches/SysGrid/operator-7c4808a17758
+HEAD 7c4808a17758874682c653b76ef982646b2e40fc
+detached
+
+worktree /Users/haewonkim/Library/Caches/SysGrid/operator-8a65d0a5a09a
+HEAD 8a65d0a5a09a65fef09a1a88f019cdc393a1f684
+detached
+
+worktree /Users/haewonkim/Library/Caches/SysGrid/operator-a2158f7e40d2
+HEAD a2158f7e40d23f2985c8e828d66c730c496a6b3e
+detached
+
+worktree /Users/haewonkim/Library/Caches/SysGrid/operator-bedf38ae3268
+HEAD bedf38ae32680e830fa24395cbf274f5529350fa
+detached
+
+worktree /Users/haewonkim/Library/Caches/SysGrid/operator-ca71a1bf8b96
+HEAD ca71a1bf8b96289314302f78ca6cc26d6e101694
+detached
+
+worktree /Users/haewonkim/Library/Caches/SysGrid/operator-def3c74bcb8a
+HEAD def3c74bcb8aba9bcd74d8d3892b27da2dc81846
+detached
+
+worktree /Users/haewonkim/Library/Caches/SysGrid/operator-f26fbc5830f7
+HEAD f26fbc5830f7630015ef82922720a5a1653a407b
+detached
+
+worktree /Users/haewonkim/Library/Caches/SysGrid/operator-f5d1f9361709
+HEAD f5d1f93617090496465cdb38dc91514b4e53c37b
+detached
+
+
+=== refs ===
+3c286ff96da8aeb53b029b767bcd358556ec4fda refs/heads/main
+fddee7b80843bf4736fdd4722968bef10a380987 refs/remotes/origin/HEAD
+fddee7b80843bf4736fdd4722968bef10a380987 refs/remotes/origin/main
+4ed11f8a2a4be93b596db325d0f5b4e4c244821d refs/remotes/origin/relay-ledger
+02c382225829886da3935247c03f4bac2fceff3c refs/remotes/origin/run-2i-b1r-safe
+fddee7b80843bf4736fdd4722968bef10a380987 refs/remotes/origin/sysgrid/out-31/pa16
+2f9fee7a4d23ff35241ea81827c34499daa096f1 refs/remotes/origin/sysgrid/out-31/pa18
+
+=== recent graph ===
+2f9fee7a (origin/sysgrid/out-31/pa18) OUT-31 PA18 PA18-FAR-DIAGNOSTICS-G04-G05-1: targeted pass
+f26fbc58 OUT-31 PA18 PA18-FAR-DEEP-LINK-G82-VERIFICATION-REPAIR-3: targeted pass
+f5d1f936 OUT-31 PA18 PA18-FAR-WORKING-STATE-G74-1: targeted pass
+1617e422 OUT-31 PA18 PA18-FAR-DATA-EXCHANGE-G14-G15-1: targeted pass
+2c234378 OUT-31 PA18 PA18-FAR-AUTHORING-COMPLETION-9-PACKAGING-CORRECTION-1: targeted pass
+def3c74b OUT-31 PA18 FAR-MONITORING-GOLDEN-ARCHIVED-WORKSPACE-READONLY-COMPLETION-8D: targeted pass
+01610fcf OUT-31 PA18 FAR-MONITORING-GOLDEN-ARCHIVED-READONLY-COMPLETION-8C: targeted pass
+4af648f9 OUT-31 PA18 FAR-MONITORING-GOLDEN-LIFECYCLE-HISTORY-COMPLETION-8B: targeted pass
+ca71a1bf OUT-31 PA18 FAR-MONITORING-GOLDEN-LIFECYCLE-HISTORY-COMPLETION-8A: targeted pass
+67dad229 OUT-31 PA18 FAR-MONITORING-GOLDEN-OPERATOR-INTELLIGENCE-COMPLETION-7: targeted pass
+2efc2de5 OUT-31 PA18 FAR-MONITORING-GOLDEN-GRID-TEMPLATE-COMPLETION-6: targeted pass
+8a65d0a5 OUT-31 PA18 FAR-MONITORING-GOLDEN-WORKSPACE-INTERACTION-COMPLETION-5: targeted pass
+65695b05 OUT-31 PA18 FAR-MONITORING-GOLDEN-STABLE-RESIZE-CORRECTION-4: targeted pass
+bedf38ae OUT-31 PA18 FAR-MONITORING-GOLDEN-VISUAL-QUALITY-CORRECTION-3: targeted pass
+a2158f7e OUT-31 PA18 FAR-MONITORING-GOLDEN-CENTER-BOUNDS-CORRECTION-2: targeted pass
+7c4808a1 OUT-31 PA18 FAR-MONITORING-GOLDEN-STRUCTURAL-SOURCE-CORRECTION-1: targeted pass
+fddee7b8 (origin/sysgrid/out-31/pa16, origin/main, origin/HEAD) OUT-31 PA16 FAR-GOLDEN-COMPLETION-SRC8-SELF-SEEDED-RUNTIME-REBOUND: targeted pass
+36f99074 OUT-31 PA16 FAR-GOLDEN-COMPLETION-SRC7-PREGRID-PERSISTED-LAYOUT-SANITIZATION: targeted pass
+f1c607da OUT-31 PA16 FAR-GOLDEN-COMPLETION-SRC6-DURABLE-OPERABLE-GRID-RECOVERY: targeted pass
+f24df9d0 OUT-31 PA16 FAR-GOLDEN-COMPLETION-SRC5-OPERABLE-GRID: targeted pass
+bd358717 OUT-31 PA16 FAR-GOLDEN-COMPLETION-SRC4-VISIBLE-GRID: targeted pass
+c9999537 OUT-31 PA16 FAR-GOLDEN-COMPLETION-SRC3A-RUNTIME-ERROR-CLASSIFICATION: targeted pass
+ae428e96 OUT-31 PA16 FAR-GOLDEN-COMPLETION-SRC2-RESIZE: targeted pass
+8c3df0de OUT-31 PA16 FAR-GOLDEN-COMPLETION-V1-VR2-SRC1: targeted pass
+3c286ff9 (grafted, HEAD -> main) platform: contain publication to UAT-only scope
+4ed11f8a (origin/relay-ledger) relay: publish 20260805T174920Z-95186-601000 1545d4a21ef0
+b0fa9961 relay: publish 20260805T160049Z-71898-509000 73e5a240d6c4
+e0b9b50a relay: publish 20260805T142128Z-55754-337000 df3466cda750
+2f690f42 relay: publish 20260805T131930Z-84523-076000 9e5c2e180c5e
+efed856f relay: publish 20260805T125837Z-59044-504000 1a7dd6bc9265
+f49d9205 relay: publish 20260805T121046Z-3314-457000 1265d7fedd20
+b905cade relay: publish 20260805T113731Z-63890-573000 9e3d35531420
+77796c0a relay: publish 20260805T104339Z-2079-216000 80bc30b7c004
+c9c8dc96 relay: publish 20260805T021717Z-26018-073000 0b415f7d82f0
+68195dba relay: publish 20260805T011602Z-53481-037000 212fd56116ca
+8cef40cc relay: publish 20260805T001326Z-82098-392000 4a5a656114de
+abea8ea4 relay: publish 20260804T232030Z-36467-732000 3be77e3b8814
+8c48f13b relay: publish 20260804T223738Z-98558-119000 d5f99fdadf78
+05e91a7b relay: publish 20260804T214512Z-86863-442000 00dfc65ceb05
+f35da702 relay: publish 20260804T205644Z-43588-017000 ecf7d31a834e
+
+=== git config / origins ===
+file:/Applications/Xcode.app/Contents/Developer/usr/share/git-core/gitconfig	credential.helper=osxkeychain
+file:/Applications/Xcode.app/Contents/Developer/usr/share/git-core/gitconfig	init.defaultbranch=main
+file:/Users/haewonkim/.gitconfig	credential.helper=osxkeychain
+file:/Users/haewonkim/.gitconfig	core.editor=vim
+file:/Users/haewonkim/.gitconfig	core.excludesfile=/Users/haewonkim/.gitignore_global
+file:/Users/haewonkim/.gitconfig	user.name=Haewon Kim
+file:/Users/haewonkim/.gitconfig	user.email=kimhw8084@gmail.com
+file:/Users/haewonkim/.gitconfig	user.signingkey=2374FECF1158BB97
+file:/Users/haewonkim/.gitconfig	gpg.program=/opt/homebrew/bin/gpg
+file:.git/config	core.repositoryformatversion=0
+file:.git/config	core.filemode=true
+file:.git/config	core.bare=false
+file:.git/config	core.logallrefupdates=true
+file:.git/config	core.ignorecase=true
+file:.git/config	core.precomposeunicode=true
+file:.git/config	core.askpass=/usr/bin/false
+file:.git/config	remote.origin.url=https://github.com/kimhw8084/system_grid.git
+file:.git/config	remote.origin.fetch=+refs/heads/*:refs/remotes/origin/*
+file:.git/config	branch.main.remote=origin
+file:.git/config	branch.main.merge=refs/heads/main
+file:.git/config	credential.usehttppath=true
+file:.git/config	user.name=SysGrid Delivery Runner
+file:.git/config	user.email=sysgrid-runner@local.invalid
+file:.git/config	commit.gpgsign=false
+file:.git/config	credential.https://github.com.helper=
+file:.git/config	credential.https://github.com.helper=!/Users/haewonkim/.local/share/sysgrid-delivery-v1.3.0/sg_git_credential.py

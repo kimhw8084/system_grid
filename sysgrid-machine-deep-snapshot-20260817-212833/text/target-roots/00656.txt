@@ -1,0 +1,32 @@
+ORIGINAL_PATH: /Users/haewonkim/.local/state/sysgrid-supervisor/runs/20260801T070156Z-70948-427000/preflight.json
+ORIGINAL_SHA256: 4a434a1b2850dd398bced659400a618c5d0bcc68bc47d66c8cfe5af7750ff5bc
+================================================================================
+{
+  "declared_state": {
+    "dirty_path_count": 55,
+    "pre_hash_count": 55,
+    "protected_hash_count": 19
+  },
+  "engine_self_test": {
+    "engine_version": "1.0.4",
+    "result": "PASS",
+    "tests": [
+      "safe-path",
+      "manifest",
+      "corruption"
+    ]
+  },
+  "patch": {
+    "applicable": true,
+    "forward_diagnostic": "Checking patch frontend/playwright.config.ts...\nChecking patch frontend/scripts/check-canonical-verification-contract.cjs...\nChecking patch frontend/src/components/shared/CanonicalVerificationContract.test.ts...\nChecking patch frontend/tests/golden-eight-seeded-visual-matrix.spec.ts...\nChecking patch frontend/tests/helpers/sentinel.ts...\nChecking patch scripts/verify-app.sh...",
+    "forward_exit_code": 0,
+    "reverse_applicable": false,
+    "reverse_diagnostic": "Checking patch scripts/verify-app.sh...\nerror: while searching for:\nRUNTIME_USER_ENV_VAR=\"SYSGRID_VERIFY_RUNTIME_USER_ID\"\nBACKEND_PID=\"\"\nFRONTEND_PID=\"\"\nLANE_DIR=\"$(mktemp -d \"${TMPDIR:-/tmp}/sysgrid-verify-lanes.XXXXXX\")\"\nPROGRESS_SEQUENCE=0\nFRONTEND_WORKERS=\"${SYSGRID_FRONTEND_WORKERS:-4}\"\n\nGOLDEN_WORKSPACE_KEYS=(monitoring assets services external network far research vendors)\nPLAYWRIGHT_SPECS=(\n\nerror: patch failed: scripts/verify-app.sh:22\nerror: scripts/verify-app.sh: patch does not apply\nChecking patch frontend/tests/helpers/sentinel.ts...\nerror: while searching for:\nimport { expect, type Page } from '@playwright/test'\n\nconst KNOWN_BENIGN_BROWSER_DIAGNOSTICS = new Set([\n  'ResizeObserver loop completed with undelivered notifications.',\n])\n\nexport type StrictAppMonitoringFailures = string[] & { diagnostics: string[] }\n\nfunction isKnownBenignBrowserDiagnostic(message: string) {\n  return KNOWN_BENIGN_BROWSER_DIAGNOSTICS.has(message.trim())\n}\n\nexport function installStrictAppMonitoring(page: Page) {\n  const failures = [] as StrictAppMonitoringFailures\n  failures.diagnostics = []\n\n  const recordKnownDiagnostic = (source: 'console.error' | 'pageerror', message: string) => {\n    const diagnostic = `${source}: ${message.trim()}`\n    failures.diagnostics.push(diagnostic)\n    console.info(`[known-browser-diagnostic] ${diagnostic}`)\n  }\n\n  page.on('console', (msg) => {\n    if (msg.type() === 'error') {\n      if (isKnownBenignBrowserDiagnostic(msg.text())) {\n        recordKnownDiagnostic('console.error', msg.text())\n        return\n      }\n      void Promise.all(\n        msg.args().map(async (arg) => {\n          try {\n\nerror: patch failed: frontend/tests/helpers/sentinel.ts:1\nerror: frontend/tests/helpers/sentinel.ts: patch does not apply\nChecking patch frontend/tests/golden-eight-seeded-visual-matrix.spec.ts...\nerror: while searching for:\n        if (tenantId) routeTenantIds.add(tenantId)\n      }\n      page.on('response', captureTenant)\n      const tenantResponsePromise ",
+    "reverse_exit_code": 1
+  },
+  "storage": {
+    "control_free": 57563852800,
+    "local_free": 57563852800,
+    "required": 536870912
+  }
+}

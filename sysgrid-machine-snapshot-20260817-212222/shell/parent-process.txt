@@ -1,0 +1,3 @@
+collector PID=89089
+parent PID=40591
+40591  4444 haewonkim -zsh

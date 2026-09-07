@@ -1,0 +1,36 @@
+ORIGINAL_PATH: /Users/haewonkim/.local/state/sysgrid-supervisor/runs/20260731T235103Z-77359-102000/preflight.json
+ORIGINAL_SHA256: 51a0c6effae6b49c563656876c2b079502907a1a4c31a324a7d21867db759ed2
+================================================================================
+{
+  "failures": {
+    "patch": {
+      "classification": "PATCH_STATE_FAILURE",
+      "exit_code": 69,
+      "message": "mutation patch is not uniquely forward-applicable"
+    },
+    "repository": {
+      "classification": "CAPSULE_STATE_FAILURE",
+      "exit_code": 65,
+      "message": "invalid state JSON: STATE/pre_expected_dirty_paths.txt"
+    }
+  },
+  "results": {
+    "engine": {
+      "path": "/Users/haewonkim/.local/lib/sysgrid-runner/1.0.4/sysgrid_runner.py",
+      "self_test": {
+        "engine_version": "1.0.4",
+        "result": "PASS",
+        "tests": [
+          "safe-path",
+          "manifest",
+          "corruption"
+        ]
+      }
+    },
+    "storage": {
+      "control_free": 57899241472,
+      "local_free": 57899241472,
+      "required": 536870912
+    }
+  }
+}

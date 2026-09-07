@@ -1,0 +1,11 @@
+ORIGINAL_PATH: /Users/haewonkim/.local/state/sysgrid-supervisor/runs/20260804T010704Z-54912-696000/diagnostic/REVIEW_ME_FIRST.md
+ORIGINAL_SHA256: 4a35856aad2281a9168661ccd606b362a2eb46d60ac74bb17d4bd9d3c62adb17
+================================================================================
+# SysGrid Supervisor Diagnostic
+
+- Result: failure
+- Classification: ENGINE_OUTPUT_MISSING
+- Message: engine did not create UPLOAD_THIS_TO_CHATGPT.zip
+- Product mutation authority: none added by this diagnostic
+
+Review RESULT.json, SUPERVISOR_STATE.json, TRACEBACK.txt, and MANIFEST.sha256.

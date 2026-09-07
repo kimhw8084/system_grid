@@ -1,0 +1,13 @@
+ORIGINAL_PATH: /Users/haewonkim/.local/state/sysgrid-supervisor/runs/20260801T211433Z-43998-647000/launch.json
+ORIGINAL_SHA256: 101387a0191209462b4944ff8737343c1ac54b42a66f74a1faabf626d3a88489
+================================================================================
+{
+  "capsule_path": "/Users/haewonkim/.local/state/sysgrid-supervisor/runs/20260801T211433Z-43998-647000/input/DOWNLOAD_Attempt_08_Analytical_Grid_Inline_Size_Containment.sgcap",
+  "capsule_sha256": "88d89c070091671ef7ea1d7be55a3355b26d112f609f3469d87f14c097e02d27",
+  "command_sha256": "c1e8557cb35365e4ecb169ae7027ee84ca1366734c045f4f6b9e0d64b3b28867",
+  "engine_path": "/Users/haewonkim/.local/lib/sysgrid-runner/1.0.4/sysgrid_runner.py",
+  "engine_sha256": "ab63bb20c0de32771e20b0159475205f685f28910a0956c217fb3693c02f96e1",
+  "launched_utc": "2026-08-01T21:14:34Z",
+  "repo": "/Users/haewonkim/home/development/sysgrid",
+  "run_id": "20260801T211433Z-43998-647000"
+}

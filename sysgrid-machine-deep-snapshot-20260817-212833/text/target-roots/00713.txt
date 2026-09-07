@@ -1,0 +1,18 @@
+ORIGINAL_PATH: /Users/haewonkim/.local/state/sysgrid-supervisor/runs/20260801T004111Z-35240-366000/diagnostic/RESULT.json
+ORIGINAL_SHA256: 2c07e2a26f4b5645ef92553b945a953dbed0279bea3dce3475d3d541f5063cf9
+================================================================================
+{
+  "capsule_file": null,
+  "capsule_sha256": null,
+  "classification": "CAPSULE_SCHEMA_FAILURE",
+  "engine_version": "1.0.4",
+  "exit_code": 65,
+  "finished_utc": "2026-08-01T00:41:11Z",
+  "lane": "execution_platform",
+  "message": "patch must be an object for mutation/resume",
+  "mode": "qualification",
+  "mutation_state": "not_started",
+  "result": "failure",
+  "safe_automatic_retry_performed": 0,
+  "supervisor_version": "1.3.1"
+}

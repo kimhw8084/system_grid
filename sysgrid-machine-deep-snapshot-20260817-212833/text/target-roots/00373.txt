@@ -1,0 +1,191 @@
+ORIGINAL_PATH: /Users/haewonkim/.local/share/sysgrid-campaign-platform/v1.1.1/payload/sysgrid_relay_common.py
+ORIGINAL_SHA256: 6bc7b92ca67b04b0f8609c67dd5f8db99f2fdcf6ad3e2e4eceb851e65cb2b8c6
+================================================================================
+#!/usr/bin/env python3
+from __future__ import annotations
+
+import datetime as dt
+import fcntl
+import hashlib
+import json
+import os
+import re
+import subprocess
+import urllib.parse
+import urllib.request
+from contextlib import contextmanager
+from pathlib import Path
+from typing import Any, Iterator
+
+SHA256_RE = re.compile(r"^[0-9a-f]{64}$")
+RUN_ID_RE = re.compile(r"^[A-Za-z0-9_.+-]+$")
+
+
+def now_utc() -> str:
+    return dt.datetime.now(dt.timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z")
+
+
+def sha256_file(path: Path) -> str:
+    h = hashlib.sha256()
+    with path.open("rb") as handle:
+        for chunk in iter(lambda: handle.read(4 * 1024 * 1024), b""):
+            h.update(chunk)
+    return h.hexdigest()
+
+
+def load_json(path: Path) -> dict[str, Any]:
+    raw = json.loads(path.read_text(encoding="utf-8"))
+    if not isinstance(raw, dict):
+        raise RuntimeError(f"JSON object required: {path}")
+    return raw
+
+
+def atomic_json(path: Path, value: dict[str, Any], mode: int = 0o600) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    temp = path.with_suffix(path.suffix + f".tmp-{os.getpid()}")
+    temp.write_text(json.dumps(value, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    os.chmod(temp, mode)
+    os.replace(temp, path)
+
+
+def run(command: list[str], *, env: dict[str, str] | None = None, check: bool = True) -> subprocess.CompletedProcess[str]:
+    result = subprocess.run(command, text=True, capture_output=True, env=env)
+    if check and result.returncode:
+        raise RuntimeError(
+            f"command failed ({result.returncode}): {' '.join(command)}\n"
+            f"stdout={result.stdout[-4000:]}\nstderr={result.stderr[-4000:]}"
+        )
+    return result
+
+
+def relay_paths() -> dict[str, Path]:
+    home = Path.home()
+    state_root = home / "Library/Application Support/SysGridRelay"
+    return {
+        "state_root": state_root,
+        "config": state_root / "config.json",
+        "watcher": state_root / "watch_and_dispatch.py",
+        "watcher_state": state_root / "state.json",
+        "lock": state_root / "dispatch.lock",
+        "supervisor_state": home / ".local/state/sysgrid-supervisor/latest.json",
+        "telegram": home / ".config/sysgrid-supervisor/telegram.json",
+        "attestations": home / "Library/Mobile Documents/com~apple~CloudDocs/SysGrid-Control/Platform/History",
+        "history": home / "Library/Mobile Documents/com~apple~CloudDocs/SysGrid-Control/Outbox/History",
+    }
+
+
+@contextmanager
+def dispatch_lock(*, blocking: bool) -> Iterator[bool]:
+    lock_path = relay_paths()["lock"]
+    lock_path.parent.mkdir(parents=True, exist_ok=True)
+    handle = lock_path.open("a+")
+    flags = fcntl.LOCK_EX | (0 if blocking else fcntl.LOCK_NB)
+    try:
+        try:
+            fcntl.flock(handle.fileno(), flags)
+        except BlockingIOError:
+            yield False
+            return
+        yield True
+    finally:
+        try:
+            fcntl.flock(handle.fileno(), fcntl.LOCK_UN)
+        finally:
+            handle.close()
+
+
+def relay_environment(config: dict[str, Any]) -> dict[str, str]:
+    token_path = [REDACTED]
+    if not token_path.is_file() or token_path.is_symlink():
+        raise RuntimeError(f"relay token file missing or unsafe: {token_path}")
+    token = [REDACTED]
+    if not token:
+        raise RuntimeError("relay token is empty")
+    env = dict(os.environ)
+    env["GH_TOKEN"] = token
+    env["GITHUB_TOKEN"] = token
+    env["GIT_TERMINAL_PROMPT"] = "0"
+    return env
+
+
+def ledger_pointer(config: dict[str, Any], env: dict[str, str]) -> dict[str, Any] | None:
+    gh = str(config["gh_path"])
+    repo = str(config["repository"])
+    result = run([
+        gh,
+        "api",
+        f"repos/{repo}/contents/relay/latest.json?ref=relay-ledger",
+        "-H",
+        "Accept: application/vnd.github.raw+json",
+    ], env=env, check=False)
+    if result.returncode:
+        return None
+    try:
+        value = json.loads(result.stdout)
+    except json.JSONDecodeError:
+        return None
+    return value if isinstance(value, dict) else None
+
+
+def workflow_state(config: dict[str, Any], run_id: int, env: dict[str, str]) -> dict[str, Any] | None:
+    result = run([
+        str(config["gh_path"]), "run", "view", str(run_id),
+        "--repo", str(config["repository"]), "--json", "status,conclusion,url",
+    ], env=env, check=False)
+    if result.returncode:
+        return None
+    try:
+        value = json.loads(result.stdout)
+    except json.JSONDecodeError:
+        return None
+    return value if isinstance(value, dict) else None
+
+
+def send_telegram(message: str) -> dict[str, Any]:
+    path = relay_paths()["telegram"]
+    if not path.is_file() or path.is_symlink():
+        return {"configured": False, "delivered": False}
+    config = load_json(path)
+    token = [REDACTED]
+    chat_id = str(config.get("chat_id") or "").strip()
+    if not token or not chat_id:
+        return {"configured": False, "delivered": False}
+    payload = urllib.parse.urlencode({"chat_id": chat_id, "text": message, "disable_web_page_preview": "true"}).encode()
+    request = urllib.request.Request(
+        f"https://api.telegram.org/bot{token}/sendMessage",
+        data=payload,
+        method="POST",
+    )
+    try:
+        with urllib.request.urlopen(request, timeout=12) as response:
+            body = json.loads(response.read().decode("utf-8"))
+        return {"configured": True, "delivered": bool(body.get("ok")), "message_id": (body.get("result") or {}).get("message_id")}
+    except Exception as exc:  # Delivery is reported, never allowed to corrupt product evidence.
+        return {"configured": True, "delivered": False, "error": f"{type(exc).__name__}: {exc}"}
+
+
+def find_history_for_state(state: dict[str, Any]) -> tuple[Path, Path, str, int]:
+    run_id = str(state.get("run_id") or "")
+    payload_sha = str(state.get("artifact_sha256") or "")
+    payload_size = int(state.get("artifact_size") or 0)
+    if not RUN_ID_RE.fullmatch(run_id):
+        raise RuntimeError(f"invalid supervisor run ID: {run_id!r}")
+    if not SHA256_RE.fullmatch(payload_sha):
+        raise RuntimeError("terminal supervisor state lacks a valid artifact SHA-256")
+    if payload_size <= 0:
+        raise RuntimeError("terminal supervisor state lacks a valid artifact size")
+    candidates = sorted(relay_paths()["history"].glob(f"{run_id}__*.zip.sha256"))
+    for sidecar in candidates:
+        line = sidecar.read_text(encoding="utf-8").strip()
+        match = re.fullmatch(r"([0-9a-f]{64})  ([^/]+\.zip)", line)
+        if not match or match.group(1) != payload_sha:
+            continue
+        archive = sidecar.parent / match.group(2)
+        if not archive.is_file() or archive.is_symlink():
+            continue
+        if archive.stat().st_size != payload_size:
+            continue
+        if sha256_file(archive) != payload_sha:
+            continue
+        return archive, sidecar, payload_sha, payload_size
+    raise RuntimeError(f"no checksum-complete immutable History object matches run {run_id}")

@@ -1,0 +1,24 @@
+{
+  "observed_repair4": {
+    "local_application": "NOT_ATTEMPTED",
+    "slice_g_persistent": "PASS",
+    "slice_g_transient": "FAIL waiting for Save view while Workspace actions was collapsed",
+    "slice_h": "5/5 PASS"
+  },
+  "parent_result_sha256": "36b8303d1db392d95652e85db25833bf5bc1ca12cc1d3faef9df206d2fb49f50",
+  "product_feature_scope_changed": false,
+  "repair_iteration": 5,
+  "repair_scope": [
+    "frontend/tests/projects-out40-slice-h-gantt-modernization.spec.ts",
+    "frontend/tests/projects-out40-slice-g-accessible-name-audit.spec.ts",
+    "frontend/tests/projects-out40-slice-e-timeline-dependency-a11y.spec.ts",
+    "frontend/tests/projects-navigation.spec.ts",
+    "frontend/src/components/ProjectsVisualRepair.css"
+  ],
+  "schema": "SYSGRID_PROJECT_VIEW_REPAIR_FAILURE_SIGNATURE_V1",
+  "source_reconciliation": {
+    "project_create": "current R4 source exposes the create-project action as Project inside Workspace actions",
+    "proof_strategy": "diagnostic sweep all retained regression files before canonical regression, without weakening acceptance or applying source",
+    "save_view": "current R4 source retains Save view inside the collapsed Workspace actions details"
+  }
+}

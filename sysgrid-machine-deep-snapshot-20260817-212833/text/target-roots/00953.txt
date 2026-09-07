@@ -1,0 +1,88 @@
+ORIGINAL_PATH: /Users/haewonkim/.local/state/sysgrid-supervisor/runs/20260803T122744Z-56357-407000/patch.diff
+ORIGINAL_SHA256: b0ee021977a7d17f27fb52102ed2ebe02526e361ba4319cdae1bb1e095998178
+================================================================================
+diff --git a/backend/test_dashboard_metrics.py b/backend/test_dashboard_metrics.py
+index f532ce8d85e6b7d2270b013fdeea072fded27c91..4609f4f1472cbcbe20abef21de4c20802c4f7f38 100644
+--- a/backend/test_dashboard_metrics.py
++++ b/backend/test_dashboard_metrics.py
+@@ -169,6 +169,7 @@ async def test_dashboard_metrics_rolls_up_seeded_operational_data(seeded_admin_t
+             "occurrence": 4,
+             "detection": 3,
+             "affected_assets": [device["id"]],
++            "idempotency_key": "dashboard-metrics-far-create",
+         },
+         headers=headers,
+     )
+@@ -336,6 +337,7 @@ async def test_dashboard_search_returns_cross_domain_matches(seeded_admin_tenant
+             "occurrence": 4,
+             "detection": 3,
+             "affected_assets": [device["id"]],
++            "idempotency_key": "dashboard-search-far-create",
+         },
+         headers=headers,
+     )
+diff --git a/backend/test_devices_api_edges.py b/backend/test_devices_api_edges.py
+index 0d06d4665bd77299a29a601d416dfebbdd7dfc66..28f1ed76e9013e733d723f9311c2473f4544350b 100644
+--- a/backend/test_devices_api_edges.py
++++ b/backend/test_devices_api_edges.py
+@@ -381,6 +381,7 @@ async def test_devices_bulk_purge_with_far_mode_assets(seeded_admin_tenant):
+             "occurrence": 3,
+             "detection": 2,
+             "affected_assets": [device["id"]],
++            "idempotency_key": "devices-bulk-purge-far-create",
+         },
+         headers=headers,
+     )
+diff --git a/frontend/tests/far-golden-workspace.spec.ts b/frontend/tests/far-golden-workspace.spec.ts
+index 8e4927ea1256e15b6f525e2b724d570104925903..83735a7943b044436b941927333daf97d94e2e28 100644
+--- a/frontend/tests/far-golden-workspace.spec.ts
++++ b/frontend/tests/far-golden-workspace.spec.ts
+@@ -1,6 +1,6 @@
+ import { expect } from '@playwright/test'
+ import { test } from './helpers/sysgrid-test'
+-import { resetBrowserState, waitForAppIdle } from './helpers/sysgrid'
++import { clickResilientButton, resetBrowserState, waitForAppIdle } from './helpers/sysgrid'
+ 
+ async function waitForFAR(page: any) {
+   await waitForAppIdle(page)
+@@ -37,20 +37,20 @@ test.describe('FAR whole-view golden workspace', () => {
+     await expect(grid.locator('.ag-header-cell').filter({ hasText: /^Risk$/ }).first()).toBeVisible()
+ 
+     const gridBoxBeforeInsights = await grid.boundingBox()
+-    await page.getByRole('button', { name: 'Insights', exact: true }).click()
++    await clickResilientButton(page, 'Insights')
+     await expect(workspace.locator('[data-far-insights="true"]')).toBeVisible()
+     const totalMetric = workspace.locator('[data-far-metric="failure-modes"]')
+     await expect.poll(async () => Number((await totalMetric.locator('h4').textContent()) || 0)).toBeGreaterThan(0)
+     expect(await grid.boundingBox()).toEqual(gridBoxBeforeInsights)
+-    await page.getByRole('button', { name: 'Insights', exact: true }).click()
++    await clickResilientButton(page, 'Insights')
+     await expect(workspace.locator('[data-far-insights="true"]')).toHaveCount(0)
+ 
+-    await page.getByRole('button', { name: 'Display', exact: true }).click()
++    await clickResilientButton(page, 'Display')
+     await expect(page.locator('[data-far-display-controls="true"]')).toBeVisible()
+-    await page.getByRole('button', { name: 'Display', exact: true }).click()
+-    await page.getByRole('button', { name: 'Filters', exact: true }).click()
++    await clickResilientButton(page, 'Display')
++    await clickResilientButton(page, 'Filters')
+     await expect(page.locator('[data-far-filter-bar="true"]')).toBeVisible()
+-    await page.getByRole('button', { name: 'Filters', exact: true }).click()
++    await clickResilientButton(page, 'Filters')
+     await expect(page.locator('[data-far-filter-bar="true"]')).toHaveCount(0)
+ 
+     const riskHeader = grid.locator('.ag-header-cell').filter({ hasText: /^Risk$/ }).first()
+@@ -79,10 +79,10 @@ test.describe('FAR whole-view golden workspace', () => {
+     await expect(page.locator('[data-far-detail-record]')).toBeVisible()
+     expect(page.url()).toBe(deepLink)
+ 
+-    await page.getByRole('button', { name: 'Close failure mode dossier' }).click()
+-    await page.getByRole('button', { name: 'Views', exact: true }).click()
++    await clickResilientButton(page, 'Close failure mode dossier')
++    await clickResilientButton(page, 'Views')
+     await expect(page.getByTestId('workspace-view-sync-status')).toContainText(/Synced|Loading|Saving|Unsaved/)
+-    await page.getByRole('button', { name: 'Close saved views' }).click()
++    await clickResilientButton(page, 'Close saved views')
+ 
+     const search = page.getByLabel('Search FAR failure modes')
+     const query = firstTitle.split(/\s+/)[0]

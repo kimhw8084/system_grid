@@ -1,0 +1,694 @@
+ORIGINAL_PATH: /Users/haewonkim/.local/state/sysgrid-supervisor/runs/20260801T191324Z-2710-594000/SUPERVISOR_STATE.json
+ORIGINAL_SHA256: 226e7424c7e5a4851982a3134cde2b9b7a878c23e882f69314066703357beed6
+================================================================================
+{
+  "artifact": "/Users/haewonkim/Library/Mobile Documents/com~apple~CloudDocs/SysGrid-Control/Outbox/UPLOAD_THIS_TO_CHATGPT.zip",
+  "artifact_sha256": "f62cc8001457f2ac7b13d2b38bc4e6ecf120b506af7bab6772b9d86cb76a7cdf",
+  "artifact_size": 40687197,
+  "attempt": 5,
+  "capsule_archive": "/Users/haewonkim/Library/Mobile Documents/com~apple~CloudDocs/SysGrid-Control/Archive/Processed-Capsules/20260801T192012Z__2f87996f043b__DOWNLOAD_Product_Attempt_05_Verification_Repair_R1.sgcap",
+  "capsule_cross_ledger": {
+    "changed_path_count": 11,
+    "patch_paths": [
+      "backend/app/api/workspaces.py",
+      "frontend/src/components/shared/GoldenWorkspaceGeometryContract.test.ts",
+      "frontend/src/components/shared/OperationalSavedViewsPanel.test.tsx",
+      "frontend/src/components/shared/OperationalWorkspaceShells.tsx",
+      "frontend/src/components/shared/WorkspaceCommandBar.tsx",
+      "frontend/tests/golden-eight-seeded-visual-matrix.spec.ts",
+      "frontend/tests/helpers/sentinel.ts",
+      "frontend/tests/sentinel_comprehensive.spec.ts",
+      "frontend/tests/shell-and-search.spec.ts",
+      "frontend/tests/view-deeplink-matrix.spec.ts",
+      "frontend/tests/view-empty-states.spec.ts"
+    ],
+    "post_path_count": 57,
+    "pre_path_count": 56,
+    "protected_path_count": 19,
+    "recipe_ids": [
+      "full-app-gate"
+    ]
+  },
+  "capsule_file": "DOWNLOAD_Product_Attempt_05_Verification_Repair_R1.sgcap",
+  "capsule_sha256": "2f87996f043b656c068ab7648c92bf1111bd0e4e33d4a863492b8d33f0004235",
+  "capsule_size": 19226,
+  "capsule_stage": "Golden Eight Full-Matrix Physical Closure \u2014 Product Attempt 05 \u2014 Analytical Grid Paint Containment and Proof Closure",
+  "capsule_title": "Iteration 36 Product Attempt 05: Restore Visible FAR/Research Grids and Close Shared Visual/Sentinel Proof",
+  "classification": "TEST_OR_RECIPE_FAILURE",
+  "dirty_path_count": 56,
+  "engine_command": [
+    "/opt/anaconda3/bin/python3",
+    "<exact-engine>",
+    "execute",
+    "<exact-capsule>",
+    "--repo",
+    "/Users/haewonkim/home/development/sysgrid",
+    "--outbox",
+    "/Users/haewonkim/.local/state/sysgrid-supervisor/runs/20260801T191324Z-2710-594000/engine-outbox"
+  ],
+  "engine_completed": true,
+  "engine_completed_utc": "2026-08-01T19:20:11Z",
+  "engine_elapsed_seconds": 360.2,
+  "engine_exit_code": 1,
+  "engine_last_activity_age_seconds": 49.385964155197144,
+  "engine_last_heartbeat_utc": "2026-08-01T19:19:26Z",
+  "engine_path": "/Users/haewonkim/.local/lib/sysgrid-runner/1.0.4/sysgrid_runner.py",
+  "engine_pid": 2768,
+  "engine_process_metrics": {
+    "available": true,
+    "cpu_percent": 187.6,
+    "process_count": 13,
+    "rss_bytes": 1352237056,
+    "states": [
+      "R   ",
+      "Rs  ",
+      "S   ",
+      "S+  ",
+      "Ss  "
+    ]
+  },
+  "engine_sha256": "ab63bb20c0de32771e20b0159475205f685f28910a0956c217fb3693c02f96e1",
+  "engine_stall_suspected": false,
+  "engine_started": true,
+  "engine_started_utc": "2026-08-01T19:13:26Z",
+  "event_timeline": [
+    {
+      "details": {},
+      "elapsed_seconds": 0.005,
+      "event_id": "capsule_selected",
+      "message": "Selecting the one immutable capsule and converging only byte-identical Inbox duplicates.",
+      "notification": {
+        "event_id": "capsule_selected",
+        "presentation_mode": "summary",
+        "required": false,
+        "status": "local_only",
+        "updated_utc": "2026-08-01T19:13:24Z"
+      },
+      "status": "started",
+      "utc": "2026-08-01T19:13:24Z"
+    },
+    {
+      "details": {
+        "changed_path_count": 11,
+        "patch_paths": [
+          "backend/app/api/workspaces.py",
+          "frontend/src/components/shared/GoldenWorkspaceGeometryContract.test.ts",
+          "frontend/src/components/shared/OperationalSavedViewsPanel.test.tsx",
+          "frontend/src/components/shared/OperationalWorkspaceShells.tsx",
+          "frontend/src/components/shared/WorkspaceCommandBar.tsx",
+          "frontend/tests/golden-eight-seeded-visual-matrix.spec.ts",
+          "frontend/tests/helpers/sentinel.ts",
+          "frontend/tests/sentinel_comprehensive.spec.ts",
+          "frontend/tests/shell-and-search.spec.ts",
+          "frontend/tests/view-deeplink-matrix.spec.ts",
+          "frontend/tests/view-empty-states.spec.ts"
+        ],
+        "post_path_count": 57,
+        "pre_path_count": 56,
+        "protected_path_count": 19,
+        "recipe_ids": [
+          "full-app-gate"
+        ]
+      },
+      "elapsed_seconds": 0.018,
+      "event_id": "capsule_verified",
+      "message": "Capsule archive, manifest, schema, patch identity, and cross-ledger contract are exact.",
+      "notification": {
+        "attempts": 1,
+        "chat_id_suffix": "1055",
+        "event_id": "run_started",
+        "first_attempt_utc": "2026-08-01T19:13:24Z",
+        "message_id": 490,
+        "payload_sha256": "227e11810bcdf3e7608c1fe66ede27a682c3ef5da94476ab450320bc73c613a9",
+        "required": true,
+        "status": "delivered",
+        "updated_utc": "2026-08-01T19:13:25Z"
+      },
+      "status": "passed",
+      "utc": "2026-08-01T19:13:25Z"
+    },
+    {
+      "details": {},
+      "elapsed_seconds": 0.896,
+      "event_id": "preflight_started",
+      "message": "Running independent platform checks and exact repository-state proof.",
+      "notification": {
+        "event_id": "preflight_started",
+        "presentation_mode": "summary",
+        "required": false,
+        "status": "local_only",
+        "updated_utc": "2026-08-01T19:13:25Z"
+      },
+      "status": "started",
+      "utc": "2026-08-01T19:13:25Z"
+    },
+    {
+      "details": {
+        "dirty_paths": 56,
+        "head": "dbc3f870b5b37dbd53de7ac82697221270e19381",
+        "patch": {
+          "applicable": true,
+          "forward_diagnostic": "Checking patch backend/app/api/workspaces.py...\nChecking patch frontend/src/components/shared/GoldenWorkspaceGeometryContract.test.ts...\nChecking patch frontend/src/components/shared/OperationalSavedViewsPanel.test.tsx...\nChecking patch frontend/src/components/shared/OperationalWorkspaceShells.tsx...\nChecking patch frontend/src/components/shared/WorkspaceCommandBar.tsx...\nChecking patch frontend/tests/golden-eight-seeded-visual-matrix.spec.ts...\nChecking patch frontend/tests/helpers/sentinel.ts...\nChecking patch frontend/tests/sentinel_comprehensive.spec.ts...\nChecking patch frontend/tests/shell-and-search.spec.ts...\nChecking patch frontend/tests/view-deeplink-matrix.spec.ts...\nChecking patch frontend/tests/view-empty-states.spec.ts...",
+          "forward_exit_code": 0,
+          "reverse_applicable": false,
+          "reverse_diagnostic": "Checking patch frontend/tests/view-empty-states.spec.ts...\nerror: while searching for:\ntest.describe('View empty states', () => {\n  test('renders explicit empty-state guidance for deterministic no-result filters', async ({ page }) => {\n    await resetBrowserState(page)\n    const appMonitoring = installStrictAppMonitoring(page)\n    const impossibleTerm = `PW-NO-MATCH-${Date.now()}`\n\n    const expectations = [\n\nerror: patch failed: frontend/tests/view-empty-states.spec.ts:6\nerror: frontend/tests/view-empty-states.spec.ts: patch does not apply\nChecking patch frontend/tests/view-deeplink-matrix.spec.ts...\nerror: while searching for:\ntest.describe('View deep-link matrix', () => {\n  test('opens critical deep links without crashing and resolves the targeted record', async ({ page, sysApi: request }) => {\n    await resetBrowserState(page)\n    const appMonitoring = installStrictAppMonitoring(page)\n    const { primary, secondary, service, knowledge, monitoring, far } = await seedOperationalScenario(request)\n    const project = await createProject(request, {\n      name: `PW-PROJ-DEEPLINK-${Date.now()}`,\n\nerror: patch failed: frontend/tests/view-deeplink-matrix.spec.ts:11\nerror: frontend/tests/view-deeplink-matrix.spec.ts: patch does not apply\nChecking patch frontend/tests/shell-and-search.spec.ts...\nerror: while searching for:\n      await waitForAppIdle(page)\n      const { shell, boxes } = await readGoldenGeometry(page)\n\n      await expect(shell).toHaveAttribute('data-golden-geometry-version', '2')\n      await expect(shell).toHaveAttribute('data-golden-archetype', route.archetype)\n      expect(boxes.header.y).toBeLessThan(boxes.commandBar.y)\n      expect(boxes.commandBar.bottom).toBeLessThanOrEqual(boxes.grid.y + 1)\n\nerror: patch failed: frontend/tests/shell-and-search.spec.ts:232\nerror: frontend/tests/shell-and-search.spec.ts: patch does not apply\nChecking patch frontend/tests/sentinel_comprehensive.spec.ts...\nerror: while searching for:\n\ntest.describe('System Sentinel (Zero-",
+          "reverse_exit_code": 1
+        }
+      },
+      "elapsed_seconds": 1.216,
+      "event_id": "preflight_completed",
+      "message": "Exact engine, repository, storage, state, protected hashes, and patch state passed.",
+      "notification": {
+        "event_id": "preflight_completed",
+        "presentation_mode": "summary",
+        "required": false,
+        "status": "local_only",
+        "updated_utc": "2026-08-01T19:13:26Z"
+      },
+      "status": "passed",
+      "utc": "2026-08-01T19:13:26Z"
+    },
+    {
+      "details": {},
+      "elapsed_seconds": 1.218,
+      "event_id": "engine_launch",
+      "message": "Launching the exact Stable Engine once; ambiguous mutation replay remains prohibited.",
+      "notification": {
+        "event_id": "engine_launch",
+        "presentation_mode": "summary",
+        "required": false,
+        "status": "local_only",
+        "updated_utc": "2026-08-01T19:13:26Z"
+      },
+      "status": "started",
+      "utc": "2026-08-01T19:13:26Z"
+    },
+    {
+      "details": {},
+      "elapsed_seconds": 2.743,
+      "event_id": "static_started",
+      "message": "Canonical static verification started.",
+      "notification": {
+        "event_id": "static_started",
+        "presentation_mode": "summary",
+        "required": false,
+        "status": "local_only",
+        "updated_utc": "2026-08-01T19:13:27Z"
+      },
+      "status": "started",
+      "utc": "2026-08-01T19:13:27Z"
+    },
+    {
+      "details": {},
+      "elapsed_seconds": 2.749,
+      "event_id": "backend_started",
+      "message": "Backend coverage lane started.",
+      "notification": {
+        "event_id": "backend_started",
+        "presentation_mode": "summary",
+        "required": false,
+        "status": "local_only",
+        "updated_utc": "2026-08-01T19:13:27Z"
+      },
+      "status": "started",
+      "utc": "2026-08-01T19:13:27Z"
+    },
+    {
+      "details": {},
+      "elapsed_seconds": 2.757,
+      "event_id": "frontend_started",
+      "message": "Frontend lint, contracts, typecheck, coverage, and production build lane started.",
+      "notification": {
+        "event_id": "frontend_started",
+        "presentation_mode": "summary",
+        "required": false,
+        "status": "local_only",
+        "updated_utc": "2026-08-01T19:13:27Z"
+      },
+      "status": "started",
+      "utc": "2026-08-01T19:13:27Z"
+    },
+    {
+      "details": {},
+      "elapsed_seconds": 303.975,
+      "event_id": "static_completed",
+      "message": "Canonical static verification passed.",
+      "notification": {
+        "event_id": "static_completed",
+        "presentation_mode": "summary",
+        "required": false,
+        "status": "local_only",
+        "updated_utc": "2026-08-01T19:18:28Z"
+      },
+      "status": "passed",
+      "utc": "2026-08-01T19:18:28Z"
+    },
+    {
+      "details": {},
+      "elapsed_seconds": 303.982,
+      "event_id": "backend_completed",
+      "message": "Backend coverage lane passed.",
+      "notification": {
+        "event_id": "backend_completed",
+        "presentation_mode": "summary",
+        "required": false,
+        "status": "local_only",
+        "updated_utc": "2026-08-01T19:18:28Z"
+      },
+      "status": "passed",
+      "utc": "2026-08-01T19:18:28Z"
+    },
+    {
+      "details": {},
+      "elapsed_seconds": 303.986,
+      "event_id": "frontend_completed",
+      "message": "Frontend verification lane passed.",
+      "notification": {
+        "event_id": "frontend_completed",
+        "presentation_mode": "summary",
+        "required": false,
+        "status": "local_only",
+        "updated_utc": "2026-08-01T19:18:28Z"
+      },
+      "status": "passed",
+      "utc": "2026-08-01T19:18:28Z"
+    },
+    {
+      "details": {},
+      "elapsed_seconds": 303.99,
+      "event_id": "build_completed",
+      "message": "Canonical production frontend build completed.",
+      "notification": {
+        "event_id": "build_completed",
+        "presentation_mode": "summary",
+        "required": false,
+        "status": "local_only",
+        "updated_utc": "2026-08-01T19:18:28Z"
+      },
+      "status": "passed",
+      "utc": "2026-08-01T19:18:28Z"
+    },
+    {
+      "details": {},
+      "elapsed_seconds": 312.569,
+      "event_id": "runtime_ready",
+      "message": "Disposable tenant, backend, and exact production frontend are ready.",
+      "notification": {
+        "event_id": "runtime_ready",
+        "presentation_mode": "summary",
+        "required": false,
+        "status": "local_only",
+        "updated_utc": "2026-08-01T19:18:37Z"
+      },
+      "status": "passed",
+      "utc": "2026-08-01T19:18:37Z"
+    },
+    {
+      "details": {},
+      "elapsed_seconds": 312.575,
+      "event_id": "playwright_started",
+      "message": "Canonical Playwright and Golden Eight evidence matrix started.",
+      "notification": {
+        "attempts": 1,
+        "chat_id_suffix": "1055",
+        "event_id": "run_progress",
+        "first_attempt_utc": "2026-08-01T19:18:37Z",
+        "message_id": 491,
+        "payload_sha256": "78e346075909613531f591dab55dad1b58c7a23942bd8d61c22eb2fb7cba511a",
+        "required": false,
+        "status": "delivered",
+        "updated_utc": "2026-08-01T19:18:38Z"
+      },
+      "status": "started",
+      "utc": "2026-08-01T19:18:38Z"
+    },
+    {
+      "details": {},
+      "elapsed_seconds": 405.033,
+      "event_id": "playwright_completed",
+      "message": "Canonical Playwright matrix failed; complete evidence remains available.",
+      "notification": {
+        "event_id": "playwright_completed",
+        "presentation_mode": "summary",
+        "required": false,
+        "status": "local_only",
+        "updated_utc": "2026-08-01T19:20:09Z"
+      },
+      "status": "failed",
+      "utc": "2026-08-01T19:20:09Z"
+    },
+    {
+      "details": {
+        "engine_exit_code": 1
+      },
+      "elapsed_seconds": 406.557,
+      "event_id": "engine_completed",
+      "message": "Stable Engine exited with code 1; verifying its complete evidence.",
+      "notification": {
+        "event_id": "engine_completed",
+        "presentation_mode": "summary",
+        "required": false,
+        "status": "local_only",
+        "updated_utc": "2026-08-01T19:20:11Z"
+      },
+      "status": "failed",
+      "utc": "2026-08-01T19:20:11Z"
+    },
+    {
+      "details": {
+        "artifact_size": 40687197,
+        "manifest_entries": 190
+      },
+      "elapsed_seconds": 406.652,
+      "event_id": "evidence_verified",
+      "message": "Engine evidence is complete and exactly correlated to capsule, engine, and process exit.",
+      "notification": {
+        "event_id": "evidence_verified",
+        "presentation_mode": "summary",
+        "required": false,
+        "status": "local_only",
+        "updated_utc": "2026-08-01T19:20:11Z"
+      },
+      "status": "passed",
+      "utc": "2026-08-01T19:20:11Z"
+    },
+    {
+      "details": {},
+      "elapsed_seconds": 406.659,
+      "event_id": "publication_started",
+      "message": "Publishing one content-addressed, fsynced, atomic canonical review ZIP.",
+      "notification": {
+        "event_id": "publication_started",
+        "presentation_mode": "summary",
+        "required": false,
+        "status": "local_only",
+        "updated_utc": "2026-08-01T19:20:11Z"
+      },
+      "status": "started",
+      "utc": "2026-08-01T19:20:11Z"
+    },
+    {
+      "details": {
+        "artifact_sha256": "f62cc8001457f2ac7b13d2b38bc4e6ecf120b506af7bab6772b9d86cb76a7cdf",
+        "exit_code": 1
+      },
+      "elapsed_seconds": 407.081,
+      "event_id": "publication_completed",
+      "message": "Run complete. Engine runtime: 404.0s. Canonical review ZIP is ready for upload.",
+      "notification": {
+        "attempts": 1,
+        "chat_id_suffix": "1055",
+        "event_id": "run_completed",
+        "first_attempt_utc": "2026-08-01T19:20:12Z",
+        "message_id": 492,
+        "payload_sha256": "6d327dec2e648766d45501d009bb245e4bfc8a0a0ae8fc65655d00b755d540cc",
+        "required": false,
+        "status": "delivered",
+        "updated_utc": "2026-08-01T19:20:12Z"
+      },
+      "status": "failed",
+      "utc": "2026-08-01T19:20:12Z"
+    }
+  ],
+  "issue": "OUT-31",
+  "iteration": 36,
+  "last_progress_event": "publication_completed",
+  "last_progress_message": "Run complete. Engine runtime: 404.0s. Canonical review ZIP is ready for upload.",
+  "last_progress_status": "failed",
+  "last_progress_utc": "2026-08-01T19:20:12Z",
+  "message": "recipe full-app-gate failed with exit 1",
+  "monotonic_started": 3888160.714389,
+  "notification_events": {
+    "backend_completed": {
+      "event_id": "backend_completed",
+      "presentation_mode": "summary",
+      "required": false,
+      "status": "local_only",
+      "updated_utc": "2026-08-01T19:18:28Z"
+    },
+    "backend_started": {
+      "event_id": "backend_started",
+      "presentation_mode": "summary",
+      "required": false,
+      "status": "local_only",
+      "updated_utc": "2026-08-01T19:13:27Z"
+    },
+    "build_completed": {
+      "event_id": "build_completed",
+      "presentation_mode": "summary",
+      "required": false,
+      "status": "local_only",
+      "updated_utc": "2026-08-01T19:18:28Z"
+    },
+    "capsule_selected": {
+      "event_id": "capsule_selected",
+      "presentation_mode": "summary",
+      "required": false,
+      "status": "local_only",
+      "updated_utc": "2026-08-01T19:13:24Z"
+    },
+    "capsule_verified": {
+      "attempts": 1,
+      "chat_id_suffix": "1055",
+      "event_id": "run_started",
+      "first_attempt_utc": "2026-08-01T19:13:24Z",
+      "message_id": 490,
+      "payload_sha256": "227e11810bcdf3e7608c1fe66ede27a682c3ef5da94476ab450320bc73c613a9",
+      "required": true,
+      "status": "delivered",
+      "updated_utc": "2026-08-01T19:13:25Z"
+    },
+    "engine-heartbeat-1": {
+      "event_id": "engine-heartbeat-1",
+      "presentation_mode": "summary",
+      "required": false,
+      "status": "local_only",
+      "updated_utc": "2026-08-01T19:15:26Z"
+    },
+    "engine-heartbeat-2": {
+      "event_id": "engine-heartbeat-2",
+      "presentation_mode": "summary",
+      "required": false,
+      "status": "local_only",
+      "updated_utc": "2026-08-01T19:17:26Z"
+    },
+    "engine-heartbeat-3": {
+      "event_id": "engine-heartbeat-3",
+      "presentation_mode": "summary",
+      "required": false,
+      "status": "local_only",
+      "updated_utc": "2026-08-01T19:19:26Z"
+    },
+    "engine_completed": {
+      "event_id": "engine_completed",
+      "presentation_mode": "summary",
+      "required": false,
+      "status": "local_only",
+      "updated_utc": "2026-08-01T19:20:11Z"
+    },
+    "engine_launch": {
+      "event_id": "engine_launch",
+      "presentation_mode": "summary",
+      "required": false,
+      "status": "local_only",
+      "updated_utc": "2026-08-01T19:13:26Z"
+    },
+    "evidence_verified": {
+      "event_id": "evidence_verified",
+      "presentation_mode": "summary",
+      "required": false,
+      "status": "local_only",
+      "updated_utc": "2026-08-01T19:20:11Z"
+    },
+    "frontend_completed": {
+      "event_id": "frontend_completed",
+      "presentation_mode": "summary",
+      "required": false,
+      "status": "local_only",
+      "updated_utc": "2026-08-01T19:18:28Z"
+    },
+    "frontend_started": {
+      "event_id": "frontend_started",
+      "presentation_mode": "summary",
+      "required": false,
+      "status": "local_only",
+      "updated_utc": "2026-08-01T19:13:27Z"
+    },
+    "playwright_completed": {
+      "event_id": "playwright_completed",
+      "presentation_mode": "summary",
+      "required": false,
+      "status": "local_only",
+      "updated_utc": "2026-08-01T19:20:09Z"
+    },
+    "playwright_started": {
+      "attempts": 1,
+      "chat_id_suffix": "1055",
+      "event_id": "run_progress",
+      "first_attempt_utc": "2026-08-01T19:18:37Z",
+      "message_id": 491,
+      "payload_sha256": "78e346075909613531f591dab55dad1b58c7a23942bd8d61c22eb2fb7cba511a",
+      "required": false,
+      "status": "delivered",
+      "updated_utc": "2026-08-01T19:18:38Z"
+    },
+    "preflight_completed": {
+      "event_id": "preflight_completed",
+      "presentation_mode": "summary",
+      "required": false,
+      "status": "local_only",
+      "updated_utc": "2026-08-01T19:13:26Z"
+    },
+    "preflight_started": {
+      "event_id": "preflight_started",
+      "presentation_mode": "summary",
+      "required": false,
+      "status": "local_only",
+      "updated_utc": "2026-08-01T19:13:25Z"
+    },
+    "publication_completed": {
+      "attempts": 1,
+      "chat_id_suffix": "1055",
+      "event_id": "run_completed",
+      "first_attempt_utc": "2026-08-01T19:20:12Z",
+      "message_id": 492,
+      "payload_sha256": "6d327dec2e648766d45501d009bb245e4bfc8a0a0ae8fc65655d00b755d540cc",
+      "required": false,
+      "status": "delivered",
+      "updated_utc": "2026-08-01T19:20:12Z"
+    },
+    "publication_started": {
+      "event_id": "publication_started",
+      "presentation_mode": "summary",
+      "required": false,
+      "status": "local_only",
+      "updated_utc": "2026-08-01T19:20:11Z"
+    },
+    "runtime_ready": {
+      "event_id": "runtime_ready",
+      "presentation_mode": "summary",
+      "required": false,
+      "status": "local_only",
+      "updated_utc": "2026-08-01T19:18:37Z"
+    },
+    "static_completed": {
+      "event_id": "static_completed",
+      "presentation_mode": "summary",
+      "required": false,
+      "status": "local_only",
+      "updated_utc": "2026-08-01T19:18:28Z"
+    },
+    "static_started": {
+      "event_id": "static_started",
+      "presentation_mode": "summary",
+      "required": false,
+      "status": "local_only",
+      "updated_utc": "2026-08-01T19:13:27Z"
+    }
+  },
+  "notification_policy": {
+    "delivery_semantics": "durably-deduplicated-at-least-once",
+    "engine_heartbeat_seconds": 120,
+    "max_messages_per_run": 3,
+    "presentation_mode": "summary",
+    "registered_events": 24,
+    "required_before_engine": true,
+    "telegram_heartbeats": false
+  },
+  "original_capsule": "/Users/haewonkim/Library/Mobile Documents/com~apple~CloudDocs/SysGrid-Control/Inbox/DOWNLOAD_Product_Attempt_05_Verification_Repair_R1.sgcap",
+  "pid": 2710,
+  "preflight": {
+    "declared_state": {
+      "dirty_path_count": 56,
+      "pre_hash_count": 56,
+      "protected_hash_count": 19
+    },
+    "engine_self_test": {
+      "engine_version": "1.0.4",
+      "result": "PASS",
+      "tests": [
+        "safe-path",
+        "manifest",
+        "corruption"
+      ]
+    },
+    "patch": {
+      "applicable": true,
+      "forward_diagnostic": "Checking patch backend/app/api/workspaces.py...\nChecking patch frontend/src/components/shared/GoldenWorkspaceGeometryContract.test.ts...\nChecking patch frontend/src/components/shared/OperationalSavedViewsPanel.test.tsx...\nChecking patch frontend/src/components/shared/OperationalWorkspaceShells.tsx...\nChecking patch frontend/src/components/shared/WorkspaceCommandBar.tsx...\nChecking patch frontend/tests/golden-eight-seeded-visual-matrix.spec.ts...\nChecking patch frontend/tests/helpers/sentinel.ts...\nChecking patch frontend/tests/sentinel_comprehensive.spec.ts...\nChecking patch frontend/tests/shell-and-search.spec.ts...\nChecking patch frontend/tests/view-deeplink-matrix.spec.ts...\nChecking patch frontend/tests/view-empty-states.spec.ts...",
+      "forward_exit_code": 0,
+      "reverse_applicable": false,
+      "reverse_diagnostic": "Checking patch frontend/tests/view-empty-states.spec.ts...\nerror: while searching for:\ntest.describe('View empty states', () => {\n  test('renders explicit empty-state guidance for deterministic no-result filters', async ({ page }) => {\n    await resetBrowserState(page)\n    const appMonitoring = installStrictAppMonitoring(page)\n    const impossibleTerm = `PW-NO-MATCH-${Date.now()}`\n\n    const expectations = [\n\nerror: patch failed: frontend/tests/view-empty-states.spec.ts:6\nerror: frontend/tests/view-empty-states.spec.ts: patch does not apply\nChecking patch frontend/tests/view-deeplink-matrix.spec.ts...\nerror: while searching for:\ntest.describe('View deep-link matrix', () => {\n  test('opens critical deep links without crashing and resolves the targeted record', async ({ page, sysApi: request }) => {\n    await resetBrowserState(page)\n    const appMonitoring = installStrictAppMonitoring(page)\n    const { primary, secondary, service, knowledge, monitoring, far } = await seedOperationalScenario(request)\n    const project = await createProject(request, {\n      name: `PW-PROJ-DEEPLINK-${Date.now()}`,\n\nerror: patch failed: frontend/tests/view-deeplink-matrix.spec.ts:11\nerror: frontend/tests/view-deeplink-matrix.spec.ts: patch does not apply\nChecking patch frontend/tests/shell-and-search.spec.ts...\nerror: while searching for:\n      await waitForAppIdle(page)\n      const { shell, boxes } = await readGoldenGeometry(page)\n\n      await expect(shell).toHaveAttribute('data-golden-geometry-version', '2')\n      await expect(shell).toHaveAttribute('data-golden-archetype', route.archetype)\n      expect(boxes.header.y).toBeLessThan(boxes.commandBar.y)\n      expect(boxes.commandBar.bottom).toBeLessThanOrEqual(boxes.grid.y + 1)\n\nerror: patch failed: frontend/tests/shell-and-search.spec.ts:232\nerror: frontend/tests/shell-and-search.spec.ts: patch does not apply\nChecking patch frontend/tests/sentinel_comprehensive.spec.ts...\nerror: while searching for:\n\ntest.describe('System Sentinel (Zero-",
+      "reverse_exit_code": 1
+    },
+    "storage": {
+      "control_free": 54401257472,
+      "local_free": 54401257472,
+      "required": 536870912
+    }
+  },
+  "product_event_status": {
+    "backend_completed": "passed",
+    "backend_started": "started",
+    "build_completed": "passed",
+    "frontend_completed": "passed",
+    "frontend_started": "started",
+    "playwright_completed": "failed",
+    "playwright_started": "started",
+    "runtime_ready": "passed",
+    "static_completed": "passed",
+    "static_started": "started"
+  },
+  "product_progress_last_event": "playwright_completed",
+  "product_progress_last_utc": "2026-08-01T19:20:09Z",
+  "product_progress_sequence": 10,
+  "recovered_without_product_replay": false,
+  "repo": "/Users/haewonkim/home/development/sysgrid",
+  "repo_branch": "main",
+  "repo_head": "dbc3f870b5b37dbd53de7ac82697221270e19381",
+  "resource_plan": {
+    "backend_workers": 4,
+    "cpu_count": 12,
+    "e2e_workers": 2,
+    "frontend_workers": 4,
+    "memory_bytes": 19327352832,
+    "preflight_workers": 24,
+    "reserve_memory_bytes": 2147483648,
+    "test_cpu_budget": 11,
+    "usable_memory_bytes": 17179869184
+  },
+  "run_id": "20260801T191324Z-2710-594000",
+  "runtime_summary": {
+    "artifact": "/Users/haewonkim/.local/state/sysgrid-supervisor/runs/20260801T191324Z-2710-594000/engine-outbox/UPLOAD_THIS_TO_CHATGPT.zip",
+    "classification": "TEST_OR_RECIPE_FAILURE",
+    "commands": [
+      {
+        "duration_seconds": 403.392,
+        "exit_code": 1,
+        "recipe_id": "full-app-gate",
+        "timed_out": false
+      }
+    ],
+    "engine_total_seconds": 404.0,
+    "failed_stage": "full-app-gate",
+    "finished_utc": "2026-08-01T19:20:10Z",
+    "result": "failure",
+    "started_utc": "2026-08-01T19:13:26Z"
+  },
+  "safe_cleanup": {
+    "inspected": 0,
+    "removed": 0
+  },
+  "safe_retry_count": 0,
+  "stage": "complete",
+  "staged_capsule": "/Users/haewonkim/.local/state/sysgrid-supervisor/runs/20260801T191324Z-2710-594000/input/DOWNLOAD_Product_Attempt_05_Verification_Repair_R1.sgcap",
+  "started_utc": "2026-08-01T19:13:24Z",
+  "state": "FAILED_REVIEW_READY",
+  "supervisor_version": "2.0.2",
+  "telegram": {
+    "chat_id_suffix": "1055",
+    "configured": true,
+    "source": "/Users/haewonkim/.config/sysgrid-supervisor/telegram.json"
+  },
+  "updated_utc": "2026-08-01T19:20:12Z",
+  "work_dir": "/Users/haewonkim/.local/state/sysgrid-supervisor/runs/20260801T191324Z-2710-594000"
+}

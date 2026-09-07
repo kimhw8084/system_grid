@@ -1,0 +1,84 @@
+ORIGINAL_PATH: /Users/haewonkim/.local/share/sysgrid-runner/continuity-v1.0.7/active_law/00_ACTIVE_LAW_MANIFEST_v1.2.yaml
+ORIGINAL_SHA256: d05333f4b316e6db4ae0a6be3bc306693f35f1e9bb17a9cdc41e861488d016e7
+================================================================================
+schema_version: "1.2"
+status: DRAFT_PENDING_EXPLICIT_ACTIVATION
+kit_name: "AI Controlled Delivery Law Kit — Lean Workhorse"
+kit_version: "1.2"
+proposed_effective_date: "2026-07-30"
+entry_point: "00_ACTIVE_LAW_MANIFEST_v1.2.yaml"
+
+purpose: >-
+  Preserve SysGrid's immutable, fail-closed, zero-accepted-regression delivery contract
+  while materially reducing GPT context load, approval ceremony, operator effort,
+  platform churn, evidence duplication, and review turnaround.
+
+authority_order:
+  - "Current explicit user instruction for the named task or cycle, when it explicitly overrides any affected boundary"
+  - "01_AI_Controlled_Delivery_Constitution_v1.2.md"
+  - "02_SYSGRID_PRODUCT_GOLDEN_CONTRACT_v1.2.md"
+  - "03_LEAN_WORKHORSE_CONTROL_CONTEXT_AND_REVIEW_LAW_v1.2.md"
+
+active_files_after_activation:
+  - file: "00_ACTIVE_LAW_MANIFEST_v1.2.yaml"
+    role: "entry point and authority map"
+  - file: "01_AI_Controlled_Delivery_Constitution_v1.2.md"
+    sha256: "ffb7ae43107fe96e39e70d41f48c0e61ee5f608e470f9a934667d6115cf5b03f"
+  - file: "02_SYSGRID_PRODUCT_GOLDEN_CONTRACT_v1.2.md"
+    sha256: "ccdc54bcb7994224c9527357fcb1d67f14986df45b494d0c0605303f7c126dbe"
+  - file: "03_LEAN_WORKHORSE_CONTROL_CONTEXT_AND_REVIEW_LAW_v1.2.md"
+    sha256: "bcff0326ae57feafdbfe76cdd43860b8ca30bca629db635ae7b3a79bd6287dcc"
+
+supersedes_after_activation:
+  - "00_ACTIVE_LAW_MANIFEST_v1.1.yaml"
+  - "01_AI_Controlled_Delivery_Constitution_v1.1.md"
+  - "02_SysGrid_Project_Overlay_v1.1.md"
+  - "03_Stable_Engine_Control_Cycle_Execution_Review_Law_v1.1.md"
+  - "04_Chat_Bootstrap_Continuity_and_Law_Change_v1.1.md"
+
+project_identity:
+  name: "SysGrid"
+  linear_project: "SysGrid"
+  master_issue: "OUT-5"
+  active_issue: "Read live Linear; never hardcode beyond the current verified snapshot."
+
+active_project_file_budget:
+  maximum: 8
+  reserved:
+    law_files: 4
+    current_safe_source_snapshot: 1
+    latest_accepted_platform_record_or_current_authorized_platform_artifact: 1
+    active_product_capsule: 1
+    current_review_artifact: 1
+
+operator_contract:
+  normal_actions_maximum: 3
+  source_author: "ChatGPT control room"
+  execution_platform: "one versioned independently qualified stable engine"
+  run_input: "one schema-validated declarative immutable capsule"
+  canonical_review_output: "UPLOAD_THIS_TO_CHATGPT.zip"
+  manual_product_edit_commit_push: false
+  operator_diagnosis_required: false
+
+engine_migration_impact:
+  classification: "CONTROL_ROOM_CONTEXT_ONLY"
+  condition: "v1.0.7 must first receive independent PASS under active v1.1"
+  changes_engine_contract: false
+  requires_new_engine_qualification_after_activation: false
+  preserved:
+    - "capsule schema and exact-engine validation"
+    - "trusted recipe semantics"
+    - "state verification and protected hashes"
+    - "process ownership and identity correlation"
+    - "commit/push/remote equality order"
+    - "evidence redaction, safety, manifest and canonical ZIP contract"
+
+activation_requirements:
+  - "Complete independent v1.0.7 platform PASS under v1.1."
+  - "Retain the intact v1.1 GPT Project as rollback."
+  - "Create a clean GPT Project and upload only the v1.2 active law set plus current source and accepted platform record."
+  - "Paste PROJECT_INSTRUCTIONS_v1.2.txt into the new Project instructions."
+  - "Run all read-only first-use tests."
+  - "Explicitly approve activation."
+
+activation_phrase: "Approve and activate AI Controlled Delivery Law Kit v1.2 — Lean Workhorse for SysGrid."

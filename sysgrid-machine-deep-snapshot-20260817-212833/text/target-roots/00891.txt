@@ -1,0 +1,18 @@
+ORIGINAL_PATH: /Users/haewonkim/.local/state/sysgrid-supervisor/runs/20260801T152842Z-46260-369000/diagnostic/RESULT.json
+ORIGINAL_SHA256: 79ad086cbdd5292ba8dc91d676d9da578b14147ee3e7c759859d390d74b4f181
+================================================================================
+{
+  "capsule_file": "OUT-31_Golden-Eight_Iteration-36-Attempt-04_Exact-Local-Playwright-Identity-and-No-Network-Runner.sgcap",
+  "capsule_sha256": "3799484163d11675fe39af32395876fbee0fb2a5495e340ffe5081f62bdb6c05",
+  "classification": "PREFLIGHT_AGGREGATE_FAILURE",
+  "engine_version": "1.0.4",
+  "exit_code": 70,
+  "finished_utc": "2026-08-01T15:28:44Z",
+  "lane": "execution_platform",
+  "message": "repository: REPOSITORY_HASH_FAILURE: pre_hashes mismatch (2 paths): {'frontend/scripts/check-canonical-verification-contract.cjs': {'expected': '875998334455f935e0cd3b914414fb530025618755409f0954ddeeb0de9789dd', 'actual': 'a1c48c9381738f24260f6ca50390048c22c520cac397e29c13c7fd996a3d7d27'}, 'scripts/verify-app.sh': {'expected': '45f60ee30c7dfe6d22131db43f0ec40f0a80ffec144e6383b2b85ba569965d8e', 'actual': 'b3a06db7e6ff97b52bef18bfc06d35238675fee954ee4071981d67fe51f2372e'}}",
+  "mode": "qualification",
+  "mutation_state": "not_started",
+  "result": "failure",
+  "safe_automatic_retry_performed": 0,
+  "supervisor_version": "2.0.1"
+}

@@ -1,0 +1,11 @@
+ORIGINAL_PATH: /Users/haewonkim/.local/state/sysgrid-supervisor/runs/20260804T213933Z-81054-910000/diagnostic/REVIEW_ME_FIRST.md
+ORIGINAL_SHA256: 6f926fb5d99fc2404e914d1a407c5a30d15cacd174efed64fb7cb597ed569ee5
+================================================================================
+# SysGrid Supervisor Diagnostic
+
+- Result: failure
+- Classification: PREFLIGHT_AGGREGATE_FAILURE
+- Message: repository: REPOSITORY_HASH_FAILURE: pre_hashes mismatch (2 paths): {'frontend/src/components/FAR.tsx': {'expected': '5625994900c557c4d9d195dfed265203f017945c84827fe1e93269d47c477ac3', 'actual': '24d36215c271e3f63a696e724b9fa232e04e125c4f87e5ef80c45227832be7f0'}, 'frontend/tests/far-golden-workspace.spec.ts': {'expected': '77140f3b57ec9d280e79b788b69c1423cabe7d761313782f2665866d36ba5b7a', 'actual': '1db1c984e3af53f8f1276925b29b1f2bb8543961afb8144a565df7187d7edd69'}}
+- Product mutation authority: none added by this diagnostic
+
+Review RESULT.json, SUPERVISOR_STATE.json, TRACEBACK.txt, and MANIFEST.sha256.

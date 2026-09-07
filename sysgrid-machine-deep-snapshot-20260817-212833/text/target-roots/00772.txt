@@ -1,0 +1,34 @@
+ORIGINAL_PATH: /Users/haewonkim/.local/state/sysgrid-supervisor/runs/20260803T041135Z-42614-274000/preflight.json
+ORIGINAL_SHA256: 2579112c33012288f60a1856cd4c71363d7b017787dfd7c82cf2452ff63b25be
+================================================================================
+{
+  "declared_state": {
+    "dirty_path_count": 92,
+    "pre_hash_count": 92,
+    "protected_hash_count": 21
+  },
+  "engine_self_test": {
+    "engine_version": "1.1.1",
+    "result": "PASS",
+    "tests": [
+      "safe-path",
+      "manifest",
+      "corruption",
+      "canonical-dirty-paths",
+      "aggregate-recipes"
+    ]
+  },
+  "patch": {
+    "applicable": true,
+    "forward_diagnostic": "Checking patch backend/app/services/far_service.py...\nChecking patch frontend/src/components/far/FARDomain.ts...",
+    "forward_exit_code": 0,
+    "reverse_applicable": false,
+    "reverse_diagnostic": "Checking patch frontend/src/components/far/FARDomain.ts...\nerror: while searching for:\n        const next: FARSavedViewDefinition['columnLayoutState'][number] = { colId }\n        if (typeof record.hide === 'boolean') next.hide = record.hide\n        const pinned = record.pinned\n        if (pinned === 'left' || pinned === 'right') {\n          next.pinned = pinned\n        } else if (pinned === null) {\n          next.pinned = null\n        }\n        if (typeof record.width === 'number' && Number.isFinite(record.width) && record.width >= 40 && record.width <= 2000) next.width = Math.trunc(record.width)\n        if (record.sort === 'asc' || record.sort === 'desc') next.sort = record.sort\n        return [next]\n\nerror: patch failed: frontend/src/components/far/FARDomain.ts:237\nerror: frontend/src/components/far/FARDomain.ts: patch does not apply\nChecking patch backend/app/services/far_service.py...\nerror: while searching for:\n    affected_causes: dict[int, models.FarFailureCause],\n    summary: str,\n) -> None:\n    # Columns with server-side/on-update values are expired by the flush above.\n    # Refresh and reload the entity through the authoritative loader before\n    # synchronous serialization so history capture never triggers async IO.\n    await db.refresh(item)\n    loaded_item = await get_nested_entity(db, entity_type, item.id, include_retired=True)\n    relationships = await nested_relationship_snapshot(db, entity_type, loaded_item)\n    await write_entity_history(\n        db,\n        request,\n        entity_type=entity_type,\n        entity_id=loaded_item.id,\n        version=loaded_item.version,\n        snapshot=nested_serializer(entity_type, loaded_item),\n        relationships=relationships,\n        summary=summary,\n    )\n\nerror: patch failed: backend/app/services/far_service.py:1495\nerror: backend/app/services/far_service.py: patch does not apply",
+    "reverse_exit_code": 1
+  },
+  "storage": {
+    "control_free": 56703148032,
+    "local_free": 56703148032,
+    "required": 3221225472
+  }
+}

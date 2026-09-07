@@ -1,0 +1,11 @@
+ORIGINAL_PATH: /Users/haewonkim/.local/state/sysgrid-supervisor/runs/20260801T200755Z-67263-609000/diagnostic/TRACEBACK.txt
+ORIGINAL_SHA256: 43419ccc43e7a6efc08913fc2d4f75c0be6193419d87b6edac6fbc60a2f800e7
+================================================================================
+Traceback (most recent call last):
+  File "/Users/haewonkim/.local/share/sysgrid-supervisor/v2.1.2/payload/sysgrid_supervisor.py", line 2733, in run_supervised
+    original = select_capsule(capsule_arg, control)
+  File "/Users/haewonkim/.local/share/sysgrid-supervisor/v2.1.2/payload/sysgrid_supervisor.py", line 1675, in select_capsule
+    raise SupervisorError(
+    ...<3 lines>...
+    )
+SupervisorError: Inbox contains 2 capsules with 2 distinct identities (256eadfc9374:1, b6d91af142cc:1); exact choice is ambiguous

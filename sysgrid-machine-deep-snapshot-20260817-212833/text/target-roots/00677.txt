@@ -1,0 +1,14 @@
+ORIGINAL_PATH: /Users/haewonkim/.local/state/sysgrid-supervisor/runs/20260807T133122Z-29060-374000/patch.diff
+ORIGINAL_SHA256: 1d4f5d6b1d827c69897b16a6ae556a8c34b411ca4308b7b0a3608f5426989ee4
+================================================================================
+diff --git a/frontend/tests/shell-and-search.spec.ts b/frontend/tests/shell-and-search.spec.ts
+--- a/frontend/tests/shell-and-search.spec.ts
++++ b/frontend/tests/shell-and-search.spec.ts
+@@ -239,6 +239,7 @@
+     }
+   })
+   test('keeps desktop shell, command bar, and grid alignment invariant on every golden route', async ({ page }, testInfo) => {
++    test.setTimeout(180_000)
+     await resetBrowserState(page)
+     await page.setViewportSize({ width: 1440, height: 1000 })
+ 

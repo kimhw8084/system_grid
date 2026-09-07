@@ -1,0 +1,13 @@
+ORIGINAL_PATH=/Users/haewonkim/Library/Application Support/SysGridDelivery/INSTALLATION_STATE.json
+SHA256=cd2f4781a5ee1adab2699cf2121b0bdfe5e5811506e55b3c36bee9140cd84a7e
+SIZE=444
+============================================================
+{
+  "schema_version": "1.3.0",
+  "status": "QUALIFIED_ACTIVE_IF_LINEAR_IDENTITY_MARKER_MATCHES",
+  "installed_at_utc": "20260808T162359Z",
+  "runner_sha256": "12a03b9f5f95f8640b3cf8e80ac18aa93bae3dbe3de61193ce04eb756718b244",
+  "cli_sha256": "377bf5ddc09212c39217f7d0323a5f9c878aae2bd91323ef8c2333de4368e404",
+  "backup_path": "/Users/haewonkim/Library/Application Support/SysGridDelivery/backups/rc4-20260808T162359Z",
+  "tdre": "QUALIFIED"
+}

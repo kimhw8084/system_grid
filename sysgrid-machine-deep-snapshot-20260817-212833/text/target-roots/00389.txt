@@ -1,0 +1,4 @@
+ORIGINAL_PATH: /Users/haewonkim/.local/share/sysgrid-campaign-platform/v1.1.1/templates/CHAT_HANDOFF.template.json
+ORIGINAL_SHA256: 5331167b4d9c5e5ea2a194c0145229795b41443419e306eef0b6df67b2222921
+================================================================================
+{"schema_version":"1.0","campaign_id":"<campaign-id>","bound_files_sha256":{"LAW_IDENTITY.json":"<sha256>","LINEAR_STATE_EXPECTATION.json":"<sha256>","PLATFORM_IDENTITY.json":"<sha256>","SOURCE_IDENTITY.json":"<sha256>","ACTIVE_ARTIFACT_IDENTITY.json":"<sha256>","CURRENT_GATE.json":"<sha256>","NEXT_PERMITTED_ACTION.json":"<sha256>"}}

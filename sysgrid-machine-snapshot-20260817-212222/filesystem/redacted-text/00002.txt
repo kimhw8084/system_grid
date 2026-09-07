@@ -1,0 +1,23 @@
+ORIGINAL_PATH: /Users/haewonkim/.config/sysgrid/workstations/work.env
+ORIGINAL_SHA256: 8bef650e466783a697d50dc1e51b97eb3a482ae0802edd5d73be31261a6537b1
+================================================================================
+# Non-secret SysGrid workstation/UAT profile.
+API_BASE_URL=http://8000.vscode.company.example
+FRONTEND_ORIGIN=http://5173.vscode.company.example
+BACKEND_HOST=127.0.0.1
+BACKEND_PORT=8000
+FRONTEND_HOST=127.0.0.1
+FRONTEND_PORT=5173
+USER_ID_ENV_VAR=AccessKey
+RUNTIME_EFFECTIVE_USER_ID=haewon.kim
+DEFAULT_USER_ID=haewon.kim
+AUTO_ADMIN_USER_IDS=haewon.kim
+ADMIN_FULL_NAME=Haewon Kim
+ADMIN_EMAIL=haewon.kim@sysgrid.local
+ADMIN_DEPARTMENT=Infrastructure
+BUGANIZER_URL=
+DEFAULT_DATA_MODE=fresh-full
+PUBLIC_FRONTEND_POLICY=warn
+SYNC_MAIN=true
+INSTALL_DEPENDENCIES=true
+STRICT_CHECKS=true

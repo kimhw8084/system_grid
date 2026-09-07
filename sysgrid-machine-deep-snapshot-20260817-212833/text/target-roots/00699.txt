@@ -1,0 +1,592 @@
+ORIGINAL_PATH: /Users/haewonkim/.local/state/sysgrid-supervisor/runs/20260801T202245Z-84244-806000/SUPERVISOR_STATE.json
+ORIGINAL_SHA256: be1c7eb2e15ec5b1df961ca4aeb94485a635fbe71aace420b97f2e8c681bc77c
+================================================================================
+{
+  "artifact": "/Users/haewonkim/Library/Mobile Documents/com~apple~CloudDocs/SysGrid-Control/Outbox/UPLOAD_THIS_TO_CHATGPT.zip",
+  "artifact_sha256": "a44a1b1f3f0cc4ea1f95cf695cb1d2d3c60ba1e12d64b5b18e437ae7dacd3cfc",
+  "artifact_size": 7820109,
+  "attempt": 6,
+  "capsule_archive": "/Users/haewonkim/Library/Mobile Documents/com~apple~CloudDocs/SysGrid-Control/Archive/Processed-Capsules/20260801T202531Z__aacd95a8adba__DOWNLOAD_Attempt_06_Verification_Repair_R3.sgcap",
+  "capsule_cross_ledger": {
+    "changed_path_count": 1,
+    "execution_profile": "development_campaign",
+    "execution_scope": {
+      "changed_paths": [
+        "scripts/verify-app.sh"
+      ],
+      "execution_profile": "development_campaign",
+      "targeted_tests": [
+        "playwright:golden-seeded",
+        "playwright:shell-geometry"
+      ],
+      "targeted_views": [
+        "monitoring",
+        "far",
+        "research"
+      ]
+    },
+    "patch_paths": [
+      "scripts/verify-app.sh"
+    ],
+    "post_path_count": 57,
+    "pre_path_count": 57,
+    "protected_path_count": 19,
+    "recipe_ids": [
+      "full-app-gate"
+    ]
+  },
+  "capsule_file": "DOWNLOAD_Attempt_06_Verification_Repair_R3.sgcap",
+  "capsule_sha256": "aacd95a8adba87c6d4ac457faf7b3f189617a1cc4e12e3c6a6f132c1e76e6c56",
+  "capsule_size": 11584,
+  "capsule_stage": "Golden Eight Development Campaign \u2014 Product Attempt 06 \u2014 Verification Repair R3 \u2014 Explicit Material Domain Seeding",
+  "capsule_title": "Iteration 36 Product Attempt 06 \u2014 Verification Repair R3: Explicit Material Domain Seeding",
+  "classification": "TEST_OR_RECIPE_FAILURE",
+  "dirty_path_count": 57,
+  "engine_command": [
+    "/opt/homebrew/opt/python@3.14/bin/python3.14",
+    "<exact-engine>",
+    "execute",
+    "<exact-capsule>",
+    "--repo",
+    "/Users/haewonkim/home/development/sysgrid",
+    "--outbox",
+    "/Users/haewonkim/.local/state/sysgrid-supervisor/runs/20260801T202245Z-84244-806000/engine-outbox"
+  ],
+  "engine_completed": true,
+  "engine_completed_utc": "2026-08-01T20:25:31Z",
+  "engine_elapsed_seconds": 120.4,
+  "engine_exit_code": 1,
+  "engine_last_activity_age_seconds": 24.391644954681396,
+  "engine_last_heartbeat_utc": "2026-08-01T20:24:47Z",
+  "engine_path": "/Users/haewonkim/.local/lib/sysgrid-runner/1.0.4/sysgrid_runner.py",
+  "engine_pid": 84282,
+  "engine_process_metrics": {
+    "available": true,
+    "cpu_percent": 36.8,
+    "process_count": 7,
+    "rss_bytes": 397295616,
+    "states": [
+      "R   ",
+      "S   ",
+      "S+  ",
+      "Ss  "
+    ]
+  },
+  "engine_sha256": "ab63bb20c0de32771e20b0159475205f685f28910a0956c217fb3693c02f96e1",
+  "engine_stall_suspected": false,
+  "engine_started": true,
+  "engine_started_utc": "2026-08-01T20:22:46Z",
+  "event_timeline": [
+    {
+      "details": {},
+      "elapsed_seconds": 0.021,
+      "event_id": "capsule_selected",
+      "message": "Selecting the one immutable capsule and converging only byte-identical Inbox duplicates.",
+      "notification": {
+        "event_id": "capsule_selected",
+        "presentation_mode": "summary",
+        "required": false,
+        "status": "local_only",
+        "updated_utc": "2026-08-01T20:22:45Z"
+      },
+      "status": "started",
+      "utc": "2026-08-01T20:22:45Z"
+    },
+    {
+      "details": {
+        "changed_path_count": 1,
+        "execution_profile": "development_campaign",
+        "execution_scope": {
+          "changed_paths": [
+            "scripts/verify-app.sh"
+          ],
+          "execution_profile": "development_campaign",
+          "targeted_tests": [
+            "playwright:golden-seeded",
+            "playwright:shell-geometry"
+          ],
+          "targeted_views": [
+            "monitoring",
+            "far",
+            "research"
+          ]
+        },
+        "patch_paths": [
+          "scripts/verify-app.sh"
+        ],
+        "post_path_count": 57,
+        "pre_path_count": 57,
+        "protected_path_count": 19,
+        "recipe_ids": [
+          "full-app-gate"
+        ]
+      },
+      "elapsed_seconds": 0.032,
+      "event_id": "capsule_verified",
+      "message": "Capsule archive, manifest, schema, patch identity, and cross-ledger contract are exact.",
+      "notification": {
+        "attempts": 1,
+        "chat_id_suffix": "1055",
+        "event_id": "run_started",
+        "first_attempt_utc": "2026-08-01T20:22:45Z",
+        "message_id": 508,
+        "payload_sha256": "f49227f2ff19d4856b0a6f878c8786efe43bd22cb4bada92db75d855f15091be",
+        "required": true,
+        "status": "delivered",
+        "updated_utc": "2026-08-01T20:22:46Z"
+      },
+      "status": "passed",
+      "utc": "2026-08-01T20:22:46Z"
+    },
+    {
+      "details": {},
+      "elapsed_seconds": 0.744,
+      "event_id": "preflight_started",
+      "message": "Running independent platform checks and exact repository-state proof.",
+      "notification": {
+        "event_id": "preflight_started",
+        "presentation_mode": "summary",
+        "required": false,
+        "status": "local_only",
+        "updated_utc": "2026-08-01T20:22:46Z"
+      },
+      "status": "started",
+      "utc": "2026-08-01T20:22:46Z"
+    },
+    {
+      "details": {
+        "dirty_paths": 57,
+        "head": "dbc3f870b5b37dbd53de7ac82697221270e19381",
+        "patch": {
+          "applicable": true,
+          "forward_diagnostic": "Checking patch scripts/verify-app.sh...",
+          "forward_exit_code": 0,
+          "reverse_applicable": false,
+          "reverse_diagnostic": "Checking patch scripts/verify-app.sh...\nerror: while searching for:\n    \"${RUNTIME_ENV_COMMAND[@]}\" ./backend/venv/bin/python seed.py \\\n      --tenant-name \"Playwright Gate\" \\\n      --tenant-db \"$VERIFY_TENANT_DB_REL\" \\\n      --admin-user \"$TEST_USER_ID\" \\\n      --seed-data\n  )\n\n  echo \"Provisioning code-managed reference data...\"\n\nerror: patch failed: scripts/verify-app.sh:183\nerror: scripts/verify-app.sh: patch does not apply",
+          "reverse_exit_code": 1
+        }
+      },
+      "elapsed_seconds": 1.179,
+      "event_id": "preflight_completed",
+      "message": "Exact engine, repository, storage, state, protected hashes, and patch state passed.",
+      "notification": {
+        "event_id": "preflight_completed",
+        "presentation_mode": "summary",
+        "required": false,
+        "status": "local_only",
+        "updated_utc": "2026-08-01T20:22:46Z"
+      },
+      "status": "passed",
+      "utc": "2026-08-01T20:22:46Z"
+    },
+    {
+      "details": {},
+      "elapsed_seconds": 1.181,
+      "event_id": "engine_launch",
+      "message": "Launching the exact Stable Engine once; ambiguous mutation replay remains prohibited.",
+      "notification": {
+        "event_id": "engine_launch",
+        "presentation_mode": "summary",
+        "required": false,
+        "status": "local_only",
+        "updated_utc": "2026-08-01T20:22:46Z"
+      },
+      "status": "started",
+      "utc": "2026-08-01T20:22:46Z"
+    },
+    {
+      "details": {},
+      "elapsed_seconds": 2.71,
+      "event_id": "static_started",
+      "message": "Campaign static and changed-area verification started.",
+      "notification": {
+        "event_id": "static_started",
+        "presentation_mode": "summary",
+        "required": false,
+        "status": "local_only",
+        "updated_utc": "2026-08-01T20:22:48Z"
+      },
+      "status": "started",
+      "utc": "2026-08-01T20:22:48Z"
+    },
+    {
+      "details": {},
+      "elapsed_seconds": 97.712,
+      "event_id": "frontend_completed",
+      "message": "Campaign changed-area verification and production build passed.",
+      "notification": {
+        "event_id": "frontend_completed",
+        "presentation_mode": "summary",
+        "required": false,
+        "status": "local_only",
+        "updated_utc": "2026-08-01T20:24:23Z"
+      },
+      "status": "passed",
+      "utc": "2026-08-01T20:24:23Z"
+    },
+    {
+      "details": {},
+      "elapsed_seconds": 122.155,
+      "event_id": "runtime_ready",
+      "message": "Disposable tenant, backend, and exact production frontend are ready.",
+      "notification": {
+        "event_id": "runtime_ready",
+        "presentation_mode": "summary",
+        "required": false,
+        "status": "local_only",
+        "updated_utc": "2026-08-01T20:24:47Z"
+      },
+      "status": "passed",
+      "utc": "2026-08-01T20:24:47Z"
+    },
+    {
+      "details": {},
+      "elapsed_seconds": 122.158,
+      "event_id": "playwright_started",
+      "message": "Canonical Playwright and Golden Eight evidence matrix started.",
+      "notification": {
+        "attempts": 1,
+        "chat_id_suffix": "1055",
+        "event_id": "run_progress",
+        "first_attempt_utc": "2026-08-01T20:24:47Z",
+        "message_id": 509,
+        "payload_sha256": "7f0496ce21bd0f44c597cf11bcb6903ad6c34422f4dc3528b60b7dd4d5c91bd1",
+        "required": false,
+        "status": "delivered",
+        "updated_utc": "2026-08-01T20:24:48Z"
+      },
+      "status": "started",
+      "utc": "2026-08-01T20:24:48Z"
+    },
+    {
+      "details": {},
+      "elapsed_seconds": 164.883,
+      "event_id": "playwright_completed",
+      "message": "Canonical Playwright matrix failed; complete evidence remains available.",
+      "notification": {
+        "event_id": "playwright_completed",
+        "presentation_mode": "summary",
+        "required": false,
+        "status": "local_only",
+        "updated_utc": "2026-08-01T20:25:30Z"
+      },
+      "status": "failed",
+      "utc": "2026-08-01T20:25:30Z"
+    },
+    {
+      "details": {
+        "engine_exit_code": 1
+      },
+      "elapsed_seconds": 165.91,
+      "event_id": "engine_completed",
+      "message": "Stable Engine exited with code 1; verifying its complete evidence.",
+      "notification": {
+        "event_id": "engine_completed",
+        "presentation_mode": "summary",
+        "required": false,
+        "status": "local_only",
+        "updated_utc": "2026-08-01T20:25:31Z"
+      },
+      "status": "failed",
+      "utc": "2026-08-01T20:25:31Z"
+    },
+    {
+      "details": {
+        "artifact_size": 7820109,
+        "manifest_entries": 131
+      },
+      "elapsed_seconds": 165.938,
+      "event_id": "evidence_verified",
+      "message": "Engine evidence is complete and exactly correlated to capsule, engine, and process exit.",
+      "notification": {
+        "event_id": "evidence_verified",
+        "presentation_mode": "summary",
+        "required": false,
+        "status": "local_only",
+        "updated_utc": "2026-08-01T20:25:31Z"
+      },
+      "status": "passed",
+      "utc": "2026-08-01T20:25:31Z"
+    },
+    {
+      "details": {},
+      "elapsed_seconds": 165.942,
+      "event_id": "publication_started",
+      "message": "Publishing one content-addressed, fsynced, atomic canonical review ZIP.",
+      "notification": {
+        "event_id": "publication_started",
+        "presentation_mode": "summary",
+        "required": false,
+        "status": "local_only",
+        "updated_utc": "2026-08-01T20:25:31Z"
+      },
+      "status": "started",
+      "utc": "2026-08-01T20:25:31Z"
+    },
+    {
+      "details": {
+        "artifact_sha256": "a44a1b1f3f0cc4ea1f95cf695cb1d2d3c60ba1e12d64b5b18e437ae7dacd3cfc",
+        "exit_code": 1
+      },
+      "elapsed_seconds": 166.04,
+      "event_id": "publication_completed",
+      "message": "Run complete. Engine runtime: 164.0s. Canonical review ZIP is ready for upload.",
+      "notification": {
+        "attempts": 1,
+        "chat_id_suffix": "1055",
+        "event_id": "run_completed",
+        "first_attempt_utc": "2026-08-01T20:25:31Z",
+        "message_id": 510,
+        "payload_sha256": "bf3c1ecbcd585aa03ff04e9be0a22684787c79bb12115703e5fa66494f715403",
+        "required": false,
+        "status": "delivered",
+        "updated_utc": "2026-08-01T20:25:32Z"
+      },
+      "status": "failed",
+      "utc": "2026-08-01T20:25:32Z"
+    }
+  ],
+  "execution_profile": "development_campaign",
+  "execution_scope": {
+    "changed_paths": [
+      "scripts/verify-app.sh"
+    ],
+    "execution_profile": "development_campaign",
+    "targeted_tests": [
+      "playwright:golden-seeded",
+      "playwright:shell-geometry"
+    ],
+    "targeted_views": [
+      "monitoring",
+      "far",
+      "research"
+    ]
+  },
+  "issue": "OUT-31",
+  "iteration": 36,
+  "last_progress_event": "publication_completed",
+  "last_progress_message": "Run complete. Engine runtime: 164.0s. Canonical review ZIP is ready for upload.",
+  "last_progress_status": "failed",
+  "last_progress_utc": "2026-08-01T20:25:32Z",
+  "message": "recipe full-app-gate failed with exit 1",
+  "monotonic_started": 3892315.123273041,
+  "notification_events": {
+    "capsule_selected": {
+      "event_id": "capsule_selected",
+      "presentation_mode": "summary",
+      "required": false,
+      "status": "local_only",
+      "updated_utc": "2026-08-01T20:22:45Z"
+    },
+    "capsule_verified": {
+      "attempts": 1,
+      "chat_id_suffix": "1055",
+      "event_id": "run_started",
+      "first_attempt_utc": "2026-08-01T20:22:45Z",
+      "message_id": 508,
+      "payload_sha256": "f49227f2ff19d4856b0a6f878c8786efe43bd22cb4bada92db75d855f15091be",
+      "required": true,
+      "status": "delivered",
+      "updated_utc": "2026-08-01T20:22:46Z"
+    },
+    "engine-heartbeat-1": {
+      "event_id": "engine-heartbeat-1",
+      "presentation_mode": "summary",
+      "required": false,
+      "status": "local_only",
+      "updated_utc": "2026-08-01T20:24:47Z"
+    },
+    "engine_completed": {
+      "event_id": "engine_completed",
+      "presentation_mode": "summary",
+      "required": false,
+      "status": "local_only",
+      "updated_utc": "2026-08-01T20:25:31Z"
+    },
+    "engine_launch": {
+      "event_id": "engine_launch",
+      "presentation_mode": "summary",
+      "required": false,
+      "status": "local_only",
+      "updated_utc": "2026-08-01T20:22:46Z"
+    },
+    "evidence_verified": {
+      "event_id": "evidence_verified",
+      "presentation_mode": "summary",
+      "required": false,
+      "status": "local_only",
+      "updated_utc": "2026-08-01T20:25:31Z"
+    },
+    "frontend_completed": {
+      "event_id": "frontend_completed",
+      "presentation_mode": "summary",
+      "required": false,
+      "status": "local_only",
+      "updated_utc": "2026-08-01T20:24:23Z"
+    },
+    "playwright_completed": {
+      "event_id": "playwright_completed",
+      "presentation_mode": "summary",
+      "required": false,
+      "status": "local_only",
+      "updated_utc": "2026-08-01T20:25:30Z"
+    },
+    "playwright_started": {
+      "attempts": 1,
+      "chat_id_suffix": "1055",
+      "event_id": "run_progress",
+      "first_attempt_utc": "2026-08-01T20:24:47Z",
+      "message_id": 509,
+      "payload_sha256": "7f0496ce21bd0f44c597cf11bcb6903ad6c34422f4dc3528b60b7dd4d5c91bd1",
+      "required": false,
+      "status": "delivered",
+      "updated_utc": "2026-08-01T20:24:48Z"
+    },
+    "preflight_completed": {
+      "event_id": "preflight_completed",
+      "presentation_mode": "summary",
+      "required": false,
+      "status": "local_only",
+      "updated_utc": "2026-08-01T20:22:46Z"
+    },
+    "preflight_started": {
+      "event_id": "preflight_started",
+      "presentation_mode": "summary",
+      "required": false,
+      "status": "local_only",
+      "updated_utc": "2026-08-01T20:22:46Z"
+    },
+    "publication_completed": {
+      "attempts": 1,
+      "chat_id_suffix": "1055",
+      "event_id": "run_completed",
+      "first_attempt_utc": "2026-08-01T20:25:31Z",
+      "message_id": 510,
+      "payload_sha256": "bf3c1ecbcd585aa03ff04e9be0a22684787c79bb12115703e5fa66494f715403",
+      "required": false,
+      "status": "delivered",
+      "updated_utc": "2026-08-01T20:25:32Z"
+    },
+    "publication_started": {
+      "event_id": "publication_started",
+      "presentation_mode": "summary",
+      "required": false,
+      "status": "local_only",
+      "updated_utc": "2026-08-01T20:25:31Z"
+    },
+    "runtime_ready": {
+      "event_id": "runtime_ready",
+      "presentation_mode": "summary",
+      "required": false,
+      "status": "local_only",
+      "updated_utc": "2026-08-01T20:24:47Z"
+    },
+    "static_started": {
+      "event_id": "static_started",
+      "presentation_mode": "summary",
+      "required": false,
+      "status": "local_only",
+      "updated_utc": "2026-08-01T20:22:48Z"
+    }
+  },
+  "notification_policy": {
+    "delivery_semantics": "durably-deduplicated-at-least-once",
+    "engine_heartbeat_seconds": 120,
+    "max_messages_per_run": 3,
+    "presentation_mode": "summary",
+    "registered_events": 24,
+    "required_before_engine": true,
+    "telegram_heartbeats": false
+  },
+  "original_capsule": "/Users/haewonkim/Library/Mobile Documents/com~apple~CloudDocs/SysGrid-Control/Inbox/DOWNLOAD_Attempt_06_Verification_Repair_R3.sgcap",
+  "pid": 84244,
+  "preflight": {
+    "declared_state": {
+      "dirty_path_count": 57,
+      "pre_hash_count": 57,
+      "protected_hash_count": 19
+    },
+    "engine_self_test": {
+      "engine_version": "1.0.4",
+      "result": "PASS",
+      "tests": [
+        "safe-path",
+        "manifest",
+        "corruption"
+      ]
+    },
+    "patch": {
+      "applicable": true,
+      "forward_diagnostic": "Checking patch scripts/verify-app.sh...",
+      "forward_exit_code": 0,
+      "reverse_applicable": false,
+      "reverse_diagnostic": "Checking patch scripts/verify-app.sh...\nerror: while searching for:\n    \"${RUNTIME_ENV_COMMAND[@]}\" ./backend/venv/bin/python seed.py \\\n      --tenant-name \"Playwright Gate\" \\\n      --tenant-db \"$VERIFY_TENANT_DB_REL\" \\\n      --admin-user \"$TEST_USER_ID\" \\\n      --seed-data\n  )\n\n  echo \"Provisioning code-managed reference data...\"\n\nerror: patch failed: scripts/verify-app.sh:183\nerror: scripts/verify-app.sh: patch does not apply",
+      "reverse_exit_code": 1
+    },
+    "storage": {
+      "control_free": 56693489664,
+      "local_free": 56693489664,
+      "required": 536870912
+    }
+  },
+  "product_event_status": {
+    "frontend_completed": "passed",
+    "playwright_completed": "failed",
+    "playwright_started": "started",
+    "runtime_ready": "passed",
+    "static_started": "started"
+  },
+  "product_progress_last_event": "playwright_completed",
+  "product_progress_last_utc": "2026-08-01T20:25:30Z",
+  "product_progress_sequence": 5,
+  "recovered_without_product_replay": false,
+  "repo": "/Users/haewonkim/home/development/sysgrid",
+  "repo_branch": "main",
+  "repo_head": "dbc3f870b5b37dbd53de7ac82697221270e19381",
+  "resource_plan": {
+    "backend_workers": 4,
+    "cpu_count": 12,
+    "e2e_workers": 2,
+    "frontend_workers": 4,
+    "memory_bytes": 19327352832,
+    "preflight_workers": 24,
+    "reserve_memory_bytes": 2147483648,
+    "test_cpu_budget": 11,
+    "usable_memory_bytes": 17179869184
+  },
+  "run_id": "20260801T202245Z-84244-806000",
+  "runtime_summary": {
+    "artifact": "/Users/haewonkim/.local/state/sysgrid-supervisor/runs/20260801T202245Z-84244-806000/engine-outbox/UPLOAD_THIS_TO_CHATGPT.zip",
+    "classification": "TEST_OR_RECIPE_FAILURE",
+    "commands": [
+      {
+        "duration_seconds": 162.877,
+        "exit_code": 1,
+        "recipe_id": "full-app-gate",
+        "timed_out": false
+      }
+    ],
+    "engine_total_seconds": 164.0,
+    "failed_stage": "full-app-gate",
+    "finished_utc": "2026-08-01T20:25:30Z",
+    "result": "failure",
+    "started_utc": "2026-08-01T20:22:46Z"
+  },
+  "safe_cleanup": {
+    "inspected": 0,
+    "removed": 0
+  },
+  "safe_retry_count": 0,
+  "stage": "complete",
+  "staged_capsule": "/Users/haewonkim/.local/state/sysgrid-supervisor/runs/20260801T202245Z-84244-806000/input/DOWNLOAD_Attempt_06_Verification_Repair_R3.sgcap",
+  "started_utc": "2026-08-01T20:22:45Z",
+  "state": "FAILED_REVIEW_READY",
+  "supervisor_version": "2.1.2",
+  "telegram": {
+    "chat_id_suffix": "1055",
+    "configured": true,
+    "source": "/Users/haewonkim/.config/sysgrid-supervisor/telegram.json"
+  },
+  "updated_utc": "2026-08-01T20:25:32Z",
+  "work_dir": "/Users/haewonkim/.local/state/sysgrid-supervisor/runs/20260801T202245Z-84244-806000"
+}

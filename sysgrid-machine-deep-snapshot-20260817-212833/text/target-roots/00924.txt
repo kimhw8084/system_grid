@@ -1,0 +1,483 @@
+ORIGINAL_PATH: /Users/haewonkim/.local/state/sysgrid-supervisor/runs/20260805T104339Z-2079-216000/SUPERVISOR_STATE.json
+ORIGINAL_SHA256: d1eef0f1963449170b243d9c482ff3b8843f6e8d61e3eac44121772172dccd72
+================================================================================
+{
+  "artifact": "/Users/haewonkim/Library/Mobile Documents/com~apple~CloudDocs/SysGrid-Control/Outbox/UPLOAD_THIS_TO_CHATGPT.zip",
+  "artifact_sha256": "80bc30b7c0049942e4aa3e9d89a49ae3f1d120e08fe91655e255665641e744f5",
+  "artifact_size": 30315057,
+  "attempt": 14,
+  "capsule_archive": "/Users/haewonkim/Library/Mobile Documents/com~apple~CloudDocs/SysGrid-Control/Archive/Processed-Capsules/20260805T105552Z__c1f90664a8da__SYSGRID_OUT31_PA14_PS5_VR2_STATIC_FRONTEND_READINESS_CONTRACT_VERIFICATION_REPAIR_v1.0.1.sgcap",
+  "capsule_cross_ledger": {
+    "changed_path_count": 1,
+    "execution_profile": "promotion_qualification",
+    "execution_scope": {
+      "changed_paths": [
+        "frontend/scripts/check-canonical-verification-contract.cjs"
+      ],
+      "execution_profile": "promotion_qualification",
+      "targeted_tests": [
+        "frontend/tests/far-golden-workspace.spec.ts",
+        "frontend/tests/far-workflows.spec.ts"
+      ],
+      "targeted_views": [
+        "FAR",
+        "Monitoring"
+      ]
+    },
+    "patch_paths": [
+      "frontend/scripts/check-canonical-verification-contract.cjs"
+    ],
+    "post_path_count": 96,
+    "pre_path_count": 96,
+    "protected_path_count": 721,
+    "recipe_ids": [
+      "frontend-test-linter",
+      "full-app-gate"
+    ]
+  },
+  "capsule_file": "SYSGRID_OUT31_PA14_PS5_VR2_STATIC_FRONTEND_READINESS_CONTRACT_VERIFICATION_REPAIR_v1.0.1.sgcap",
+  "capsule_sha256": "c1f90664a8da30387599b2be841d5dc4d3fc9c103d9ab47a6b8346b5eb7c0ead",
+  "capsule_size": 64833,
+  "capsule_stage": "Product Attempt 14 Verification Repair VR2 v1.0.1 \u2014 schema-corrected static frontend readiness contract",
+  "capsule_title": "PA14-PS5 Verification Repair VR2 v1.0.1 \u2014 schema-corrected static frontend readiness contract",
+  "classification": "AGGREGATE_VERIFICATION_FAILURE",
+  "dirty_path_count": 96,
+  "engine_command": [
+    "/opt/anaconda3/bin/python3",
+    "<exact-engine>",
+    "execute",
+    "<exact-capsule>",
+    "--repo",
+    "/Users/haewonkim/home/development/sysgrid",
+    "--outbox",
+    "/Users/haewonkim/.local/state/sysgrid-supervisor/runs/20260805T104339Z-2079-216000/engine-outbox"
+  ],
+  "engine_completed": true,
+  "engine_completed_utc": "2026-08-05T10:55:51Z",
+  "engine_elapsed_seconds": 600.1,
+  "engine_exit_code": 1,
+  "engine_last_activity_age_seconds": 124.23708033561707,
+  "engine_last_heartbeat_utc": "2026-08-05T10:53:41Z",
+  "engine_path": "/Users/haewonkim/.local/share/sysgrid-runner/engine-v1.1.1/sysgrid_runner.py",
+  "engine_pid": 2139,
+  "engine_process_metrics": {
+    "available": true,
+    "cpu_percent": 52.2,
+    "process_count": 9,
+    "rss_bytes": 498057216,
+    "states": [
+      "Rs  ",
+      "S   ",
+      "S+  ",
+      "Ss  "
+    ]
+  },
+  "engine_sha256": "66b082fec1e9f6c49152e5ecb4cbb3f998e60ce27d53a2325e5f658634a8d032",
+  "engine_stall_suspected": false,
+  "engine_started": true,
+  "engine_started_utc": "2026-08-05T10:43:41Z",
+  "event_timeline": [
+    {
+      "details": {},
+      "elapsed_seconds": 0.049,
+      "event_id": "capsule_selected",
+      "message": "Selecting the one immutable capsule and converging only byte-identical Inbox duplicates.",
+      "notification": {
+        "event_id": "capsule_selected",
+        "presentation_mode": "summary",
+        "required": false,
+        "status": "local_only",
+        "updated_utc": "2026-08-05T10:43:39Z"
+      },
+      "status": "started",
+      "utc": "2026-08-05T10:43:39Z"
+    },
+    {
+      "details": {
+        "changed_path_count": 1,
+        "execution_profile": "promotion_qualification",
+        "execution_scope": {
+          "changed_paths": [
+            "frontend/scripts/check-canonical-verification-contract.cjs"
+          ],
+          "execution_profile": "promotion_qualification",
+          "targeted_tests": [
+            "frontend/tests/far-golden-workspace.spec.ts",
+            "frontend/tests/far-workflows.spec.ts"
+          ],
+          "targeted_views": [
+            "FAR",
+            "Monitoring"
+          ]
+        },
+        "patch_paths": [
+          "frontend/scripts/check-canonical-verification-contract.cjs"
+        ],
+        "post_path_count": 96,
+        "pre_path_count": 96,
+        "protected_path_count": 721,
+        "recipe_ids": [
+          "frontend-test-linter",
+          "full-app-gate"
+        ]
+      },
+      "elapsed_seconds": 0.727,
+      "event_id": "capsule_verified",
+      "message": "Capsule archive, manifest, schema, patch identity, and cross-ledger contract are exact.",
+      "notification": {
+        "attempts": 1,
+        "chat_id_suffix": "1055",
+        "event_id": "run_started",
+        "first_attempt_utc": "2026-08-05T10:43:39Z",
+        "message_id": 630,
+        "payload_sha256": "e3aa12a2117b86b05e816ec7b05dfb1036cff9e31d903a0021f9adaa7c698bae",
+        "required": false,
+        "status": "delivered",
+        "updated_utc": "2026-08-05T10:43:40Z"
+      },
+      "status": "passed",
+      "utc": "2026-08-05T10:43:40Z"
+    },
+    {
+      "details": {},
+      "elapsed_seconds": 1.356,
+      "event_id": "preflight_started",
+      "message": "Running independent platform checks and exact repository-state proof.",
+      "notification": {
+        "event_id": "preflight_started",
+        "presentation_mode": "summary",
+        "required": false,
+        "status": "local_only",
+        "updated_utc": "2026-08-05T10:43:40Z"
+      },
+      "status": "started",
+      "utc": "2026-08-05T10:43:40Z"
+    },
+    {
+      "details": {
+        "dirty_paths": 96,
+        "head": "78da610377e5cfbb5a2b7986c1cb7d56397d0ca2",
+        "patch": {
+          "applicable": true,
+          "forward_diagnostic": "Checking patch frontend/scripts/check-canonical-verification-contract.cjs...",
+          "forward_exit_code": 0,
+          "reverse_applicable": false,
+          "reverse_diagnostic": "Checking patch frontend/scripts/check-canonical-verification-contract.cjs...\nerror: while searching for:\nrequireText(verify, 'emit_progress playwright_started', 'verify-app.sh must publish Playwright progress')\nrequireText(verify, 'npm run test:coverage -- --maxWorkers \"$FRONTEND_WORKERS\"', 'verify-app.sh must consume the bounded frontend worker budget')\nrequireText(verify, 'VITE_API_BASE_URL=\"$BACKEND_ORIGIN\" VITE_FRONTEND_ORIGIN=\"$FRONTEND_ORIGIN\" npm run build', 'verify-app.sh must bind the production build to the canonical runtime')\nrequireText(verify, 'local vite_bin=\"$FRONTEND_DIR/node_modules/.bin/vite\"', 'verify-app.sh must own the isolated production frontend through the direct Vite executable')\nrequireText(verify, '\"$vite_bin\" preview --host \"$FRONTEND_HOST\" --port \"$FRONTEND_PORT\" --strictPort', 'verify-app.sh must serve the exact production build through direct Vite ownership')\nrequireText(verify, 'wait_for_listener \"$FRONTEND_PORT\" \"isolated production frontend\"', 'verify-app.sh must prove the isolated production frontend listener before HTTP readiness')\nrequireText(verify, 'wait_for_http \"$FRONTEND_URL\" \"isolated production frontend\"', 'verify-app.sh must prove isolated production frontend HTTP readiness')\nrequireText(verify, \"curl --noproxy '*' --connect-timeout 1 --max-time 3 -fsS \\\"$url\\\"\", 'verify-app.sh must bypass proxies and bound loopback HTTP probes')\nrequireText(verify, 'readiness_diagnostics', 'verify-app.sh must capture deterministic readiness diagnostics')\nrequireText(verify, 'launch_frontend_with_readiness', 'verify-app.sh must use the bounded frontend readiness launch path')\nif (verify.includes('npm run preview --')) failures.push('verify-app.sh must not restore the npm preview wrapper')\nif (/^\\s*npm run check:shell-contracts\\s*$/m.test(verify)) failures.push('verify-app.sh must not run the shell contract twice')\nif (verify.includes('npm run dev --')) failures.push('verify-app.sh must not validate a development server after production bu",
+          "reverse_exit_code": 1
+        }
+      },
+      "elapsed_seconds": 2.016,
+      "event_id": "preflight_completed",
+      "message": "Exact engine, repository, storage, state, protected hashes, and patch state passed.",
+      "notification": {
+        "event_id": "preflight_completed",
+        "presentation_mode": "summary",
+        "required": false,
+        "status": "local_only",
+        "updated_utc": "2026-08-05T10:43:41Z"
+      },
+      "status": "passed",
+      "utc": "2026-08-05T10:43:41Z"
+    },
+    {
+      "details": {},
+      "elapsed_seconds": 2.018,
+      "event_id": "engine_launch",
+      "message": "Launching the exact Stable Engine once; ambiguous mutation replay remains prohibited.",
+      "notification": {
+        "event_id": "engine_launch",
+        "presentation_mode": "summary",
+        "required": false,
+        "status": "local_only",
+        "updated_utc": "2026-08-05T10:43:41Z"
+      },
+      "status": "started",
+      "utc": "2026-08-05T10:43:41Z"
+    },
+    {
+      "details": {
+        "engine_exit_code": 1
+      },
+      "elapsed_seconds": 732.551,
+      "event_id": "engine_completed",
+      "message": "Stable Engine exited with code 1; verifying its complete evidence.",
+      "notification": {
+        "event_id": "engine_completed",
+        "presentation_mode": "summary",
+        "required": false,
+        "status": "local_only",
+        "updated_utc": "2026-08-05T10:55:51Z"
+      },
+      "status": "failed",
+      "utc": "2026-08-05T10:55:51Z"
+    },
+    {
+      "details": {
+        "artifact_size": 30315057,
+        "manifest_entries": 966
+      },
+      "elapsed_seconds": 732.67,
+      "event_id": "evidence_verified",
+      "message": "Engine evidence is complete and exactly correlated to capsule, engine, and process exit.",
+      "notification": {
+        "event_id": "evidence_verified",
+        "presentation_mode": "summary",
+        "required": false,
+        "status": "local_only",
+        "updated_utc": "2026-08-05T10:55:51Z"
+      },
+      "status": "passed",
+      "utc": "2026-08-05T10:55:51Z"
+    },
+    {
+      "details": {},
+      "elapsed_seconds": 732.676,
+      "event_id": "publication_started",
+      "message": "Publishing one content-addressed, fsynced, atomic canonical review ZIP.",
+      "notification": {
+        "event_id": "publication_started",
+        "presentation_mode": "summary",
+        "required": false,
+        "status": "local_only",
+        "updated_utc": "2026-08-05T10:55:51Z"
+      },
+      "status": "started",
+      "utc": "2026-08-05T10:55:51Z"
+    },
+    {
+      "details": {
+        "artifact_sha256": "80bc30b7c0049942e4aa3e9d89a49ae3f1d120e08fe91655e255665641e744f5",
+        "exit_code": 1
+      },
+      "elapsed_seconds": 733.004,
+      "event_id": "publication_completed",
+      "message": "Run complete. Engine runtime: 728.0s. Canonical review ZIP is ready for upload.",
+      "notification": {
+        "attempts": 1,
+        "chat_id_suffix": "1055",
+        "event_id": "run_completed",
+        "first_attempt_utc": "2026-08-05T10:55:52Z",
+        "message_id": 631,
+        "payload_sha256": "8c00d77721cf14ca1c6a7aa8e6d40921e7f12a02b58da90e7cd5610bbd44a41f",
+        "required": false,
+        "status": "delivered",
+        "updated_utc": "2026-08-05T10:55:52Z"
+      },
+      "status": "failed",
+      "utc": "2026-08-05T10:55:52Z"
+    }
+  ],
+  "execution_profile": "promotion_qualification",
+  "execution_scope": {
+    "changed_paths": [
+      "frontend/scripts/check-canonical-verification-contract.cjs"
+    ],
+    "execution_profile": "promotion_qualification",
+    "targeted_tests": [
+      "frontend/tests/far-golden-workspace.spec.ts",
+      "frontend/tests/far-workflows.spec.ts"
+    ],
+    "targeted_views": [
+      "FAR",
+      "Monitoring"
+    ]
+  },
+  "issue": "OUT-31",
+  "iteration": 24,
+  "last_progress_event": "publication_completed",
+  "last_progress_message": "Run complete. Engine runtime: 728.0s. Canonical review ZIP is ready for upload.",
+  "last_progress_status": "failed",
+  "last_progress_utc": "2026-08-05T10:55:52Z",
+  "message": "required recipes failed or blocked: ['full-app-gate']",
+  "monotonic_started": 4196654.735510083,
+  "notification_events": {
+    "capsule_selected": {
+      "event_id": "capsule_selected",
+      "presentation_mode": "summary",
+      "required": false,
+      "status": "local_only",
+      "updated_utc": "2026-08-05T10:43:39Z"
+    },
+    "capsule_verified": {
+      "attempts": 1,
+      "chat_id_suffix": "1055",
+      "event_id": "run_started",
+      "first_attempt_utc": "2026-08-05T10:43:39Z",
+      "message_id": 630,
+      "payload_sha256": "e3aa12a2117b86b05e816ec7b05dfb1036cff9e31d903a0021f9adaa7c698bae",
+      "required": false,
+      "status": "delivered",
+      "updated_utc": "2026-08-05T10:43:40Z"
+    },
+    "engine-heartbeat-1": {
+      "event_id": "engine-heartbeat-1",
+      "presentation_mode": "summary",
+      "required": false,
+      "status": "local_only",
+      "updated_utc": "2026-08-05T10:48:41Z"
+    },
+    "engine-heartbeat-2": {
+      "event_id": "engine-heartbeat-2",
+      "presentation_mode": "summary",
+      "required": false,
+      "status": "local_only",
+      "updated_utc": "2026-08-05T10:53:41Z"
+    },
+    "engine_completed": {
+      "event_id": "engine_completed",
+      "presentation_mode": "summary",
+      "required": false,
+      "status": "local_only",
+      "updated_utc": "2026-08-05T10:55:51Z"
+    },
+    "engine_launch": {
+      "event_id": "engine_launch",
+      "presentation_mode": "summary",
+      "required": false,
+      "status": "local_only",
+      "updated_utc": "2026-08-05T10:43:41Z"
+    },
+    "evidence_verified": {
+      "event_id": "evidence_verified",
+      "presentation_mode": "summary",
+      "required": false,
+      "status": "local_only",
+      "updated_utc": "2026-08-05T10:55:51Z"
+    },
+    "preflight_completed": {
+      "event_id": "preflight_completed",
+      "presentation_mode": "summary",
+      "required": false,
+      "status": "local_only",
+      "updated_utc": "2026-08-05T10:43:41Z"
+    },
+    "preflight_started": {
+      "event_id": "preflight_started",
+      "presentation_mode": "summary",
+      "required": false,
+      "status": "local_only",
+      "updated_utc": "2026-08-05T10:43:40Z"
+    },
+    "publication_completed": {
+      "attempts": 1,
+      "chat_id_suffix": "1055",
+      "event_id": "run_completed",
+      "first_attempt_utc": "2026-08-05T10:55:52Z",
+      "message_id": 631,
+      "payload_sha256": "8c00d77721cf14ca1c6a7aa8e6d40921e7f12a02b58da90e7cd5610bbd44a41f",
+      "required": false,
+      "status": "delivered",
+      "updated_utc": "2026-08-05T10:55:52Z"
+    },
+    "publication_started": {
+      "event_id": "publication_started",
+      "presentation_mode": "summary",
+      "required": false,
+      "status": "local_only",
+      "updated_utc": "2026-08-05T10:55:51Z"
+    }
+  },
+  "notification_policy": {
+    "delivery_semantics": "durably-deduplicated-at-least-once",
+    "engine_heartbeat_seconds": 300,
+    "max_messages_per_run": 3,
+    "presentation_mode": "summary",
+    "registered_events": 21,
+    "required_before_engine": false,
+    "telegram_heartbeats": false
+  },
+  "original_capsule": "/Users/haewonkim/Library/Mobile Documents/com~apple~CloudDocs/SysGrid-Control/Inbox/SYSGRID_OUT31_PA14_PS5_VR2_STATIC_FRONTEND_READINESS_CONTRACT_VERIFICATION_REPAIR_v1.0.1.sgcap",
+  "pid": 2079,
+  "preflight": {
+    "declared_state": {
+      "dirty_path_count": 96,
+      "pre_hash_count": 96,
+      "protected_hash_count": 721
+    },
+    "engine_self_test": {
+      "engine_version": "1.1.1",
+      "result": "PASS",
+      "tests": [
+        "safe-path",
+        "manifest",
+        "corruption",
+        "canonical-dirty-paths",
+        "aggregate-recipes"
+      ]
+    },
+    "patch": {
+      "applicable": true,
+      "forward_diagnostic": "Checking patch frontend/scripts/check-canonical-verification-contract.cjs...",
+      "forward_exit_code": 0,
+      "reverse_applicable": false,
+      "reverse_diagnostic": "Checking patch frontend/scripts/check-canonical-verification-contract.cjs...\nerror: while searching for:\nrequireText(verify, 'emit_progress playwright_started', 'verify-app.sh must publish Playwright progress')\nrequireText(verify, 'npm run test:coverage -- --maxWorkers \"$FRONTEND_WORKERS\"', 'verify-app.sh must consume the bounded frontend worker budget')\nrequireText(verify, 'VITE_API_BASE_URL=\"$BACKEND_ORIGIN\" VITE_FRONTEND_ORIGIN=\"$FRONTEND_ORIGIN\" npm run build', 'verify-app.sh must bind the production build to the canonical runtime')\nrequireText(verify, 'local vite_bin=\"$FRONTEND_DIR/node_modules/.bin/vite\"', 'verify-app.sh must own the isolated production frontend through the direct Vite executable')\nrequireText(verify, '\"$vite_bin\" preview --host \"$FRONTEND_HOST\" --port \"$FRONTEND_PORT\" --strictPort', 'verify-app.sh must serve the exact production build through direct Vite ownership')\nrequireText(verify, 'wait_for_listener \"$FRONTEND_PORT\" \"isolated production frontend\"', 'verify-app.sh must prove the isolated production frontend listener before HTTP readiness')\nrequireText(verify, 'wait_for_http \"$FRONTEND_URL\" \"isolated production frontend\"', 'verify-app.sh must prove isolated production frontend HTTP readiness')\nrequireText(verify, \"curl --noproxy '*' --connect-timeout 1 --max-time 3 -fsS \\\"$url\\\"\", 'verify-app.sh must bypass proxies and bound loopback HTTP probes')\nrequireText(verify, 'readiness_diagnostics', 'verify-app.sh must capture deterministic readiness diagnostics')\nrequireText(verify, 'launch_frontend_with_readiness', 'verify-app.sh must use the bounded frontend readiness launch path')\nif (verify.includes('npm run preview --')) failures.push('verify-app.sh must not restore the npm preview wrapper')\nif (/^\\s*npm run check:shell-contracts\\s*$/m.test(verify)) failures.push('verify-app.sh must not run the shell contract twice')\nif (verify.includes('npm run dev --')) failures.push('verify-app.sh must not validate a development server after production bu",
+      "reverse_exit_code": 1
+    },
+    "storage": {
+      "control_free": 54833311744,
+      "local_free": 54833311744,
+      "required": 3221225472
+    }
+  },
+  "product_progress_error": {
+    "classification": "PRODUCT_PROGRESS_FAILURE",
+    "message": "unregistered product progress event: static_started",
+    "utc": "2026-08-05T10:43:43Z"
+  },
+  "recovered_without_product_replay": false,
+  "repo": "/Users/haewonkim/home/development/sysgrid",
+  "repo_branch": "main",
+  "repo_head": "78da610377e5cfbb5a2b7986c1cb7d56397d0ca2",
+  "resource_plan": {
+    "backend_workers": 5,
+    "cpu_count": 12,
+    "e2e_workers": 2,
+    "frontend_workers": 5,
+    "memory_bytes": 19327352832,
+    "preflight_workers": 24,
+    "reserve_memory_bytes": 2147483648,
+    "test_cpu_budget": 11,
+    "usable_memory_bytes": 17179869184
+  },
+  "run_id": "20260805T104339Z-2079-216000",
+  "runtime_summary": {
+    "artifact": "/Users/haewonkim/.local/state/sysgrid-supervisor/runs/20260805T104339Z-2079-216000/engine-outbox/UPLOAD_THIS_TO_CHATGPT.zip",
+    "classification": "AGGREGATE_VERIFICATION_FAILURE",
+    "commands": [
+      {
+        "duration_seconds": 0.549,
+        "exit_code": 0,
+        "recipe_id": "frontend-test-linter",
+        "timed_out": false
+      },
+      {
+        "duration_seconds": 723.556,
+        "exit_code": 1,
+        "recipe_id": "full-app-gate",
+        "timed_out": false
+      }
+    ],
+    "engine_total_seconds": 728.0,
+    "failed_stage": "verification-plan",
+    "finished_utc": "2026-08-05T10:55:49Z",
+    "result": "failure",
+    "started_utc": "2026-08-05T10:43:41Z"
+  },
+  "safe_cleanup": {
+    "inspected": 0,
+    "removed": 0
+  },
+  "safe_retry_count": 0,
+  "stage": "complete",
+  "staged_capsule": "/Users/haewonkim/.local/state/sysgrid-supervisor/runs/20260805T104339Z-2079-216000/input/SYSGRID_OUT31_PA14_PS5_VR2_STATIC_FRONTEND_READINESS_CONTRACT_VERIFICATION_REPAIR_v1.0.1.sgcap",
+  "started_utc": "2026-08-05T10:43:39Z",
+  "state": "FAILED_REVIEW_READY",
+  "supervisor_version": "2.2.1",
+  "telegram": {
+    "chat_id_suffix": "1055",
+    "configured": true,
+    "source": "/Users/haewonkim/.config/sysgrid-supervisor/telegram.json"
+  },
+  "updated_utc": "2026-08-05T10:55:52Z",
+  "work_dir": "/Users/haewonkim/.local/state/sysgrid-supervisor/runs/20260805T104339Z-2079-216000"
+}

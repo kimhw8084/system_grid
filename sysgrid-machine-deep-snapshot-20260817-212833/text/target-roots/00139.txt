@@ -1,0 +1,173 @@
+ORIGINAL_PATH: /Users/haewonkim/.local/share/sysgrid-runner/backups/20260731T193610Z-pre-launcher-v104-repair/continuity/active_law/02_SysGrid_Project_Overlay_v1.1.md
+ORIGINAL_SHA256: c77b4cec50b478d176d7fbf588a5b86fcbf2b5016c7ce99855d48d565793c810
+================================================================================
+# SysGrid Project Overlay v1.1
+
+**Status:** Draft pending explicit activation  
+**Project:** SysGrid  
+**Proposed effective date:** 2026-07-28  
+**Supersedes after activation:** SysGrid Project Overlay v1.0
+
+## 1. Scope gate
+
+Only the Linear project named `SysGrid` may be read or written unless the user explicitly says:
+
+```text
+Override Linear scope and use [project name].
+```
+
+Before a state claim or write, read the current SysGrid project, master context, sole active issue, issue status, stage, latest review, accepted baseline, and current gate.
+
+## 2. Current control structure
+
+The master context and sole active issue are authoritative only when read from Linear in the current conversation.
+
+Only one SysGrid mutation issue may be active. Parent goals are context, not parallel mutation lanes.
+
+## 3. Source-authoring boundary
+
+The ChatGPT control room authors all SysGrid source changes and immutable patches.
+
+The terminal and stable engine may only verify, apply exact immutable payloads, run trusted recipes, collect evidence, commit/push after full authorized success, and package the canonical ZIP.
+
+Terminal generative coding, coding agents, dynamic patch generation, auto-fix, assertion weakening, and improvised correction are prohibited.
+
+## 4. Stable engine
+
+After qualification, the canonical platform is:
+
+```text
+~/.local/lib/sysgrid-runner/current/sysgrid_runner.py
+~/.local/bin/sg
+~/.local/bin/sgs
+~/.local/bin/sgwatch
+```
+
+Default control root:
+
+```text
+~/Library/Mobile Documents/com~apple~CloudDocs/SysGrid-Control
+```
+
+Environment overrides:
+
+```text
+SYSGRID_CONTROL_ROOT
+SYSGRID_REPO
+SYSGRID_RUNNER_CONFIG
+```
+
+The active engine version and SHA-256 are part of every run’s provenance.
+
+## 5. Capsule contract
+
+The user places exactly one `.sgcap` or capsule `.zip` in `SysGrid-Control/Inbox` and runs:
+
+```text
+sg
+```
+
+The capsule contains declarative metadata and immutable payloads only. No executable file, arbitrary command, dynamic shell, or embedded program is allowed.
+
+The engine recognizes only built-in trusted recipe IDs. Recipe implementation is versioned with the engine, not supplied by the capsule.
+
+## 6. Canonical review output
+
+Every execution produces exactly one:
+
+```text
+SysGrid-Control/Outbox/UPLOAD_THIS_TO_CHATGPT.zip
+```
+
+The evidence layout is stable:
+
+```text
+REVIEW_ME_FIRST.md
+RESULT.json
+PROVENANCE.json
+COMMANDS.json
+STATE/
+LOGS/
+TESTS/
+DIFF/
+SOURCE/
+MANIFEST.sha256
+```
+
+`sgs` always reports state, stage, engine/capsule identity, repository provenance, artifact readiness, and exact next action.
+
+## 7. Trusted recipe classes
+
+The v1 engine supports bounded recipes including:
+
+- repository state and hash verification;
+- shell syntax;
+- Python compile and focused pytest;
+- frontend focused Vitest;
+- frontend typecheck and build;
+- runtime configuration resolution;
+- health/readiness/Host/CORS/request-ID proof;
+- managed backend/frontend lifecycle;
+- targeted routed Playwright proof;
+- full application verification;
+- Git commit/push/remote verification;
+- evidence packaging.
+
+Capsules may select only recipe IDs and schema-validated parameters such as relative test paths, a forwarded API origin, a frontend origin, or a timeout bounded by engine policy.
+
+## 8. SysGrid value contract
+
+Every product mutation must state:
+
+```text
+user-obvious behavior delta
+focused proof delta
+safety/operability protection delta
+```
+
+A product iteration without all three cannot PASS.
+
+## 9. Protected boundaries
+
+Unless an issue explicitly authorizes otherwise:
+
+- do not modify another Linear project;
+- do not flatten Network, FAR, or Research into table-only experiences;
+- do not broadly rewrite deployment, authentication, tenant selection, or container infrastructure;
+- do not replace domain APIs with a giant generic CRUD engine;
+- do not weaken permissions, tenant isolation, assertions, or recovery behavior;
+- do not mix product and control-platform mutation in one capsule.
+
+## 10. Commit and push policy
+
+For bounded SysGrid source-mutating runs, successful delivery includes commit and push.
+
+Failed, qualification, acquisition, and read-only runs never commit or push.
+
+A successful mutation must create one commit named:
+
+```text
+OUT-<issue> <stage> Iteration <N>: <accepted slice title>
+```
+
+The engine must verify upstream identity, push the exact commit, require remote SHA equality, and require a clean worktree before packaging success.
+
+## 11. Retained-state recovery
+
+When a failed run retains an exact patch state:
+
+- do not reapply, revert, regenerate, or manually edit it;
+- use a `resume_verify` capsule;
+- verify exact dirty paths, target hashes, protected hashes, branch, HEAD, and staging;
+- continue only the uncompleted proof and delivery stages;
+- create a new product iteration only when product bytes or intended behavior change.
+
+## 12. Current transition rule
+
+The retained OUT-31 Stage 1 Iteration 12 12-path state remains frozen until:
+
+1. the v1.1 law kit is explicitly activated;
+2. the stable engine passes qualification;
+3. a declarative resume capsule is reviewed and issued.
+
+No simple monolithic shell Attempt 02 is authorized.

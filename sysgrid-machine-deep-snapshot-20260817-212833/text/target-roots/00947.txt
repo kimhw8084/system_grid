@@ -1,0 +1,32 @@
+ORIGINAL_PATH: /Users/haewonkim/.local/state/sysgrid-supervisor/runs/20260801T071440Z-85703-360000/preflight.json
+ORIGINAL_SHA256: 83badce05bdc97c417971a367ccec513b44285d42e752b7549fc671a0857cbd7
+================================================================================
+{
+  "declared_state": {
+    "dirty_path_count": 56,
+    "pre_hash_count": 56,
+    "protected_hash_count": 19
+  },
+  "engine_self_test": {
+    "engine_version": "1.0.4",
+    "result": "PASS",
+    "tests": [
+      "safe-path",
+      "manifest",
+      "corruption"
+    ]
+  },
+  "patch": {
+    "applicable": true,
+    "forward_diagnostic": "Checking patch frontend/scripts/check-canonical-verification-contract.cjs...\nChecking patch scripts/verify-app.sh...",
+    "forward_exit_code": 0,
+    "reverse_applicable": false,
+    "reverse_diagnostic": "Checking patch scripts/verify-app.sh...\nerror: while searching for:\n  echo \"Disposable Playwright fixture contract passed: one tenant, code-managed reference data, zero domain rows.\"\n}\n\nassert_local_playwright_runtime() {\n  local runner=\"$FRONTEND_DIR/node_modules/.bin/playwright\"\n  [[ -x \"$runner\" ]] || {\n    echo \"Canonical Playwright runner is missing or not executable: $runner\" >&2\n    exit 1\n  }\n  (\n    cd \"$FRONTEND_DIR\"\n    node - <<'NODE_PLAYWRIGHT_IDENTITY'\nconst testVersion = require('./node_modules/@playwright/test/package.json').version\nconst runnerVersion = require('./node_modules/playwright/package.json').version\nif (testVersion !== runnerVersion) {\n  throw new Error(`Playwright package identity mismatch: @playwright/test=${testVersion}, playwright=${runnerVersion}`)\n}\nconsole.log(`Canonical local Playwright identity verified: ${runnerVersion}`)\nNODE_PLAYWRIGHT_IDENTITY\n  )\n}\n\nassert_canonical_playwright_suite() {\n  local spec\n  local duplicate_count\n\nerror: patch failed: scripts/verify-app.sh:261\nerror: scripts/verify-app.sh: patch does not apply\nChecking patch frontend/scripts/check-canonical-verification-contract.cjs...\nerror: while searching for:\nrequireText(verify, '\"SYSGRID_CANONICAL_GATE=1\"', 'verify-app.sh must enable canonical-gate mode')\nrequireText(verify, '\"SYSGRID_EXPECTED_FRONTEND_ORIGIN=$FRONTEND_ORIGIN\"', 'verify-app.sh must declare the expected frontend origin')\nrequireText(verify, '\"SYSGRID_EXPECTED_API_BASE=$BACKEND_ORIGIN/api/v1\"', 'verify-app.sh must declare the expected API base')\nrequireText(verify, 'assert_local_playwright_runtime', 'verify-app.sh must verify the exact local Playwright package identity before expensive application verification')\nrequireText(verify, \"require('./node_modules/@playwright/test/package.json').version\", 'verify-app.sh must inspect the local @playwright/test version')\nrequireText(verify, \"require('./node_modules/playwright/package.json').version\", 'verify-app.sh must inspect the local Playwright runner",
+    "reverse_exit_code": 1
+  },
+  "storage": {
+    "control_free": 57441992704,
+    "local_free": 57441992704,
+    "required": 536870912
+  }
+}

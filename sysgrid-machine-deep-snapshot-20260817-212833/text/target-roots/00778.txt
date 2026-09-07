@@ -1,0 +1,10 @@
+ORIGINAL_PATH: /Users/haewonkim/.local/state/sysgrid-supervisor/runs/20260805T120932Z-1024-503000/diagnostic/TRACEBACK.txt
+ORIGINAL_SHA256: 782a40d07ad739176770dcb20796894861a7fe13676acff4f29be9e6974c249a
+================================================================================
+Traceback (most recent call last):
+  File "/Users/haewonkim/.local/share/sysgrid-campaign-platform/v1.1.1/payload/sysgrid_supervisor.py", line 2790, in run_supervised
+    original = select_capsule(capsule_arg, control)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/haewonkim/.local/share/sysgrid-campaign-platform/v1.1.1/payload/sysgrid_supervisor.py", line 1706, in select_capsule
+    raise SupervisorError("CAPSULE_SELECTION_FAILURE", "Inbox must contain one capsule; found 0", 66)
+SupervisorError: Inbox must contain one capsule; found 0

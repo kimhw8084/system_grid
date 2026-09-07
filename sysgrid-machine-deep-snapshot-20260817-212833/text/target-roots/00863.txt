@@ -1,0 +1,34 @@
+ORIGINAL_PATH: /Users/haewonkim/.local/state/sysgrid-supervisor/runs/20260803T185133Z-77095-478000/preflight.json
+ORIGINAL_SHA256: 367dd0ac614d5320b34b3da0ec6f9386908826a6538afd9f1525e6c76164d5c6
+================================================================================
+{
+  "declared_state": {
+    "dirty_path_count": 95,
+    "pre_hash_count": 95,
+    "protected_hash_count": 93
+  },
+  "engine_self_test": {
+    "engine_version": "1.1.1",
+    "result": "PASS",
+    "tests": [
+      "safe-path",
+      "manifest",
+      "corruption",
+      "canonical-dirty-paths",
+      "aggregate-recipes"
+    ]
+  },
+  "patch": {
+    "applicable": true,
+    "forward_diagnostic": "Checking patch frontend/src/components/FAR.tsx...\nChecking patch frontend/src/components/shared/OperationalDataGrid.tsx...",
+    "forward_exit_code": 0,
+    "reverse_applicable": false,
+    "reverse_diagnostic": "Checking patch frontend/src/components/shared/OperationalDataGrid.tsx...\nerror: while searching for:\n      loadingLabel={loadingLabel}\n      variant={surfaceVariant}\n    >\n      <div className=\"flex min-h-0 min-w-0 w-full max-w-full flex-1 flex-col overflow-hidden\">\n        {notice}\n        <div className=\"min-h-0 min-w-0 w-full max-w-full flex-1 overflow-hidden\">\n          <OperationalGridMatrix\n            gridRef={gridRef}\n            rowData={rows}\n\nerror: patch failed: frontend/src/components/shared/OperationalDataGrid.tsx:158\nerror: frontend/src/components/shared/OperationalDataGrid.tsx: patch does not apply\nChecking patch frontend/src/components/FAR.tsx...\nerror: while searching for:\n                <button\n                  type=\"button\"\n                  onClick={() => setShowInsights(false)}\n                  aria-label=\"Close reliability panel\"\n                  title=\"Close reliability panel\"\n                  className=\"relative z-[121] rounded-lg border border-white/10 bg-white/5 p-2 text-slate-400 transition-colors hover:bg-white/10 hover:text-white\"\n                >\n                  <X size={16} />\n\nerror: patch failed: frontend/src/components/FAR.tsx:1218\nerror: frontend/src/components/FAR.tsx: patch does not apply",
+    "reverse_exit_code": 1
+  },
+  "storage": {
+    "control_free": 56553652224,
+    "local_free": 56553652224,
+    "required": 3221225472
+  }
+}

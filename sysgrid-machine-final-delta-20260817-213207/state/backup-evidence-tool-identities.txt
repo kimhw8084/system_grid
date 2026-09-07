@@ -1,0 +1,100 @@
+
+============================================================
+/Users/haewonkim/Library/Application Support/SysGridDelivery/backups
+============================================================
+ddedf449116fbbdfd306c7772df7c775215589060ed68e15e68d380a17ac0fd4  441  /Users/haewonkim/Library/Application Support/SysGridDelivery/backups/20260808T032451Z/legacy-inbound-config.json
+560e2ab91d09969740280daf04ac82f9f29ffb5781ace5b1598dabf2053ac639  186  /Users/haewonkim/Library/Application Support/SysGridDelivery/backups/20260808T032451Z/sgwatch.legacy
+3c0d29a38f312eacf97889879b9ee3bb8661411d76bd25f035e3e6185a38073a  306  /Users/haewonkim/Library/Application Support/SysGridDelivery/backups/20260808T032451Z/control-repository.previous/.git/config
+86b1dd3c05421bca6f86751b4399d9170bf2f3cc03c7b4ba36903fd4bf346869  41  /Users/haewonkim/Library/Application Support/SysGridDelivery/backups/20260808T032451Z/control-repository.previous/.git/shallow
+28d25bf82af4c0e2b72f50959b2beb859e3e60b9630a5e8c603dad4ddb2b6e80  21  /Users/haewonkim/Library/Application Support/SysGridDelivery/backups/20260808T032451Z/control-repository.previous/.git/HEAD
+85ab6c163d43a17ea9cf7788308bca1466f1b0a8d1cc92e26e9bf63da4062aee  73  /Users/haewonkim/Library/Application Support/SysGridDelivery/backups/20260808T032451Z/control-repository.previous/.git/description
+c90e59119690cf160131acc17386d0472b0206ff8c177c367609b8701bf31785  112  /Users/haewonkim/Library/Application Support/SysGridDelivery/backups/20260808T032451Z/control-repository.previous/.git/packed-refs
+1fe82ed54c2df1b0820648109db6ea94d0333962fb9595a825a803be8e80d0ad  100  /Users/haewonkim/Library/Application Support/SysGridDelivery/backups/20260808T032451Z/control-repository.previous/.git/FETCH_HEAD
+b9803f51be11c75f5b3a9356787984af036f8b8838d61e5a006cea1f7b483f56  2556  /Users/haewonkim/Library/Application Support/SysGridDelivery/backups/20260808T032451Z/sg.legacy
+ddedf449116fbbdfd306c7772df7c775215589060ed68e15e68d380a17ac0fd4  441  /Users/haewonkim/Library/Application Support/SysGridDelivery/backups/20260808T032403Z/legacy-inbound-config.json
+560e2ab91d09969740280daf04ac82f9f29ffb5781ace5b1598dabf2053ac639  186  /Users/haewonkim/Library/Application Support/SysGridDelivery/backups/20260808T032403Z/sgwatch.legacy
+3c0d29a38f312eacf97889879b9ee3bb8661411d76bd25f035e3e6185a38073a  306  /Users/haewonkim/Library/Application Support/SysGridDelivery/backups/20260808T032403Z/control-repository.previous/.git/config
+86b1dd3c05421bca6f86751b4399d9170bf2f3cc03c7b4ba36903fd4bf346869  41  /Users/haewonkim/Library/Application Support/SysGridDelivery/backups/20260808T032403Z/control-repository.previous/.git/shallow
+28d25bf82af4c0e2b72f50959b2beb859e3e60b9630a5e8c603dad4ddb2b6e80  21  /Users/haewonkim/Library/Application Support/SysGridDelivery/backups/20260808T032403Z/control-repository.previous/.git/HEAD
+85ab6c163d43a17ea9cf7788308bca1466f1b0a8d1cc92e26e9bf63da4062aee  73  /Users/haewonkim/Library/Application Support/SysGridDelivery/backups/20260808T032403Z/control-repository.previous/.git/description
+c90e59119690cf160131acc17386d0472b0206ff8c177c367609b8701bf31785  112  /Users/haewonkim/Library/Application Support/SysGridDelivery/backups/20260808T032403Z/control-repository.previous/.git/packed-refs
+1fe82ed54c2df1b0820648109db6ea94d0333962fb9595a825a803be8e80d0ad  100  /Users/haewonkim/Library/Application Support/SysGridDelivery/backups/20260808T032403Z/control-repository.previous/.git/FETCH_HEAD
+b9803f51be11c75f5b3a9356787984af036f8b8838d61e5a006cea1f7b483f56  2556  /Users/haewonkim/Library/Application Support/SysGridDelivery/backups/20260808T032403Z/sg.legacy
+ddedf449116fbbdfd306c7772df7c775215589060ed68e15e68d380a17ac0fd4  441  /Users/haewonkim/Library/Application Support/SysGridDelivery/backups/20260808T033850Z/legacy-inbound-config.json
+976ebfd3dbaa7a93892a3305503184911edf2124f0c8806741c05b89a8b1b599  839  /Users/haewonkim/Library/Application Support/SysGridDelivery/backups/20260808T033850Z/com.sysgrid.public-relay.plist
+560e2ab91d09969740280daf04ac82f9f29ffb5781ace5b1598dabf2053ac639  186  /Users/haewonkim/Library/Application Support/SysGridDelivery/backups/20260808T033850Z/sgwatch.legacy
+1fe6204341b5a108a1006290088ea6d73335e30c43b65d7dcd51d06b62489c02  1194  /Users/haewonkim/Library/Application Support/SysGridDelivery/backups/20260808T033850Z/actions.runner.kimhw8084-system_grid.sysgrid-relay-HaeBook-Pro-M3-1785852110.plist
+3c0d29a38f312eacf97889879b9ee3bb8661411d76bd25f035e3e6185a38073a  306  /Users/haewonkim/Library/Application Support/SysGridDelivery/backups/20260808T033850Z/control-repository.previous/.git/config
+86b1dd3c05421bca6f86751b4399d9170bf2f3cc03c7b4ba36903fd4bf346869  41  /Users/haewonkim/Library/Application Support/SysGridDelivery/backups/20260808T033850Z/control-repository.previous/.git/shallow
+28d25bf82af4c0e2b72f50959b2beb859e3e60b9630a5e8c603dad4ddb2b6e80  21  /Users/haewonkim/Library/Application Support/SysGridDelivery/backups/20260808T033850Z/control-repository.previous/.git/HEAD
+85ab6c163d43a17ea9cf7788308bca1466f1b0a8d1cc92e26e9bf63da4062aee  73  /Users/haewonkim/Library/Application Support/SysGridDelivery/backups/20260808T033850Z/control-repository.previous/.git/description
+c90e59119690cf160131acc17386d0472b0206ff8c177c367609b8701bf31785  112  /Users/haewonkim/Library/Application Support/SysGridDelivery/backups/20260808T033850Z/control-repository.previous/.git/packed-refs
+1fe82ed54c2df1b0820648109db6ea94d0333962fb9595a825a803be8e80d0ad  100  /Users/haewonkim/Library/Application Support/SysGridDelivery/backups/20260808T033850Z/control-repository.previous/.git/FETCH_HEAD
+b9803f51be11c75f5b3a9356787984af036f8b8838d61e5a006cea1f7b483f56  2556  /Users/haewonkim/Library/Application Support/SysGridDelivery/backups/20260808T033850Z/sg.legacy
+401fa6bc7a75369682a1e164b03d469d3d1a93790b93baf90342d36696380741  32055  /Users/haewonkim/Library/Application Support/SysGridDelivery/backups/rc4-20260808T162359Z/sg_runner.py.rc3
+8568fbb49e3664076d4f3c4871bfa520c675f6cc80f4be54dc9649d3a69b9360  147  /Users/haewonkim/Library/Application Support/SysGridDelivery/backups/rc4-20260808T162359Z/sg.rc3
+9cc8c902eeca3903c80383e85b623f8576b4e17be531632a92c4d9a5a365837f  2101  /Users/haewonkim/Library/Application Support/SysGridDelivery/backups/rc4-20260808T162359Z/sg_git_credential.py.rc3
+133387782aab8d910b976ffb35be10f445ee5f5c77a0ea9263fc581eb096d9c0  34108  /Users/haewonkim/Library/Application Support/SysGridDelivery/backups/rc4-20260808T162359Z/sg_cli.py.rc3
+0c4b93042c69ebc0fb1aae1342239ccbd13c3f82dd54f4c5dd5debbbcf6948c8  1208  /Users/haewonkim/Library/Application Support/SysGridDelivery/backups/rc4-20260808T162359Z/config.json.rc3
+ddedf449116fbbdfd306c7772df7c775215589060ed68e15e68d380a17ac0fd4  441  /Users/haewonkim/Library/Application Support/SysGridDelivery/backups/20260808T031752Z/legacy-inbound-config.json
+560e2ab91d09969740280daf04ac82f9f29ffb5781ace5b1598dabf2053ac639  186  /Users/haewonkim/Library/Application Support/SysGridDelivery/backups/20260808T031752Z/sgwatch.legacy
+b9803f51be11c75f5b3a9356787984af036f8b8838d61e5a006cea1f7b483f56  2556  /Users/haewonkim/Library/Application Support/SysGridDelivery/backups/20260808T031752Z/sg.legacy
+
+============================================================
+/Users/haewonkim/Library/Application Support/SysGridDelivery/fastpath-backups
+============================================================
+2366df3008d2785a341b0896fff9d5105e47394ade98fd26f0129d61eb04866d  795  /Users/haewonkim/Library/Application Support/SysGridDelivery/fastpath-backups/recovery-20260813T221058Z/ACTIVATION.json
+800bd87a59d46572cd1d218d4c01857e97080838d5ee54d349c25f257191d00b  53402  /Users/haewonkim/Library/Application Support/SysGridDelivery/fastpath-backups/recovery-20260813T221058Z/observed_sg_runner.py
+9c59c63dd0702f4d0bd507fbeaae405034368d18a4d6123c851ffbf68e48e53b  1292  /Users/haewonkim/Library/Application Support/SysGridDelivery/fastpath-backups/recovery-20260813T221058Z/config.json
+2366df3008d2785a341b0896fff9d5105e47394ade98fd26f0129d61eb04866d  795  /Users/haewonkim/Library/Application Support/SysGridDelivery/fastpath-backups/20260813T220703Z/ACTIVATION.json
+9c59c63dd0702f4d0bd507fbeaae405034368d18a4d6123c851ffbf68e48e53b  1292  /Users/haewonkim/Library/Application Support/SysGridDelivery/fastpath-backups/20260813T220703Z/config.json
+12a03b9f5f95f8640b3cf8e80ac18aa93bae3dbe3de61193ce04eb756718b244  50614  /Users/haewonkim/Library/Application Support/SysGridDelivery/fastpath-backups/20260813T220703Z/sg_runner.py
+
+============================================================
+/Users/haewonkim/Library/Application Support/SysGridDelivery/evidence
+============================================================
+0d8bbc7f2009a1ef737d2f130fa2dccbe08f9071de7d44e186f1b34ebf71442f  578  /Users/haewonkim/Library/Application Support/SysGridDelivery/evidence/20260811T150741Z-8ef35ca8/candidate-far-src5-operable-grid-tdre/candidate-vite.log
+f3684f04c633c0186d4745ebdc42ecebd20407fd9c05861416fbbda5050293cc  705  /Users/haewonkim/Library/Application Support/SysGridDelivery/evidence/20260808T230608Z-8099ec4d/candidate-far-tdre/candidate-vite.log
+4fb6414343ed959bd019ac4c424966456bcb43a7ba362059e4f482c1ccd14ee8  307  /Users/haewonkim/Library/Application Support/SysGridDelivery/evidence/20260809T021832Z-e78d27e1/candidate-far-tdre/candidate-vite.log
+159318a986cfe98c96497599b7d2053415fa862f09d2b8d549329c40cb3d105b  3465  /Users/haewonkim/Library/Application Support/SysGridDelivery/evidence/20260809T021832Z-e78d27e1/candidate-far-tdre/capture.cjs
+bb7901177ff0aa02f60a64dd0a450859a2ce0ca40e998714077d74e6b65bf513  276  /Users/haewonkim/Library/Application Support/SysGridDelivery/evidence/20260809T021832Z-e78d27e1/candidate-far-tdre/capture.json
+fbae5b7e5cd122cd0f8e97461503bef4313b0d2fc6a4d45c1af9daa8d97d3642  47201  /Users/haewonkim/Library/Application Support/SysGridDelivery/evidence/20260809T021832Z-e78d27e1/candidate-far-tdre/far.jpg
+159318a986cfe98c96497599b7d2053415fa862f09d2b8d549329c40cb3d105b  3465  /Users/haewonkim/Library/Application Support/SysGridDelivery/evidence/20260809T021832Z-e78d27e1/operator-far-tdre/capture.cjs
+b6a3233c1ae758c5052e35c82c890b45c86ed5d602d8608a535d63cc44836165  274  /Users/haewonkim/Library/Application Support/SysGridDelivery/evidence/20260809T021832Z-e78d27e1/operator-far-tdre/capture.json
+98d20064fa56e1d3101235fc96ed25982c618cc1ca642f7eb22cd2d2a5e41e15  45772  /Users/haewonkim/Library/Application Support/SysGridDelivery/evidence/20260809T021832Z-e78d27e1/operator-far-tdre/far.jpg
+64242142c3b932c818c234e5c25d76e822e49c8c45491b3ded16fc4750c01d8e  307  /Users/haewonkim/Library/Application Support/SysGridDelivery/evidence/20260808T203215Z-310a8fb7/candidate-far-tdre/candidate-vite.log
+159318a986cfe98c96497599b7d2053415fa862f09d2b8d549329c40cb3d105b  3465  /Users/haewonkim/Library/Application Support/SysGridDelivery/evidence/20260808T203215Z-310a8fb7/candidate-far-tdre/capture.cjs
+f9f490385362eeadb0c5ea2a2d7ca8de14ad07d0f8bcea4c943c2b5b224383e7  276  /Users/haewonkim/Library/Application Support/SysGridDelivery/evidence/20260808T203215Z-310a8fb7/candidate-far-tdre/capture.json
+728299bc01b58a11a256be66468f7705adee45905441fe89174b6148c86eb95b  47227  /Users/haewonkim/Library/Application Support/SysGridDelivery/evidence/20260808T203215Z-310a8fb7/candidate-far-tdre/far.jpg
+3413985e6d6b039eb9332a3794a12375350d9089bd047ad3caeace2cf26700d6  639  /Users/haewonkim/Library/Application Support/SysGridDelivery/evidence/20260812T134903Z-754d5461/candidate-far-src8-self-seeded-runtime-tdre/candidate-vite.log
+a4049909d4905393aa3d2123d3ce2ce06d085dfe9883c322d5295fe71dc95c5f  388  /Users/haewonkim/Library/Application Support/SysGridDelivery/evidence/20260812T023436Z-ca48ea75/candidate-far-src7-pregrid-sanitization-tdre/candidate-vite.log
+159318a986cfe98c96497599b7d2053415fa862f09d2b8d549329c40cb3d105b  3465  /Users/haewonkim/Library/Application Support/SysGridDelivery/evidence/20260812T152822Z-a4cd52e8/operator-far-accepted-visual-audit/capture.cjs
+8378e635546e62c4f6b570c424237e7e77607d7034ab31946fb443f02e6b2a1e  291  /Users/haewonkim/Library/Application Support/SysGridDelivery/evidence/20260812T152822Z-a4cd52e8/operator-far-accepted-visual-audit/capture.json
+8c4bc64adfd33c6c4b5a384e21ae9e42edbb7ebee4062631f97bcec287f671e8  64239  /Users/haewonkim/Library/Application Support/SysGridDelivery/evidence/20260812T152822Z-a4cd52e8/operator-far-accepted-visual-audit/far.jpg
+68d46516ed50fbd72d088db20ca4862f97cc89fc97d718a0da894e34cde142f4  309  /Users/haewonkim/Library/Application Support/SysGridDelivery/evidence/20260809T034335Z-73f68088/candidate-far-visible-grid-tdre/candidate-vite.log
+159318a986cfe98c96497599b7d2053415fa862f09d2b8d549329c40cb3d105b  3465  /Users/haewonkim/Library/Application Support/SysGridDelivery/evidence/20260809T034335Z-73f68088/candidate-far-visible-grid-tdre/capture.cjs
+985924c2098a00163b85bb5745e57b40e65df903088fe7b023888d79b0a2ab9b  289  /Users/haewonkim/Library/Application Support/SysGridDelivery/evidence/20260809T034335Z-73f68088/candidate-far-visible-grid-tdre/capture.json
+29e6bb4c3cce1609f1fb67ac13a78802ed0b2ea5f40f1fe1e5d5fc65b4e79bb8  56302  /Users/haewonkim/Library/Application Support/SysGridDelivery/evidence/20260809T034335Z-73f68088/candidate-far-visible-grid-tdre/far.jpg
+84e49f50ccb24eaed16ca33fbb15b8eef9d617d1f02034ef7d8274542cc6ccc2  189  /Users/haewonkim/Library/Application Support/SysGridDelivery/evidence/20260809T020524Z-900b3cb7/candidate-far-tdre/candidate-vite.log
+159318a986cfe98c96497599b7d2053415fa862f09d2b8d549329c40cb3d105b  3465  /Users/haewonkim/Library/Application Support/SysGridDelivery/evidence/20260809T020524Z-900b3cb7/operator-far-tdre/capture.cjs
+24a69f97901311ac527f03313b79a0cc7bac9dd9abcbcd7e0816c2fde38c01b1  274  /Users/haewonkim/Library/Application Support/SysGridDelivery/evidence/20260809T020524Z-900b3cb7/operator-far-tdre/capture.json
+2c53b6fa065303b39ca2313f355d286db208f2051d213398b97ff34b20d31115  45748  /Users/haewonkim/Library/Application Support/SysGridDelivery/evidence/20260809T020524Z-900b3cb7/operator-far-tdre/far.jpg
+45c375aa391ad67e33243b7a7780dbc4b6b0603f0d3e01abafae1d532b899b16  248  /Users/haewonkim/Library/Application Support/SysGridDelivery/evidence/20260808T180149Z-a6de7bba/candidate-far-tdre/candidate-vite.log
+159318a986cfe98c96497599b7d2053415fa862f09d2b8d549329c40cb3d105b  3465  /Users/haewonkim/Library/Application Support/SysGridDelivery/evidence/20260808T180149Z-a6de7bba/candidate-far-tdre/capture.cjs
+123280170806f4ecc2f55e02b81ae354703759a9dba4f47785f9b4b71dd945e6  276  /Users/haewonkim/Library/Application Support/SysGridDelivery/evidence/20260808T180149Z-a6de7bba/candidate-far-tdre/capture.json
+cf6450707a4e71a2df7e32f07735a20a98c25339f4e58d6fefe0832c0a6c8e8d  47231  /Users/haewonkim/Library/Application Support/SysGridDelivery/evidence/20260808T180149Z-a6de7bba/candidate-far-tdre/far.jpg
+4b95e5cba8d9c1269f220a797d37d5f959ce8ee6f15e28cda2ae6211af60e430  653  /Users/haewonkim/Library/Application Support/SysGridDelivery/evidence/20260808T170935Z-3d6f9f2c/candidate-far-tdre/candidate-vite.log
+159318a986cfe98c96497599b7d2053415fa862f09d2b8d549329c40cb3d105b  3465  /Users/haewonkim/Library/Application Support/SysGridDelivery/evidence/20260808T170935Z-3d6f9f2c/operator-far-tdre/capture.cjs
+d65fef6121e4268c949c1d39d7473d636bb920d3e60ca5ed8952c8aafb0cc0e8  274  /Users/haewonkim/Library/Application Support/SysGridDelivery/evidence/20260808T170935Z-3d6f9f2c/operator-far-tdre/capture.json
+4fd3bc656217833c8469133dd239794ac85f90eb04a35f2080f26db005cbb200  45766  /Users/haewonkim/Library/Application Support/SysGridDelivery/evidence/20260808T170935Z-3d6f9f2c/operator-far-tdre/far.jpg
+159318a986cfe98c96497599b7d2053415fa862f09d2b8d549329c40cb3d105b  3465  /Users/haewonkim/Library/Application Support/SysGridDelivery/evidence/20260812T175225Z-7fc5f449/operator-far-accepted-visual-audit-fresh-runtime/capture.cjs
+96198614cf707b2aaae1d2910bfc0a7de5de21e9b8346d9423cce4e42141257a  305  /Users/haewonkim/Library/Application Support/SysGridDelivery/evidence/20260812T175225Z-7fc5f449/operator-far-accepted-visual-audit-fresh-runtime/capture.json
+3b2a0f7c7338b409c2a94058e7650e5551338c87e3b920c4dcdeafb437aff87e  67964  /Users/haewonkim/Library/Application Support/SysGridDelivery/evidence/20260812T175225Z-7fc5f449/operator-far-accepted-visual-audit-fresh-runtime/far.jpg
+8d8b7ccfbaca072e44c67b96cfa1b4a282bd7cc4909e7a644d3b040b0476f9b2  565  /Users/haewonkim/Library/Application Support/SysGridDelivery/evidence/20260811T204006Z-cbae6197/candidate-far-src6-durable-operable-grid-tdre/candidate-vite.log
+
+============================================================
+/Users/haewonkim/Library/Application Support/SysGridDelivery/tools
+============================================================
+4f9bc1a5e77500737290a307b40b4c396a4d23729f55340f2a83f414410165a1  13778337  /Users/haewonkim/Library/Application Support/SysGridDelivery/tools/gh_2.94.0_macOS_arm64.zip
+50463bbdc2249dde4c88c2b150d4b82de373e7114e31b09fceaef02b46dc2e1f  38359616  /Users/haewonkim/Library/Application Support/SysGridDelivery/tools/gh-2.94.0/gh
+ea800e164e940f8ab1d6ad21e4618249d8bb4e103439ed030b77677fa132acce  65  /Users/haewonkim/Library/Application Support/SysGridDelivery/tools/gh-2.94.0/ARCHIVE.sha256

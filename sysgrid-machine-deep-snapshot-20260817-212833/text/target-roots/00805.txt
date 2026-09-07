@@ -1,0 +1,34 @@
+ORIGINAL_PATH: /Users/haewonkim/.local/state/sysgrid-supervisor/runs/20260803T194207Z-19900-122000/preflight.json
+ORIGINAL_SHA256: ed25acf88a9eccc914a8849ca6a92789bc2f94e346995c794103e9a1621c134e
+================================================================================
+{
+  "declared_state": {
+    "dirty_path_count": 95,
+    "pre_hash_count": 95,
+    "protected_hash_count": 94
+  },
+  "engine_self_test": {
+    "engine_version": "1.1.1",
+    "result": "PASS",
+    "tests": [
+      "safe-path",
+      "manifest",
+      "corruption",
+      "canonical-dirty-paths",
+      "aggregate-recipes"
+    ]
+  },
+  "patch": {
+    "applicable": true,
+    "forward_diagnostic": "Checking patch frontend/src/components/FAR.tsx...",
+    "forward_exit_code": 0,
+    "reverse_applicable": false,
+    "reverse_diagnostic": "Checking patch frontend/src/components/FAR.tsx...\nerror: while searching for:\nimport { EnhancedRcaDetails } from './Research'\nimport { OperationalSavedViewsPanel, OperationalWorkspaceShell } from './shared/OperationalWorkspaceShells'\nimport { OperationalDataGrid } from './shared/OperationalDataGrid'\nimport { isOperationalAutoResizeSource } from './shared/OperationalGridSizing'\nimport { OperationalBulkPreviewModal } from './shared/OperationalBulkPreviewModal'\nimport { useOperationalBulkWorkflow } from './shared/useOperationalBulkWorkflow'\nimport { ToolbarButton, ToolbarGroup, ToolbarIconButton, ToolbarSearch } from './shared/LayoutPrimitives'\n\nerror: patch failed: frontend/src/components/FAR.tsx:24\nerror: frontend/src/components/FAR.tsx: patch does not apply",
+    "reverse_exit_code": 1
+  },
+  "storage": {
+    "control_free": 55681949696,
+    "local_free": 55681949696,
+    "required": 3221225472
+  }
+}

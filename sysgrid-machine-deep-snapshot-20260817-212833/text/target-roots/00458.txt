@@ -1,0 +1,16 @@
+ORIGINAL_PATH: /Users/haewonkim/.config/sysgrid-supervisor/config.json
+ORIGINAL_SHA256: 2822c385311dda44035018767578616a84f09477650cfc4e071b602bccb27577
+================================================================================
+{
+  "engine_path": "/Users/haewonkim/.local/lib/sysgrid-runner/1.0.4/sysgrid_runner.py",
+  "engine_sha256": "ab63bb20c0de32771e20b0159475205f685f28910a0956c217fb3693c02f96e1",
+  "engine_version": "1.0.4",
+  "installed_utc": "2026-08-01T22:49:17Z",
+  "supervisor_path": "/Users/haewonkim/.local/share/sysgrid-supervisor/v2.1.5/payload/sysgrid_supervisor.py",
+  "supervisor_version": "2.1.5",
+  "wrapper_sha256": {
+    "sg": "b282b1d85f7ad97da8b353eb565f5976d9e4952d44ac93c73a7a3e52d824f971",
+    "sgs": "b27c93978a88390459c87b404ce017d3fd46a1619f7233b1eae302d7233c76d3",
+    "sgwatch": "560e2ab91d09969740280daf04ac82f9f29ffb5781ace5b1598dabf2053ac639"
+  }
+}

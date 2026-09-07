@@ -1,0 +1,10 @@
+ORIGINAL_PATH: /Users/haewonkim/.local/share/sysgrid-campaign-platform/v1.0.0/templates/NEXT_CAMPAIGN_SEED.template.json
+ORIGINAL_SHA256: 0813bf62c90628065c09fca4431bd320947bbf73e693b5e13326c1815f4003cd
+================================================================================
+{
+  "schema_version": "1.0",
+  "campaign_id": "SYSGRID-CAMPAIGN-XXXX",
+  "act_now": [],
+  "material_decisions": [],
+  "deferred": []
+}

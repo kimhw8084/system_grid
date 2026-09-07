@@ -1,0 +1,34 @@
+ORIGINAL_PATH: /Users/haewonkim/.local/state/sysgrid-supervisor/runs/20260803T153234Z-11248-288000/preflight.json
+ORIGINAL_SHA256: bf727eefc00c3c1c791b86c23c985229b093b7ce8721db1b8409d25199a2aa87
+================================================================================
+{
+  "declared_state": {
+    "dirty_path_count": 95,
+    "pre_hash_count": 95,
+    "protected_hash_count": 93
+  },
+  "engine_self_test": {
+    "engine_version": "1.1.1",
+    "result": "PASS",
+    "tests": [
+      "safe-path",
+      "manifest",
+      "corruption",
+      "canonical-dirty-paths",
+      "aggregate-recipes"
+    ]
+  },
+  "patch": {
+    "applicable": true,
+    "forward_diagnostic": "Checking patch frontend/src/components/FAR.tsx...\nChecking patch frontend/src/components/shared/OperationalDataGrid.tsx...",
+    "forward_exit_code": 0,
+    "reverse_applicable": false,
+    "reverse_diagnostic": "Checking patch frontend/src/components/shared/OperationalDataGrid.tsx...\nerror: while searching for:\n      loadingLabel={loadingLabel}\n      variant={surfaceVariant}\n    >\n      <div className=\"flex min-h-0 flex-1 flex-col\">\n        {notice}\n        <div className=\"min-h-0 flex-1\">\n          <OperationalGridMatrix\n            gridRef={gridRef}\n            rowData={rows}\n            columnDefs={columnDefs}\n            autoSizeStrategy={autoSizeStrategy}\n            colResizeDefault=\"normal\"\n            fontSize={fontSize}\n            rowDensity={rowDensity}\n            context={context}\n            quickFilterText={quickFilterText}\n            getRowId={getRowId}\n            getRowClass={getRowClass}\n            selectionScopeKey={selectionScopeKey}\n            onGridReady={runtime.handleGridReady}\n            onSelectionChanged={onSelectionChanged}\n            onColumnResized={runtime.handleColumnResized}\n            onColumnMoved={runtime.handleColumnMoved}\n            onDragStopped={runtime.handleDragStopped}\n            onColumnPinned={runtime.handleColumnPinned}\n            onColumnVisible={runtime.handleColumnVisible}\n            onFilterChanged={runtime.handleFilterChanged}\n            onSortChanged={runtime.handleSortChanged}\n            onRowClicked={rowInteractions?.handleRowClicked}\n            onRowDoubleClicked={rowInteractions?.handleRowDoubleClicked}\n            onCellContextMenu={contextMenu?.handleCellContextMenu}\n            onFirstDataRendered={onFirstDataRendered}\n            onRowDataUpdated={onRowDataUpdated}\n            noRowsLabel={dataState?.noRowsLabel || noRowsLabel}\n            suppressRowClickSelection={suppressRowClickSelection}\n          />\n        </div>\n      </div>\n    </OperationalGridSurface>\n  )\n\nerror: patch failed: frontend/src/components/shared/OperationalDataGrid.tsx:158\nerror: frontend/src/components/shared/OperationalDataGrid.tsx: patch does not apply\nChecking patch frontend/src/components/FAR.tsx...\nerror: while searching f",
+    "reverse_exit_code": 1
+  },
+  "storage": {
+    "control_free": 56981688320,
+    "local_free": 56981688320,
+    "required": 3221225472
+  }
+}

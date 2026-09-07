@@ -1,0 +1,14 @@
+ORIGINAL_PATH: /Users/haewonkim/.local/share/sysgrid-supervisor/v2.0.2/CHANGELOG.md
+ORIGINAL_SHA256: 96808efda4fccdde76395379739a3da6ae974e569668e82379442e1750f0eba1
+================================================================================
+# Changelog
+
+## v2.0.2 — immutable history and quiet operator reporting
+
+- Preserves every artifact under a run-identified, content-addressed Outbox history.
+- Keeps the canonical product-review ZIP unchanged when a preflight or duplicate-run diagnostic is published.
+- Adds a separate `UPLOAD_DIAGNOSTIC_TO_CHATGPT.zip` alias and `sg recover-artifact <run-id>` without product replay.
+- Recognizes exact mutation post-state as an already-applied capsule and blocks duplicate execution before the engine starts.
+- Reduces Telegram to at most three summary messages: start with full attempt detail, one high-level verification update, and final completion/failure.
+- Retains all registered progress events, process metrics, and heartbeat telemetry locally for `sgs` and immutable evidence.
+- Existing exact-engine, cross-ledger, recovery, no-replay, atomic publication, resource, and evidence guarantees remain unchanged.

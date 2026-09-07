@@ -1,0 +1,14 @@
+ORIGINAL_PATH: /Users/haewonkim/.local/share/sysgrid-campaign-platform/v1.1.0/tests/test_engine_static.py
+ORIGINAL_SHA256: 0d955d6a8bd96235b5e6a5b9a0efd9daf3c0c0ccea61d5b87036187dd9eb1085
+================================================================================
+import ast, unittest
+from pathlib import Path
+class EngineStaticTests(unittest.TestCase):
+    def test_engine_and_supervisor_parse(self):
+        root=Path(__file__).resolve().parents[1]/"payload"
+        for name in ("sysgrid_runner.py","sysgrid_supervisor.py","sysgrid_campaign.py","sysgrid_state_identity.py"):
+            ast.parse((root/name).read_text())
+    def test_engine_version_and_aggregate(self):
+        text=(Path(__file__).resolve().parents[1]/"payload/sysgrid_runner.py").read_text()
+        self.assertIn('ENGINE_VERSION = "1.1.1"',text); self.assertIn('AGGREGATE_VERIFICATION_FAILURE',text); self.assertIn('SOURCE_AUTHORITY',text); self.assertIn('HANDOFF_METADATA_FILES',text)
+if __name__=="__main__": unittest.main()

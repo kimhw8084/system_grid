@@ -1,0 +1,327 @@
+ORIGINAL_PATH: /Users/haewonkim/.local/share/sysgrid-supervisor/v2.1.2/BUILD_PACKAGE.py
+ORIGINAL_SHA256: fe617f76df1b3b4011272c16ecfbfb86062298d5744f8b37587a73a85060e5c1
+================================================================================
+#!/usr/bin/env python3
+"""Deterministic builder/verifier for the immutable SysGrid supervisor package."""
+from __future__ import annotations
+
+import argparse
+import ast
+import hashlib
+import json
+import os
+import stat
+import subprocess
+import sys
+import tempfile
+import zipfile
+from pathlib import Path
+from typing import Any
+
+ROOT = Path(__file__).resolve().parent
+SOURCE_FILE = "RELEASE_SOURCE.json"
+DESCRIPTOR_FILE = "RELEASE_DESCRIPTOR.json"
+REPORT_FILE = "RELEASE_TEST_REPORT.json"
+MANIFEST_FILE = "MANIFEST.sha256"
+GENERATED_DOCS = ("README.md", "CHANGELOG.md", "RESEARCH_AND_DESIGN.md")
+TEST_FILES = ("payload/test_sysgrid_supervisor.py", "test_install_and_qualify.py")
+HASHED_SOURCE_FILES = (
+    "payload/sysgrid_supervisor.py",
+    "payload/test_sysgrid_supervisor.py",
+    "INSTALL_AND_QUALIFY.py",
+    "test_install_and_qualify.py",
+    "BUILD_PACKAGE.py",
+)
+
+
+def canonical_json(value: Any) -> bytes:
+    return (json.dumps(value, indent=2, sort_keys=True) + "\n").encode("utf-8")
+
+
+def sha256_bytes(data: bytes) -> str:
+    return hashlib.sha256(data).hexdigest()
+
+
+def sha256_file(path: Path) -> str:
+    h = hashlib.sha256()
+    with path.open("rb") as stream:
+        for chunk in iter(lambda: stream.read(1024 * 1024), b""):
+            h.update(chunk)
+    return h.hexdigest()
+
+
+def load_source(root: Path = ROOT) -> dict[str, Any]:
+    value = json.loads((root / SOURCE_FILE).read_text(encoding="utf-8"))
+    if not isinstance(value, dict) or value.get("schema_version") != "2.1":
+        raise RuntimeError("invalid RELEASE_SOURCE.json")
+    return value
+
+
+def count_tests(root: Path = ROOT) -> int:
+    count = 0
+    names: set[str] = set()
+    for rel in TEST_FILES:
+        tree = ast.parse((root / rel).read_text(encoding="utf-8"), filename=rel)
+        for node in ast.walk(tree):
+            if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)) and node.name.startswith("test_"):
+                key = f"{rel}:{node.name}:{node.lineno}"
+                if key in names:
+                    raise RuntimeError(f"duplicate test identity: {key}")
+                names.add(key)
+                count += 1
+    if count <= 0:
+        raise RuntimeError("no tests discovered")
+    return count
+
+
+def descriptor_value(root: Path = ROOT) -> dict[str, Any]:
+    source = load_source(root)
+    source_hashes = {rel: sha256_file(root / rel) for rel in HASHED_SOURCE_FILES}
+    return {
+        **source,
+        "derived": {
+            "generated_by": "BUILD_PACKAGE.py",
+            "test_count": count_tests(root),
+            "source_sha256": source_hashes,
+        },
+    }
+
+
+def release_report_value(descriptor: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "result": "PASS",
+        "supervisor_version": descriptor["supervisor_version"],
+        "engine_contract_version": descriptor["engine"]["version"],
+        "engine_contract_sha256": descriptor["engine"]["sha256"],
+        "tests": descriptor["derived"]["test_count"],
+        "source_sha256": descriptor["derived"]["source_sha256"],
+        "progress_event_count": len(descriptor["progress_events"]),
+        "qualification_contract": descriptor["qualification_contract"],
+    }
+
+
+def readme_bytes(descriptor: dict[str, Any]) -> bytes:
+    version = descriptor["supervisor_version"]
+    engine = descriptor["engine"]
+    heartbeat = descriptor["notification"]["heartbeat_seconds"]
+    event_count = len(descriptor["progress_events"])
+    name = descriptor["package"]["name"]
+    text = f"""# SysGrid Execution Supervisor v{version}
+
+This is the consolidated, fail-closed qualification candidate for exact SysGrid Stable Engine v{engine['version']} (`{engine['sha256']}`). Release identity, test count, progress events, resource policy, documentation, qualification evidence, and package metadata are generated from `RELEASE_SOURCE.json` into manifest-covered `RELEASE_DESCRIPTOR.json`.
+
+## Operator action
+
+```bash
+rm -rf {name}_v{version} && unzip -q {name}_v{version}.zip && cd {name}_v{version} && ./INSTALL_AND_QUALIFY.command
+```
+
+The installer discovers a byte-identical issued archive from bounded common locations regardless of filename or reconstructs the exact deterministic archive from the manifest-verified extracted tree. It then proves byte identity, runs the final-byte suite from released and staged trees, preserves the accepted Stable Engine, proves live Telegram delivery, installs atomically, and publishes one qualification ZIP. It never starts a product mutation.
+
+## Normal operation after independent PASS
+
+```bash
+sg
+sgs
+sgwatch
+sg notification-test
+sg recover-artifact <run-id>
+```
+
+## Consolidated guarantees
+
+- Capsule ZIP, manifest, schema, state ledgers, protected files, patch paths, recipes, delivery branch, and upstream are cross-checked before engine launch.
+- One exact engine invocation; complete output correlation; interrupted-run convergence; no ambiguous mutation replay.
+- Full local telemetry for {event_count} registered platform/product events, with at most three concise Telegram messages per run: start, high-level progress, and completion.
+- Engine health is sampled every {heartbeat} seconds for `sgs` and evidence, without Telegram heartbeat spam.
+- Every review or diagnostic ZIP is stored by content hash and immutable run identity; preflight diagnostics never overwrite the canonical product-review ZIP.
+- Exact post-state duplicate mutation launches are rejected before engine execution, and `sg recover-artifact <run-id>` republishes prior verified evidence without product replay.
+- Two execution profiles: `development_campaign` for fast risk-targeted cumulative work with no commit/push, and `promotion_qualification` for the one complete release-grade gate.
+- Declarative campaign target scope is validated before launch and exported to trusted recipes without granting runtime command authority.
+- Resource-budget exports for backend, frontend, and E2E workers; the capsule and trusted recipe remain authoritative for actual product parallelism.
+- Trusted recipes may append validated run-bound JSONL progress to `SYSGRID_PROGRESS_FILE`; malformed progress is recorded but cannot terminate or replay an already authorized run.
+- Runtime history captures command durations, event timeline, process metrics, resource plan, and progress diagnostics without altering engine evidence.
+- Evidence ZIPs store already-compressed media without redundant recompression and deterministically deflate text evidence.
+
+## Trust boundary
+
+The supervisor does not author product source, invent commands, skip gates, weaken assertions, force patches, commit, or push. Exact product mutation and delivery remain owned by the independently qualified Stable Engine and immutable capsule.
+"""
+    return text.encode("utf-8")
+
+
+def changelog_bytes(descriptor: dict[str, Any]) -> bytes:
+    version = descriptor["supervisor_version"]
+    text = f"""# Changelog
+
+## v{version} — campaign/promotion verification architecture
+
+- Adds `development_campaign` and `promotion_qualification` execution profiles while preserving one-command operator use.
+- Development campaigns require declarative changed-path/test/view scope, retain cumulative uncommitted state, and cannot claim acceptance or commit/push.
+- Promotion qualification remains the only profile permitted to perform the complete release gate, commit/push, remote equality, and acceptance.
+- Preserves every artifact under a run-identified, content-addressed Outbox history.
+- Keeps the canonical product-review ZIP unchanged when a preflight or duplicate-run diagnostic is published.
+- Adds a separate `UPLOAD_DIAGNOSTIC_TO_CHATGPT.zip` alias and `sg recover-artifact <run-id>` without product replay.
+- Recognizes exact mutation post-state as an already-applied capsule and blocks duplicate execution before the engine starts.
+- Reduces Telegram to at most three summary messages: start with full attempt detail, one high-level verification update, and final completion/failure.
+- Retains all registered progress events, process metrics, and heartbeat telemetry locally for `sgs` and immutable evidence.
+- Existing exact-engine, cross-ledger, recovery, no-replay, atomic publication, resource, and evidence guarantees remain unchanged.
+"""
+    return text.encode("utf-8")
+
+
+def research_bytes(descriptor: dict[str, Any]) -> bytes:
+    version = descriptor["supervisor_version"]
+    contract = "\n".join(f"- {item}" for item in descriptor["qualification_contract"])
+    text = f"""# Research and Design — SysGrid Supervisor v{version}
+
+## Objective
+
+Minimize operator loops and wall time without weakening source authority, tenant/permission safeguards, complete evidence, exact state proof, final application verification, or remote equality.
+
+## Architecture
+
+1. **Campaign/promotion separation.** Development campaigns run declared risk-targeted checks against cumulative retained state and cannot commit or claim acceptance. Promotion qualification runs the complete release matrix once the campaign is ready.
+2. **Immutable per-run evidence.** Every review and diagnostic ZIP is stored by SHA-256 and run identity. The fixed product-review alias is changed only by verified engine evidence; preflight diagnostics use a separate alias.
+3. **Duplicate mutation refusal.** When the repository exactly matches a mutation capsule's declared post-state, the supervisor classifies it as already applied and prohibits replay.
+4. **Artifact recovery without execution.** Runtime history and per-run state permit `sg recover-artifact <run-id>` to republish verified prior bytes without invoking the engine.
+5. **Quiet operator channel.** All internal events and two-minute health samples remain local. Telegram sends only start, one high-level progress summary, and final completion/failure.
+6. **Generated immutable release facts.** One source descriptor produces runtime policy, documentation, release report, manifest, and deterministic package.
+7. **Preserved execution trust.** Exact live-process reattachment, verified-output recovery, exact-prestate-only retry, post/unknown-state refusal, and bounded resource exports remain mandatory.
+
+## Qualification contract
+
+{contract}
+
+## Honest boundary
+
+Telegram delivery remains durably deduplicated at-least-once. The three-message policy is an operator presentation layer only; it does not remove internal events, evidence, diagnostics, or fail-closed checks.
+"""
+    return text.encode("utf-8")
+
+
+def generated_files(root: Path = ROOT) -> dict[str, bytes]:
+    descriptor = descriptor_value(root)
+    return {
+        DESCRIPTOR_FILE: canonical_json(descriptor),
+        REPORT_FILE: canonical_json(release_report_value(descriptor)),
+        "README.md": readme_bytes(descriptor),
+        "CHANGELOG.md": changelog_bytes(descriptor),
+        "RESEARCH_AND_DESIGN.md": research_bytes(descriptor),
+    }
+
+
+def write_generated_files(root: Path = ROOT) -> None:
+    for rel, data in generated_files(root).items():
+        (root / rel).write_bytes(data)
+
+
+def regular_files(root: Path = ROOT) -> list[Path]:
+    files = []
+    for path in root.rglob("*"):
+        if not path.is_file() or path.is_symlink():
+            continue
+        if "__pycache__" in path.parts or path.suffix == ".pyc":
+            raise RuntimeError(f"generated bytecode prohibited: {path}")
+        if path.name == MANIFEST_FILE:
+            continue
+        files.append(path)
+    return sorted(files, key=lambda item: item.relative_to(root).as_posix())
+
+
+def manifest_bytes(root: Path = ROOT) -> bytes:
+    return ("\n".join(
+        f"{sha256_file(path)}  {path.relative_to(root).as_posix()}" for path in regular_files(root)
+    ) + "\n").encode("utf-8")
+
+
+def write_manifest(root: Path = ROOT) -> None:
+    (root / MANIFEST_FILE).write_bytes(manifest_bytes(root))
+
+
+def verify_generated_files(root: Path = ROOT) -> None:
+    expected = generated_files(root)
+    mismatches = [rel for rel, data in expected.items() if not (root / rel).is_file() or (root / rel).read_bytes() != data]
+    if mismatches:
+        raise RuntimeError(f"generated release files differ: {mismatches}")
+    if not (root / MANIFEST_FILE).is_file() or (root / MANIFEST_FILE).read_bytes() != manifest_bytes(root):
+        raise RuntimeError("MANIFEST.sha256 differs from generated complete-tree manifest")
+
+
+def deterministic_timestamp(descriptor: dict[str, Any]) -> tuple[int, int, int, int, int, int]:
+    date = str(descriptor["package"]["deterministic_timestamp"])
+    year, month, day = (int(part) for part in date[:10].split("-"))
+    return year, month, day, 0, 0, 0
+
+
+def build_zip(root: Path, destination: Path) -> None:
+    descriptor = json.loads((root / DESCRIPTOR_FILE).read_text(encoding="utf-8"))
+    prefix = f"{descriptor['package']['name']}_v{descriptor['supervisor_version']}"
+    timestamp = deterministic_timestamp(descriptor)
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    temp = destination.with_name(f".{destination.name}.tmp-{os.getpid()}")
+    if temp.exists():
+        temp.unlink()
+    with zipfile.ZipFile(temp, "w", compression=zipfile.ZIP_DEFLATED, compresslevel=9, allowZip64=True) as archive:
+        for path in sorted((p for p in root.rglob("*") if p.is_file()), key=lambda p: p.relative_to(root).as_posix()):
+            rel = path.relative_to(root).as_posix()
+            if "__pycache__" in path.parts or path.suffix == ".pyc":
+                raise RuntimeError(f"bytecode prohibited: {rel}")
+            info = zipfile.ZipInfo(f"{prefix}/{rel}")
+            info.date_time = timestamp
+            executable = rel in {
+                "INSTALL_AND_QUALIFY.command", "INSTALL_AND_QUALIFY.py", "BUILD_PACKAGE.py",
+                "payload/sysgrid_supervisor.py",
+            }
+            info.external_attr = (stat.S_IFREG | (0o755 if executable else 0o644)) << 16
+            info.create_system = 3
+            info.compress_type = zipfile.ZIP_DEFLATED
+            archive.writestr(info, path.read_bytes(), compress_type=zipfile.ZIP_DEFLATED, compresslevel=9)
+    os.replace(temp, destination)
+
+
+def run_tests(root: Path = ROOT) -> tuple[int, str]:
+    env = {**os.environ, "PYTHONDONTWRITEBYTECODE": "1", "PYTHONNOUSERSITE": "1"}
+    env["PYTHONPATH"] = os.pathsep.join([str(root), str(root / "payload")])
+    completed = subprocess.run(
+        [sys.executable, "-m", "unittest", "-v", "test_sysgrid_supervisor", "test_install_and_qualify"],
+        cwd=root,
+        env=env,
+        stdin=subprocess.DEVNULL,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+        text=True,
+        check=False,
+    )
+    if completed.returncode:
+        raise RuntimeError(completed.stdout)
+    return completed.returncode, completed.stdout
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--prepare", action="store_true", help="regenerate descriptor/docs/manifest before verification")
+    parser.add_argument("--output", type=Path)
+    parser.add_argument("--skip-tests", action="store_true")
+    args = parser.parse_args()
+    if args.prepare:
+        write_generated_files(ROOT)
+        write_manifest(ROOT)
+    verify_generated_files(ROOT)
+    expected_count = descriptor_value(ROOT)["derived"]["test_count"]
+    if not args.skip_tests:
+        _rc, output = run_tests(ROOT)
+        import re
+        matches = re.findall(r"^Ran (\d+) tests? in ", output, flags=re.MULTILINE)
+        if matches != [str(expected_count)]:
+            raise RuntimeError(f"test summary mismatch: expected {expected_count}, got {matches}")
+        print(output, end="")
+    output_path = args.output or ROOT.parent / f"{load_source(ROOT)['package']['name']}_v{load_source(ROOT)['supervisor_version']}.zip"
+    build_zip(ROOT, output_path)
+    print(f"Built {output_path}")
+    print(f"SHA-256: {sha256_file(output_path)}")
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

@@ -1,0 +1,388 @@
+ORIGINAL_PATH: /Users/haewonkim/.local/state/sysgrid-supervisor/runs/20260804T010704Z-54912-696000/diagnostic/SUPERVISOR_STATE.json
+ORIGINAL_SHA256: 07cff3571334d57e5d661a262094d7540a96492d7e75f1ec6ba8af7b9b9a52e9
+================================================================================
+{
+  "attempt": 13,
+  "capsule_cross_ledger": {
+    "changed_path_count": 1,
+    "execution_profile": "promotion_qualification",
+    "execution_scope": {
+      "changed_paths": [
+        "frontend/src/components/FAR.tsx"
+      ],
+      "execution_profile": "promotion_qualification",
+      "targeted_tests": [
+        "backend:far-mode-create-http-201-contract",
+        "playwright:far-golden-workspace",
+        "playwright:far-workflows",
+        "playwright:golden-eight-seeded-visual-matrix",
+        "playwright:far-chaos"
+      ],
+      "targeted_views": [
+        "monitoring",
+        "far"
+      ]
+    },
+    "patch_paths": [
+      "frontend/src/components/FAR.tsx"
+    ],
+    "post_path_count": 95,
+    "pre_path_count": 95,
+    "protected_path_count": 94,
+    "recipe_ids": [
+      "backend-pytest",
+      "frontend-build",
+      "frontend-typecheck",
+      "frontend-vitest",
+      "full-app-gate"
+    ]
+  },
+  "capsule_file": "SYSGRID_OUT31_PA13_PS2_FAR_BOUNDED_COLUMN_LIFECYCLE_CORRECTION_v1.0.0.sgcap",
+  "capsule_sha256": "93bb6a9f8925f9c8ba16bd49f89e8bcabcc6fb0088e9274370a8bda61e2c7434",
+  "capsule_size": 21708,
+  "capsule_stage": "Product Attempt 13 evidence-matched FAR bounded column lifecycle correction PS2",
+  "capsule_title": "Product Attempt 13 Product-Source Correction PS2 \u2014 bounded FAR auto-size lifecycle and width contracts",
+  "classification": "ENGINE_OUTPUT_MISSING",
+  "dirty_path_count": 95,
+  "engine_command": [
+    "/opt/anaconda3/bin/python3",
+    "<exact-engine>",
+    "execute",
+    "<exact-capsule>",
+    "--repo",
+    "/Users/haewonkim/home/development/sysgrid",
+    "--outbox",
+    "/Users/haewonkim/.local/state/sysgrid-supervisor/runs/20260804T010704Z-54912-696000/engine-outbox"
+  ],
+  "engine_completed": true,
+  "engine_completed_utc": "2026-08-04T01:18:07Z",
+  "engine_elapsed_seconds": 600.3,
+  "engine_exit_code": 74,
+  "engine_last_activity_age_seconds": 171.5365433692932,
+  "engine_last_heartbeat_utc": "2026-08-04T01:17:05Z",
+  "engine_path": "/Users/haewonkim/.local/share/sysgrid-runner/engine-v1.1.1/sysgrid_runner.py",
+  "engine_pid": 54951,
+  "engine_process_metrics": {
+    "available": true,
+    "cpu_percent": 181.7,
+    "process_count": 13,
+    "rss_bytes": 1639677952,
+    "states": [
+      "S   ",
+      "S+  ",
+      "Ss  "
+    ]
+  },
+  "engine_sha256": "66b082fec1e9f6c49152e5ecb4cbb3f998e60ce27d53a2325e5f658634a8d032",
+  "engine_stall_suspected": false,
+  "engine_started": true,
+  "engine_started_utc": "2026-08-04T01:07:05Z",
+  "event_timeline": [
+    {
+      "details": {},
+      "elapsed_seconds": 0.02,
+      "event_id": "capsule_selected",
+      "message": "Selecting the one immutable capsule and converging only byte-identical Inbox duplicates.",
+      "notification": {
+        "event_id": "capsule_selected",
+        "presentation_mode": "summary",
+        "required": false,
+        "status": "local_only",
+        "updated_utc": "2026-08-04T01:07:04Z"
+      },
+      "status": "started",
+      "utc": "2026-08-04T01:07:04Z"
+    },
+    {
+      "details": {
+        "changed_path_count": 1,
+        "execution_profile": "promotion_qualification",
+        "execution_scope": {
+          "changed_paths": [
+            "frontend/src/components/FAR.tsx"
+          ],
+          "execution_profile": "promotion_qualification",
+          "targeted_tests": [
+            "backend:far-mode-create-http-201-contract",
+            "playwright:far-golden-workspace",
+            "playwright:far-workflows",
+            "playwright:golden-eight-seeded-visual-matrix",
+            "playwright:far-chaos"
+          ],
+          "targeted_views": [
+            "monitoring",
+            "far"
+          ]
+        },
+        "patch_paths": [
+          "frontend/src/components/FAR.tsx"
+        ],
+        "post_path_count": 95,
+        "pre_path_count": 95,
+        "protected_path_count": 94,
+        "recipe_ids": [
+          "backend-pytest",
+          "frontend-build",
+          "frontend-typecheck",
+          "frontend-vitest",
+          "full-app-gate"
+        ]
+      },
+      "elapsed_seconds": 0.036,
+      "event_id": "capsule_verified",
+      "message": "Capsule archive, manifest, schema, patch identity, and cross-ledger contract are exact.",
+      "notification": {
+        "attempts": 1,
+        "chat_id_suffix": "1055",
+        "event_id": "run_started",
+        "first_attempt_utc": "2026-08-04T01:07:04Z",
+        "message_id": 589,
+        "payload_sha256": "17543f938e7a194c9f5190ed487c60a4a10afab38167f1ca921a22162b16f9bb",
+        "required": false,
+        "status": "delivered",
+        "updated_utc": "2026-08-04T01:07:05Z"
+      },
+      "status": "passed",
+      "utc": "2026-08-04T01:07:05Z"
+    },
+    {
+      "details": {},
+      "elapsed_seconds": 0.847,
+      "event_id": "preflight_started",
+      "message": "Running independent platform checks and exact repository-state proof.",
+      "notification": {
+        "event_id": "preflight_started",
+        "presentation_mode": "summary",
+        "required": false,
+        "status": "local_only",
+        "updated_utc": "2026-08-04T01:07:05Z"
+      },
+      "status": "started",
+      "utc": "2026-08-04T01:07:05Z"
+    },
+    {
+      "details": {
+        "dirty_paths": 95,
+        "head": "dbc3f870b5b37dbd53de7ac82697221270e19381",
+        "patch": {
+          "applicable": true,
+          "forward_diagnostic": "Checking patch frontend/src/components/FAR.tsx...",
+          "forward_exit_code": 0,
+          "reverse_applicable": false,
+          "reverse_diagnostic": "Checking patch frontend/src/components/FAR.tsx...\nerror: while searching for:\n        </div>\n      )\n    }\n  ].map((column: any) => {\n    const columnId = String(column.colId || column.field || '')\n    const explicitWidth = typeof column.width === 'number' && typeof column.flex !== 'number'\n      ? column.width\n      : null\n    const utilityWidthLocked = columnId === 'selection' || columnId === 'actions'\n\n    if (explicitWidth !== null) {\n      const boundedMaxWidth = utilityWidthLocked\n        ? explicitWidth\n        : Math.max(explicitWidth, Math.min(explicitWidth * 2, 320))\n      return {\n        ...column,\n        cellDataType: false,\n        initialWidth: explicitWidth,\n        minWidth: utilityWidthLocked ? explicitWidth : Math.min(explicitWidth, 80),\n        maxWidth: boundedMaxWidth,\n        suppressAutoSize: true,\n        suppressSizeToFit: true,\n      }\n    }\n\n    const flexBounds = columnId === 'title'\n      ? { minWidth: 260, maxWidth: 420 }\n      : columnId === 'effect'\n        ? { minWidth: 220, maxWidth: 420 }\n        : columnId === 'analytical_focus'\n          ? { minWidth: 240, maxWidth: 480 }\n          : {}\n\n    return {\n      ...column,\n      ...flexBounds,\n      cellDataType: false,\n      suppressAutoSize: true,\n    }\n  }), [fontSize, hiddenColumns, mutationBlocked, workspaceMode]) as any\n\n  const canonicalColumnLayoutState = useMemo(() => columnDefs.map((column: any, index: number) => {\n    const state: Record<string, any> = {\n\nerror: patch failed: frontend/src/components/FAR.tsx:936\nerror: frontend/src/components/FAR.tsx: patch does not apply",
+          "reverse_exit_code": 1
+        }
+      },
+      "elapsed_seconds": 1.348,
+      "event_id": "preflight_completed",
+      "message": "Exact engine, repository, storage, state, protected hashes, and patch state passed.",
+      "notification": {
+        "event_id": "preflight_completed",
+        "presentation_mode": "summary",
+        "required": false,
+        "status": "local_only",
+        "updated_utc": "2026-08-04T01:07:05Z"
+      },
+      "status": "passed",
+      "utc": "2026-08-04T01:07:05Z"
+    },
+    {
+      "details": {},
+      "elapsed_seconds": 1.35,
+      "event_id": "engine_launch",
+      "message": "Launching the exact Stable Engine once; ambiguous mutation replay remains prohibited.",
+      "notification": {
+        "event_id": "engine_launch",
+        "presentation_mode": "summary",
+        "required": false,
+        "status": "local_only",
+        "updated_utc": "2026-08-04T01:07:05Z"
+      },
+      "status": "started",
+      "utc": "2026-08-04T01:07:05Z"
+    },
+    {
+      "details": {
+        "engine_exit_code": 74
+      },
+      "elapsed_seconds": 662.797,
+      "event_id": "engine_completed",
+      "message": "Stable Engine exited with code 74; verifying its complete evidence.",
+      "notification": {
+        "event_id": "engine_completed",
+        "presentation_mode": "summary",
+        "required": false,
+        "status": "local_only",
+        "updated_utc": "2026-08-04T01:18:07Z"
+      },
+      "status": "failed",
+      "utc": "2026-08-04T01:18:07Z"
+    }
+  ],
+  "execution_profile": "promotion_qualification",
+  "execution_scope": {
+    "changed_paths": [
+      "frontend/src/components/FAR.tsx"
+    ],
+    "execution_profile": "promotion_qualification",
+    "targeted_tests": [
+      "backend:far-mode-create-http-201-contract",
+      "playwright:far-golden-workspace",
+      "playwright:far-workflows",
+      "playwright:golden-eight-seeded-visual-matrix",
+      "playwright:far-chaos"
+    ],
+    "targeted_views": [
+      "monitoring",
+      "far"
+    ]
+  },
+  "exit_code": 74,
+  "issue": "OUT-31",
+  "iteration": 14,
+  "last_progress_event": "engine_completed",
+  "last_progress_message": "Stable Engine exited with code 74; verifying its complete evidence.",
+  "last_progress_status": "failed",
+  "last_progress_utc": "2026-08-04T01:18:07Z",
+  "message": "engine did not create UPLOAD_THIS_TO_CHATGPT.zip",
+  "monotonic_started": 4078059.834412291,
+  "notification_events": {
+    "capsule_selected": {
+      "event_id": "capsule_selected",
+      "presentation_mode": "summary",
+      "required": false,
+      "status": "local_only",
+      "updated_utc": "2026-08-04T01:07:04Z"
+    },
+    "capsule_verified": {
+      "attempts": 1,
+      "chat_id_suffix": "1055",
+      "event_id": "run_started",
+      "first_attempt_utc": "2026-08-04T01:07:04Z",
+      "message_id": 589,
+      "payload_sha256": "17543f938e7a194c9f5190ed487c60a4a10afab38167f1ca921a22162b16f9bb",
+      "required": false,
+      "status": "delivered",
+      "updated_utc": "2026-08-04T01:07:05Z"
+    },
+    "engine-heartbeat-1": {
+      "event_id": "engine-heartbeat-1",
+      "presentation_mode": "summary",
+      "required": false,
+      "status": "local_only",
+      "updated_utc": "2026-08-04T01:12:06Z"
+    },
+    "engine-heartbeat-2": {
+      "event_id": "engine-heartbeat-2",
+      "presentation_mode": "summary",
+      "required": false,
+      "status": "local_only",
+      "updated_utc": "2026-08-04T01:17:05Z"
+    },
+    "engine_completed": {
+      "event_id": "engine_completed",
+      "presentation_mode": "summary",
+      "required": false,
+      "status": "local_only",
+      "updated_utc": "2026-08-04T01:18:07Z"
+    },
+    "engine_launch": {
+      "event_id": "engine_launch",
+      "presentation_mode": "summary",
+      "required": false,
+      "status": "local_only",
+      "updated_utc": "2026-08-04T01:07:05Z"
+    },
+    "preflight_completed": {
+      "event_id": "preflight_completed",
+      "presentation_mode": "summary",
+      "required": false,
+      "status": "local_only",
+      "updated_utc": "2026-08-04T01:07:05Z"
+    },
+    "preflight_started": {
+      "event_id": "preflight_started",
+      "presentation_mode": "summary",
+      "required": false,
+      "status": "local_only",
+      "updated_utc": "2026-08-04T01:07:05Z"
+    }
+  },
+  "notification_policy": {
+    "delivery_semantics": "durably-deduplicated-at-least-once",
+    "engine_heartbeat_seconds": 300,
+    "max_messages_per_run": 3,
+    "presentation_mode": "summary",
+    "registered_events": 21,
+    "required_before_engine": false,
+    "telegram_heartbeats": false
+  },
+  "original_capsule": "/Users/haewonkim/Library/Mobile Documents/com~apple~CloudDocs/SysGrid-Control/Inbox/SYSGRID_OUT31_PA13_PS2_FAR_BOUNDED_COLUMN_LIFECYCLE_CORRECTION_v1.0.0.sgcap",
+  "pid": 54912,
+  "preflight": {
+    "declared_state": {
+      "dirty_path_count": 95,
+      "pre_hash_count": 95,
+      "protected_hash_count": 94
+    },
+    "engine_self_test": {
+      "engine_version": "1.1.1",
+      "result": "PASS",
+      "tests": [
+        "safe-path",
+        "manifest",
+        "corruption",
+        "canonical-dirty-paths",
+        "aggregate-recipes"
+      ]
+    },
+    "patch": {
+      "applicable": true,
+      "forward_diagnostic": "Checking patch frontend/src/components/FAR.tsx...",
+      "forward_exit_code": 0,
+      "reverse_applicable": false,
+      "reverse_diagnostic": "Checking patch frontend/src/components/FAR.tsx...\nerror: while searching for:\n        </div>\n      )\n    }\n  ].map((column: any) => {\n    const columnId = String(column.colId || column.field || '')\n    const explicitWidth = typeof column.width === 'number' && typeof column.flex !== 'number'\n      ? column.width\n      : null\n    const utilityWidthLocked = columnId === 'selection' || columnId === 'actions'\n\n    if (explicitWidth !== null) {\n      const boundedMaxWidth = utilityWidthLocked\n        ? explicitWidth\n        : Math.max(explicitWidth, Math.min(explicitWidth * 2, 320))\n      return {\n        ...column,\n        cellDataType: false,\n        initialWidth: explicitWidth,\n        minWidth: utilityWidthLocked ? explicitWidth : Math.min(explicitWidth, 80),\n        maxWidth: boundedMaxWidth,\n        suppressAutoSize: true,\n        suppressSizeToFit: true,\n      }\n    }\n\n    const flexBounds = columnId === 'title'\n      ? { minWidth: 260, maxWidth: 420 }\n      : columnId === 'effect'\n        ? { minWidth: 220, maxWidth: 420 }\n        : columnId === 'analytical_focus'\n          ? { minWidth: 240, maxWidth: 480 }\n          : {}\n\n    return {\n      ...column,\n      ...flexBounds,\n      cellDataType: false,\n      suppressAutoSize: true,\n    }\n  }), [fontSize, hiddenColumns, mutationBlocked, workspaceMode]) as any\n\n  const canonicalColumnLayoutState = useMemo(() => columnDefs.map((column: any, index: number) => {\n    const state: Record<string, any> = {\n\nerror: patch failed: frontend/src/components/FAR.tsx:936\nerror: frontend/src/components/FAR.tsx: patch does not apply",
+      "reverse_exit_code": 1
+    },
+    "storage": {
+      "control_free": 55831519232,
+      "local_free": 55831519232,
+      "required": 3221225472
+    }
+  },
+  "product_progress_error": {
+    "classification": "PRODUCT_PROGRESS_FAILURE",
+    "message": "unregistered product progress event: static_started",
+    "utc": "2026-08-04T01:09:01Z"
+  },
+  "repo": "/Users/haewonkim/home/development/sysgrid",
+  "repo_branch": "main",
+  "repo_head": "dbc3f870b5b37dbd53de7ac82697221270e19381",
+  "resource_plan": {
+    "backend_workers": 5,
+    "cpu_count": 12,
+    "e2e_workers": 2,
+    "frontend_workers": 5,
+    "memory_bytes": 19327352832,
+    "preflight_workers": 24,
+    "reserve_memory_bytes": 2147483648,
+    "test_cpu_budget": 11,
+    "usable_memory_bytes": 17179869184
+  },
+  "run_id": "20260804T010704Z-54912-696000",
+  "safe_cleanup": {
+    "inspected": 0,
+    "removed": 0
+  },
+  "safe_retry_count": 0,
+  "stage": "output-verification",
+  "staged_capsule": "/Users/haewonkim/.local/state/sysgrid-supervisor/runs/20260804T010704Z-54912-696000/input/SYSGRID_OUT31_PA13_PS2_FAR_BOUNDED_COLUMN_LIFECYCLE_CORRECTION_v1.0.0.sgcap",
+  "started_utc": "2026-08-04T01:07:04Z",
+  "state": "FAILED_NO_ARTIFACT",
+  "telegram": {
+    "chat_id_suffix": "1055",
+    "configured": true,
+    "source": "/Users/haewonkim/.config/sysgrid-supervisor/telegram.json"
+  },
+  "work_dir": "/Users/haewonkim/.local/state/sysgrid-supervisor/runs/20260804T010704Z-54912-696000"
+}
