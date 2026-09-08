@@ -68,6 +68,18 @@ function evidenceCandidate(candidate, designSha256) {
   }
 }
 
+export function releaseCandidateRejection(candidate) {
+  if (candidateIsReleaseReady(candidate)) return null
+  return {
+    code: 'DIRTY_TRACKED_WORKTREE',
+    message: 'The release gate refuses to certify a tracked dirty working tree. Commit the exact candidate and rerun qualification.',
+    candidate_git_sha: candidate?.source_commit || null,
+    candidate_tree_sha: candidate?.source_tree || null,
+    tracked_worktree_dirty: candidate?.tracked_worktree_dirty ?? null,
+    tracked_dirty_paths: candidate?.tracked_dirty_paths || [],
+  }
+}
+
 async function makeEvidenceRecords({ design, candidate, coverageMap, checkResults, outputDir, fixtureId, environmentId }) {
   const records = []
   const fallback = path.join(outputDir, 'coverage-map.json')
@@ -166,15 +178,8 @@ export async function runProductionGate({ repoRoot = REPOSITORY_ROOT, profile = 
     deferred_requirement_ownership: Object.fromEntries(Object.entries(coverage.map).filter(([, item]) => item.phase_ownership?.owner_phase !== 'P12_AUTOMATED_PRODUCTION_GATE').map(([id, item]) => [id, item.phase_ownership])),
   })
 
-  if (profile === 'release' && !candidateIsReleaseReady(candidate)) {
-    const rejection = {
-      code: 'DIRTY_TRACKED_WORKTREE',
-      message: 'The release gate refuses to certify a tracked dirty working tree. Commit the exact candidate and rerun qualification.',
-      candidate_git_sha: candidate.source_commit,
-      candidate_tree_sha: candidate.source_tree,
-      tracked_worktree_dirty: candidate.tracked_worktree_dirty,
-      tracked_dirty_paths: candidate.tracked_dirty_paths,
-    }
+  const rejection = profile === 'release' ? releaseCandidateRejection(candidate) : null
+  if (rejection) {
     const result = {
       schema: 'sysgrid.pv1.production-gate-result.v1',
       phase: 'P12_AUTOMATED_PRODUCTION_GATE', profile, generated_at: new Date().toISOString(),

@@ -11,7 +11,7 @@ import { loadDesignPackage } from '../pv1/design-package.mjs'
 import { createGapMatrix, evaluateGate } from '../pv1/gap-matrix.mjs'
 import { discoverRetainedChecks } from '../pv1/retained-checks.mjs'
 import { validateEvidenceRecord } from '../pv1/evidence-validator.mjs'
-import { runProductionGate } from '../pv1/gate.mjs'
+import { releaseCandidateRejection, runProductionGate } from '../pv1/gate.mjs'
 
 const repoRoot = path.resolve(path.dirname(new URL(import.meta.url).pathname), '../..')
 
@@ -154,15 +154,10 @@ test('candidate identity ignores runtime and user-like files but invalidates tra
 })
 
 test('release gate refuses a tracked dirty candidate', async () => {
-  const outputDir = await mkdtemp(path.join(os.tmpdir(), 'sysgrid-pv1-dirty-gate-'))
-  try {
-    const result = await runProductionGate({ repoRoot, profile: 'release', outputDir })
-    assert.equal(result.verdict, 'FAIL')
-    assert.equal(result.rejection.code, 'DIRTY_TRACKED_WORKTREE')
-    assert.equal(result.candidate.tracked_worktree_dirty, true)
-  } finally {
-    await rm(outputDir, { recursive: true, force: true })
-  }
+  const cleanCandidate = await collectCandidateIdentity({ repoRoot })
+  const rejection = releaseCandidateRejection({ ...cleanCandidate, tracked_worktree_dirty: true, dirty_patch_sha256: 'c'.repeat(64), tracked_dirty_paths: ['fixture/tracked-change.ts'] })
+  assert.equal(rejection.code, 'DIRTY_TRACKED_WORKTREE')
+  assert.equal(rejection.tracked_worktree_dirty, true)
 })
 
 test('manual implemented=true is ignored without evidence', async () => {
