@@ -99,12 +99,12 @@ const PERF = {
 // performance proof.
 const P12_PERFORMANCE = {
   'PV-API-006': {
-    implementation: ['frontend/src/lib/api.ts', 'backend/app/main.py', 'scripts/pv1/prove-api-projection.py'],
+    implementation: ['frontend/src/api/apiClient.ts', 'backend/app/main.py', 'scripts/pv1/prove-api-projection.py'],
     checks: { integration: 'performance:api-projection', browser: 'browser:performance', performance: 'performance:api-projection' },
   },
   'PV-PERF-002': {
-    implementation: ['frontend/tests/pv1-performance-browser.spec.ts', 'scripts/pv1/run-p12-performance-browser.sh'],
-    checks: { performance: 'browser:performance', browser: 'browser:performance' },
+    implementation: ['frontend/tests/pv1-performance-browser.spec.ts', 'frontend/tests/pv1-architecture-performance-browser.spec.ts', 'scripts/proof-p07-architecture.sh'],
+    checks: { performance: 'browser:performance', browser: 'browser:architecture-performance' },
   },
   'PV-PERF-004': {
     implementation: ['scripts/pv1/run-p12-load.py', 'scripts/pv1/run-p12-load.sh'],
@@ -120,9 +120,19 @@ const DEFERRED_OWNERSHIP = {
   },
 }
 
+// These cells were previously backed by self-generated source-inventory
+// evidence. Each now has a requirement-specific executable/static proof. The
+// map is intentionally explicit so a new review cell cannot silently fall back
+// to an inventory file.
+export const REVIEW_CELL_PROVENANCE = Object.fromEntries([
+  'PV-CORE-002', 'PV-CORE-003', 'PV-CORE-004', 'PV-CORE-005', 'PV-NAV-001',
+  'PV-WORK-008', 'PV-ARCH-001', 'PV-DATA-004', 'PV-API-001', 'PV-SEC-004',
+  'PV-PERF-001', 'PV-GATE-001', 'PV-GATE-006', 'PV-MIG-001', 'PV-MIG-004',
+  'PV-MIG-005', 'PV-MIG-006', 'PV-REF-001', 'PV-EDGE-002',
+].map((id) => [id, `review:${id.toLowerCase()}`]))
+
 const GATE = {
   implementation: ['scripts/pv1/gate.mjs', 'scripts/pv1/gap-matrix.mjs'],
-  review: 'internal:source-inventory',
   gate: 'internal:coverage-map',
   integration: 'browser:matrix',
   browser: 'browser:matrix',
@@ -191,8 +201,8 @@ export function coverageFor(requirement) {
     if (type === 'human') continue
     if (type === 'journey' && journeyCheck) evidenceTypes[type] = journeyCheck
     else if (special?.checks?.[type]) evidenceTypes[type] = special.checks[type]
+    else if (type === 'review' && REVIEW_CELL_PROVENANCE[requirement.id]) evidenceTypes[type] = REVIEW_CELL_PROVENANCE[requirement.id]
     else if (family[type]) evidenceTypes[type] = family[type]
-    else if (type === 'review') evidenceTypes[type] = 'internal:source-inventory'
     else if (type === 'gate') evidenceTypes[type] = 'internal:coverage-map'
     else if (type === 'visual') evidenceTypes[type] = 'retained:visual'
     else if (type === 'operations' && familyFor(requirement.id) !== 'PV-PERF') evidenceTypes[type] = 'operations:contracts'

@@ -131,6 +131,9 @@ def test_request_metrics_exclude_payload_and_query_values():
         "path": "/api/v2/projects/project-1/commands",
         "status_code": 403,
         "duration_ms": 4.23,
+        "workspace": "other",
+        "command_id_present": False,
+        "outcome": "failure",
     }
     assert "payload" not in metric
     assert "query" not in metric

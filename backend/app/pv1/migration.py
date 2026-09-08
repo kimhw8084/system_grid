@@ -24,7 +24,7 @@ from . import models
 MIGRATION_KEY = "legacy-projects-v1"
 ADAPTER_VERSION = "pv1-v1-adapter-1"
 CUTOVER_STATES = {"shadow", "cutover", "read_only"}
-TERMINAL_RUN_STATES = {"Completed", "CompletedWithRejections"}
+TERMINAL_RUN_STATES = {"Completed"}
 
 
 class MigrationInterrupted(RuntimeError):
@@ -374,6 +374,8 @@ async def _migrate_project(
     source_hash: str,
     migrated: dict[str, int],
     rejected: dict[str, int],
+    prior_source_hash: str | None = None,
+    prior_state: str | None = None,
 ) -> tuple[str, dict[str, Any], list[str]]:
     snapshot = _project_snapshot(project, tasks)
     row_hash = _source_row_hash(snapshot)
@@ -428,11 +430,25 @@ async def _migrate_project(
         # A completed row is never overwritten by a later source read. Source
         # drift is reported and requires an explicit reconciliation decision.
         previous = (existing.metadata_json or {}).get("pv1_legacy_migration_v1", {})
-        if previous.get("source_hash") not in {None, row_hash}:
+        if previous.get("source_hash") not in {None, row_hash} and prior_state not in {"reconciled", "reconciliation_authorized"}:
             reason = f"Legacy project {project.id} changed after its PV1 backfill."
             _increment(rejected, "source_changed")
             return "source_changed", snapshot, [reason]
-        _increment(migrated, "projects_skipped")
+        if prior_state == "reconciliation_authorized":
+            existing.name = project.name or existing.name
+            existing.objective = project.objective
+            existing.problem = project.problem_statement or project.description
+            existing.phase = phase
+            existing.run_state = run_state
+            existing.priority = priority
+            existing.start_date = _date_value(project.start_date)
+            existing.target_date = _date_value(project.end_date)
+            existing.owner_id = project.owner or f"legacy:unresolved:{project.id}"
+            existing.revision += 1
+            existing.updated_by = actor_id
+            _increment(migrated, "projects_reconciled")
+        else:
+            _increment(migrated, "projects_skipped")
 
     member_user = project.owner or f"legacy:unresolved:{project.id}"
     member = await session.scalar(select(models.PV1ProjectMember).where(
@@ -486,6 +502,8 @@ async def _migrate_task(
     migrated: dict[str, int],
     rejected: dict[str, int],
     task_ids: set[int],
+    prior_source_hash: str | None = None,
+    prior_state: str | None = None,
 ) -> tuple[str, dict[str, Any], list[str]]:
     snapshot = _json_value({
         "id": task.id,
@@ -524,6 +542,12 @@ async def _migrate_task(
     if existing is not None and existing.legacy_task_id != task.id:
         _increment(rejected, "identity_collision")
         return "rejected", snapshot, [f"Task identity collision at PV1 id {destination_id}."]
+    if existing is not None and prior_state not in {None, "reconciliation_authorized"} and prior_source_hash is None:
+        _increment(rejected, "provenance_missing")
+        return "provenance_missing", snapshot, [f"Legacy task {task.id} has no authoritative prior migration provenance; explicit reconciliation is required."]
+    if existing is not None and prior_source_hash is not None and prior_source_hash != row_hash and prior_state != "reconciliation_authorized":
+        _increment(rejected, "source_changed")
+        return "source_changed", snapshot, [f"Legacy task {task.id} changed after its PV1 backfill; explicit reconciliation is required."]
     if existing is None:
         start = _date_value(task.start_date)
         end = _date_value(task.end_date)
@@ -562,13 +586,37 @@ async def _migrate_task(
         await session.flush()
         _increment(migrated, "tasks")
     else:
-        _increment(migrated, "tasks_skipped")
+        if prior_state == "reconciliation_authorized":
+            # An explicit reconciliation decision is the only path allowed to
+            # apply a changed legacy source to an existing canonical task.
+            existing.title = task.name or existing.title
+            existing.description = task.description
+            existing.owner_id = task.owner
+            existing.status = status_value
+            existing.priority = priority
+            existing.progress = progress
+            existing.start_date = _date_value(task.start_date) if kind == "Task" else None
+            existing.end_date = _date_value(task.end_date) if kind == "Task" else None
+            existing.point_date = _explicit_point_date(task) if kind == "Milestone" else None
+            existing.kind = kind
+            existing.duration_workdays = 0 if kind == "Milestone" else ((existing.end_date - existing.start_date).days + 1 if existing.start_date and existing.end_date and existing.end_date >= existing.start_date else None)
+            existing.estimate_hours = task.estimate_hours
+            existing.actual_started_at = task.actual_start_date
+            existing.finished_at = task.actual_end_date
+            existing.tags = list(task.assigned_objects or [])
+            existing.revision += 1
+            existing.updated_by = actor_id
+            _increment(migrated, "tasks_reconciled")
+        else:
+            _increment(migrated, "tasks_skipped")
+    outcome_state = "migrated"
     if task.parent_task_id and task.parent_task_id in task_ids:
         existing.parent_task_id = _task_destination_id(task.parent_task_id)
     elif task.parent_task_id:
         notes.append(f"Unresolved legacy parent task reference: {task.parent_task_id}")
         _increment(rejected, "unresolved_parent")
-    return "migrated", snapshot, notes
+        outcome_state = "source_conflict"
+    return outcome_state, snapshot, notes
 
 
 async def _migrate_dependencies(
@@ -629,7 +677,8 @@ async def _migrate_dependencies(
                 created_by=actor_id,
                 updated_by=actor_id,
             ))
-            _increment(migrated, "dependencies")
+        _increment(migrated, "dependencies")
+
         await _record_row(
             session,
             run=run,
@@ -642,6 +691,29 @@ async def _migrate_dependencies(
             reason=None,
             snapshot={"raw": raw, "task_id": task.id},
         )
+
+
+def _has_conflicting_dependency(task: legacy_models.ProjectTask, task_ids: set[int]) -> bool:
+    raw_dependencies = task.dependencies_json or []
+    if not isinstance(raw_dependencies, list):
+        return True
+    for raw in raw_dependencies:
+        if isinstance(raw, dict):
+            predecessor = raw.get("predecessor_id", raw.get("task_id", raw.get("id")))
+            dependency_type = str(raw.get("type", raw.get("dependency_type", "FS"))).upper()
+            lag_days = raw.get("lag_days", raw.get("lag", 0))
+        else:
+            predecessor = raw
+            dependency_type = "FS"
+            lag_days = 0
+        try:
+            predecessor_int = int(predecessor)
+            lag = int(lag_days)
+        except (TypeError, ValueError):
+            return True
+        if predecessor_int not in task_ids or dependency_type not in {"FS", "SS", "FF", "SF"} or not -365 <= lag <= 365:
+            return True
+    return False
 
 
 async def run_legacy_backfill(
@@ -696,21 +768,40 @@ async def run_legacy_backfill(
         await session.refresh(run)
     elif run.status == "Blocked":
         raise MigrationBlocked(run.error or "Migration run is blocked.")
+    elif run.status == "CompletedWithRejections":
+        # A later explicit reconciliation reopens the same source snapshot.
+        # Recompute this run's rejection counts from the current pass rather
+        # than carrying historical failures forward after they are resolved.
+        run.status = "Running"
+        run.error = None
+        run.completed_at = None
+        run.migrated_counts = {}
+        run.rejected_counts = {}
+        await session.commit()
+        await session.refresh(run)
 
     migrated = dict(run.migrated_counts or {})
     rejected = dict(run.rejected_counts or {})
     checkpoint = dict(run.checkpoint or {})
     processed = int(checkpoint.get("processed_rows") or 0)
-    async def process_row(kind: str, source_id: str, row_hash: str, snapshot: dict[str, Any], destination_id: str | None, state: str, reason: str | None) -> None:
+    async def process_row(kind: str, source_id: str, row_hash: str, snapshot: dict[str, Any], destination_id: str | None, state: str, reason: str | None, last_migrated_source_hash: str | None = None) -> None:
         nonlocal processed
         existing_row = await session.scalar(select(models.PV1MigrationRow).where(
             models.PV1MigrationRow.tenant_id == tenant_id,
             models.PV1MigrationRow.source_kind == kind,
             models.PV1MigrationRow.source_id == source_id,
         ))
-        if existing_row and existing_row.state == "migrated" and existing_row.source_hash == row_hash:
+        if state == "migrated" and existing_row and existing_row.state == "migrated" and existing_row.source_hash == row_hash:
             return
-        await _record_row(session, run=run, tenant_id=tenant_id, source_kind=kind, source_id=source_id, source_hash=row_hash, destination_id=destination_id, state=state, reason=reason, snapshot=snapshot)
+        recorded_snapshot = dict(snapshot)
+        if state in {"source_changed", "provenance_missing", "source_missing", "source_conflict"}:
+            recorded_snapshot["_pv1_migration"] = {
+                "state": state,
+                "attempted_source_hash": row_hash,
+                "last_migrated_source_hash": last_migrated_source_hash,
+                "requires_explicit_reconciliation": True,
+            }
+        await _record_row(session, run=run, tenant_id=tenant_id, source_kind=kind, source_id=source_id, source_hash=row_hash, destination_id=destination_id, state=state, reason=reason, snapshot=recorded_snapshot)
         processed += 1
         _checkpoint_value = {"projects": checkpoint.get("projects"), "tasks": checkpoint.get("tasks"), "processed_rows": processed}
         if kind == "project":
@@ -737,8 +828,12 @@ async def run_legacy_backfill(
             models.PV1MigrationRow.source_kind == "project",
             models.PV1MigrationRow.source_id == str(project.id),
         ))
-        if prior and prior.state == "migrated" and prior.source_hash == row_hash:
+        if prior and prior.state in {"migrated", "reconciled"} and prior.source_hash == row_hash:
             continue
+        prior_source_hash = None
+        if prior:
+            previous_marker = (prior.source_snapshot or {}).get("_pv1_migration") if isinstance(prior.source_snapshot, dict) else None
+            prior_source_hash = (previous_marker or {}).get("last_migrated_source_hash") or (prior.source_hash if prior.state in {"migrated", "source_conflict"} else None)
         state, project_snapshot, notes = await _migrate_project(
             session,
             project=project,
@@ -748,6 +843,8 @@ async def run_legacy_backfill(
             source_hash=source_hash,
             migrated=migrated,
             rejected=rejected,
+            prior_source_hash=prior_source_hash,
+            prior_state=prior.state if prior else None,
         )
         reason = "; ".join(notes) if notes else None
         if state in {"rejected", "source_changed"}:
@@ -757,7 +854,7 @@ async def run_legacy_backfill(
             _increment(rejected, "unmapped_status")
         if any(note.startswith("Unmapped legacy priority") for note in notes):
             _increment(rejected, "unmapped_priority")
-        await process_row("project", str(project.id), row_hash, project_snapshot, _project_destination_id(project.id) if state == "migrated" else None, "migrated" if state == "migrated" else state, reason)
+        await process_row("project", str(project.id), row_hash, project_snapshot, _project_destination_id(project.id) if state == "migrated" else None, "migrated" if state == "migrated" else state, reason, last_migrated_source_hash=prior_source_hash)
 
     project_ids = {project.id for project in projects}
     parent_map = {project.id: project.parent_project_id for project in projects}
@@ -808,8 +905,12 @@ async def run_legacy_backfill(
             models.PV1MigrationRow.source_kind == "task",
             models.PV1MigrationRow.source_id == str(task.id),
         ))
-        if prior and prior.state == "migrated" and prior.source_hash == row_hash:
+        if prior and prior.state in {"migrated", "reconciled"} and prior.source_hash == row_hash:
             continue
+        prior_source_hash = None
+        if prior:
+            previous_marker = (prior.source_snapshot or {}).get("_pv1_migration") if isinstance(prior.source_snapshot, dict) else None
+            prior_source_hash = (previous_marker or {}).get("last_migrated_source_hash") or (prior.source_hash if prior.state in {"migrated", "source_conflict"} else None)
         state, task_snapshot, notes = await _migrate_task(
             session,
             task=task,
@@ -820,13 +921,18 @@ async def run_legacy_backfill(
             migrated=migrated,
             rejected=rejected,
             task_ids=task_ids_by_project.get(task.project_id, set()),
+            prior_source_hash=prior_source_hash,
+            prior_state=prior.state if prior else None,
         )
-        if state in {"rejected", "source_changed"}:
+        if state == "migrated" and _has_conflicting_dependency(task, task_ids_by_project.get(task.project_id, set())):
+            state = "source_conflict"
+            notes.append("Legacy dependency reference is malformed, unresolved, or outside the accepted PV1 range; explicit reconciliation is required.")
+        if state in {"rejected", "source_changed", "provenance_missing", "source_conflict"}:
             _increment(rejected, "tasks")
         if any(note.startswith("Unmapped legacy task status") for note in notes):
             _increment(rejected, "tasks")
             _increment(rejected, "unmapped_status")
-        await process_row("task", str(task.id), row_hash, task_snapshot, _task_destination_id(task.id) if state == "migrated" else None, "migrated" if state == "migrated" else state, "; ".join(notes) if notes else None)
+        await process_row("task", str(task.id), row_hash, task_snapshot, _task_destination_id(task.id) if state == "migrated" else None, "migrated" if state == "migrated" else state, "; ".join(notes) if notes else None, last_migrated_source_hash=prior_source_hash or (row_hash if state == "source_conflict" else None))
         await _migrate_dependencies(
             session,
             run=run,
@@ -838,6 +944,29 @@ async def run_legacy_backfill(
             rejected=rejected,
             migrated=migrated,
         )
+
+    # A deleted legacy source row is a migration discrepancy, never an
+    # instruction to delete or silently rewrite the canonical record.
+    for source_kind, current_ids in (("project", {str(project.id) for project in projects}), ("task", {str(task.id) for task in all_tasks})):
+        prior_rows = list((await session.scalars(select(models.PV1MigrationRow).where(
+            models.PV1MigrationRow.tenant_id == tenant_id,
+            models.PV1MigrationRow.source_kind == source_kind,
+            models.PV1MigrationRow.state == "migrated",
+        ))).all())
+        for prior_row in prior_rows:
+            if prior_row.source_id in current_ids:
+                continue
+            _increment(rejected, "source_missing")
+            await process_row(
+                source_kind,
+                prior_row.source_id,
+                prior_row.source_hash,
+                prior_row.source_snapshot or {},
+                prior_row.destination_id,
+                "source_missing",
+                f"Legacy {source_kind} {prior_row.source_id} is missing from the current source snapshot; canonical data was preserved.",
+                last_migrated_source_hash=prior_row.source_hash,
+            )
 
     run.migrated_counts = migrated
     run.rejected_counts = rejected
@@ -865,6 +994,46 @@ def migration_run_summary(run: models.PV1MigrationRun) -> dict[str, Any]:
         "checkpoint": run.checkpoint or {},
         "rollback_mapping": run.rollback_mapping or {},
     }
+
+
+async def reconcile_migration_row(
+    session: AsyncSession,
+    *,
+    tenant_id: int,
+    source_kind: str,
+    source_id: str,
+    actor_id: str,
+    decision: str,
+    rationale: str,
+) -> models.PV1MigrationRow:
+    """Record an explicit human reconciliation for a detected source drift.
+
+    ``retain_canonical`` accepts the existing PV1 record as the authority for
+    this source row. ``accept_source`` authorizes the next isolated backfill to
+    apply the currently observed legacy source; it is the only path that can
+    update an existing canonical task after drift.
+    """
+    if decision not in {"retain_canonical", "accept_source"} or not rationale.strip():
+        raise MigrationBlocked("A reconciliation decision and non-empty rationale are required.")
+    row = await session.scalar(select(models.PV1MigrationRow).where(
+        models.PV1MigrationRow.tenant_id == tenant_id,
+        models.PV1MigrationRow.source_kind == source_kind,
+        models.PV1MigrationRow.source_id == source_id,
+    ))
+    if row is None or row.state not in {"source_changed", "source_missing", "provenance_missing", "source_conflict"}:
+        raise MigrationBlocked("No unresolved migration discrepancy exists for this source row.")
+    snapshot = dict(row.source_snapshot or {})
+    marker = dict(snapshot.get("_pv1_migration") or {})
+    marker.update({"decision": decision, "reconciled_by": actor_id, "rationale": rationale.strip()})
+    if decision == "retain_canonical":
+        marker["last_migrated_source_hash"] = row.source_hash
+    snapshot["_pv1_migration"] = marker
+    row.source_snapshot = snapshot
+    row.reason = f"Explicit reconciliation by {actor_id}: {rationale.strip()}"
+    row.state = "reconciled" if decision == "retain_canonical" else "reconciliation_authorized"
+    await session.commit()
+    await session.refresh(row)
+    return row
 
 
 async def shadow_compare_project(session: AsyncSession, *, tenant_id: int, project_id: str | int) -> dict[str, Any]:
@@ -963,6 +1132,18 @@ async def canonical_project_legacy_response(session: AsyncSession, project: mode
             models.PV1MigrationRow.source_id.in_(task_ids),
         ))).all())
     task_snapshots = {row.source_id: (row.source_snapshot or {}) for row in task_rows}
+    dependency_rows = list((await session.scalars(select(models.PV1Dependency).where(
+        models.PV1Dependency.tenant_id == project.tenant_id,
+        models.PV1Dependency.project_id == project.id,
+        models.PV1Dependency.active == True,
+    ))).all())
+    dependencies_by_successor: dict[str, list[dict[str, Any]]] = {}
+    for dependency in dependency_rows:
+        dependencies_by_successor.setdefault(dependency.successor_id, []).append({
+            "predecessor_id": int(dependency.predecessor_id) if str(dependency.predecessor_id).isdigit() else dependency.predecessor_id,
+            "type": dependency.dependency_type,
+            "lag_days": dependency.lag_days,
+        })
     raw_metadata = dict(project.metadata_json or {})
     migration_metadata = raw_metadata.get("pv1_legacy_migration_v1") or {}
     original_timestamps = migration_metadata.get("original_timestamps") or {}
@@ -972,10 +1153,10 @@ async def canonical_project_legacy_response(session: AsyncSession, project: mode
         source = task_snapshots.get(str(task.legacy_task_id), {})
         task_metadata = dict(source.get("metadata_json") or {})
         task_metadata.update({"pv1_source": "canonical", "legacy_task_id": task.legacy_task_id})
-        task_start = source.get("start_date") or task.start_date
-        task_end = source.get("end_date") or task.end_date
-        task_actual_start = source.get("actual_start_date") or task.actual_started_at
-        task_actual_end = source.get("actual_end_date") or task.finished_at
+        task_start = task.start_date or source.get("start_date")
+        task_end = task.end_date or source.get("end_date")
+        task_actual_start = task.actual_started_at or source.get("actual_start_date")
+        task_actual_end = task.finished_at or source.get("actual_end_date")
         task_payload.append({
             "id": int(task.legacy_task_id) if task.legacy_task_id is not None else task.id,
             "name": task.title,
@@ -990,7 +1171,7 @@ async def canonical_project_legacy_response(session: AsyncSession, project: mode
             "assigned_objects": source.get("assigned_objects") if isinstance(source.get("assigned_objects"), list) else (task.tags if isinstance(task.tags, list) else []),
             "project_id": project.legacy_project_id or project.id,
             "parent_task_id": int(task.parent_task_id) if task.parent_task_id and str(task.parent_task_id).isdigit() else None,
-            "dependencies_json": source.get("dependencies_json") if isinstance(source.get("dependencies_json"), list) else [],
+            "dependencies_json": dependencies_by_successor.get(task.id, []),
             "metadata_json": task_metadata,
         })
 

@@ -11,7 +11,7 @@ from ..schemas import schemas
 from ..pv1 import domain as pv1_domain
 from ..pv1 import migration as pv1_migration
 from ..pv1 import models as pv1_models
-from .utils import filter_valid_columns
+from .utils import filter_valid_columns, get_current_user_id
 from .project_hierarchy import validate_project_parent_assignment
 
 router = APIRouter(prefix="/projects", tags=["Projects"])
@@ -39,7 +39,7 @@ def _cutover_write_error() -> HTTPException:
 
 async def _canonical_v1_update(project_id: int, data: schemas.ProjectUpdate, request: Request, db: AsyncSession):
     tenant_id = getattr(request.state, "tenant_id", None)
-    actor_id = request.headers.get("X-User-Id") or "legacy-adapter"
+    actor_id = get_current_user_id(request)
     request_role = getattr(request.state, "sysgrid_access_role", None)
     canonical = await pv1_domain.get_pv1_project(db, tenant_id, str(project_id))
     if canonical is None:
@@ -156,22 +156,26 @@ async def reorder_projects(order_data: List[dict], request: Request, db: AsyncSe
 async def create_project(data: schemas.ProjectCreate, request: Request, db: AsyncSession = Depends(get_db)):
     cutover = await _cutover(request, db)
     if cutover and cutover.state == "cutover":
-        actor_id = request.headers.get("X-User-Id") or "legacy-adapter"
+        actor_id = get_current_user_id(request)
         status_value = (data.status or "Planning").strip()
         phase = {"Not Started": "Proposed", "Planning": "Planning"}.get(status_value, "Draft")
+        requested_owner = (data.owner or "").strip()
+        request_role = getattr(request.state, "sysgrid_access_role", None)
+        if requested_owner and requested_owner != actor_id and request_role != "ADMIN":
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Legacy compatibility cannot assign an unverified browser identity as project owner.")
         payload = {
             "name": data.name,
             "objective": data.objective,
             "problem": data.problem_statement or data.description,
             "team_id": data.team_id,
-            "owner_id": data.owner or actor_id,
+            "owner_id": requested_owner or actor_id,
             "template_key": data.type,
             "phase": phase,
             "priority": "Critical" if data.priority == "Highest" else data.priority,
             "start_date": data.start_date.date().isoformat() if isinstance(data.start_date, datetime) else data.start_date,
             "target_date": data.end_date.date().isoformat() if isinstance(data.end_date, datetime) else data.end_date,
         }
-        result = await pv1_domain.create_project(db, tenant_id=request.state.tenant_id, actor_id=actor_id, request_role=getattr(request.state, "sysgrid_access_role", None), command_id=str(uuid4()), payload=payload)
+        result = await pv1_domain.create_project(db, tenant_id=request.state.tenant_id, actor_id=actor_id, request_role=request_role, command_id=str(uuid4()), payload=payload)
         await db.commit()
         canonical = await pv1_domain.get_pv1_project(db, request.state.tenant_id, result["changed_entities"][0]["id"])
         return await pv1_migration.canonical_project_legacy_response(db, canonical)

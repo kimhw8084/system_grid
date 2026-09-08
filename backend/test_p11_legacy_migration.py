@@ -212,3 +212,103 @@ async def test_p11_v1_route_reads_and_writes_canonical_after_cutover(client, set
         assert await check.scalar(select(func.count()).select_from(pv1_models.PV1Event).where(pv1_models.PV1Event.project_id == str(legacy_id))) >= 1
     finally:
         await check.close()
+
+
+@pytest.mark.asyncio
+async def test_p11_task_source_drift_is_exposed_and_requires_explicit_reconciliation(setup_db, seeded_admin_tenant):
+    session = await _session_for(setup_db, seeded_admin_tenant)
+    try:
+        legacy = legacy_models.Project(name="Drift project", status="Planning", owner="admin_root")
+        session.add(legacy)
+        await session.flush()
+        task = legacy_models.ProjectTask(project_id=legacy.id, name="Original source", status="To Do", progress=10)
+        session.add(task)
+        await session.commit()
+        first = await migration.run_legacy_backfill(session, tenant_id=seeded_admin_tenant["tenant_id"])
+        canonical = await session.get(pv1_models.PV1Task, str(task.id))
+        assert canonical.title == "Original source"
+
+        task.name = "Changed outside PV1"
+        await session.commit()
+        drift = await migration.run_legacy_backfill(session, tenant_id=seeded_admin_tenant["tenant_id"])
+        assert drift["status"] == "CompletedWithRejections"
+        assert drift["rejected_counts"].get("source_changed", 0) >= 1
+        await session.refresh(canonical)
+        assert canonical.title == "Original source"
+        task_row = await session.scalar(select(pv1_models.PV1MigrationRow).where(
+            pv1_models.PV1MigrationRow.tenant_id == seeded_admin_tenant["tenant_id"],
+            pv1_models.PV1MigrationRow.source_kind == "task",
+            pv1_models.PV1MigrationRow.source_id == str(task.id),
+        ))
+        assert task_row.state == "source_changed"
+        assert task_row.source_snapshot["_pv1_migration"]["requires_explicit_reconciliation"] is True
+
+        repeated = await migration.run_legacy_backfill(session, tenant_id=seeded_admin_tenant["tenant_id"])
+        assert repeated["status"] == "CompletedWithRejections"
+        await migration.reconcile_migration_row(
+            session,
+            tenant_id=seeded_admin_tenant["tenant_id"],
+            source_kind="project",
+            source_id=str(legacy.id),
+            actor_id="admin_root",
+            decision="retain_canonical",
+            rationale="Canonical project remains authoritative while task source is reviewed.",
+        )
+        await migration.reconcile_migration_row(
+            session,
+            tenant_id=seeded_admin_tenant["tenant_id"],
+            source_kind="task",
+            source_id=str(task.id),
+            actor_id="admin_root",
+            decision="accept_source",
+            rationale="Reviewed the changed legacy task and explicitly accepted the new title.",
+        )
+        reconciled = await migration.run_legacy_backfill(session, tenant_id=seeded_admin_tenant["tenant_id"])
+        assert reconciled["status"] == "Completed", reconciled
+        await session.refresh(canonical)
+        assert canonical.title == "Changed outside PV1"
+        assert await session.scalar(select(func.count()).select_from(pv1_models.PV1Task).where(pv1_models.PV1Task.legacy_task_id == task.id)) == 1
+        assert first["run_id"] != drift["run_id"]
+    finally:
+        await session.close()
+
+
+@pytest.mark.asyncio
+async def test_p11_missing_and_conflicting_legacy_task_sources_are_rejected_without_loss(setup_db, seeded_admin_tenant):
+    session = await _session_for(setup_db, seeded_admin_tenant)
+    try:
+        missing_project = legacy_models.Project(name="Missing source project", status="Planning")
+        conflict_project = legacy_models.Project(name="Conflicting source project", status="Planning")
+        session.add_all([missing_project, conflict_project])
+        await session.flush()
+        missing_task = legacy_models.ProjectTask(project_id=missing_project.id, name="Preserve this canonical task", status="To Do")
+        conflict_task = legacy_models.ProjectTask(project_id=conflict_project.id, name="Invalid dependency reference", status="To Do", dependencies_json=[{"predecessor_id": 987654321, "type": "FS"}])
+        session.add_all([missing_task, conflict_task])
+        await session.commit()
+        await migration.run_legacy_backfill(session, tenant_id=seeded_admin_tenant["tenant_id"])
+        missing_id = missing_task.id
+        conflict_id = conflict_task.id
+        await session.delete(missing_task)
+        await session.commit()
+        result = await migration.run_legacy_backfill(session, tenant_id=seeded_admin_tenant["tenant_id"])
+        assert result["status"] == "CompletedWithRejections"
+        missing_row = await session.scalar(select(pv1_models.PV1MigrationRow).where(
+            pv1_models.PV1MigrationRow.tenant_id == seeded_admin_tenant["tenant_id"],
+            pv1_models.PV1MigrationRow.source_kind == "task",
+            pv1_models.PV1MigrationRow.source_id == str(missing_id),
+        ))
+        conflict_row = await session.scalar(select(pv1_models.PV1MigrationRow).where(
+            pv1_models.PV1MigrationRow.tenant_id == seeded_admin_tenant["tenant_id"],
+            pv1_models.PV1MigrationRow.source_kind == "task",
+            pv1_models.PV1MigrationRow.source_id == str(conflict_id),
+        ))
+        assert missing_row.state == "source_missing"
+        assert conflict_row.state == "source_conflict"
+        preserved = await session.get(pv1_models.PV1Task, str(missing_id))
+        assert preserved is not None
+        assert preserved.title == "Preserve this canonical task"
+        conflicting = await session.get(pv1_models.PV1Task, str(conflict_id))
+        assert conflicting is not None
+        assert conflicting.parent_task_id is None
+    finally:
+        await session.close()

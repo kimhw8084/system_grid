@@ -1,6 +1,7 @@
 from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 import asyncio
+import json
 import logging
 import os
 import re
@@ -142,9 +143,23 @@ async def request_context_and_export_headers(request: Request, call_next):
         path=request.url.path,
         status_code=response.status_code,
         duration_ms=duration_ms,
+        workspace=("projects" if request.url.path.startswith("/api/v2/projects") or request.url.path.startswith("/api/v1/projects") else "architecture" if "/architecture" in request.url.path or "/models" in request.url.path else "other"),
+        command_id_present=bool(request.headers.get("Idempotency-Key") or request.headers.get("X-Command-Id")),
+        outcome="success" if response.status_code < 400 else "rate_limited" if response.status_code == 429 else "conflict" if response.status_code == 409 else "failure",
+        projection_lag_ms=getattr(request.state, "projection_lag_ms", None),
+        schedule_calculation_version=getattr(request.state, "schedule_calculation_version", None),
+        schedule_calculation_duration_ms=getattr(request.state, "schedule_calculation_duration_ms", None),
+        upload_scan_state=getattr(request.state, "upload_scan_state", None),
+        job_delivery_status=getattr(request.state, "job_delivery_status", None),
     )
     request.state.safe_metric = metric
     response.headers["Server-Timing"] = f"app;dur={metric['duration_ms']}"
+    if "projection_lag_ms" in metric:
+        response.headers["X-Projection-Lag-Ms"] = str(metric["projection_lag_ms"])
+    if "schedule_calculation_version" in metric:
+        response.headers["X-Schedule-Calculation-Version"] = str(metric["schedule_calculation_version"])
+    if "schedule_calculation_duration_ms" in metric:
+        response.headers["X-Schedule-Calculation-Duration-Ms"] = str(metric["schedule_calculation_duration_ms"])
     logger.info("request_complete", extra={"pv1_metric": metric})
     if response.status_code == 200:
         response_header_names = {key.lower() for key in response.headers.keys()}
@@ -278,3 +293,31 @@ def read_root():
         "system": settings.PROJECT_NAME,
         "environment": settings.environment_name,
     }
+
+
+@app.post(f"{settings.API_V1_STR}/observability/performance", status_code=202)
+async def ingest_field_performance(request: Request):
+    """Accept bounded, privacy-safe field metric aggregates.
+
+    This endpoint is deliberately not a production-gate producer. Pilot/release
+    analysis must independently authorize and sample these records; synthetic
+    browser artifacts never become field evidence.
+    """
+    raw = await request.body()
+    if len(raw) > 256 * 1024:
+        return JSONResponse(status_code=413, content={"code": "OBSERVABILITY_PAYLOAD_TOO_LARGE"})
+    try:
+        payload = json.loads(raw or b"{}")
+    except (TypeError, ValueError):
+        return JSONResponse(status_code=400, content={"code": "OBSERVABILITY_INVALID_JSON"})
+    if not isinstance(payload, dict) or not isinstance(payload.get("metrics"), list) or len(payload["metrics"]) > 500:
+        return JSONResponse(status_code=400, content={"code": "OBSERVABILITY_INVALID_METRICS"})
+    candidate = str(payload.get("candidate_sha256") or "unknown")
+    if candidate != "unknown" and not re.fullmatch(r"[0-9a-f]{64}", candidate):
+        return JSONResponse(status_code=400, content={"code": "OBSERVABILITY_INVALID_CANDIDATE"})
+    allowed = {"kind", "name", "value", "value_ms", "unit", "route_class", "workspace", "status_class", "command_id_present", "projection_lag_ms", "schedule_calculation_version", "schedule_calculation_duration_ms", "viewport_class", "candidate_sha256", "release", "measurement_boundary", "at_ms"}
+    for metric in payload["metrics"]:
+        if not isinstance(metric, dict) or set(metric) - allowed or not isinstance(metric.get("name"), str) or not isinstance(metric.get("value"), (int, float)):
+            return JSONResponse(status_code=400, content={"code": "OBSERVABILITY_INVALID_METRIC"})
+    logger.info("pv1_field_metrics_received", extra={"pv1_field_metrics": {"candidate_sha256": candidate, "release": str(payload.get("release") or "pv1")[:80], "sample_count": len(payload["metrics"])}})
+    return {"accepted": len(payload["metrics"]), "field_evidence_status": "NOT_EVALUATED", "owner_phase": "P14_PILOT_RELEASE_HANDOFF"}

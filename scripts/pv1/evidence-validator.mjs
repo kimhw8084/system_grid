@@ -1,3 +1,7 @@
+import { createHash } from 'node:crypto'
+import { readFileSync, realpathSync, statSync } from 'node:fs'
+import path from 'node:path'
+
 const HASH_PATTERN = /^[0-9a-f]{64}$/
 const COMMIT_PATTERN = /^[0-9a-f]{40}$/
 const EVIDENCE_RESULTS = new Set(['PASS', 'FAIL', 'BLOCKED', 'SKIPPED'])
@@ -46,7 +50,47 @@ function validateCandidate(candidate, expectedCandidate, expectedDesignSha256, e
   }
 }
 
-export function validateEvidenceRecord(record, { schema, candidate, designSha256 }) {
+function validateArtifactBytes(artifact, artifactRoot, errors) {
+  if (!artifactRoot || typeof artifactRoot !== 'string') {
+    errors.push('artifactRoot is required to validate file-backed evidence')
+    return
+  }
+  if (typeof artifact.path !== 'string' || !artifact.path || path.isAbsolute(artifact.path) || /^[A-Za-z]:[\\/]/.test(artifact.path) || artifact.path.includes('\0') || artifact.path.split(/[\\/]/).includes('..')) {
+    errors.push(`artifact ${String(artifact.path)} is not a safe relative path`)
+    return
+  }
+  const root = path.resolve(artifactRoot)
+  const resolved = path.resolve(root, artifact.path)
+  if (resolved !== root && !resolved.startsWith(`${root}${path.sep}`)) {
+    errors.push(`artifact ${artifact.path} escapes artifactRoot`)
+    return
+  }
+  let rootReal
+  let fileReal
+  let stat
+  let bytes
+  try {
+    rootReal = realpathSync(root)
+    fileReal = realpathSync(resolved)
+    stat = statSync(fileReal)
+    bytes = readFileSync(fileReal)
+  } catch (error) {
+    errors.push(`artifact ${artifact.path} is missing or unreadable: ${error.code || error.message}`)
+    return
+  }
+  if (fileReal !== rootReal && !fileReal.startsWith(`${rootReal}${path.sep}`)) {
+    errors.push(`artifact ${artifact.path} resolves outside artifactRoot`)
+    return
+  }
+  if (!stat.isFile()) {
+    errors.push(`artifact ${artifact.path} is not a regular file`)
+    return
+  }
+  const actualHash = createHash('sha256').update(bytes).digest('hex')
+  if (actualHash !== artifact.sha256) errors.push(`artifact ${artifact.path} sha256 does not match its bytes`)
+}
+
+export function validateEvidenceRecord(record, { schema, candidate, designSha256, artifactRoot }) {
   const errors = []
   if (!isObject(record)) return { valid: false, countable: false, errors: ['evidence record must be an object'], result: null }
   const schemaProperties = schema?.properties || {}
@@ -68,6 +112,9 @@ export function validateEvidenceRecord(record, { schema, candidate, designSha256
       rejectUnknownKeys(artifact, new Set(['path', 'sha256']), `artifact_hashes[${index}]`, errors)
       requireString(artifact.path, `artifact_hashes[${index}].path`, errors)
       requireHash(artifact.sha256, `artifact_hashes[${index}].sha256`, errors)
+      if (typeof artifact.path === 'string' && HASH_PATTERN.test(artifact.sha256 || '') && !Object.keys(artifact).some((key) => key !== 'path' && key !== 'sha256')) {
+        validateArtifactBytes(artifact, artifactRoot, errors)
+      }
     }
   }
   if (record.evidence_type === 'human') {

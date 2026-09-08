@@ -13,6 +13,8 @@ describe('shared Architecture core', () => {
     const culled = cullArchitectureProjection(large, 200)
     expect(culled.objects).toHaveLength(200)
     expect(culled.relations).toHaveLength(1)
+    expect(architectureSearch(large, 'Component 204').map((item) => item.id)).toEqual(['o-204'])
+    expect(architectureInventoryText(large)).toContain('Component 204')
   })
   it('exports a textual inventory and rejects incomplete typed operations', () => {
     expect(architectureInventoryText(projection)).toContain('Checkout')

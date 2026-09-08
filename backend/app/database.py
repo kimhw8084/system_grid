@@ -1,7 +1,7 @@
 from fastapi import HTTPException, Request, status
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
 from sqlalchemy.orm import declarative_base
-from sqlalchemy import event, MetaData, select, update
+from sqlalchemy import event, MetaData, select
 from .core.config import settings
 import os
 from .database_base import Base, ConfigBase
@@ -193,7 +193,9 @@ async def get_db(request: Request):
             access_role = (selected_access[1] if selected_access else None) or "VIEWER"
             current_tenant_id = selected_access[2] if selected_access else None
 
-            # SAFETY FALLBACK: If no tenant is selected but user has access to at least one, auto-select the first one.
+            # Read-only resolution must not provision or mutate config state.
+            # Explicit tenant selection/provisioning belongs to its authorized
+            # mutation endpoint; GET/HEAD/OPTIONS only resolve an existing row.
             if not tenant_url:
                 fallback_access_stmt = (
                     select(Tenant.db_url, UserTenantAccess.role, Tenant.id)
@@ -208,13 +210,6 @@ async def get_db(request: Request):
                     tenant_url = fallback_row[0]
                     access_role = fallback_row[1]
                     current_tenant_id = fallback_row[2]
-                    # Update DB state for next time
-                    await config_db.execute(
-                        update(UserTenantAccess)
-                        .where(UserTenantAccess.user_id == user_id, UserTenantAccess.tenant_id == fallback_row[2])
-                        .values(is_selected=True)
-                    )
-                    await config_db.commit()
 
             if not tenant_url and settings.PUBLIC_READONLY_ENABLED and is_safe_read:
                 public_tenant_stmt = (

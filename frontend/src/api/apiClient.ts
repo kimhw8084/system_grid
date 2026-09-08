@@ -299,7 +299,15 @@ export async function apiFetch(endpoint: string, options: RequestInit = {}) {
   }
   const elapsed = Date.now() - startTime
   notifyLatency(elapsed);
-  recordApiTiming(url, method, elapsed, response.status)
+  const projectionLagHeader = response.headers.get('x-projection-lag-ms')
+  const scheduleDurationHeader = response.headers.get('x-schedule-calculation-duration-ms')
+  recordApiTiming(url, method, elapsed, response.status, {
+    requestId: response.headers.get('x-request-id') || undefined,
+    commandId: headers['Idempotency-Key'] || headers['X-Command-Id'] || undefined,
+    projectionLagMs: projectionLagHeader == null ? undefined : Number(projectionLagHeader),
+    scheduleCalculationVersion: response.headers.get('x-schedule-calculation-version') || undefined,
+    scheduleCalculationDurationMs: scheduleDurationHeader == null ? undefined : Number(scheduleDurationHeader),
+  })
 
   if (!response.ok) {
     let errorData: any = {};

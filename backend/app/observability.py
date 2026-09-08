@@ -63,12 +63,26 @@ def request_rate_limit_key(request, actor_id: str | None = None) -> str:
     return ":".join((str(tenant)[:80], str(actor)[:200], request.method.upper(), "/".join(path)))
 
 
-def safe_request_metric(*, request_id: str, method: str, path: str, status_code: int, duration_ms: float) -> dict[str, object]:
+def safe_request_metric(*, request_id: str, method: str, path: str, status_code: int, duration_ms: float, workspace: str | None = None, command_id_present: bool = False, outcome: str | None = None, projection_lag_ms: float | None = None, schedule_calculation_version: str | None = None, schedule_calculation_duration_ms: float | None = None, upload_scan_state: str | None = None, job_delivery_status: str | None = None) -> dict[str, object]:
     """Return only fields permitted in operational telemetry."""
-    return {
+    metric = {
         "request_id": request_id,
         "method": method.upper(),
         "path": path[:240],
         "status_code": int(status_code),
         "duration_ms": round(max(0.0, duration_ms), 2),
+        "workspace": (workspace or "other")[:40],
+        "command_id_present": bool(command_id_present),
+        "outcome": (outcome or ("success" if status_code < 400 else "failure"))[:40],
     }
+    if projection_lag_ms is not None:
+        metric["projection_lag_ms"] = round(max(0.0, float(projection_lag_ms)), 2)
+    if schedule_calculation_version:
+        metric["schedule_calculation_version"] = str(schedule_calculation_version)[:80]
+    if schedule_calculation_duration_ms is not None:
+        metric["schedule_calculation_duration_ms"] = round(max(0.0, float(schedule_calculation_duration_ms)), 2)
+    if upload_scan_state:
+        metric["upload_scan_state"] = str(upload_scan_state)[:40]
+    if job_delivery_status:
+        metric["job_delivery_status"] = str(job_delivery_status)[:40]
+    return metric

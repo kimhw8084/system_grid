@@ -3,7 +3,7 @@ import { mkdir, readdir, readFile, writeFile } from 'node:fs/promises'
 import { spawn } from 'node:child_process'
 import os from 'node:os'
 import path from 'node:path'
-import { buildCoverageMap } from './coverage.mjs'
+import { buildCoverageMap, REVIEW_CELL_PROVENANCE } from './coverage.mjs'
 import { executeRetainedChecks } from './retained-checks.mjs'
 
 const PROJECT_TESTS = [
@@ -78,6 +78,7 @@ export async function buildChecks({ repoRoot, outputDir }) {
     command('browser:p05', 'pv1_browser_journeys', repoRoot, 'bash', ['scripts/proof-p05-my-day-work-plan.sh'], { timeoutMs: 1_200_000 }),
     command('browser:p06', 'pv1_browser_journeys', repoRoot, 'bash', ['scripts/proof-p06-timeline-scheduling.sh'], { timeoutMs: 1_200_000 }),
     command('browser:p07', 'pv1_browser_journeys', repoRoot, 'bash', ['scripts/proof-p07-architecture.sh'], { timeoutMs: 1_200_000 }),
+    command('browser:architecture-performance', 'pv1_browser_journeys', repoRoot, 'bash', ['scripts/proof-p07-architecture.sh'], { timeoutMs: 1_200_000 }),
     command('browser:p08', 'pv1_browser_journeys', repoRoot, 'bash', ['scripts/proof-p08-communication.sh'], { timeoutMs: 1_200_000 }),
     command('browser:p09', 'pv1_browser_journeys', repoRoot, 'bash', ['scripts/proof-p09-outcomes.sh'], { timeoutMs: 1_200_000 }),
     command('browser:p11', 'pv1_browser_journeys', repoRoot, 'bash', ['scripts/proof-p11-portfolio-regression.sh'], { timeoutMs: 1_200_000 }),
@@ -99,6 +100,15 @@ export async function buildChecks({ repoRoot, outputDir }) {
     command('performance:load', 'performance_load', repoRoot, 'bash', ['scripts/pv1/run-p12-load.sh', '--output-dir', path.join(outputDir, 'performance-load')], { timeoutMs: 1_200_000, artifact_files: [path.join(outputDir, 'performance-load', 'load-performance.json'), path.join(outputDir, 'performance-load', 'load-raw.jsonl')] }),
     command('operations:migration', 'migration_restore_rollback', backend, python, ['-m', 'pytest', '-q', ...migrationPaths], { timeoutMs: 900_000 }),
   ]
+  const reviewDir = path.join(outputDir, 'review-cells')
+  await mkdir(reviewDir, { recursive: true })
+  for (const [requirementId, checkId] of Object.entries(REVIEW_CELL_PROVENANCE)) {
+    const artifact = path.join(reviewDir, `${requirementId.toLowerCase()}.json`)
+    checks.push(command(checkId, 'schema_type_lint_build', repoRoot, node, ['scripts/pv1/semantic-review.mjs', '--requirement', requirementId], {
+      env: { SYSGRID_REPO_ROOT: repoRoot, PV1_REVIEW_OUTPUT: artifact },
+      artifact_files: [artifact],
+    }))
+  }
   return checks
 }
 

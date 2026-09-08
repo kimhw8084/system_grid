@@ -2,7 +2,7 @@ import { execFileSync } from 'node:child_process'
 import { mkdir, readdir, readFile, writeFile } from 'node:fs/promises'
 import path from 'node:path'
 import { buildCoverageMap } from './coverage.mjs'
-import { collectCandidateIdentity } from './candidate-identity.mjs'
+import { candidateIsReleaseReady, collectCandidateIdentity } from './candidate-identity.mjs'
 import { loadDesignPackage, REPOSITORY_ROOT } from './design-package.mjs'
 import { createGapMatrix, evaluateGate } from './gap-matrix.mjs'
 import { discoverRetainedChecks, executeRetainedChecks } from './retained-checks.mjs'
@@ -56,6 +56,18 @@ function evidenceResult(status) {
   return 'SKIPPED'
 }
 
+function evidenceCandidate(candidate, designSha256) {
+  return {
+    source_commit: candidate.source_commit,
+    source_tree: candidate.source_tree,
+    dirty_patch_sha256: candidate.dirty_patch_sha256,
+    frontend_digest: candidate.frontend_digest,
+    backend_digest: candidate.backend_digest,
+    database_migration_revision: candidate.database_migration_revision,
+    design_sha256: designSha256,
+  }
+}
+
 async function makeEvidenceRecords({ design, candidate, coverageMap, checkResults, outputDir, fixtureId, environmentId }) {
   const records = []
   const fallback = path.join(outputDir, 'coverage-map.json')
@@ -72,7 +84,7 @@ async function makeEvidenceRecords({ design, candidate, coverageMap, checkResult
         result: evidenceResult(status),
         procedure: `P12 release gate executed ${checkId} for ${requirement.id}; no manual status is accepted.`,
         timestamp: new Date().toISOString(),
-        candidate: { ...candidate, design_sha256: design.specificationSha256 },
+        candidate: evidenceCandidate(candidate, design.specificationSha256),
         fixture_id: fixtureId,
         environment_id: environmentId,
         artifact_hashes: await artifactHashes(outputDir, files),
@@ -135,6 +147,11 @@ export async function runProductionGate({ repoRoot = REPOSITORY_ROOT, profile = 
     branch: git(repoRoot, ['branch', '--show-current']),
     source_commit: candidate.source_commit,
     source_tree: candidate.source_tree,
+    candidate_git_sha: candidate.source_commit,
+    candidate_tree_sha: candidate.source_tree,
+    tracked_worktree_dirty: candidate.tracked_worktree_dirty,
+    tracked_dirty_paths: candidate.tracked_dirty_paths,
+    identity_scope: candidate.identity_scope,
     status_porcelain: git(repoRoot, ['status', '--porcelain=v1', '-uall']).split('\n').filter(Boolean),
     dirty_patch_sha256: candidate.dirty_patch_sha256,
     phase_inventory: await collectPhaseInventory(),
@@ -148,6 +165,34 @@ export async function runProductionGate({ repoRoot = REPOSITORY_ROOT, profile = 
     human_pending_requirement_ids: design.requirements.requirements.filter((item) => (item.required_evidence_types || []).includes('human')).map((item) => item.id),
     deferred_requirement_ownership: Object.fromEntries(Object.entries(coverage.map).filter(([, item]) => item.phase_ownership?.owner_phase !== 'P12_AUTOMATED_PRODUCTION_GATE').map(([id, item]) => [id, item.phase_ownership])),
   })
+
+  if (profile === 'release' && !candidateIsReleaseReady(candidate)) {
+    const rejection = {
+      code: 'DIRTY_TRACKED_WORKTREE',
+      message: 'The release gate refuses to certify a tracked dirty working tree. Commit the exact candidate and rerun qualification.',
+      candidate_git_sha: candidate.source_commit,
+      candidate_tree_sha: candidate.source_tree,
+      tracked_worktree_dirty: candidate.tracked_worktree_dirty,
+      tracked_dirty_paths: candidate.tracked_dirty_paths,
+    }
+    const result = {
+      schema: 'sysgrid.pv1.production-gate-result.v1',
+      phase: 'P12_AUTOMATED_PRODUCTION_GATE', profile, generated_at: new Date().toISOString(),
+      verdict: 'FAIL', machine_verdict: 'FAIL', phase_verdict: 'FAIL', exit_code: 1,
+      candidate, rejection,
+      design: { specification_sha256: design.specificationSha256, requirement_count: design.requirementIds.length, requirement_ids_loaded_once: new Set(design.requirementIds).size === design.requirementIds.length },
+      arithmetic: { total_required: design.requirementIds.length, verified: 0, failed: design.requirementIds.length, blocked: 0, not_evaluated: 0, progress: 0 },
+      requirements: [], proof_layers: [], retained_checks: [], evidence: [], checks: [],
+      honest_incomplete_reasons: [rejection.message],
+    }
+    await writeJson(path.join(destination, 'production-gate-result.json'), result)
+    await writeJson(path.join(destination, 'gap-matrix.json'), { schema: 'sysgrid.pv1.gap-matrix.v1', candidate, rejection, statuses: [], total: 0, entries: [], arithmetic: result.arithmetic })
+    await writeJson(path.join(destination, 'source-manifest.json'), { candidate, design: result.design, profile, source_state: sourceState, rejection })
+    await writeFile(path.join(destination, 'CHANGED_FILES.txt'), `${sourceState.status_porcelain.join('\n')}${sourceState.status_porcelain.length ? '\n' : ''}`)
+    await writeJson(path.join(destination, 'PHASE_RESULT.json'), { phase: result.phase, result: result.phase_verdict, overall_verdict: result.verdict, machine_verdict: result.machine_verdict, remote_mutation: 'NONE', output_dir: destination, rejection })
+    await writeFile(path.join(destination, 'PHASE_RESULT.md'), `# P12_AUTOMATED_PRODUCTION_GATE\n\nPhase result: **FAIL**\n\nRelease certification refused: tracked worktree is dirty.\n\nRemote mutation: **NONE**\n\nRun directory: ${destination}\n`)
+    return { ...result, output_dir: destination }
+  }
 
   const checkResults = new Map()
   const internalDesign = await runInternalCheck({ id: 'internal:design-integrity', layer: 'schema_type_lint_build', outputDir: destination, payload: { requirement_count: design.requirementIds.length, design_sha256: design.specificationSha256 } })
@@ -202,7 +247,7 @@ export async function runProductionGate({ repoRoot = REPOSITORY_ROOT, profile = 
   const fixtureId = `pv1-release-${profile}`
   const environmentId = `${process.platform}-${process.arch}-node${process.versions.node}`
   const rawEvidence = await makeEvidenceRecords({ design, candidate, coverageMap: coverage.map, checkResults, outputDir: destination, fixtureId, environmentId })
-  const evidenceResults = validateEvidenceRecords(rawEvidence, { schema: design.evidenceSchema, candidate, designSha256: design.specificationSha256 })
+  const evidenceResults = validateEvidenceRecords(rawEvidence, { schema: design.evidenceSchema, candidate, designSha256: design.specificationSha256, artifactRoot: destination })
   await writeJson(path.join(destination, 'evidence-records.json'), rawEvidence)
   const proofLayers = makeProofLayers(checkResults)
   const retainedChecks = profile === 'release'
@@ -216,7 +261,7 @@ export async function runProductionGate({ repoRoot = REPOSITORY_ROOT, profile = 
   const arithmeticResult = await runInternalCheck({ id: 'internal:gate-arithmetic', layer: 'schema_type_lint_build', outputDir: destination, result: matrix.total === design.requirementIds.length && new Set(matrix.entries.map((entry) => entry.requirement_id)).size === design.requirementIds.length ? 'PASS' : 'FAIL', payload: { total: matrix.total, unique_ids: new Set(matrix.entries.map((entry) => entry.requirement_id)).size } })
   checkResults.set(arithmeticResult.check_id, arithmeticResult)
   const finalEvidence = await makeEvidenceRecords({ design, candidate, coverageMap: coverage.map, checkResults, outputDir: destination, fixtureId, environmentId })
-  const finalEvidenceResults = validateEvidenceRecords(finalEvidence, { schema: design.evidenceSchema, candidate, designSha256: design.specificationSha256 })
+  const finalEvidenceResults = validateEvidenceRecords(finalEvidence, { schema: design.evidenceSchema, candidate, designSha256: design.specificationSha256, artifactRoot: destination })
   const finalMatrix = createGapMatrix({ requirements: design.requirements.requirements, expectedIds: design.requirementIds, evidenceResults: finalEvidenceResults, coverageMap: coverage.map })
   const finalProofLayers = makeProofLayers(checkResults)
   const gate = evaluateGate({ matrix: finalMatrix, proofLayers: finalProofLayers, retainedChecks })

@@ -4,7 +4,7 @@ const proofDir = process.env.SYSGRID_P07_PROOF_DIR || 'test-results/p07-architec
 
 export default defineConfig({
   testDir: './tests',
-  testMatch: 'projects-p07-architecture.spec.ts',
+  testMatch: ['projects-p07-architecture.spec.ts', 'pv1-architecture-performance-browser.spec.ts'],
   fullyParallel: false,
   workers: 1,
   retries: 0,
