@@ -14,6 +14,7 @@ import {
   readPV1Readiness,
   runPV1LifecycleCommand,
   savePV1CreationDraft,
+  PortfolioProjectionError,
 } from './ProjectsStory.api'
 import {
   PROJECT_TEMPLATES,
@@ -119,6 +120,7 @@ function PortfolioScreen() {
   }), sort, currentUserId), [items, includeSubprojects, parentFocus, phase, health, search, sort, currentUserId])
   const activeTeams = (teams.data || []).filter((team: any) => !team.is_archived)
   const stalePortfolio = portfolio.isError && Boolean(portfolio.data)
+  const invalidProjection = portfolio.error instanceof PortfolioProjectionError
   const portfolioNotice = (location.state as { projectsNotice?: string } | null)?.projectsNotice
 
   const toggleSelected = (projectId: string) => setSelected((current) => {
@@ -131,7 +133,7 @@ function PortfolioScreen() {
     <main className="p04-stack" data-p04-portfolio="true">
       <section className="p04-page-heading"><div><p className="p04-eyebrow">Team portfolio</p><h1>Projects</h1><p>Delivery commitments, interventions, and outcome follow-up in one management-readable view.</p></div><span className="p04-freshness">{portfolio.data ? relativeFreshness(portfolio.data.as_of) : 'Loading projection…'}</span></section>
       {portfolioNotice ? <div className="p04-local-notice" role="status">{portfolioNotice}</div> : null}
-      {portfolio.isLoading && !portfolio.data ? <StoryState title="Loading Portfolio" description="Reading the canonical Project projection and rollups." /> : portfolio.isError && !portfolio.data ? <StoryState title="Portfolio unavailable" description={apiFailureDescription(portfolio.error, 'The project service did not return a usable response.')} action={<button className="p04-button" onClick={() => portfolio.refetch()}>Retry</button>} /> : <>
+      {invalidProjection ? <StoryState title="Portfolio unavailable" description={`Invalid project projection. ${apiFailureDescription(portfolio.error, 'The canonical Project response is incomplete; no projects were rendered.')}`} action={<button className="p04-button" onClick={() => portfolio.refetch()}>Retry</button>} /> : portfolio.isLoading && !portfolio.data ? <StoryState title="Loading Portfolio" description="Reading the canonical Project projection and rollups." /> : portfolio.isError && !portfolio.data ? <StoryState title="Portfolio unavailable" description={apiFailureDescription(portfolio.error, 'The project service did not return a usable response.')} action={<button className="p04-button" onClick={() => portfolio.refetch()}>Retry</button>} /> : <>
         {stalePortfolio ? <div className="p04-local-error" role="status">Showing stale cached project data. Refresh failed; editing availability may have changed. {apiFailureDescription(portfolio.error, '')}</div> : null}
         {portfolio.data?.coverage?.resources === 'partial' ? <div className="p04-local-notice"><strong>Some project data unavailable.</strong> Resource coverage is partial; delivery and outcome rollups remain current.</div> : null}
         <section className="p04-summary-strip" aria-label="Portfolio summary">{summaryKeys.map((key) => <button type="button" key={key} data-dimension={key === 'Needs attention' ? 'attention' : ['Measuring', 'Realized', 'Closed below target'].includes(key) ? 'outcome' : 'delivery'} aria-pressed={phase === key} onClick={() => { setPhase((current) => current === key ? 'All' : key); setHealth('All') }}><span>{key}</span><strong>{portfolio.data?.summary?.[key] ?? 0}</strong></button>)}</section>
