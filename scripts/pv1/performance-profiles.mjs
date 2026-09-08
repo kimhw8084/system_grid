@@ -55,6 +55,15 @@ const BUDGETS = {
   unexpected_5xx_fraction: 0.001,
 }
 
+export const REQUIRED_VARIANTS = [
+  'long_names',
+  'deep_wbs_to_8_levels',
+  'unscheduled_work',
+  'dense_dependencies',
+  'archived_data',
+  'mixed_permissions',
+]
+
 function parseArgs(argv) {
   const args = { profile: 'all' }
   for (let index = 0; index < argv.length; index += 1) {
@@ -73,7 +82,8 @@ function profileResult(name, definition, design) {
     fixture_status: 'DECLARED',
     fixture: {
       ...definition,
-      required_variants: ['long_names', 'deep_wbs_to_8_levels', 'unscheduled_work', 'dense_dependencies', 'archived_data', 'mixed_permissions'],
+      required_variants: REQUIRED_VARIANTS,
+      variant_matrix: REQUIRED_VARIANTS.map((variant) => ({ variant, declared: true, instantiated: false, executed: false, artifact_produced: false })),
     },
     budgets: BUDGETS,
     measurement: {

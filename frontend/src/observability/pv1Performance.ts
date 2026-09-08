@@ -42,8 +42,9 @@ let initialized = false
 let clsValue = 0
 const interactionDurations = new Map<number, number>()
 
-const candidateSha = String(import.meta.env.VITE_PV1_CANDIDATE_SHA || 'unknown').toLowerCase().replace(/[^0-9a-f]/g, '').slice(0, 64) || 'unknown'
-const release = String(import.meta.env.VITE_PV1_RELEASE || 'pv1').slice(0, 80)
+const configuredCandidate = String(import.meta.env.VITE_PV1_CANDIDATE_SHA || '').trim().toLowerCase()
+const candidateSha = /^[0-9a-f]{64}$/.test(configuredCandidate) ? configuredCandidate : ''
+const release = String(import.meta.env.VITE_PV1_RELEASE || '').trim().slice(0, 80)
 
 const viewportClass = (): 'mobile' | 'desktop' => (
   typeof window !== 'undefined' && window.innerWidth < 768 ? 'mobile' : 'desktop'
@@ -106,9 +107,13 @@ export const readPV1PerformanceMetrics = (): PV1PerformanceMetric[] => metrics.m
 
 export const flushPV1PerformanceMetrics = () => {
   if (typeof navigator === 'undefined' || typeof navigator.sendBeacon !== 'function' || metrics.length === 0) return false
+  // Production telemetry without an exact candidate/release must never look
+  // like release evidence. Development/test telemetry is sent unattributed
+  // and quarantined by the server.
+  if (import.meta.env.PROD && (!candidateSha || !release)) return false
   const payload = JSON.stringify({
     schema: 'sysgrid.pv1.field-performance.v1',
-    candidate_sha256: candidateSha,
+    ...(candidateSha ? { candidate_sha256: candidateSha } : {}),
     release,
     metrics: readPV1PerformanceMetrics(),
   })

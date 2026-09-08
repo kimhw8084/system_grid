@@ -15,10 +15,13 @@ P07_USER_ID="p07.architecture"
 P07_PROOF_DIR="${SYSGRID_P07_PROOF_DIR:-$P07_TEMP_ROOT/proof}"
 P07_BACKEND_PID=""
 P07_FRONTEND_PID=""
+P07_PERFORMANCE_ONLY="${SYSGRID_P07_PERFORMANCE_ONLY:-0}"
+if [[ "${1:-}" == "--performance-only" ]]; then P07_PERFORMANCE_ONLY="1"; fi
 mkdir -p "$P07_PROOF_DIR"
 
 runtime_env=(
   env -u TESTING -u USER_ID -u user_name -u TRUSTED_PROXY_USER_HEADER
+  "PYTHONPATH=$BACKEND_DIR"
   "CONFIG_DATABASE_URL=sqlite+aiosqlite:///$P07_CONFIG_DB"
   "DATABASE_URL=sqlite+aiosqlite:///$P07_TENANT_DB"
   "TENANT_STORAGE_ROOT=$P07_TEMP_ROOT/tenants"
@@ -50,6 +53,9 @@ wait_for_url() { local url="$1"; for _ in {1..90}; do if curl -fsS "$url" >/dev/
 if lsof -tiTCP:"$P07_BACKEND_PORT" -sTCP:LISTEN >/dev/null 2>&1 || lsof -tiTCP:"$P07_FRONTEND_PORT" -sTCP:LISTEN >/dev/null 2>&1; then echo "P07 proof ports are already in use." >&2; exit 1; fi
 printf '%s\n' "config_db=$P07_CONFIG_DB" "tenant_db=$P07_TENANT_DB" > "$P07_PROOF_DIR/isolated-database-paths.txt"
 (cd "$ROOT_DIR" && "${runtime_env[@]}" ./backend/venv/bin/python seed.py --tenant-name "P07 Isolated Architecture" --tenant-db "$P07_TENANT_DB" --admin-user "$P07_USER_ID" --no-seed-data)
+(cd "$BACKEND_DIR" && "${runtime_env[@]}" ./venv/bin/python "$ROOT_DIR/scripts/pv1/architecture_performance_fixture.py" --database-url "sqlite+aiosqlite:///$P07_TENANT_DB" --output "$P07_PROOF_DIR/large-architecture-fixture.json")
+P07_LARGE_MODEL_ID="$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["model_id"])' "$P07_PROOF_DIR/large-architecture-fixture.json")"
+runtime_env+=("SYSGRID_P07_LARGE_MODEL_ID=$P07_LARGE_MODEL_ID" "SYSGRID_P07_LARGE_FIXTURE_JSON=$P07_PROOF_DIR/large-architecture-fixture.json")
 (cd "$BACKEND_DIR" && exec "${runtime_env[@]}" ./venv/bin/python -m uvicorn app.main:app --host 127.0.0.1 --port "$P07_BACKEND_PORT") > "$P07_TEMP_ROOT/backend.log" 2>&1 &
 P07_BACKEND_PID=$!
 wait_for_url "$P07_BACKEND_ORIGIN/api/v1/health"
@@ -57,4 +63,6 @@ wait_for_url "$P07_BACKEND_ORIGIN/api/v1/health"
 P07_FRONTEND_PID=$!
 wait_for_url "$P07_FRONTEND_ORIGIN"
 cd "$FRONTEND_DIR"
-P07_REAL_BACKEND=1 SYSGRID_P07_API_ORIGIN="$P07_BACKEND_ORIGIN" SYSGRID_P07_PROOF_DIR="$P07_PROOF_DIR" PLAYWRIGHT_BASE_URL="$P07_FRONTEND_ORIGIN" npx playwright test --config=playwright.p07-architecture.config.ts
+P07_CONFIG="playwright.p07-architecture.config.ts"
+if [[ "$P07_PERFORMANCE_ONLY" == "1" ]]; then P07_CONFIG="playwright.p07-architecture-performance.config.ts"; fi
+P07_REAL_BACKEND=1 SYSGRID_P07_API_ORIGIN="$P07_BACKEND_ORIGIN" SYSGRID_P07_PROOF_DIR="$P07_PROOF_DIR" PLAYWRIGHT_BASE_URL="$P07_FRONTEND_ORIGIN" SYSGRID_P07_LARGE_MODEL_ID="$P07_LARGE_MODEL_ID" npx playwright test --config="$P07_CONFIG"

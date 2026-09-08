@@ -44,48 +44,64 @@ curl -fsS "$FRONTEND_ORIGIN" >/dev/null
 
 run_profile() {
   local profile="$1"
-  local backend_port="$2"
-  local profile_root="$TEMP_ROOT/$profile"
-  local config_db="$profile_root/config.db"
-  local tenant_db="$profile_root/tenant.db"
-  local api_origin="http://127.0.0.1:$backend_port"
-  local fixture_json="$OUTPUT_DIR/${profile,,}-fixture.json"
-  local output_json="$OUTPUT_DIR/${profile,,}-browser-performance.json"
-  mkdir -p "$profile_root"
-  local runtime_env=(
-    env -u TESTING -u USER_ID -u user_name -u TRUSTED_PROXY_USER_HEADER
-    "PYTHONPATH=$BACKEND_DIR"
-    "CONFIG_DATABASE_URL=sqlite+aiosqlite:///$config_db"
-    "DATABASE_URL=sqlite+aiosqlite:///$tenant_db"
-    "TENANT_STORAGE_ROOT=$profile_root/tenants"
-    "DEFAULT_TENANT_NAME=P12 $profile Performance"
-    "PUBLIC_READONLY_ENABLED=false"
-    "DEFAULT_USER_ID=p12.performance"
-    "AUTO_ADMIN_USER_IDS=p12.performance"
-    "USER_ID_ENV_VAR=SYSGRID_P12_RUNTIME_USER_ID"
-    "SYSGRID_P12_RUNTIME_USER_ID=p12.performance"
-    "DEFAULT_EMAIL_DOMAIN=sysgrid.test"
-    "ENVIRONMENT=development"
-    "AUTO_MIGRATE_ON_STARTUP=false"
-    "IDENTITY_MODE=development"
-    "ALLOWED_HOSTS=127.0.0.1,localhost,test,testserver"
-    "BACKEND_CORS_ORIGINS=$FRONTEND_ORIGIN"
-  )
-  (cd "$ROOT_DIR" && "${runtime_env[@]}" ./backend/venv/bin/python seed.py --tenant-name "P12 $profile Performance" --tenant-db "$tenant_db" --admin-user p12.performance --no-seed-data) > "$profile_root/seed.log"
-  (cd "$BACKEND_DIR" && "${runtime_env[@]}" ./venv/bin/python "$ROOT_DIR/scripts/pv1/performance_fixture.py" --database-url "sqlite+aiosqlite:///$tenant_db" --profile "$profile" --output "$fixture_json")
-  (cd "$BACKEND_DIR" && exec "${runtime_env[@]}" ./venv/bin/python -m uvicorn app.main:app --host 127.0.0.1 --port "$backend_port") > "$profile_root/backend.log" 2>&1 &
-  BACKEND_PID=$!
-  for _ in {1..120}; do
-    curl -fsS "$api_origin/api/v1/health" >/dev/null 2>&1 && break
-    sleep 1
+  local backend_base="$2"
+  local variant_index=0
+  local variant
+  local variant_outputs=()
+  for variant in long_names deep_wbs_to_8_levels unscheduled_work dense_dependencies archived_data mixed_permissions; do
+    local backend_port=$((backend_base + variant_index))
+    local profile_root="$TEMP_ROOT/$profile/$variant"
+    local config_db="$profile_root/config.db"
+    local tenant_db="$profile_root/tenant.db"
+    local api_origin="http://127.0.0.1:$backend_port"
+    local fixture_json="$OUTPUT_DIR/${profile,,}-${variant}-fixture.json"
+    local output_json="$OUTPUT_DIR/${profile,,}-${variant}-browser-performance.json"
+    mkdir -p "$profile_root"
+    local runtime_env=(
+      env -u TESTING -u USER_ID -u user_name -u TRUSTED_PROXY_USER_HEADER
+      "PYTHONPATH=$BACKEND_DIR"
+      "CONFIG_DATABASE_URL=sqlite+aiosqlite:///$config_db"
+      "DATABASE_URL=sqlite+aiosqlite:///$tenant_db"
+      "TENANT_STORAGE_ROOT=$profile_root/tenants"
+      "DEFAULT_TENANT_NAME=P12 $profile Performance $variant"
+      "PUBLIC_READONLY_ENABLED=false"
+      "DEFAULT_USER_ID=p12.performance"
+      "AUTO_ADMIN_USER_IDS=p12.performance"
+      "USER_ID_ENV_VAR=SYSGRID_P12_RUNTIME_USER_ID"
+      "SYSGRID_P12_RUNTIME_USER_ID=p12.performance"
+      "DEFAULT_EMAIL_DOMAIN=sysgrid.test"
+      "ENVIRONMENT=development"
+      "AUTO_MIGRATE_ON_STARTUP=false"
+      "IDENTITY_MODE=development"
+      "ALLOWED_HOSTS=127.0.0.1,localhost,test,testserver"
+      "BACKEND_CORS_ORIGINS=$FRONTEND_ORIGIN"
+    )
+    (cd "$ROOT_DIR" && "${runtime_env[@]}" ./backend/venv/bin/python seed.py --tenant-name "P12 $profile Performance $variant" --tenant-db "$tenant_db" --admin-user p12.performance --no-seed-data) > "$profile_root/seed.log"
+    (cd "$BACKEND_DIR" && "${runtime_env[@]}" ./venv/bin/python "$ROOT_DIR/scripts/pv1/performance_fixture.py" --database-url "sqlite+aiosqlite:///$tenant_db" --profile "$profile" --variant "$variant" --output "$fixture_json")
+    (cd "$BACKEND_DIR" && exec "${runtime_env[@]}" ./venv/bin/python -m uvicorn app.main:app --host 127.0.0.1 --port "$backend_port") > "$profile_root/backend.log" 2>&1 &
+    BACKEND_PID=$!
+    for _ in {1..120}; do curl -fsS "$api_origin/api/v1/health" >/dev/null 2>&1 && break; sleep 1; done
+    curl -fsS "$api_origin/api/v1/health" >/dev/null
+    local selected_project
+    selected_project="$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["selected_project_id"])' "$fixture_json")"
+    (cd "$FRONTEND_DIR" && P12_PROFILE="$profile" P12_VARIANT="$variant" P12_API_ORIGIN="$api_origin" P12_PROJECT_ID="$selected_project" P12_PERF_BROWSER_OUTPUT="$output_json" PLAYWRIGHT_BASE_URL="$FRONTEND_ORIGIN" npx playwright test --config=playwright.pv1-performance.config.ts)
+    kill "$BACKEND_PID" >/dev/null 2>&1 || true
+    BACKEND_PID=""
+    cp "$profile_root/backend.log" "$OUTPUT_DIR/${profile,,}-${variant}-backend.log"
+    variant_outputs+=("$output_json")
+    variant_index=$((variant_index + 1))
   done
-  curl -fsS "$api_origin/api/v1/health" >/dev/null
-  local selected_project
-  selected_project="$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["selected_project_id"])' "$fixture_json")"
-  (cd "$FRONTEND_DIR" && P12_PROFILE="$profile" P12_API_ORIGIN="$api_origin" P12_PROJECT_ID="$selected_project" P12_PERF_BROWSER_OUTPUT="$output_json" PLAYWRIGHT_BASE_URL="$FRONTEND_ORIGIN" npx playwright test --config=playwright.pv1-performance.config.ts)
-  kill "$BACKEND_PID" >/dev/null 2>&1 || true
-  BACKEND_PID=""
-  cp "$profile_root/backend.log" "$OUTPUT_DIR/${profile,,}-backend.log"
+  python3 - "$OUTPUT_DIR" "$profile" "${variant_outputs[@]}" <<'PY'
+import json, pathlib, sys
+root = pathlib.Path(sys.argv[1]); profile = sys.argv[2]; files = [pathlib.Path(item) for item in sys.argv[3:]]
+records = [json.loads(path.read_text()) for path in files]
+for record in records:
+    if record.get('instantiated') is not True or record.get('executed') is not True:
+        raise SystemExit(f"variant was not executed by the browser producer: {record.get('variant')}")
+    record['artifact_produced'] = True
+payload = {'schema': 'sysgrid.pv1.browser-performance-profile.v2', 'profile': profile, 'variant_runs': records, 'required_variant_count': len(records), 'executed_variant_count': sum(1 for record in records if record.get('executed') and record.get('artifact_produced')), 'verdict': all(record.get('verdict') for record in records)}
+(root / f'{profile.lower()}-browser-performance.json').write_text(json.dumps(payload, indent=2) + '\n')
+PY
 }
 
 run_profile Typical 18131

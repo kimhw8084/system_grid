@@ -312,12 +312,21 @@ async def ingest_field_performance(request: Request):
         return JSONResponse(status_code=400, content={"code": "OBSERVABILITY_INVALID_JSON"})
     if not isinstance(payload, dict) or not isinstance(payload.get("metrics"), list) or len(payload["metrics"]) > 500:
         return JSONResponse(status_code=400, content={"code": "OBSERVABILITY_INVALID_METRICS"})
-    candidate = str(payload.get("candidate_sha256") or "unknown")
-    if candidate != "unknown" and not re.fullmatch(r"[0-9a-f]{64}", candidate):
+    candidate = str(payload.get("candidate_sha256") or "").strip().lower()
+    configured_candidate = settings.PV1_RELEASE_CANDIDATE_SHA.strip().lower()
+    if candidate and not re.fullmatch(r"[0-9a-f]{64}", candidate):
         return JSONResponse(status_code=400, content={"code": "OBSERVABILITY_INVALID_CANDIDATE"})
+    if configured_candidate and not re.fullmatch(r"[0-9a-f]{64}", configured_candidate):
+        logger.error("pv1_field_metrics_release_identity_misconfigured")
+        return JSONResponse(status_code=503, content={"code": "OBSERVABILITY_RELEASE_IDENTITY_UNAVAILABLE"})
     allowed = {"kind", "name", "value", "value_ms", "unit", "route_class", "workspace", "status_class", "command_id_present", "projection_lag_ms", "schedule_calculation_version", "schedule_calculation_duration_ms", "viewport_class", "candidate_sha256", "release", "measurement_boundary", "at_ms"}
     for metric in payload["metrics"]:
         if not isinstance(metric, dict) or set(metric) - allowed or not isinstance(metric.get("name"), str) or not isinstance(metric.get("value"), (int, float)):
             return JSONResponse(status_code=400, content={"code": "OBSERVABILITY_INVALID_METRIC"})
-    logger.info("pv1_field_metrics_received", extra={"pv1_field_metrics": {"candidate_sha256": candidate, "release": str(payload.get("release") or "pv1")[:80], "sample_count": len(payload["metrics"])}})
-    return {"accepted": len(payload["metrics"]), "field_evidence_status": "NOT_EVALUATED", "owner_phase": "P14_PILOT_RELEASE_HANDOFF"}
+    release = str(payload.get("release") or "").strip()[:80]
+    if configured_candidate and candidate != configured_candidate:
+        logger.warning("pv1_field_metrics_candidate_mismatch", extra={"pv1_field_metrics": {"release": release, "sample_count": len(payload["metrics"])}})
+        return JSONResponse(status_code=202, content={"accepted": 0, "quarantined": len(payload["metrics"]), "eligible_for_release_evidence": False, "field_evidence_status": "NOT_EVALUATED", "reason": "Candidate identity is missing or does not match trusted deployment identity.", "owner_phase": "P14_PILOT_RELEASE_HANDOFF"})
+    eligible = bool(configured_candidate and candidate == configured_candidate and release)
+    logger.info("pv1_field_metrics_received", extra={"pv1_field_metrics": {"candidate_sha256": candidate if eligible else "unattributed", "release": release or "unattributed", "sample_count": len(payload["metrics"])}})
+    return {"accepted": len(payload["metrics"]) if eligible else 0, "quarantined": 0 if eligible else len(payload["metrics"]), "eligible_for_release_evidence": eligible, "field_evidence_status": "NOT_EVALUATED", "owner_phase": "P14_PILOT_RELEASE_HANDOFF"}

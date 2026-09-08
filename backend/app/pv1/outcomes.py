@@ -166,12 +166,46 @@ def evaluate_metric(metric: Any, measurements: Iterable[Any], *, as_of: date | N
     }
 
 
+def _attribution_fraction(row: Any) -> Decimal | None:
+    """Return an explicit attribution fraction without truthiness coercion.
+
+    PV1 requires attribution to be an evidence-bearing field.  A missing
+    fraction is therefore not an implicit full allocation: legacy/incomplete
+    rows remain visible to the caller but contribute no financial value until
+    they are reconciled.  In particular, Decimal('0') is a valid allocation.
+    """
+    value = getattr(row, "fraction", None)
+    if value is None:
+        return None
+    fraction = decimal_value(value, field="fraction")
+    if fraction < ZERO or fraction > Decimal("1"):
+        raise ValueError("fraction must be between 0 and 1")
+    return fraction
+
+
 def _weighted(row: Any) -> Decimal:
-    return decimal_value(row.amount) * decimal_value(row.fraction or 1)
+    fraction = _attribution_fraction(row)
+    if fraction is None:
+        return ZERO
+    return decimal_value(row.amount) * fraction
+
+
+def _deduplicate_rollup_rows(rows: list[Any]) -> tuple[list[Any], int]:
+    """Exclude a superseded direct parent when a child rollup is explicit.
+
+    A parent_value_id is the durable relationship between a direct economic
+    entry and its child/rollup representation.  The child remains the
+    contribution; the referenced parent row is not counted a second time.
+    Unrelated entries with the same attribution key are intentionally retained
+    because they may be sibling allocations whose fractions sum to one.
+    """
+    parent_ids = {str(row.parent_value_id) for row in rows if getattr(row, "parent_value_id", None)}
+    kept = [row for row in rows if str(getattr(row, "id", "")) not in parent_ids]
+    return kept, len(rows) - len(kept)
 
 
 def calculate_value_summary(values: Iterable[Any]) -> dict[str, Any]:
-    rows = list(values)
+    rows, excluded_rollup_count = _deduplicate_rollup_rows(list(values))
     measured = [row for row in rows if getattr(row, "kind", "Measured") == "Measured" and row.quality == "Verified"]
     cash_benefits = [row for row in measured if row.classification in {"Cash saving", "Revenue"}]
     costs = [row for row in measured if row.classification == "Cost"]
@@ -186,9 +220,12 @@ def calculate_value_summary(values: Iterable[Any]) -> dict[str, Any]:
         cost_periods = {(row.period_start, row.period_end) for row in currency_costs}
         common_periods = benefit_periods & cost_periods
         periods = sorted(benefit_periods | cost_periods)
+        # Benefits remain visible even when costs are incomplete; only the
+        # ROI calculation requires a matching verified cost period. Hiding a
+        # measured benefit merely because ROI is unavailable loses evidence.
         matched_benefits = [row for row in benefits if (row.period_start, row.period_end) in common_periods]
         matched_costs = [row for row in currency_costs if (row.period_start, row.period_end) in common_periods]
-        gross = sum((_weighted(row) for row in matched_benefits), ZERO)
+        gross = sum((_weighted(row) for row in benefits), ZERO)
         cost = sum((_weighted(row) for row in matched_costs), ZERO)
         if not currency_costs or not common_periods:
             roi = None
@@ -216,7 +253,7 @@ def calculate_value_summary(values: Iterable[Any]) -> dict[str, Any]:
             "roi_state": roi_state,
             "roi_reason": roi_reason,
             "payback": payback or "Not yet recovered",
-            "contributing_entry_count": len([*matched_benefits, *matched_costs]),
+            "contributing_entry_count": len([*benefits, *matched_costs]),
         })
     capacity_units = sum((_weighted(row) for row in capacity), ZERO)
     capacity_value = sum((_weighted(row) * decimal_value(row.valuation_rate) for row in capacity if row.valuation_rate is not None), ZERO)
@@ -228,4 +265,6 @@ def calculate_value_summary(values: Iterable[Any]) -> dict[str, Any]:
         "estimated": {"amount": decimal_text(sum((_weighted(row) for row in rows if getattr(row, "kind", "Measured") == "Estimated"), ZERO))},
         "forecast": {"amount": decimal_text(sum((_weighted(row) for row in rows if getattr(row, "kind", "Measured") == "Forecast"), ZERO))},
         "excluded_unverified_count": len([row for row in rows if row.quality != "Verified"]),
+        "excluded_unattributed_count": len([row for row in rows if _attribution_fraction(row) is None]),
+        "excluded_rollup_parent_count": excluded_rollup_count,
     }

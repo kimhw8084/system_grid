@@ -106,6 +106,56 @@ async function makeEvidenceRecords({ design, candidate, coverageMap, checkResult
   return records
 }
 
+async function makeTask1001EvidenceRecord({ candidate, checkResults, outputDir, fixtureId, environmentId }) {
+  const check = checkResults.get('retained:task-1001-virtualization')
+  const artifact = check?.artifact_files?.find((filename) => filename.endsWith('task-1001-evidence.json'))
+  const status = statusOf(check)
+  const record = {
+    schema: 'sysgrid.pv1.task-1001-virtualization-evidence.v1',
+    check_id: 'retained:task-1001-virtualization',
+    requirement_ids: ['PV-PERF-002', 'PV-GATE-006'],
+    result: evidenceResult(status),
+    fixture_id: fixtureId,
+    environment_id: environmentId,
+    candidate_git_sha: candidate.source_commit,
+    candidate_tree_sha: candidate.source_tree,
+    target_task_id: 'task-1001',
+    test_command: check?.command || null,
+    artifact: null,
+    logical_task_count: null,
+    realized_row_count: null,
+    dom_bound: null,
+    task_1001_addressable: null,
+    task_1001_visible: null,
+    task_1001_selectable: null,
+    verdict: status === 'PASS',
+  }
+  if (artifact) {
+    try {
+      const source = JSON.parse(await readFile(artifact, 'utf8'))
+      const bytes = await readFile(artifact)
+      record.artifact = {
+        path: path.relative(outputDir, artifact),
+        sha256: createHash('sha256').update(bytes).digest('hex'),
+        size: bytes.byteLength,
+      }
+      record.logical_task_count = source.logical_task_count ?? null
+      record.realized_row_count = source.realized_row_count ?? null
+      record.dom_bound = source.dom_bound ?? null
+      record.task_1001_addressable = source.task_1001_addressable ?? null
+      record.task_1001_visible = source.task_1001_visible ?? null
+      record.task_1001_selectable = source.task_1001_selectable ?? null
+      record.verdict = status === 'PASS' && source.verdict === true
+    } catch {
+      record.result = 'FAIL'
+      record.verdict = false
+    }
+  }
+  const recordPath = path.join(outputDir, 'task-1001-evidence-record.json')
+  await writeJson(recordPath, record)
+  return { ...record, record_path: path.relative(outputDir, recordPath) }
+}
+
 function makeProofLayers(checkResults) {
   return PROOF_LAYER_IDS.map((layerId) => {
     if (HUMAN_LAYERS.has(layerId)) return { layer_id: layerId, status: 'NOT_EVALUATED', implementation: 'INDEPENDENT_HUMAN_EVIDENCE_REQUIRED' }
@@ -206,6 +256,7 @@ export async function runProductionGate({ repoRoot = REPOSITORY_ROOT, profile = 
   for (const result of [internalDesign, internalInventory, internalCoverage]) checkResults.set(result.check_id, result)
 
   const checks = await buildChecks({ repoRoot, outputDir: destination })
+  const checkAccounting = checks.registration_accounting || { unique_registered_checks: checks.length, execution_instances: checks.length, variant_instances: checks.length, duplicates_detected: [] }
   let retainedResults = []
   if (profile === 'release') {
     const python = path.join(repoRoot, 'backend', 'venv', 'bin', 'python')
@@ -213,7 +264,7 @@ export async function runProductionGate({ repoRoot = REPOSITORY_ROOT, profile = 
     const beforeResult = await runCheck(beforeSpec, destination)
     checkResults.set(beforeResult.check_id, beforeResult)
     for (const spec of checks) {
-      if (spec.id.startsWith('retained:')) continue
+      if (spec.id.startsWith('retained:') && spec.id !== 'retained:task-1001-virtualization') continue
       const result = await runCheck(spec, destination)
       checkResults.set(result.check_id, result)
     }
@@ -272,6 +323,7 @@ export async function runProductionGate({ repoRoot = REPOSITORY_ROOT, profile = 
   const gate = evaluateGate({ matrix: finalMatrix, proofLayers: finalProofLayers, retainedChecks })
   const deferredRequirementIds = new Set(Object.entries(coverage.map).filter(([, item]) => item.phase_ownership?.owner_phase !== 'P12_AUTOMATED_PRODUCTION_GATE').map(([id]) => id))
   const machine = machineGate({ matrix: finalMatrix, proofLayers: finalProofLayers, retainedChecks, deferredRequirementIds })
+  const task1001Evidence = await makeTask1001EvidenceRecord({ candidate, checkResults, outputDir: destination, fixtureId, environmentId })
   const phaseVerdict = machine.verdict === 'PASS' ? 'PASS' : machine.verdict
   const result = {
     schema: 'sysgrid.pv1.production-gate-result.v1',
@@ -280,7 +332,9 @@ export async function runProductionGate({ repoRoot = REPOSITORY_ROOT, profile = 
     design: { specification_sha256: design.specificationSha256, requirement_count: design.requirementIds.length, requirement_ids_loaded_once: new Set(design.requirementIds).size === design.requirementIds.length },
     arithmetic: { ...gate.arithmetic, machine: machine.arithmetic }, requirements: finalMatrix.entries, proof_layers: finalProofLayers, retained_checks: retainedChecks,
     evidence: finalEvidenceResults.map(({ record, validation }) => ({ source: 'generated', requirement_id: record.requirement_id, evidence_type: record.evidence_type, check_id: record.check_id, result: record.result, validation })),
+    dedicated_evidence: [task1001Evidence],
     checks: [...checkResults.values()],
+    check_accounting: checkAccounting,
     honest_incomplete_reasons: [
       'Independent visual review, measured usability and controlled pilot require evidence from independent people and are not self-certified by this runner.',
       'A requirement is VERIFIED only when every declared evidence type has a current candidate-bound PASS record.',
@@ -290,7 +344,7 @@ export async function runProductionGate({ repoRoot = REPOSITORY_ROOT, profile = 
   }
   await writeJson(path.join(destination, 'production-gate-result.json'), result)
   await writeJson(path.join(destination, 'gap-matrix.json'), { schema: 'sysgrid.pv1.gap-matrix.v1', candidate, ...finalMatrix, arithmetic: result.arithmetic })
-  await writeJson(path.join(destination, 'source-manifest.json'), { candidate, design: result.design, profile, fixture_id: fixtureId, environment_id: environmentId, retained_checks: retainedChecks, source_state: sourceState })
+  await writeJson(path.join(destination, 'source-manifest.json'), { candidate, design: result.design, profile, fixture_id: fixtureId, environment_id: environmentId, retained_checks: retainedChecks, check_accounting: checkAccounting, source_state: sourceState })
   await writeFile(path.join(destination, 'CHANGED_FILES.txt'), `${sourceState.status_porcelain.join('\n')}${sourceState.status_porcelain.length ? '\n' : ''}`)
   await writeJson(path.join(destination, 'PHASE_RESULT.json'), { phase: result.phase, result: result.phase_verdict, overall_verdict: result.verdict, machine_verdict: result.machine_verdict, remote_mutation: 'NONE', output_dir: destination, arithmetic: result.arithmetic })
   await writeFile(path.join(destination, 'PHASE_RESULT.md'), `# P12_AUTOMATED_PRODUCTION_GATE\n\nPhase result: **${result.phase_verdict}**\n\nOverall production graduation status: **${result.verdict}**\n\nMachine-verifiable P12-owned result: **${result.machine_verdict}**\n\nPV-PERF-003 remains mandatory and NOT_EVALUATED because real initial-release pilot field samples are owned by P14. Candidate-bound checks ran with non-counting status for missing, failed, blocked, or skipped evidence. Independent visual review, measured usability, and controlled pilot evidence are not self-certified.\n\nRemote mutation: **NONE**\n\nRun directory: ${destination}\n`)

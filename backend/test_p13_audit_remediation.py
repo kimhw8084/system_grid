@@ -72,6 +72,31 @@ def test_observability_metric_contract_is_semantic_and_payload_free():
 
 
 @pytest.mark.asyncio
+async def test_field_observability_requires_trusted_release_candidate_for_eligibility(client, monkeypatch):
+    trusted = "a" * 64
+    monkeypatch.setattr(settings, "PV1_RELEASE_CANDIDATE_SHA", trusted)
+    metric = {"name": "LCP", "value": 1200, "unit": "ms", "kind": "web_vital"}
+    missing = await client.post("/api/v1/observability/performance", json={"release": "pv1", "metrics": [metric]})
+    assert missing.status_code == 202
+    assert missing.json()["eligible_for_release_evidence"] is False
+    assert missing.json()["accepted"] == 0
+    unknown = await client.post("/api/v1/observability/performance", json={"candidate_sha256": "unknown", "release": "pv1", "metrics": [metric]})
+    assert unknown.status_code == 400
+    malformed = await client.post("/api/v1/observability/performance", json={"candidate_sha256": "not-a-sha", "release": "pv1", "metrics": [metric]})
+    assert malformed.status_code == 400
+    forged = await client.post("/api/v1/observability/performance", json={"candidate_sha256": "b" * 64, "release": "pv1", "metrics": [metric]})
+    assert forged.status_code == 202
+    assert forged.json()["eligible_for_release_evidence"] is False
+    valid = await client.post("/api/v1/observability/performance", json={"candidate_sha256": trusted, "release": "pv1", "metrics": [metric]})
+    assert valid.status_code == 202
+    assert valid.json()["eligible_for_release_evidence"] is True
+    assert valid.json()["accepted"] == 1
+    no_release = await client.post("/api/v1/observability/performance", json={"candidate_sha256": trusted, "metrics": [metric]})
+    assert no_release.status_code == 202
+    assert no_release.json()["eligible_for_release_evidence"] is False
+
+
+@pytest.mark.asyncio
 async def test_get_tenant_resolution_does_not_mutate_config_database(setup_db, seeded_admin_tenant):
     config_path = Path(setup_db[0].url.database)
     async with setup_db[1]() as config_session:

@@ -8,6 +8,35 @@ from app.models import models as legacy_models
 from app.models.config import Tenant
 from app.pv1 import models as pv1_models
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
+from app.pv1.outcomes import calculate_value_summary
+from types import SimpleNamespace
+
+
+def _value(value_id, amount, fraction, *, classification="Cash saving", key="benefit", parent_value_id=None, quality="Verified", kind="Measured"):
+    return SimpleNamespace(id=value_id, amount=amount, fraction=fraction, classification=classification, currency_or_unit="USD", period_start=__import__("datetime").date(2026, 8, 1), period_end=__import__("datetime").date(2026, 9, 1), quality=quality, kind=kind, valuation_rate=None, attribution_key=key, parent_value_id=parent_value_id)
+
+
+def test_value_summary_uses_explicit_decimal_attribution_and_deduplicates_rollup_parent():
+    zero = _value("zero", "100", "0", key="zero")
+    quarter = _value("quarter", "100", "0.25", key="quarter")
+    full = _value("full", "100", "1", key="full")
+    sibling_a = _value("sibling-a", "100", "0.5", key="shared")
+    sibling_b = _value("sibling-b", "100", "0.5", key="shared")
+    parent = _value("parent", "100", "1", key="rollup")
+    child = _value("child", "100", "1", key="rollup", parent_value_id="parent")
+    missing = _value("missing", "900", None, key="missing")
+    summary = calculate_value_summary([zero, quarter, full, sibling_a, sibling_b, parent, child, missing])
+    group = summary["groups"][0]
+    assert group["gross_cash_benefit"] == "325"
+    assert summary["excluded_rollup_parent_count"] == 1
+    assert summary["excluded_unattributed_count"] == 1
+    assert summary["capacity"]["valued_amount"] == "0"
+
+
+def test_value_summary_keeps_zero_and_fractional_allocations_numerically_distinct():
+    values = [_value("zero", "1000", "0", key="zero"), _value("fraction", "1000", "0.25", key="fraction"), _value("full", "1000", "1", key="full")]
+    summary = calculate_value_summary(values)
+    assert summary["groups"][0]["gross_cash_benefit"] == "1250"
 
 
 def headers(tenant_id: int, command_id: str | None = None, user_id: str = "admin_root") -> dict[str, str]:
@@ -151,3 +180,7 @@ async def test_outcome_revisions_zero_denominator_correction_and_atomic_attribut
     over_command = str(uuid4())
     over = await client.post(f"/api/v2/projects/{project_id}/commands", headers=headers(tenant_id, over_command), json=command(over_command, "value.record", 2, {"classification": "Cash saving", "amount": "1", "currency_or_unit": "USD", "period_start": "2026-08-01", "period_end": "2026-09-01", "attribution_key": "shared", "fraction": "1.01", "source": "ledger"}))
     assert over.status_code == 422
+    missing_fraction_command = str(uuid4())
+    missing_fraction = await client.post(f"/api/v2/projects/{project_id}/commands", headers=headers(tenant_id, missing_fraction_command), json=command(missing_fraction_command, "value.record", 2, {"classification": "Cash saving", "amount": "1", "currency_or_unit": "USD", "period_start": "2026-08-01", "period_end": "2026-09-01", "attribution_key": "missing-fraction", "source": "ledger"}))
+    assert missing_fraction.status_code == 422
+    assert missing_fraction.json()["code"] == "VALIDATION_FAILED"

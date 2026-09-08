@@ -25,6 +25,14 @@ from app.pv1.models import PV1Dependency, PV1Project, PV1ProjectCalendar, PV1Pro
 ACTOR = "p12.performance"
 TENANT_ID = 1
 BASE_DATE = date(2026, 10, 5)
+REQUIRED_VARIANTS = (
+    "long_names",
+    "deep_wbs_to_8_levels",
+    "unscheduled_work",
+    "dense_dependencies",
+    "archived_data",
+    "mixed_permissions",
+)
 
 
 def project_id(profile: str, index: int) -> str:
@@ -39,18 +47,18 @@ def task_id(profile: str, index: int) -> str:
     return f"perf-{profile.lower()}-task-{index:05d}"
 
 
-def make_projects(profile: str, count: int, selected: str) -> list[PV1Project]:
+def make_projects(profile: str, count: int, selected: str, variant: str) -> list[PV1Project]:
     return [
         PV1Project(
             id=project_id(profile, index),
             tenant_id=TENANT_ID,
             display_key=display_key(profile, index),
-            name=f"P12 {profile} project {index:05d}",
-            objective="Deterministic PV1 performance fixture.",
+            name=(f"P12 {profile} project {index:05d} " + "Long name " * 8)[:120] if variant == "long_names" else f"P12 {profile} project {index:05d}",
+            objective=("Deterministic PV1 performance fixture. " + "Long objective content. " * 24)[:500] if variant == "long_names" else "Deterministic PV1 performance fixture.",
             problem="Performance evidence must use canonical records.",
             owner_id=ACTOR,
-            phase="Executing",
-            run_state="Active",
+            phase="Archived" if variant == "archived_data" and index % 7 == 0 and index else "Executing",
+            run_state="Archived" if variant == "archived_data" and index % 7 == 0 and index else "Active",
             priority="Medium",
             start_date=BASE_DATE,
             target_date=BASE_DATE + timedelta(days=30),
@@ -65,23 +73,24 @@ def make_projects(profile: str, count: int, selected: str) -> list[PV1Project]:
             graph_revision=1,
             created_by=ACTOR,
             updated_by=ACTOR,
-            metadata_json={"performance_fixture": profile, "selected": index == 0},
+            metadata_json={"performance_fixture": profile, "variant": variant, "selected": index == 0},
         )
         for index in range(count)
     ]
 
 
-def make_tasks(profile: str, count: int, selected: str) -> list[PV1Task]:
+def make_tasks(profile: str, count: int, selected: str, variant: str) -> list[PV1Task]:
     tasks: list[PV1Task] = []
     selected_project = project_id(profile, 0)
     for index in range(count):
         identifier = task_id(profile, index)
-        parent = task_id(profile, index - 1) if index < 8 and index > 0 else None
+        parent = task_id(profile, index - 1) if variant == "deep_wbs_to_8_levels" and index <= 8 and index > 0 else (task_id(profile, index - 1) if index < 8 and index > 0 else None)
         # Keep every generated task on an explicit working boundary.  The
         # schedule core intentionally rejects implicit weekend normalization;
         # this fixture must exercise performance, not manufacture an invalid
         # calendar input.
-        start = BASE_DATE + timedelta(days=index % 5)
+        start = None if variant == "unscheduled_work" and index % 11 == 0 else BASE_DATE + timedelta(days=index % 5)
+        end = None if start is None else start
         tasks.append(
             PV1Task(
                 id=identifier,
@@ -96,8 +105,8 @@ def make_tasks(profile: str, count: int, selected: str) -> list[PV1Task]:
                 priority="Medium",
                 progress=0,
                 start_date=start,
-                end_date=start,
-                duration_workdays=1,
+                end_date=end,
+                duration_workdays=None if start is None else 1,
                 planning_weight=1,
                 mandatory=True,
                 order_key=(index + 1) * 1024,
@@ -138,9 +147,11 @@ def make_dependencies(profile: str, count: int, edge_count: int) -> list[PV1Depe
     return edges
 
 
-async def build_fixture(database_url: str, profile: str, output: str) -> dict:
+async def build_fixture(database_url: str, profile: str, variant: str, output: str) -> dict:
     if profile not in {"Typical", "Large"}:
         raise ValueError("profile must be Typical or Large")
+    if variant not in REQUIRED_VARIANTS:
+        raise ValueError(f"variant must be one of {REQUIRED_VARIANTS}")
     project_count = 100 if profile == "Typical" else 10_000
     task_count = 500 if profile == "Typical" else 10_000
     edge_count = 750 if profile == "Typical" else 20_000
@@ -148,7 +159,7 @@ async def build_fixture(database_url: str, profile: str, output: str) -> dict:
     engine = create_async_engine(database_url, future=True)
     session_factory = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
     async with session_factory() as session:
-        projects = make_projects(profile, project_count, selected_project)
+        projects = make_projects(profile, project_count, selected_project, variant)
         session.add_all(projects)
         session.add(
             PV1ProjectCalendar(
@@ -170,16 +181,20 @@ async def build_fixture(database_url: str, profile: str, output: str) -> dict:
                 tenant_id=TENANT_ID,
                 project_id=selected_project,
                 user_id=user_id,
-                role="Owner" if user_id == ACTOR else "Lead",
-                capabilities={"view": True, "edit": True, "transition": True},
+                role=("Owner" if user_id == ACTOR else "Viewer" if variant == "mixed_permissions" and index % 3 == 0 else "Lead"),
+                capabilities=(
+                    {"view": True, "edit": False, "transition": False}
+                    if variant == "mixed_permissions" and index % 3 == 0 and user_id != ACTOR
+                    else {"view": True, "edit": True, "transition": True}
+                ),
                 revision=1,
                 created_by=ACTOR,
                 updated_by=ACTOR,
             )
-            for user_id in members
+            for index, user_id in enumerate(members)
         ])
         await session.flush()
-        tasks = make_tasks(profile, task_count, selected_project)
+        tasks = make_tasks(profile, task_count, selected_project, variant)
         edges = make_dependencies(profile, task_count, edge_count)
         for start in range(0, len(tasks), 1000):
             session.add_all(tasks[start:start + 1000])
@@ -190,12 +205,14 @@ async def build_fixture(database_url: str, profile: str, output: str) -> dict:
     result = {
         "schema": "sysgrid.pv1.performance-fixture.v1",
         "profile": profile,
+        "variant": variant,
         "database_url": database_url,
         "tenant_id": TENANT_ID,
         "actor_id": ACTOR,
         "selected_project_id": selected_project,
         "counts": {"projects": project_count, "selected_tasks": task_count, "selected_edges": edge_count},
-        "variants": ["long_names", "deep_wbs_to_8_levels", "unscheduled_work", "dense_dependencies", "archived_data", "mixed_permissions"],
+        "variants": list(REQUIRED_VARIANTS),
+        "variant_runs": [{"variant": variant, "instantiated": True, "executed": False, "artifact_produced": False, "fixture_seed": f"{profile.lower()}:{variant}:v1"}],
     }
     Path(output).write_text(json.dumps(result, indent=2) + "\n", encoding="utf-8")
     print(json.dumps(result, sort_keys=True))
@@ -226,11 +243,12 @@ def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--database-url", required=True)
     parser.add_argument("--profile", choices=["Typical", "Large"], required=True)
+    parser.add_argument("--variant", choices=REQUIRED_VARIANTS, required=True)
     parser.add_argument("--output", required=True)
     parser.add_argument("--config-database-url")
     args = parser.parse_args()
     asyncio.run(grant_load_access(args.config_database_url))
-    asyncio.run(build_fixture(args.database_url, args.profile, args.output))
+    asyncio.run(build_fixture(args.database_url, args.profile, args.variant, args.output))
 
 
 if __name__ == "__main__":

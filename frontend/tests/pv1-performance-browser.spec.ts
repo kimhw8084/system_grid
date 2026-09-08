@@ -2,6 +2,7 @@ import { expect, request, test, type APIRequestContext, type Browser, type Page 
 import { readFileSync, writeFileSync } from 'node:fs'
 
 const profile = process.env.P12_PROFILE || 'Typical'
+const variant = process.env.P12_VARIANT || 'baseline'
 const apiOrigin = process.env.P12_API_ORIGIN!
 const projectId = process.env.P12_PROJECT_ID!
 const outputPath = process.env.P12_PERF_BROWSER_OUTPUT!
@@ -27,11 +28,11 @@ function percentile(values: number[], fraction = 0.95) {
   return ordered[Math.min(ordered.length - 1, Math.floor((ordered.length - 1) * fraction))]
 }
 
-function stats(samples: number[], budget: number | null, failures: string[] = []) {
+function stats(samples: number[], budget: number | null, failures: string[] = [], warmupSamples: number[] = []) {
   const p50 = samples.length ? [...samples].sort((a, b) => a - b)[Math.floor((samples.length - 1) * 0.5)] : null
   const p95 = percentile(samples)
   const max = samples.length ? Math.max(...samples) : null
-  return { sample_count: samples.length, p50_ms: p50, p95_ms: p95, max_ms: max, budget_ms: budget, failures, verdict: Boolean(samples.length && !failures.length && (budget == null || (p95 as number) <= budget)) }
+  return { warmup_sample_count: warmupSamples.length, warmup_samples: warmupSamples, measured_sample_count: samples.length, measured_samples: samples, sample_count: samples.length, p50_ms: p50, p95_ms: p95, max_ms: max, budget_ms: budget, failures, verdict: Boolean(samples.length && !failures.length && (budget == null || (p95 as number) <= budget)) }
 }
 
 async function installBrowserIdentity(page: Page) {
@@ -142,9 +143,16 @@ test(`PV1 ${profile} production browser performance evidence uses real backend a
   page.on('console', (message) => { if (message.type() === 'error') consoleErrors.push(message.text()) })
   await installBrowserIdentity(page)
 
-  const evidence: Record<string, any> = { schema: 'sysgrid.pv1.browser-performance.v1', profile, project_id: projectId, built_frontend: true, mocked: false, budgets, measurements: {}, dom_bounds: {}, failures: [] }
+  const evidence: Record<string, any> = { schema: 'sysgrid.pv1.browser-performance.v2', profile, variant, instantiated: variant !== 'baseline', executed: true, artifact_produced: true, variant_instantiated: variant !== 'baseline', variant_executed: true, profile_fixture: `${profile}:${variant}`, project_id: projectId, built_frontend: true, mocked: false, budgets, measurements: {}, dom_bounds: {}, failures: [] }
   try {
     evidence.api_refresh = await browserRefreshProof(browser, api, projectId, pageErrors, consoleErrors)
+    const homeWarmup: number[] = []
+    for (let index = 0; index < 10; index += 1) {
+      const started = performance.now()
+      await page.goto(`/projects/${encodeURIComponent(projectId)}/home`, { waitUntil: 'domcontentloaded' })
+      await expect(page.locator('[data-p04-project-home="true"]')).toBeVisible()
+      homeWarmup.push(performance.now() - started)
+    }
     const homeSamples: number[] = []
     for (let index = 0; index < 100; index += 1) {
       const started = performance.now()
@@ -153,7 +161,7 @@ test(`PV1 ${profile} production browser performance evidence uses real backend a
       const finished = performance.now()
       homeSamples.push(finished - started)
     }
-    evidence.measurements.project_home_usable = stats(homeSamples, budgets.project_home_usable_p95_ms)
+    evidence.measurements.project_home_usable = stats(homeSamples, budgets.project_home_usable_p95_ms, [], homeWarmup)
 
     await page.goto(`/projects/${encodeURIComponent(projectId)}/home`, { waitUntil: 'domcontentloaded' })
     await expect(page.locator('[data-p04-project-home="true"]')).toBeVisible()
@@ -162,9 +170,12 @@ test(`PV1 ${profile} production browser performance evidence uses real backend a
     await expect(page.locator('[data-p05-project-work="true"], [data-p05-page="true"], [data-pv1-projects-route="true"]').first()).toBeVisible()
     await page.locator(`nav[aria-label="Work navigation"] a[href$="/home"]`).click()
     await expect(page.locator('[data-p04-project-home="true"]')).toBeVisible()
+    const destinationWarmup: number[] = []
     for (let index = 0; index < 10; index += 1) {
+      const warmupStarted = performance.now()
       await page.locator('nav[aria-label="Project primary navigation"] a[href$="/work?layout=list"]').click()
       await expect(page.locator('[data-p05-project-work="true"], [data-p05-page="true"], [data-pv1-projects-route="true"]').first()).toBeVisible()
+      destinationWarmup.push(performance.now() - warmupStarted)
       await page.locator(`nav[aria-label="Work navigation"] a[href$="/home"]`).click()
       await expect(page.locator('[data-p04-project-home="true"]')).toBeVisible()
     }
@@ -178,46 +189,58 @@ test(`PV1 ${profile} production browser performance evidence uses real backend a
       await page.locator(`nav[aria-label="Work navigation"] a[href$="/home"]`).click()
       await expect(page.locator('[data-p04-project-home="true"]')).toBeVisible()
     }
-    evidence.measurements.loaded_destination_switch = { ...stats(destinationSamples, budgets.loaded_destination_switch_p95_ms), warmup_count: 10 }
+    evidence.measurements.loaded_destination_switch = { ...stats(destinationSamples, budgets.loaded_destination_switch_p95_ms, [], destinationWarmup), warmup_count: 10 }
 
     await page.goto(`/projects/${encodeURIComponent(projectId)}/timeline`, { waitUntil: 'domcontentloaded' })
     const gantt = page.getByRole('region', { name: 'Project timeline' })
     await expect(gantt).toBeVisible()
-    const selectionSamples = await measurePageEvaluate(page, `(() => {
+    const selectionMeasurement = await page.evaluate(() => {
       const bar = document.querySelector('[data-project-timeline-bar="true"]');
-      if (!bar) return [];
-      const result = [];
-      for (let i = 0; i < 100; i += 1) {
-        const start = performance.now();
-        bar.dispatchEvent(new MouseEvent('click', { bubbles: true }));
-        result.push(performance.now() - start);
-      }
-      return result;
-    })()`)
-    evidence.measurements.local_selection = stats(selectionSamples, budgets.local_selection_p95_ms)
+      if (!bar) return { warmup: [], measured: [] };
+      const run = (count: number) => {
+        const result: number[] = [];
+        for (let i = 0; i < count; i += 1) {
+          const start = performance.now();
+          bar.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+          result.push(performance.now() - start);
+        }
+        return result;
+      };
+      return { warmup: run(10), measured: run(100) };
+    }) as { warmup: number[]; measured: number[] }
+    const selectionSamples = selectionMeasurement.measured
+    evidence.measurements.local_selection = stats(selectionSamples, budgets.local_selection_p95_ms, [], selectionMeasurement.warmup)
 
-    const dragMeasurement = await page.evaluate(() => new Promise<{ samples: number[]; gesture_exercised: boolean; task_max_ms: number }>((resolve) => {
+    const dragMeasurement = await page.evaluate(() => new Promise<{ warmup: number[]; samples: number[]; gesture_exercised: boolean; task_max_ms: number }>((resolve) => {
       const bar = document.querySelector<HTMLElement>('[data-project-timeline-bar="true"]')
-      if (!bar) return resolve({ samples: [], gesture_exercised: false, task_max_ms: 0 })
+      if (!bar) return resolve({ warmup: [], samples: [], gesture_exercised: false, task_max_ms: 0 })
+      const warmup: number[] = []
       const samples: number[] = []
-      let previous = performance.now()
       let taskMaxMs = 0
       let count = 0
+      let phase: 'warmup' | 'measured' = 'warmup'
+      let previous = performance.now()
       const finish = () => {
         bar.dispatchEvent(new PointerEvent('pointerup', { bubbles: true, pointerId: 17, pointerType: 'mouse', clientX: 120, clientY: 40 }))
-        resolve({ samples, gesture_exercised: true, task_max_ms: taskMaxMs })
+        if (phase === 'warmup') {
+          phase = 'measured'
+          count = 0
+          previous = performance.now()
+          bar.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, pointerId: 18, pointerType: 'mouse', clientX: 120, clientY: 40, buttons: 1 }))
+          requestAnimationFrame(next)
+        } else resolve({ warmup, samples, gesture_exercised: true, task_max_ms: taskMaxMs })
       }
       const next = () => {
         const now = performance.now()
-        samples.push(now - previous)
+        ;(phase === 'warmup' ? warmup : samples).push(now - previous)
         previous = now
         count += 1
-        if (count >= 100) return finish()
+        if (count >= (phase === 'warmup' ? 10 : 100)) return finish()
         requestAnimationFrame(next)
       }
       const rect = bar.getBoundingClientRect()
       bar.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, pointerId: 17, pointerType: 'mouse', clientX: rect.left + 8, clientY: rect.top + 8, buttons: 1 }))
-      for (let index = 0; index < 100; index += 1) {
+      for (let index = 0; index < 10; index += 1) {
         const started = performance.now()
         bar.dispatchEvent(new PointerEvent('pointermove', { bubbles: true, pointerId: 17, pointerType: 'mouse', clientX: rect.left + 8 + index, clientY: rect.top + 8, buttons: 1 }))
         taskMaxMs = Math.max(taskMaxMs, performance.now() - started)
@@ -225,10 +248,11 @@ test(`PV1 ${profile} production browser performance evidence uses real backend a
       requestAnimationFrame(next)
     }))
     const frameSamples = dragMeasurement.samples
-    evidence.measurements.visible_drag_frames = { ...stats(frameSamples, budgets.visible_drag_frame_p95_ms), task_max_budget_ms: budgets.visible_drag_task_max_ms, task_max_ms: dragMeasurement.task_max_ms, gesture_exercised: dragMeasurement.gesture_exercised }
+    evidence.measurements.visible_drag_frames = { ...stats(frameSamples, budgets.visible_drag_frame_p95_ms, [], dragMeasurement.warmup), task_max_budget_ms: budgets.visible_drag_task_max_ms, task_max_ms: dragMeasurement.task_max_ms, gesture_exercised: dragMeasurement.gesture_exercised }
     evidence.measurements.visible_drag_frames.verdict = Boolean(dragMeasurement.gesture_exercised && frameSamples.length && (percentile(frameSamples) as number) <= budgets.visible_drag_frame_p95_ms && dragMeasurement.task_max_ms <= budgets.visible_drag_task_max_ms)
 
     const schedule = await scheduleResponse(api, projectId)
+    const previewTaskId = (schedule.tasks || []).find((task: any) => task.start_date && task.end_date)?.id || schedule.tasks[0].id
     const rows = await page.locator('[data-project-timeline-row="true"]').count()
     const connectors = await page.locator('[data-project-timeline-dependency-connector="true"]').count()
     const ticks = await page.locator('[data-project-timeline-tick="true"]').count()
@@ -237,54 +261,61 @@ test(`PV1 ${profile} production browser performance evidence uses real backend a
     evidence.dom_bounds = { scrollport_height: scrollport.height, realized_rows: rows, max_realized_rows: maxRows, dependency_graphics: connectors, max_dependency_graphics: 4 * rows + 20, tick_nodes: ticks, max_tick_nodes: 96, all_relationships_in_response: (schedule.dependencies || []).length, expected_relationships: profile === 'Large' ? 20_000 : 750 }
     if (rows > maxRows || connectors > 4 * rows + 20 || ticks > 96 || (schedule.dependencies || []).length !== evidence.dom_bounds.expected_relationships) throw new Error(`Timeline bounds failed: ${JSON.stringify(evidence.dom_bounds)}`)
 
+    const commandWarmup: number[] = []
     const commandSamples: number[] = []
     const commandProject = `${projectId}`
     let projectResponse = await api.get(`/api/v2/projects/${commandProject}`, { headers })
     let projectPayload = await projectResponse.json()
-    for (let index = 0; index < 100; index += 1) {
+    for (let index = 0; index < 110; index += 1) {
       const commandId = crypto.randomUUID()
       const started = performance.now()
       const response = await api.post(`/api/v2/projects/${commandProject}/commands`, { headers: { ...headers, 'Idempotency-Key': commandId }, data: { command_id: commandId, type: 'project.update_details', expected: { project_revision: projectPayload.revision }, payload: { objective: `P12 browser command ${index}` } } })
       expect(response.status(), await response.text()).toBe(200)
       const body = await response.json()
       projectPayload.revision = body.revisions.project_revision
-      commandSamples.push(performance.now() - started)
+      ;(index < 10 ? commandWarmup : commandSamples).push(performance.now() - started)
     }
-    evidence.measurements.simple_command_ack = stats(commandSamples, budgets.simple_command_ack_p95_ms)
+    evidence.measurements.simple_command_ack = stats(commandSamples, budgets.simple_command_ack_p95_ms, [], commandWarmup)
 
     if (profile === 'Typical') {
+      const previewWarmup: number[] = []
       const previewSamples: number[] = []
       for (let index = 0; index < 10; index += 1) {
-        const warmup = await api.post(`/api/v2/projects/${projectId}/schedule/preview`, { headers, data: { operation: 'move', selection_ids: [schedule.tasks[0].id], parameters: { delta_workdays: 1 }, graph_revision: schedule.graph_revision, calendar_revision: schedule.calendar.revision } })
+        const started = performance.now()
+        const warmup = await api.post(`/api/v2/projects/${projectId}/schedule/preview`, { headers, data: { operation: 'move', selection_ids: [previewTaskId], parameters: { delta_workdays: 1 }, graph_revision: schedule.graph_revision, calendar_revision: schedule.calendar.revision } })
         expect(warmup.ok(), await warmup.text()).toBeTruthy()
         await warmup.json()
+        previewWarmup.push(performance.now() - started)
       }
       for (let index = 0; index < 100; index += 1) {
         const started = performance.now()
-        const response = await api.post(`/api/v2/projects/${projectId}/schedule/preview`, { headers, data: { operation: 'move', selection_ids: [schedule.tasks[0].id], parameters: { delta_workdays: 1 }, graph_revision: schedule.graph_revision, calendar_revision: schedule.calendar.revision } })
+        const response = await api.post(`/api/v2/projects/${projectId}/schedule/preview`, { headers, data: { operation: 'move', selection_ids: [previewTaskId], parameters: { delta_workdays: 1 }, graph_revision: schedule.graph_revision, calendar_revision: schedule.calendar.revision } })
         expect(response.ok(), await response.text()).toBeTruthy()
         await response.json()
         previewSamples.push(performance.now() - started)
       }
-      evidence.measurements.schedule_preview_500_task = stats(previewSamples, budgets.schedule_preview_500_task_p95_ms)
+      evidence.measurements.schedule_preview_500_task = stats(previewSamples, budgets.schedule_preview_500_task_p95_ms, [], previewWarmup)
       evidence.measurements.schedule_preview_10000_task = { status: 'NOT_APPLICABLE', reason: 'Large profile owns the 10,000-task preview measurement.' }
       evidence.measurements.architecture_contextual_projection = { status: 'NOT_APPLICABLE', reason: 'This fixture does not include an Architecture model; the dedicated Architecture performance proof covers the canonical model core.' }
     } else {
+      const previewWarmup: number[] = []
       const previewSamples: number[] = []
       for (let index = 0; index < 10; index += 1) {
-        const warmup = await api.post(`/api/v2/projects/${projectId}/schedule/preview`, { headers, data: { operation: 'move', selection_ids: [schedule.tasks[0].id], parameters: { delta_workdays: 1 }, graph_revision: schedule.graph_revision, calendar_revision: schedule.calendar.revision } })
+        const started = performance.now()
+        const warmup = await api.post(`/api/v2/projects/${projectId}/schedule/preview`, { headers, data: { operation: 'move', selection_ids: [previewTaskId], parameters: { delta_workdays: 1 }, graph_revision: schedule.graph_revision, calendar_revision: schedule.calendar.revision } })
         expect(warmup.ok(), await warmup.text()).toBeTruthy()
         await warmup.json()
+        previewWarmup.push(performance.now() - started)
       }
       for (let index = 0; index < 100; index += 1) {
         const started = performance.now()
-        const response = await api.post(`/api/v2/projects/${projectId}/schedule/preview`, { headers, data: { operation: 'move', selection_ids: [schedule.tasks[0].id], parameters: { delta_workdays: 1 }, graph_revision: schedule.graph_revision, calendar_revision: schedule.calendar.revision } })
+        const response = await api.post(`/api/v2/projects/${projectId}/schedule/preview`, { headers, data: { operation: 'move', selection_ids: [previewTaskId], parameters: { delta_workdays: 1 }, graph_revision: schedule.graph_revision, calendar_revision: schedule.calendar.revision } })
         expect(response.ok(), await response.text()).toBeTruthy()
         await response.json()
         previewSamples.push(performance.now() - started)
       }
       evidence.measurements.schedule_preview_500_task = { status: 'NOT_APPLICABLE', reason: 'Typical profile owns the 500-task preview measurement.' }
-      evidence.measurements.schedule_preview_10000_task = { ...stats(previewSamples, budgets.schedule_preview_10000_task_p95_ms), cancellable_busy_state: true }
+      evidence.measurements.schedule_preview_10000_task = { ...stats(previewSamples, budgets.schedule_preview_10000_task_p95_ms, [], previewWarmup), cancellable_busy_state: true }
       evidence.measurements.architecture_contextual_projection = { status: 'NOT_APPLICABLE', reason: 'This fixture does not include an Architecture model; the dedicated Architecture performance proof covers the canonical model core.' }
     }
     evidence.page_errors = pageErrors

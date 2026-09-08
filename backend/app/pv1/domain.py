@@ -2587,7 +2587,7 @@ async def execute_command(session: AsyncSession, *, tenant_id: int, actor_id: st
         event_id, _ = await append_event(session, tenant_id=tenant_id, project_id=project_id, actor_id=actor_id, command_id=command_id, event_type="measurement.verified", aggregate_type="measurement", aggregate_id=measurement.id, aggregate_revision=measurement.revision, delta={"measurement_id": measurement.id, "evidence_ids": evidence_ids})
         response = _success(command_id, revisions={"project_revision": project.revision, "graph_revision": project.graph_revision}, changed_entities=[{"kind": "measurement", "id": measurement.id}], event_id=event_id)
     elif command_type == "value.record":
-        required = {"classification", "amount", "currency_or_unit", "period_start", "period_end", "attribution_key", "source"}
+        required = {"classification", "amount", "currency_or_unit", "period_start", "period_end", "attribution_key", "fraction", "source"}
         missing = sorted(field for field in required if payload.get(field) in (None, ""))
         if missing:
             raise PV1DomainError("VALIDATION_FAILED", "Value entry is missing required fields.", details={"fields": missing})
@@ -2596,7 +2596,7 @@ async def execute_command(session: AsyncSession, *, tenant_id: int, actor_id: st
         kind = payload.get("kind", "Measured")
         if kind not in {"Measured", "Estimated", "Forecast"}:
             raise PV1DomainError("VALIDATION_FAILED", "Invalid value kind.")
-        fraction = _decimal(payload.get("fraction", "1"), "fraction")
+        fraction = _decimal(payload.get("fraction"), "fraction")
         if fraction < 0 or fraction > 1: raise PV1DomainError("VALIDATION_FAILED", "fraction must be between 0 and 1.")
         amount = _decimal(payload.get("amount"), "amount")
         attribution_key = str(payload.get("attribution_key") or "")
@@ -2615,12 +2615,22 @@ async def execute_command(session: AsyncSession, *, tenant_id: int, actor_id: st
         value_evidence = payload.get("evidence") or []
         if value_quality == "Verified" and not value_evidence:
             raise PV1DomainError("VALIDATION_FAILED", "Verified value entries require evidence.")
+        parent_value_id = payload.get("parent_value_id")
+        if parent_value_id:
+            parent_value = await session.scalar(select(models.PV1ValueEntry).where(models.PV1ValueEntry.tenant_id == tenant_id, models.PV1ValueEntry.id == str(parent_value_id)))
+            if parent_value is None or parent_value.attribution_key != attribution_key or parent_value.project_id != project.parent_project_id:
+                raise PV1DomainError("VALIDATION_FAILED", "parent_value_id must identify the matching direct entry on the immediate parent project.")
         if project.parent_project_id:
             duplicate_parent = await session.scalar(select(func.count()).select_from(models.PV1ValueEntry).where(models.PV1ValueEntry.tenant_id == tenant_id, models.PV1ValueEntry.project_id == project.parent_project_id, models.PV1ValueEntry.attribution_key == attribution_key))
-            if duplicate_parent:
-                raise PV1DomainError("VALIDATION_FAILED", "A child benefit cannot be claimed again as a parent direct benefit.")
+            if duplicate_parent and not parent_value_id:
+                raise PV1DomainError("VALIDATION_FAILED", "A child benefit must reference its parent entry; it cannot create a second direct claim.")
+        else:
+            child_project_ids = select(models.PV1Project.id).where(models.PV1Project.tenant_id == tenant_id, models.PV1Project.parent_project_id == project_id)
+            duplicate_child = await session.scalar(select(func.count()).select_from(models.PV1ValueEntry).where(models.PV1ValueEntry.tenant_id == tenant_id, models.PV1ValueEntry.project_id.in_(child_project_ids), models.PV1ValueEntry.attribution_key == attribution_key))
+            if duplicate_child:
+                raise PV1DomainError("VALIDATION_FAILED", "A parent direct benefit cannot duplicate an attributed child benefit.")
         value_id = _new_id()
-        session.add(models.PV1ValueEntry(id=value_id, tenant_id=tenant_id, project_id=project_id, kind=kind, classification=payload.get("classification"), amount=amount, currency_or_unit=currency, period_start=period_start, period_end=period_end, attribution_key=attribution_key, fraction=fraction, valuation_rate=payload.get("valuation_rate"), parent_value_id=payload.get("parent_value_id"), approved_by=actor_id if value_quality == "Verified" else None, approved_at=_now() if value_quality == "Verified" else None, source=payload.get("source"), quality=value_quality, evidence=value_evidence, created_by=actor_id, updated_by=actor_id))
+        session.add(models.PV1ValueEntry(id=value_id, tenant_id=tenant_id, project_id=project_id, kind=kind, classification=payload.get("classification"), amount=amount, currency_or_unit=currency, period_start=period_start, period_end=period_end, attribution_key=attribution_key, fraction=fraction, valuation_rate=payload.get("valuation_rate"), parent_value_id=parent_value_id, approved_by=actor_id if value_quality == "Verified" else None, approved_at=_now() if value_quality == "Verified" else None, source=payload.get("source"), quality=value_quality, evidence=value_evidence, created_by=actor_id, updated_by=actor_id))
         event_id, _ = await append_event(session, tenant_id=tenant_id, project_id=project_id, actor_id=actor_id, command_id=command_id, event_type="value.recorded", aggregate_type="value", aggregate_id=value_id, aggregate_revision=1, delta={"attribution_key": attribution_key, "fraction": str(fraction), "kind": kind})
         response = _success(command_id, revisions={"project_revision": project.revision, "graph_revision": project.graph_revision}, changed_entities=[{"kind": "value", "id": value_id}], event_id=event_id)
     elif command_type == "outcomes.close":

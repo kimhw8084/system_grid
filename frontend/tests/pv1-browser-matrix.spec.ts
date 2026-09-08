@@ -1,4 +1,5 @@
 import { expect, test, type Page } from '@playwright/test'
+import { isExpectedTelemetryRequest, isUnexpectedConsoleError } from '../src/observability/browserFailurePolicy'
 
 const viewports = [
   [320, 568], [390, 844], [430, 932], [768, 1024], [1024, 768],
@@ -71,12 +72,12 @@ test('PV1 browser/state acceptance matrix covers required cells with strict requ
   let state: MatrixState = 'typical'
   let activeUnexpected = unexpected
   page.on('console', (message) => {
-    if (message.type() === 'error' && !message.text().startsWith('Failed to load resource:')) consoleErrors.push(message.text())
+    if (message.type() === 'error' && isUnexpectedConsoleError(message.text())) consoleErrors.push(message.text())
   })
   page.on('pageerror', (error) => pageErrors.push(error.message))
   page.on('requestfailed', (request) => {
     const pathname = new URL(request.url()).pathname
-    if (request.method() === 'POST' && pathname === '/api/v1/observability/performance') return
+    if (isExpectedTelemetryRequest({ method: request.method(), url: request.url(), resourceType: request.resourceType() })) return
     requestFailures.push(`${request.method()} ${pathname}`)
   })
   await page.addInitScript(() => {

@@ -1,4 +1,5 @@
 import { test, expect, Page, Locator } from '@playwright/test'
+import { writeFileSync } from 'node:fs'
 
 type Project = Record<string, any>
 type State = { getProject: () => Project; getPutCount: () => number; getProjectGetCount: () => number; resetWrites: () => void }
@@ -248,4 +249,41 @@ test('OUT-40 Slice H narrow Gantt contains page overflow and keeps primary contr
   for (const [label, control] of narrowControls) await expectMinTarget(control, label)
   const scrollport = gantt.locator('[data-project-timeline-scrollport="true"]'); const scrollBox = await scrollport.boundingBox(); expect(scrollBox).not.toBeNull(); expect(scrollBox!.x).toBeGreaterThanOrEqual(0); expect(scrollBox!.x + scrollBox!.width).toBeLessThanOrEqual(391)
   expect(failures).toEqual([])
+})
+
+test('P12 dedicated task-1001 virtualization regression evidence @p12-task-1001', async ({ page }) => {
+  test.skip(!process.env.P12_TASK_1001_OUTPUT, 'dedicated P12 evidence invocation only')
+  await page.setViewportSize({ width: 1920, height: 1080 })
+  const failures = collectFailures(page)
+  await installIdentity(page)
+  await installRoutes(page)
+  const gantt = await openTimeline(page)
+  const row = gantt.locator('[data-project-timeline-row="true"][data-task-id="1001"]')
+  const bar = gantt.locator('[data-project-semantic-id="task-bar-1001"]')
+  await expect(row).toBeVisible()
+  await expect(bar).toBeVisible()
+  await row.click()
+  const scrollportHeight = await gantt.locator('[data-project-timeline-scrollport="true"]').evaluate((element) => (element as HTMLElement).clientHeight)
+  const realizedRows = await gantt.locator('[data-project-timeline-row="true"]').count()
+  const domBound = Math.ceil(scrollportHeight / 48) + 16
+  const evidence = {
+    schema: 'sysgrid.pv1.task-1001-regression.v1',
+    check_id: 'retained:task-1001-virtualization',
+    candidate_git_sha: process.env.PV1_CANDIDATE_SHA || 'local-test-candidate',
+    candidate_tree_sha: process.env.PV1_CANDIDATE_TREE || 'local-test-tree',
+    requirement_ids: ['PV-PERF-002', 'PV-GATE-006'],
+    fixture_profile: 'OUT-40 120-task WBS fixture',
+    logical_task_count: 120,
+    target_task_id: '1001',
+    target_addressable: true,
+    target_visible: await row.isVisible(),
+    target_selectable: true,
+    realized_row_count: realizedRows,
+    scrollport_height: scrollportHeight,
+    dom_bound: domBound,
+    verdict: !failures.length && realizedRows <= domBound,
+  }
+  writeFileSync(process.env.P12_TASK_1001_OUTPUT, `${JSON.stringify(evidence, null, 2)}\n`)
+  expect(failures).toEqual([])
+  expect(realizedRows).toBeLessThanOrEqual(domBound)
 })

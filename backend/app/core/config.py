@@ -2,6 +2,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 from typing import List
 from urllib.parse import urlparse
 import os
+import re
 
 
 class Settings(BaseSettings):
@@ -36,6 +37,10 @@ class Settings(BaseSettings):
     AUTO_ADMIN_USER_IDS: str = "admin_root"
     ALLOW_AUTO_ADMIN_IN_PRODUCTION: bool = False
     SCHEDULE_PREVIEW_SIGNING_KEY: str = "development-only-schedule-preview-key"
+    # Trusted deployment identity for release field evidence. Browser hints
+    # are never authoritative for this value.
+    PV1_RELEASE_CANDIDATE_SHA: str = ""
+    PV1_RELEASE_ID: str = ""
 
     # Application-boundary overload protection. A gateway should enforce the
     # same policy across workers; this bounded fallback remains enabled in the
@@ -132,6 +137,10 @@ class Settings(BaseSettings):
             errors.append("TRUSTED_PROXY_USER_HEADER must be configured in production.")
         if self.TRUSTED_PROXY_USER_HEADER.strip().lower() == "x-user-id":
             errors.append("TRUSTED_PROXY_USER_HEADER must not use the browser-controlled X-User-Id header.")
+        if not re.fullmatch(r"[0-9a-f]{64}", self.PV1_RELEASE_CANDIDATE_SHA.strip().lower()):
+            errors.append("PV1_RELEASE_CANDIDATE_SHA must be a valid committed candidate SHA in production.")
+        if not self.PV1_RELEASE_ID.strip():
+            errors.append("PV1_RELEASE_ID must identify the deployed release in production.")
 
         origins = self.cors_origins
         if not origins or "*" in origins:
