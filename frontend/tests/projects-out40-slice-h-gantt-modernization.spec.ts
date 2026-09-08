@@ -78,6 +78,7 @@ const installRoutes = async (page: Page): Promise<State> => {
   await page.route('**/api/v1/**', async (route) => {
     const request = route.request(); const url = new URL(request.url()); const path = url.pathname
     const json = (value: unknown) => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(value) })
+    if (request.method() === 'POST' && path === '/api/v1/observability/performance') return route.fulfill({ status: 202, contentType: 'application/json', body: JSON.stringify({ accepted: true }) })
     if (request.method() === 'GET' && path.endsWith('/settings/bootstrap')) return json({ VITE_API_BASE_URL: url.origin, DEFAULT_USER_ID: 'proof_operator' })
     if (request.method() === 'GET' && path === '/api/v1/settings/user/profile') return json({ id: 'proof_operator', username: 'proof_operator', full_name: 'Proof Operator', team: 'Operations', team_id: 1, is_admin: true, permissions: { all: 3, projects: 3 } })
     if (request.method() === 'GET' && path === '/api/v1/settings/user/settings') return json({ theme: 'nordic-frost-v1' })
@@ -95,7 +96,11 @@ const collectFailures = (page: Page) => {
   const failures: string[] = []
   page.on('console', (message) => { if (message.type() === 'error') failures.push(`console:${message.text()}`) })
   page.on('pageerror', (error) => failures.push(`pageerror:${error.message}`))
-  page.on('requestfailed', (request) => failures.push(`requestfailed:${request.method()} ${request.url()} ${request.failure()?.errorText || ''}`))
+  page.on('requestfailed', (request) => {
+    const pathname = new URL(request.url()).pathname
+    if (request.method() === 'POST' && pathname === '/api/v1/observability/performance') return
+    failures.push(`requestfailed:${request.method()} ${request.url()} ${request.failure()?.errorText || ''}`)
+  })
   return failures
 }
 

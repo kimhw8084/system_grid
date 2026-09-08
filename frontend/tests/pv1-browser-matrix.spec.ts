@@ -36,6 +36,9 @@ async function installStrictRoutes(page: Page, state: () => MatrixState, unexpec
     const url = new URL(request.url())
     const path = url.pathname
     if (!path.startsWith('/api/')) return route.continue()
+    if (request.method() === 'POST' && path === '/api/v1/observability/performance') {
+      return route.fulfill(json({ accepted: true }, 202))
+    }
     if (request.method() !== 'GET') {
       unexpected().push(`${request.method()} ${path}`)
       await route.abort()
@@ -71,7 +74,11 @@ test('PV1 browser/state acceptance matrix covers required cells with strict requ
     if (message.type() === 'error' && !message.text().startsWith('Failed to load resource:')) consoleErrors.push(message.text())
   })
   page.on('pageerror', (error) => pageErrors.push(error.message))
-  page.on('requestfailed', (request) => requestFailures.push(`${request.method()} ${new URL(request.url()).pathname}`))
+  page.on('requestfailed', (request) => {
+    const pathname = new URL(request.url()).pathname
+    if (request.method() === 'POST' && pathname === '/api/v1/observability/performance') return
+    requestFailures.push(`${request.method()} ${pathname}`)
+  })
   await page.addInitScript(() => {
     localStorage.setItem('SYSGRID_USER_ID', 'matrix_operator')
     localStorage.setItem('SYSGRID_CONFIG_DEFAULT_USER_ID', 'matrix_operator')

@@ -78,7 +78,7 @@ export async function buildChecks({ repoRoot, outputDir }) {
     command('browser:p05', 'pv1_browser_journeys', repoRoot, 'bash', ['scripts/proof-p05-my-day-work-plan.sh'], { timeoutMs: 1_200_000 }),
     command('browser:p06', 'pv1_browser_journeys', repoRoot, 'bash', ['scripts/proof-p06-timeline-scheduling.sh'], { timeoutMs: 1_200_000 }),
     command('browser:p07', 'pv1_browser_journeys', repoRoot, 'bash', ['scripts/proof-p07-architecture.sh'], { timeoutMs: 1_200_000 }),
-    command('browser:architecture-performance', 'pv1_browser_journeys', repoRoot, 'bash', ['scripts/proof-p07-architecture.sh'], { timeoutMs: 1_200_000 }),
+    command('browser:architecture-performance', 'pv1_browser_journeys', repoRoot, 'bash', ['scripts/proof-p07-architecture.sh'], { timeoutMs: 1_200_000, env: { SYSGRID_P07_BACKEND_PORT: '18073', SYSGRID_P07_FRONTEND_PORT: '15180' } }),
     command('browser:p08', 'pv1_browser_journeys', repoRoot, 'bash', ['scripts/proof-p08-communication.sh'], { timeoutMs: 1_200_000 }),
     command('browser:p09', 'pv1_browser_journeys', repoRoot, 'bash', ['scripts/proof-p09-outcomes.sh'], { timeoutMs: 1_200_000 }),
     command('browser:p11', 'pv1_browser_journeys', repoRoot, 'bash', ['scripts/proof-p11-portfolio-regression.sh'], { timeoutMs: 1_200_000 }),
