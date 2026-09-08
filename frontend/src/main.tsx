@@ -7,6 +7,9 @@ import { buildBootstrapFailureDiagnosis, buildBootstrapReport } from './api/boot
 import { AlertTriangle, Bug, Copy, Database, ExternalLink, Globe, RefreshCcw, ShieldAlert, UserCircle2, Wrench } from 'lucide-react'
 import { WorkspaceSectionCard, WorkspaceSectionBadge, WorkspaceEmptyState } from './components/shared/OperationalWorkspacePrimitives'
 import { PageHeader, PageToolbar, ToolbarButton, ToolbarGroup } from './components/shared/LayoutPrimitives'
+import { initializePV1PerformanceInstrumentation } from './observability/pv1Performance'
+
+initializePV1PerformanceInstrumentation()
 
 console.log("MAIN.TSX: Initializing React Root");
 

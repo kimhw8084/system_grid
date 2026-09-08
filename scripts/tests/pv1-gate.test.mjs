@@ -4,6 +4,7 @@ import os from 'node:os'
 import path from 'node:path'
 import test from 'node:test'
 import { collectCandidateIdentity } from '../pv1/candidate-identity.mjs'
+import { coverageFor } from '../pv1/coverage.mjs'
 import { loadDesignPackage } from '../pv1/design-package.mjs'
 import { createGapMatrix, evaluateGate } from '../pv1/gap-matrix.mjs'
 import { discoverRetainedChecks } from '../pv1/retained-checks.mjs'
@@ -98,14 +99,47 @@ test('retained checks are registered exactly as declared by the production contr
   assert.ok(checks.every((check) => check.registered && check.status === 'NOT_EVALUATED'))
 })
 
-test('production-gate skeleton emits honest NOT_EVALUATED output and nonzero exit code', async () => {
+test('PV-PERF-003 remains mandatory but is explicitly P14 pilot-owned', async () => {
+  const design = await loadDesignPackage()
+  const requirement = design.requirementsById.get('PV-PERF-003')
+  const coverage = coverageFor(requirement)
+  assert.equal(requirement.required, true)
+  assert.deepEqual(requirement.required_evidence_types, ['performance', 'browser', 'operations'])
+  assert.deepEqual(coverage.phase_ownership, {
+    owner_phase: 'P14_PILOT_RELEASE_HANDOFF',
+    status: 'NOT_EVALUATED',
+    reason: 'Real initial-release pilot field samples are required; zero traffic is No data, not PASS.',
+  })
+})
+
+test('P12 performance requirements bind to real proof producers', async () => {
+  const design = await loadDesignPackage()
+  assert.deepEqual(coverageFor(design.requirementsById.get('PV-API-006')).evidence_types, {
+    integration: 'performance:api-projection',
+    browser: 'browser:performance',
+    performance: 'performance:api-projection',
+  })
+  assert.deepEqual(coverageFor(design.requirementsById.get('PV-PERF-002')).evidence_types, {
+    performance: 'browser:performance',
+    browser: 'browser:performance',
+  })
+  assert.deepEqual(coverageFor(design.requirementsById.get('PV-PERF-004')).evidence_types, {
+    performance: 'performance:load',
+    security: 'performance:load',
+    integration: 'performance:load',
+  })
+})
+
+test('production-gate test profile is honest and does not graduate the candidate', async () => {
   const outputDir = await mkdtemp(path.join(os.tmpdir(), 'sysgrid-pv1-gate-'))
   try {
     const result = await runProductionGate({ repoRoot, profile: 'test', outputDir })
     assert.equal(result.verdict, 'NOT_EVALUATED')
     assert.equal(result.exit_code, 2)
     assert.equal(result.arithmetic.total_required, 136)
-    assert.equal(result.arithmetic.verified, 0)
+    assert.ok(result.arithmetic.verified < 136)
+    assert.ok(result.arithmetic.not_evaluated > 0)
+    assert.equal(result.machine_verdict, 'NOT_EVALUATED')
     assert.equal(result.design.requirement_ids_loaded_once, true)
     assert.equal(result.retained_checks.length, 3)
     const written = JSON.parse(await readFile(path.join(outputDir, 'production-gate-result.json'), 'utf8'))

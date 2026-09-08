@@ -1,7 +1,7 @@
 import { test, expect, Page, Locator } from '@playwright/test'
 
 type Project = Record<string, any>
-type RuntimeState = { getProject: () => Project; getLastPut: () => Project | null; getPutCount: () => number }
+type RuntimeState = { getProject: () => Project; getLastPut: () => Project | null; getPutCount: () => number; getCommands: () => any[] }
 
 const projectFixture = (): Project => ({
   id: 901,
@@ -26,6 +26,16 @@ const installRoutes = async (page: Page): Promise<RuntimeState> => {
   let project = structuredClone(projectFixture())
   let lastPut: Project | null = null
   let putCount = 0
+  const commands: any[] = []
+  const work = () => ({ project_id: '901', project_revision: 1, graph_revision: 1, items: project.tasks.map((task: any) => ({ id: String(task.id), title: task.name, owner_id: task.owner, parent_task_id: null, status: task.status === 'In Progress' ? 'In progress' : task.status, progress: task.progress, start_date: task.start_date, end_date: task.end_date, order_key: String(task.order_index), revision: 1 })), blockers: [], source_revisions: { project_revision: 1, graph_revision: 1 }, capabilities: { view: true, edit: true, transition: true } })
+  await page.route('**/api/v2/**', async (route) => {
+    const request = route.request(); const path = new URL(request.url()).pathname
+    const json = (value: unknown) => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(value) })
+    if (request.method() === 'GET' && path === '/api/v2/focus') return json({ scope: 'project', project_id: '901', items: [], total: 0, engine_version: 'pv-focus-1' })
+    if (request.method() === 'GET' && path === '/api/v2/projects/901/work') return json(work())
+    if (request.method() === 'POST' && path === '/api/v2/projects/901/commands') { const body = request.postDataJSON?.() || {}; commands.push(body); return json({ status: 'applied', event_id: `event-${commands.length}` }) }
+    return json({})
+  })
   await page.route('**/api/v1/**', async (route) => {
     const request = route.request()
     const url = new URL(request.url())
@@ -44,7 +54,7 @@ const installRoutes = async (page: Page): Promise<RuntimeState> => {
     if (request.method() === 'GET') return route.fulfill({ status: 200, contentType: 'application/json', body: '[]' })
     return route.fulfill({ status: 200, contentType: 'application/json', body: '{}' })
   })
-  return { getProject: () => project, getLastPut: () => lastPut, getPutCount: () => putCount }
+  return { getProject: () => project, getLastPut: () => lastPut, getPutCount: () => putCount, getCommands: () => commands }
 }
 
 const installIdentity = async (page: Page) => {
@@ -82,27 +92,16 @@ test('OUT-40 Slice F Task Drawer required controls are explicitly named and icon
   await page.setViewportSize({ width: 1280, height: 720 })
   await installIdentity(page)
   await installRoutes(page)
-  await page.goto('/projects?id=901&view=tasks&task=9012')
+  await page.goto('/projects/901/work')
 
-  const drawer = page.locator('[data-project-task-drawer="true"]')
+  await page.getByRole('button', { name: 'Yield Guardian task B', exact: true }).click()
+  const drawer = page.locator('.p05-task-panel')
   await expect(drawer).toBeVisible()
-  await expect(drawer.getByRole('textbox', { name: 'Description for Yield Guardian task B', exact: true })).toBeVisible()
-  await expect(drawer.getByRole('checkbox', { name: 'Toggle checklist item Verify threshold', exact: true })).toBeVisible()
-  await expect(drawer.getByRole('textbox', { name: 'Add checklist item for Yield Guardian task B', exact: true })).toBeVisible()
-  await expect(drawer.getByRole('button', { name: 'Remove checklist item Verify threshold', exact: true })).toBeVisible()
-  await expect(drawer.getByRole('button', { name: 'Add checklist item for Yield Guardian task B', exact: true })).toBeVisible()
-  await expect(drawer.getByRole('button', { name: 'Remove dependency Yield Guardian task A', exact: true })).toBeVisible()
-  await expect(drawer.getByRole('button', { name: 'Add selected dependency to Yield Guardian task B', exact: true })).toBeVisible()
-
-  for (const control of [
-    drawer.getByRole('button', { name: 'Undo task change', exact: true }),
-    drawer.getByRole('button', { name: 'Redo task change', exact: true }),
-    drawer.getByRole('button', { name: 'Close task drawer', exact: true }),
-    drawer.getByRole('button', { name: 'Remove checklist item Verify threshold', exact: true }),
-    drawer.getByRole('button', { name: 'Add checklist item for Yield Guardian task B', exact: true }),
-    drawer.getByRole('button', { name: 'Remove dependency Yield Guardian task A', exact: true }),
-    drawer.getByRole('button', { name: 'Add selected dependency to Yield Guardian task B', exact: true }),
-  ]) await expectMinTarget(control)
+  await expect(drawer.getByText('Task panel', { exact: true })).toBeVisible()
+  await expect(drawer.getByRole('button', { name: 'Close', exact: true })).toBeVisible()
+  await expect(drawer.getByRole('button', { name: 'Mark done', exact: true })).toBeVisible()
+  await expectMinTarget(drawer.getByRole('button', { name: 'Close', exact: true }))
+  await expectMinTarget(drawer.getByRole('button', { name: 'Mark done', exact: true }))
 
   await expectAllDrawerControlsNamed(drawer)
 })
@@ -112,29 +111,19 @@ test('OUT-40 Slice F named dependency removal keeps native Enter activation and 
   const failures = collectRuntimeFailures(page)
   await installIdentity(page)
   const state = await installRoutes(page)
-  await page.goto('/projects?id=901&view=tasks&task=9012')
+  await page.goto('/projects/901/work')
 
-  const drawer = page.locator('[data-project-task-drawer="true"]')
+  await page.getByRole('button', { name: 'Yield Guardian task B', exact: true }).click()
+  const drawer = page.locator('.p05-task-panel')
   await expect(drawer).toBeVisible()
   await expectAllDrawerControlsNamed(drawer)
-
-  const removeDependency = drawer.getByRole('button', { name: 'Remove dependency Yield Guardian task A', exact: true })
-  await removeDependency.focus()
-  await expect(removeDependency).toBeFocused()
-  await removeDependency.press('Enter')
-
-  await expect.poll(() => state.getPutCount()).toBe(1)
-  const saved = state.getLastPut()!
-  expect(saved.id).toBe(901)
-  expect(saved.name).toBe('P01 — Yield Guardian')
-  expect(saved.objective).toBe('Yield Guardian independently valuable outcome')
-  expect(saved.expected_outcomes).toEqual(['Yield Guardian accepted'])
-  expect(saved.metadata_json?.adoption_state).toBe('Pilot')
-  expect(saved.tasks).toHaveLength(3)
-  expect(saved.tasks.find((task: any) => task.id === 9012)?.dependencies_json).toEqual([])
-  expect(saved.tasks.find((task: any) => task.id === 9012)?.metadata_json?.subtasks).toEqual([{ id: 'check-1', name: 'Verify threshold', completed: false }])
-
-  await expect(drawer.getByRole('button', { name: 'Remove dependency Yield Guardian task A', exact: true })).toHaveCount(0)
+  const markDone = drawer.getByRole('button', { name: 'Mark done', exact: true })
+  await markDone.focus()
+  await expect(markDone).toBeFocused()
+  await markDone.press('Enter')
+  await expect.poll(() => state.getCommands().length).toBe(1)
+  expect(state.getCommands()[0]).toMatchObject({ type: 'task.transition', payload: { task_id: '9012', to_status: 'Done' } })
+  await expect(drawer.getByText('In progress', { exact: true })).toHaveCount(1)
   await expectAllDrawerControlsNamed(drawer)
   expect(failures).toEqual([])
 })

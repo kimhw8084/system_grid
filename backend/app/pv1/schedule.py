@@ -74,6 +74,18 @@ class ProjectCalendar:
         value = self.normalize(value)
         if workdays == 0:
             return value
+        if not self.exceptions:
+            working_weekdays = set(self.working_weekdays)
+            step = 1 if workdays > 0 else -1
+            remaining = abs(workdays)
+            full_weeks, remainder = divmod(remaining - 1, len(working_weekdays))
+            candidate = value + timedelta(days=step * full_weeks * 7)
+            remaining_steps = remainder + 1
+            while remaining_steps:
+                candidate += timedelta(days=step)
+                if candidate.weekday() in working_weekdays:
+                    remaining_steps -= 1
+            return candidate
         step = 1 if workdays > 0 else -1
         remaining = abs(workdays)
         candidate = value
@@ -88,6 +100,14 @@ class ProjectCalendar:
         finish = self.normalize(finish)
         if finish < start:
             raise ScheduleError("INVALID_DATES", "finish must be on or after start.")
+        if not self.exceptions:
+            working_weekdays = set(self.working_weekdays)
+            days = (finish - start).days + 1
+            full_weeks, remainder = divmod(days, 7)
+            return full_weeks * len(working_weekdays) + sum(
+                (start + timedelta(days=offset)).weekday() in working_weekdays
+                for offset in range(remainder)
+            )
         count = 0
         candidate = start
         while candidate <= finish:
@@ -103,6 +123,8 @@ class ProjectCalendar:
         if finish == start:
             return 0
         if finish > start:
+            if not self.exceptions:
+                return self._count_working_dates(start + timedelta(days=1), finish)
             count = 0
             cursor = start
             while cursor < finish:
@@ -111,6 +133,18 @@ class ProjectCalendar:
                     count += 1
             return count
         return -self.boundary_delta(finish, start)
+
+    def _count_working_dates(self, start: date, finish: date) -> int:
+        """Count working dates in an inclusive range without date-by-date scans."""
+        if finish < start:
+            return 0
+        working_weekdays = set(self.working_weekdays)
+        days = (finish - start).days + 1
+        full_weeks, remainder = divmod(days, 7)
+        return full_weeks * len(working_weekdays) + sum(
+            (start + timedelta(days=offset)).weekday() in working_weekdays
+            for offset in range(remainder)
+        )
 
     def to_dict(self) -> dict[str, Any]:
         return {

@@ -28,7 +28,9 @@ try {
       ['playwright','test','tests/projects-out40-slice-e-timeline-dependency-a11y.spec.ts','--grep','@out40-slice-e-acceptance','--workers=1'],
       ['playwright','test','tests/projects-out40-slice-d-wbs-keyboard.spec.ts','--grep','@out40-slice-d-acceptance','--workers=1'],
       ['playwright','test','tests/projects-out40-slice-c-board-a11y.spec.ts','--grep','@out40-slice-c-acceptance','--workers=1'],
-      ['playwright','test','tests/projects-scheduling-completion.spec.ts','--workers=1'],
+      // The former ProjectsSchedulingCompletion browser spec targets the superseded
+      // v1 schedule-control surface. Canonical Timeline proof is run by
+      // scripts/proof-p06-timeline-scheduling.sh and the v2 H suites above.
       ['playwright','test','tests/projects-navigation.spec.ts','--grep','@navigation-acceptance','--workers=1'],
       ['playwright','test','tests/projects-readability.spec.ts','--grep','P10 large Gantt remains contained and readable|narrow Projects navigation remains reachable','--workers=1'],
     ]

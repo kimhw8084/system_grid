@@ -12,7 +12,7 @@ function validateRequirementSet(requirements, expectedIds) {
   }
 }
 
-export function createGapMatrix({ requirements, expectedIds, evidenceResults = [] }) {
+export function createGapMatrix({ requirements, expectedIds, evidenceResults = [], coverageMap = {} }) {
   validateRequirementSet(requirements, expectedIds)
   const byRequirement = new Map()
   for (const item of evidenceResults) {
@@ -22,16 +22,24 @@ export function createGapMatrix({ requirements, expectedIds, evidenceResults = [
   }
   const entries = requirements.map((requirement) => {
     const evidence = byRequirement.get(requirement.id) || []
+    const coverage = coverageMap[requirement.id] || {}
+    const requiredEvidenceTypes = Array.isArray(requirement.required_evidence_types) ? requirement.required_evidence_types : []
+    const evidenceTypes = new Set(evidence.filter((item) => item.validation.countable).map((item) => item.record?.evidence_type))
     const countable = evidence.filter((item) => item.validation.countable)
     const failures = evidence.filter((item) => item.record?.result === 'FAIL' && item.validation.valid)
     const blocked = evidence.filter((item) => item.record?.result === 'BLOCKED' && item.validation.valid)
-    const implementationRefs = Array.isArray(requirement.implementation_refs) ? requirement.implementation_refs : []
-    const testRefs = Array.isArray(requirement.test_refs) ? requirement.test_refs : []
+    const implementationRefs = Array.isArray(requirement.implementation_refs) && requirement.implementation_refs.length
+      ? requirement.implementation_refs
+      : (coverage.implementation_refs || [])
+    const testRefs = Array.isArray(requirement.test_refs) && requirement.test_refs.length
+      ? requirement.test_refs
+      : (coverage.test_refs || [])
     const traceabilityComplete = implementationRefs.length > 0 && testRefs.length > 0
+    const missingEvidenceTypes = requiredEvidenceTypes.filter((type) => !evidenceTypes.has(type))
     let status = 'NOT_EVALUATED'
     if (failures.length) status = 'FAIL'
     else if (blocked.length) status = 'BLOCKED'
-    else if (countable.length && traceabilityComplete) status = 'VERIFIED'
+    else if (countable.length && traceabilityComplete && missingEvidenceTypes.length === 0) status = 'VERIFIED'
     return {
       requirement_id: requirement.id,
       title: requirement.title,
@@ -41,6 +49,9 @@ export function createGapMatrix({ requirements, expectedIds, evidenceResults = [
       implementation_refs: implementationRefs,
       test_refs: testRefs,
       traceability_complete: traceabilityComplete,
+      required_evidence_types: requiredEvidenceTypes,
+      missing_evidence_types: missingEvidenceTypes,
+      declared_coverage: coverage,
       evidence_count: evidence.length,
       countable_evidence_count: countable.length,
       ignored_manual_implemented: requirement.implemented === true,

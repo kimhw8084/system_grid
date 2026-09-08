@@ -1,3 +1,5 @@
+import { recordApiTiming } from '../observability/pv1Performance'
+
 function normalizeApiBaseUrl(url: string | null | undefined): string {
   const trimmed = (url || '').trim()
   if (!trimmed) return ''
@@ -284,7 +286,9 @@ export async function apiFetch(endpoint: string, options: RequestInit = {}) {
       headers,
     });
   } catch (cause: any) {
-    notifyLatency(Date.now() - startTime)
+    const elapsed = Date.now() - startTime
+    notifyLatency(elapsed)
+    recordApiTiming(url, method, elapsed)
     const message = cause?.message || 'Failed to fetch'
     throw decorateApiError(new Error(message), {
       status: 0,
@@ -293,7 +297,9 @@ export async function apiFetch(endpoint: string, options: RequestInit = {}) {
       method,
     })
   }
-  notifyLatency(Date.now() - startTime);
+  const elapsed = Date.now() - startTime
+  notifyLatency(elapsed);
+  recordApiTiming(url, method, elapsed, response.status)
 
   if (!response.ok) {
     let errorData: any = {};

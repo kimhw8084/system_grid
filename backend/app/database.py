@@ -26,6 +26,12 @@ def sqlite_path_from_url(db_url: str) -> str | None:
 def build_engine(db_url: str):
     engine_args = {"pool_pre_ping": True}
     if is_sqlite_url(db_url):
+        # PV1 qualification exercises 50 active clients against the isolated
+        # SQLite profile.  The previous default queue (five connections)
+        # serialized otherwise independent reads before they reached the
+        # bounded WAL database.  Keep a bounded pool sized to the declared
+        # local concurrency; SQLite still serializes writers through WAL.
+        engine_args.update({"pool_size": 50, "max_overflow": 0})
         engine_args["connect_args"] = {"check_same_thread": False, "timeout": 60}
     return create_async_engine(db_url, **engine_args)
 

@@ -849,27 +849,21 @@ def _delivery_projection(tasks: list[models.PV1Task]) -> dict[str, Any]:
     return {"percent": percent, "label": f"{percent}%", "method": "Weighted by canonical planning weight."}
 
 
-async def project_story_projection(session: AsyncSession, project: models.PV1Project) -> dict[str, Any]:
-    tenant_id, project_id = project.tenant_id, project.id
-    task_result = await session.execute(select(models.PV1Task).where(models.PV1Task.tenant_id == tenant_id, models.PV1Task.project_id == project_id).order_by(models.PV1Task.order_key, models.PV1Task.id))
-    tasks = list(task_result.scalars())
-    criterion_result = await session.execute(select(models.PV1TaskCriterion).where(models.PV1TaskCriterion.tenant_id == tenant_id, models.PV1TaskCriterion.project_id == project_id).order_by(models.PV1TaskCriterion.created_at, models.PV1TaskCriterion.id))
-    criteria = list(criterion_result.scalars())
-    blocker_result = await session.execute(select(models.PV1TaskBlocker).where(models.PV1TaskBlocker.tenant_id == tenant_id, models.PV1TaskBlocker.project_id == project_id, models.PV1TaskBlocker.state == "Open").order_by(models.PV1TaskBlocker.review_date, models.PV1TaskBlocker.id))
-    blockers = list(blocker_result.scalars())
-    governance_result = await session.execute(select(models.PV1GovernanceRecord).where(models.PV1GovernanceRecord.tenant_id == tenant_id, models.PV1GovernanceRecord.project_id == project_id, models.PV1GovernanceRecord.state.not_in(["Closed", "Resolved", "Approved"])).order_by(models.PV1GovernanceRecord.created_at.desc()))
-    governance = list(governance_result.scalars())
-    resource_result = await session.execute(select(models.PV1Resource).where(models.PV1Resource.tenant_id == tenant_id, models.PV1Resource.project_id == project_id).order_by(models.PV1Resource.pinned.desc(), models.PV1Resource.updated_at.desc(), models.PV1Resource.id).limit(4))
-    resources = list(resource_result.scalars())
-    update_result = await session.execute(select(models.PV1Update).where(models.PV1Update.tenant_id == tenant_id, models.PV1Update.project_id == project_id, models.PV1Update.state == "Published").order_by(models.PV1Update.published_at.desc()).limit(1))
-    latest_update = update_result.scalar_one_or_none()
-    metric_result = await session.execute(select(models.PV1Metric).where(models.PV1Metric.tenant_id == tenant_id, models.PV1Metric.project_id == project_id, models.PV1Metric.archived_at.is_(None)).order_by(models.PV1Metric.required_for_success.desc(), models.PV1Metric.created_at, models.PV1Metric.id))
-    metrics = list(metric_result.scalars())
+def _build_project_story_projection(
+    project: models.PV1Project,
+    *,
+    tasks: list[models.PV1Task],
+    criteria: list[models.PV1TaskCriterion],
+    blockers: list[models.PV1TaskBlocker],
+    governance: list[models.PV1GovernanceRecord],
+    resources: list[models.PV1Resource],
+    latest_update: models.PV1Update | None,
+    metrics: list[models.PV1Metric],
+    measurements: dict[str, models.PV1Measurement],
+) -> dict[str, Any]:
+    """Build the canonical management story from already loaded records."""
     primary_metric = metrics[0] if metrics else None
-    measurement = None
-    if primary_metric:
-        measurement_result = await session.execute(select(models.PV1Measurement).where(models.PV1Measurement.tenant_id == tenant_id, models.PV1Measurement.project_id == project_id, models.PV1Measurement.metric_id == primary_metric.id).order_by(models.PV1Measurement.period_end.desc(), models.PV1Measurement.recorded_at.desc()).limit(1))
-        measurement = measurement_result.scalar_one_or_none()
+    measurement = measurements.get(primary_metric.id) if primary_metric else None
 
     open_milestones = [task for task in tasks if task.kind == "Milestone" and task.status not in {"Done", "Cancelled"}]
     open_milestones.sort(key=lambda task: (task.point_date or task.end_date or date.max, task.order_key, task.id))
@@ -963,6 +957,92 @@ async def project_story_projection(session: AsyncSession, project: models.PV1Pro
         "freshness": {"updated_at": _serialize(project.updated_at), "source": "Canonical Project projection"},
         "coverage": {"resources": "available", "architecture": "assessment-only", "updates": "available"},
     }
+
+
+async def project_story_projection(session: AsyncSession, project: models.PV1Project) -> dict[str, Any]:
+    """Build one complete story while preserving the detail endpoint contract."""
+    tenant_id, project_id = project.tenant_id, project.id
+    task_result = await session.execute(select(models.PV1Task).where(models.PV1Task.tenant_id == tenant_id, models.PV1Task.project_id == project_id).order_by(models.PV1Task.order_key, models.PV1Task.id))
+    criterion_result = await session.execute(select(models.PV1TaskCriterion).where(models.PV1TaskCriterion.tenant_id == tenant_id, models.PV1TaskCriterion.project_id == project_id).order_by(models.PV1TaskCriterion.created_at, models.PV1TaskCriterion.id))
+    blocker_result = await session.execute(select(models.PV1TaskBlocker).where(models.PV1TaskBlocker.tenant_id == tenant_id, models.PV1TaskBlocker.project_id == project_id, models.PV1TaskBlocker.state == "Open").order_by(models.PV1TaskBlocker.review_date, models.PV1TaskBlocker.id))
+    governance_result = await session.execute(select(models.PV1GovernanceRecord).where(models.PV1GovernanceRecord.tenant_id == tenant_id, models.PV1GovernanceRecord.project_id == project_id, models.PV1GovernanceRecord.state.not_in(["Closed", "Resolved", "Approved"])).order_by(models.PV1GovernanceRecord.created_at.desc()))
+    resource_result = await session.execute(select(models.PV1Resource).where(models.PV1Resource.tenant_id == tenant_id, models.PV1Resource.project_id == project_id).order_by(models.PV1Resource.pinned.desc(), models.PV1Resource.updated_at.desc(), models.PV1Resource.id).limit(4))
+    update_result = await session.execute(select(models.PV1Update).where(models.PV1Update.tenant_id == tenant_id, models.PV1Update.project_id == project_id, models.PV1Update.state == "Published").order_by(models.PV1Update.published_at.desc()).limit(1))
+    metric_result = await session.execute(select(models.PV1Metric).where(models.PV1Metric.tenant_id == tenant_id, models.PV1Metric.project_id == project_id, models.PV1Metric.archived_at.is_(None)).order_by(models.PV1Metric.required_for_success.desc(), models.PV1Metric.created_at, models.PV1Metric.id))
+    metrics = list(metric_result.scalars())
+    measurements: dict[str, models.PV1Measurement] = {}
+    if metrics:
+        measurement_result = await session.execute(select(models.PV1Measurement).where(models.PV1Measurement.tenant_id == tenant_id, models.PV1Measurement.project_id == project_id, models.PV1Measurement.metric_id.in_([item.id for item in metrics])).order_by(models.PV1Measurement.period_end.desc(), models.PV1Measurement.recorded_at.desc()))
+        for item in measurement_result.scalars():
+            measurements.setdefault(item.metric_id, item)
+    return _build_project_story_projection(
+        project,
+        tasks=list(task_result.scalars()),
+        criteria=list(criterion_result.scalars()),
+        blockers=list(blocker_result.scalars()),
+        governance=list(governance_result.scalars()),
+        resources=list(resource_result.scalars()),
+        latest_update=update_result.scalar_one_or_none(),
+        metrics=metrics,
+        measurements=measurements,
+    )
+
+
+async def project_story_projections(session: AsyncSession, projects: list[models.PV1Project]) -> dict[str, dict[str, Any]]:
+    """Batch complete stories so a paged Portfolio never performs N+1 reads."""
+    if not projects:
+        return {}
+    tenant_id = projects[0].tenant_id
+    project_ids = [project.id for project in projects]
+
+    async def records(model: Any, *, order_by: tuple[Any, ...] = ()) -> list[Any]:
+        statement = select(model).where(model.tenant_id == tenant_id, model.project_id.in_(project_ids))
+        if order_by:
+            statement = statement.order_by(*order_by)
+        return list((await session.execute(statement)).scalars())
+
+    tasks = await records(models.PV1Task, order_by=(models.PV1Task.order_key, models.PV1Task.id))
+    criteria = await records(models.PV1TaskCriterion, order_by=(models.PV1TaskCriterion.created_at, models.PV1TaskCriterion.id))
+    blockers = [item for item in await records(models.PV1TaskBlocker, order_by=(models.PV1TaskBlocker.review_date, models.PV1TaskBlocker.id)) if item.state == "Open"]
+    governance = [item for item in await records(models.PV1GovernanceRecord, order_by=(models.PV1GovernanceRecord.created_at.desc(),)) if item.state not in {"Closed", "Resolved", "Approved"}]
+    resources = await records(models.PV1Resource, order_by=(models.PV1Resource.pinned.desc(), models.PV1Resource.updated_at.desc(), models.PV1Resource.id))
+    updates = [item for item in await records(models.PV1Update) if item.state == "Published"]
+    metrics = [item for item in await records(models.PV1Metric, order_by=(models.PV1Metric.required_for_success.desc(), models.PV1Metric.created_at, models.PV1Metric.id)) if item.archived_at is None]
+    metric_ids = [item.id for item in metrics]
+    measurements = []
+    if metric_ids:
+        measurements = list((await session.execute(select(models.PV1Measurement).where(models.PV1Measurement.tenant_id == tenant_id, models.PV1Measurement.metric_id.in_(metric_ids)).order_by(models.PV1Measurement.period_end.desc(), models.PV1Measurement.recorded_at.desc()))).scalars())
+
+    by_project: dict[str, dict[str, list[Any]]] = {
+        project.id: {"tasks": [], "criteria": [], "blockers": [], "governance": [], "resources": [], "updates": [], "metrics": [], "measurements": []}
+        for project in projects
+    }
+    for collection, key in ((tasks, "tasks"), (criteria, "criteria"), (blockers, "blockers"), (governance, "governance"), (resources, "resources"), (updates, "updates"), (metrics, "metrics")):
+        for item in collection:
+            by_project[item.project_id][key].append(item)
+    for item in measurements:
+        if item.project_id in by_project:
+            by_project[item.project_id]["measurements"].append(item)
+
+    result: dict[str, dict[str, Any]] = {}
+    for project in projects:
+        bucket = by_project[project.id]
+        latest_update = max(bucket["updates"], key=lambda item: (_serialize(item.published_at) or "", str(item.id)), default=None)
+        latest_measurements: dict[str, models.PV1Measurement] = {}
+        for item in bucket["measurements"]:
+            latest_measurements.setdefault(item.metric_id, item)
+        result[project.id] = _build_project_story_projection(
+            project,
+            tasks=bucket["tasks"],
+            criteria=bucket["criteria"],
+            blockers=bucket["blockers"],
+            governance=bucket["governance"],
+            resources=bucket["resources"][:4],
+            latest_update=latest_update,
+            metrics=bucket["metrics"],
+            measurements=latest_measurements,
+        )
+    return result
 
 
 async def project_readiness_gaps(session: AsyncSession, project: models.PV1Project, to_phase: str) -> list[dict[str, Any]]:

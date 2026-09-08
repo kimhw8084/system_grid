@@ -1,13 +1,13 @@
 from __future__ import annotations
 
-from datetime import date
+from datetime import date, timedelta
 from decimal import Decimal
 from typing import Any
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, Header, Query, Request, status
 from fastapi.responses import JSONResponse
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..database import get_db
@@ -156,6 +156,89 @@ def _portfolio_summary(items: list[dict[str, Any]]) -> dict[str, int]:
     return result
 
 
+async def _portfolio_summary_for_query(db: AsyncSession, project_statement: Any, tenant_id: int) -> dict[str, int]:
+    """Calculate portfolio rollups without materializing every story in a page request."""
+    summary_statement = project_statement.with_only_columns(
+        models.PV1Project.id,
+        models.PV1Project.parent_project_id,
+        models.PV1Project.run_state,
+        models.PV1Project.phase,
+        models.PV1Project.outcome_phase,
+        models.PV1Project.outcome_result,
+        models.PV1Project.target_date,
+        models.PV1Project.owner_id,
+        models.PV1Project.update_cadence,
+    )
+    rows = list((await db.execute(summary_statement)).all())
+    result = {key: 0 for key in ["Planned", "Active", "Delivered", "Paused", "Cancelled"]}
+    top_level_ids: set[str] = set()
+    project_by_id: dict[str, Any] = {}
+    for row in rows:
+        project_id = str(row.id)
+        project_by_id[project_id] = row
+        if row.parent_project_id is not None:
+            continue
+        top_level_ids.add(project_id)
+        bucket = "Paused" if row.run_state == "Paused" else "Cancelled" if row.run_state == "Cancelled" else "Delivered" if row.phase == "Delivered" else "Active" if row.phase in {"Executing", "Validating"} else "Planned"
+        result[bucket] += 1
+        if row.outcome_phase == "Measuring": result["Measuring"] = result.get("Measuring", 0) + 1
+        if row.outcome_result == "Realized": result["Realized"] = result.get("Realized", 0) + 1
+        if row.outcome_phase == "Closed" and row.outcome_result in {"Partial", "Not realized"}: result["Closed below target"] = result.get("Closed below target", 0) + 1
+    if not top_level_ids:
+        result.update({"Needs attention": 0, "Measuring": 0, "Realized": 0, "Closed below target": 0})
+        return result
+
+    attention_ids: set[str] = {project_id for project_id, row in project_by_id.items() if project_id in top_level_ids and (not row.owner_id or str(row.owner_id).startswith("legacy:unresolved"))}
+    today = domain._now().date()
+    attention_ids.update(project_id for project_id, row in project_by_id.items() if project_id in top_level_ids and row.target_date and row.phase != "Delivered" and row.target_date < today)
+    project_ids = list(project_by_id)
+    blocker_result = await db.execute(select(models.PV1TaskBlocker.project_id).where(models.PV1TaskBlocker.tenant_id == tenant_id, models.PV1TaskBlocker.project_id.in_(project_ids), models.PV1TaskBlocker.state == "Open"))
+    attention_ids.update(str(value) for value in blocker_result.scalars() if str(value) in top_level_ids)
+    task_result = await db.execute(select(models.PV1Task.project_id).where(models.PV1Task.tenant_id == tenant_id, models.PV1Task.project_id.in_(project_ids), models.PV1Task.status.not_in(["Done", "Cancelled"]), ((models.PV1Task.point_date.is_not(None) & (models.PV1Task.point_date < today)) | (models.PV1Task.point_date.is_(None) & models.PV1Task.end_date.is_not(None) & (models.PV1Task.end_date < today)))))
+    attention_ids.update(str(value) for value in task_result.scalars() if str(value) in top_level_ids)
+
+    governance_result = await db.execute(select(models.PV1GovernanceRecord.project_id, models.PV1GovernanceRecord.record_type, models.PV1GovernanceRecord.payload).where(models.PV1GovernanceRecord.tenant_id == tenant_id, models.PV1GovernanceRecord.project_id.in_(project_ids), models.PV1GovernanceRecord.state.not_in(["Closed", "Resolved", "Approved"])))
+    for project_id, record_type, payload in governance_result.all():
+        if str(project_id) not in top_level_ids or record_type != "Decision": continue
+        due_date = (payload or {}).get("due_date") or (payload or {}).get("review_date")
+        try: parsed_due_date = date.fromisoformat(str(due_date)[:10]) if due_date else None
+        except ValueError: parsed_due_date = None
+        if parsed_due_date and parsed_due_date < today: attention_ids.add(str(project_id))
+
+    update_result = await db.execute(select(models.PV1Update.project_id, models.PV1Update.published_at).where(models.PV1Update.tenant_id == tenant_id, models.PV1Update.project_id.in_(project_ids), models.PV1Update.state == "Published"))
+    latest_update: dict[str, Any] = {}
+    for project_id, published_at in update_result.all():
+        key = str(project_id)
+        if key not in latest_update or (published_at and (not latest_update[key] or published_at > latest_update[key])): latest_update[key] = published_at
+    for project_id, row in project_by_id.items():
+        if project_id not in top_level_ids or row.phase not in {"Executing", "Validating"}: continue
+        published_at = latest_update.get(project_id)
+        cutoff_date = (domain._now() - timedelta(days=max(1, row.update_cadence or 7))).date()
+        published_date = published_at.date() if published_at is not None and hasattr(published_at, "date") else None
+        if published_date is None or published_date < cutoff_date: attention_ids.add(project_id)
+
+    metric_result = await db.execute(select(models.PV1Metric).where(models.PV1Metric.tenant_id == tenant_id, models.PV1Metric.project_id.in_(project_ids), models.PV1Metric.archived_at.is_(None)))
+    metrics_by_project: dict[str, list[models.PV1Metric]] = {}
+    metrics = list(metric_result.scalars())
+    for metric in metrics:
+        metrics_by_project.setdefault(str(metric.project_id), []).append(metric)
+    metric_ids = [metric.id for metric in metrics]
+    if metric_ids:
+        measurement_result = await db.execute(select(models.PV1Measurement).where(models.PV1Measurement.tenant_id == tenant_id, models.PV1Measurement.metric_id.in_(metric_ids)).order_by(models.PV1Measurement.period_end.desc(), models.PV1Measurement.recorded_at.desc()))
+        latest_measurements: dict[str, models.PV1Measurement] = {}
+        for measurement in measurement_result.scalars(): latest_measurements.setdefault(measurement.metric_id, measurement)
+        for project_id, project_metrics in metrics_by_project.items():
+            if project_id not in top_level_ids: continue
+            primary_metric = sorted(project_metrics, key=lambda item: (not item.required_for_success, item.created_at, item.id))[0]
+            measurement = latest_measurements.get(primary_metric.id)
+            if primary_metric.target_date and primary_metric.target_date < today and (not measurement or measurement.period_end < primary_metric.target_date): attention_ids.add(project_id)
+    result["Needs attention"] = len(attention_ids)
+    result.setdefault("Measuring", 0)
+    result.setdefault("Realized", 0)
+    result.setdefault("Closed below target", 0)
+    return result
+
+
 async def _legacy_story(db: AsyncSession, project: legacy_models.Project) -> dict[str, Any]:
     task_result = await db.execute(select(legacy_models.ProjectTask).where(legacy_models.ProjectTask.project_id == project.id).order_by(legacy_models.ProjectTask.id))
     tasks = list(task_result.scalars())
@@ -204,6 +287,32 @@ async def _project_response(db: AsyncSession, project: models.PV1Project, reques
         response["capabilities"] = {key: False for key in response["capabilities"]}
         response["capabilities"].update({"view": True, "export": True, "restore": can_restore})
     return response
+
+
+async def _project_responses(db: AsyncSession, projects: list[models.PV1Project], request: Request) -> list[dict[str, Any]]:
+    """Serialize a portfolio page with one batched story read and one member read."""
+    if not projects:
+        return []
+    stories = await domain.project_story_projections(db, projects)
+    request_role = getattr(request.state, "sysgrid_access_role", None)
+    actor_id = _actor(request)
+    member_by_project: dict[str, models.PV1ProjectMember] = {}
+    if (request_role or "").upper() != "ADMIN":
+        member_result = await db.execute(select(models.PV1ProjectMember).where(
+            models.PV1ProjectMember.tenant_id == projects[0].tenant_id,
+            models.PV1ProjectMember.project_id.in_([project.id for project in projects]),
+            models.PV1ProjectMember.user_id == actor_id,
+        ))
+        member_by_project = {item.project_id: item for item in member_result.scalars()}
+    responses: list[dict[str, Any]] = []
+    for project in projects:
+        response = domain.project_dict(project)
+        response["story"] = stories[project.id]
+        member = member_by_project.get(project.id)
+        role = "Tenant administrator" if (request_role or "").upper() == "ADMIN" else (member.role if member else None)
+        response["capabilities"] = domain.project_capabilities(role, member.capabilities if member else None)
+        responses.append(response)
+    return responses
 
 
 @router.get("/capabilities")
@@ -317,7 +426,6 @@ async def list_projects(request: Request, db: AsyncSession = Depends(get_db), li
     actor_id = _actor(request)
     request_role = getattr(request.state, "sysgrid_access_role", None)
     offset = int(cursor or 0) if (cursor or "0").isdigit() else 0
-    items: list[dict[str, Any]] = []
     project_statement = select(models.PV1Project).where(models.PV1Project.tenant_id == tenant_id, models.PV1Project.archived_at.is_(None))
     if team_id is not None:
         project_statement = project_statement.where(models.PV1Project.team_id == team_id)
@@ -325,12 +433,14 @@ async def list_projects(request: Request, db: AsyncSession = Depends(get_db), li
         member_result = await db.execute(select(models.PV1ProjectMember.project_id).where(models.PV1ProjectMember.tenant_id == tenant_id, models.PV1ProjectMember.user_id == actor_id))
         allowed_project_ids = list(member_result.scalars())
         project_statement = project_statement.where(models.PV1Project.id.in_(allowed_project_ids))
-    pv1_result = await db.execute(project_statement.order_by(models.PV1Project.display_key))
+    total_pv1 = int(await db.scalar(select(func.count()).select_from(project_statement.subquery())) or 0)
+    pv1_result = await db.execute(project_statement.order_by(models.PV1Project.display_key).offset(offset).limit(limit))
     pv1_projects = list(pv1_result.scalars())
-    for project in pv1_projects:
-        items.append(await _project_response(db, project, request))
-    known_legacy_ids = {project.legacy_project_id for project in pv1_projects if project.legacy_project_id is not None}
-    if (request_role or "").upper() == "ADMIN":
+    items = await _project_responses(db, pv1_projects, request)
+    legacy_items: list[dict[str, Any]] = []
+    if (request_role or "").upper() == "ADMIN" and total_pv1 <= offset + limit:
+        known_result = await db.execute(select(models.PV1Project.legacy_project_id).where(models.PV1Project.tenant_id == tenant_id, models.PV1Project.legacy_project_id.is_not(None)))
+        known_legacy_ids = {value for value in known_result.scalars()}
         legacy_statement = select(legacy_models.Project).where(legacy_models.Project.is_deleted == False)
         if team_id is not None:
             legacy_statement = legacy_statement.where(False)
@@ -341,7 +451,9 @@ async def list_projects(request: Request, db: AsyncSession = Depends(get_db), li
             item = domain.legacy_project_dict(project, tenant_id)
             item["story"] = await _legacy_story(db, project)
             item["capabilities"] = domain.project_capabilities("Tenant administrator", legacy=True)
-            items.append(item)
+            legacy_items.append(item)
+        legacy_offset = max(0, offset - total_pv1)
+        items.extend(legacy_items[legacy_offset:legacy_offset + max(0, limit - len(items))])
     child_counts: dict[str, int] = {}
     for item in items:
         if item.get("parent_project_id"):
@@ -349,8 +461,9 @@ async def list_projects(request: Request, db: AsyncSession = Depends(get_db), li
             child_counts[parent_id] = child_counts.get(parent_id, 0) + 1
     for item in items:
         item["child_count"] = child_counts.get(str(item["id"]), 0)
-    page = items[offset:offset + limit]
-    return {"items": page, "summary": _portfolio_summary(items), "next_cursor": str(offset + limit) if offset + limit < len(items) else None, "as_of": domain._now().isoformat(), "source_revision": f"pv1-project-list:{len(pv1_projects)}", "coverage": {"projects": "complete", "rollups": "complete", "resources": "partial"}}
+    total_items = total_pv1 + len(legacy_items)
+    summary = _portfolio_summary(items) if legacy_items else await _portfolio_summary_for_query(db, project_statement, tenant_id)
+    return {"items": items[:limit], "summary": summary, "next_cursor": str(offset + limit) if offset + limit < total_items else None, "as_of": domain._now().isoformat(), "source_revision": f"pv1-project-list:{total_pv1}", "coverage": {"projects": "complete", "rollups": "complete", "resources": "partial"}}
 
 
 @router.post("/projects")

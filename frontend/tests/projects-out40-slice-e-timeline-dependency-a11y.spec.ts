@@ -30,6 +30,30 @@ const installRoutes = async (page: Page): Promise<RuntimeState> => {
   let project = structuredClone(projectFixture())
   let lastPut: Project | null = null
   let putCount = 0
+  const story = { attention_count: 0, attention: [], health: { level: 'On track', reason: 'Timeline fixture is current.' }, delivery: { percent: 45, label: '45%', method: 'Canonical task progress' }, next_milestone: null, milestones: [], acceptance_criteria: [], primary_metric: null, latest_update: null, governance: [], architecture: { assessment: 'Not assessed' }, resources: [], freshness: { updated_at: '2026-09-01T00:00:00Z', source: 'timeline-fixture' }, coverage: { resources: 'complete' } }
+  const canonical = () => ({ id: '901', display_key: 'PRJ-901', name: project.name, objective: project.objective, owner_id: 'proof_operator', team_id: 1, phase: 'Executing', run_state: 'Active', priority: 'High', target_date: project.end_date, outcome_phase: 'Planned', outcome_result: 'Unassessed', revision: 1, graph_revision: 1, capabilities: { view: true, edit: true, transition: true }, story })
+  const schedule = () => ({ project: canonical(), project_id: '901', project_revision: 1, graph_revision: 1, calendar: { id: 'timeline-calendar', timezone: 'UTC', working_weekdays: [0, 1, 2, 3, 4, 5, 6], exceptions: [], revision: 1 }, tasks: project.tasks.map((task: any) => ({ id: String(task.id), title: task.name, kind: 'Task', owner_id: task.owner, parent_task_id: null, metadata_json: task.metadata_json || {}, status: task.status, progress: task.progress, order_key: String(task.order_index), start_date: task.start_date, end_date: task.end_date, point_date: null, revision: 1 })), dependencies: project.tasks.flatMap((task: any) => (task.dependencies_json || []).map((dependency: any, index: number) => ({ id: `edge-${task.id}-${index}`, predecessor_id: String(dependency.id ?? dependency), successor_id: String(task.id), dependency_type: dependency.type || 'FS', lag_days: Number(dependency.lag_days || 0), active: true, revision: 1 }))), external_dependencies: [], baselines: [], baseline_variance: [], analysis: { rows: [], critical_task_ids: [], status: 'Complete' }, forecast: { tasks: [], coverage: 'complete' }, external_warnings: [], history: [] })
+  await page.route('**/api/v2/**', async (route) => {
+    const request = route.request(); const path = new URL(request.url()).pathname
+    const json = (value: unknown) => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(value) })
+    if (request.method() === 'GET' && path === '/api/v2/projects') return json({ items: [canonical()], summary: { Executing: 1 }, next_cursor: null, as_of: '2026-09-01T00:00:00Z', source_revision: 'timeline-fixture', coverage: { projects: 'complete' } })
+    if (request.method() === 'GET' && path === '/api/v2/projects/901/schedule') return json(schedule())
+    if (request.method() === 'POST' && path === '/api/v2/projects/901/commands') {
+      const body = request.postDataJSON?.() || {}
+      if (body.type === 'dependency.create') {
+        const target = project.tasks.find((task: any) => String(task.id) === String(body.payload?.successor_id))
+        if (target) target.dependencies_json = [...(target.dependencies_json || []), { id: String(body.payload.predecessor_id), type: body.payload.dependency_type || 'FS', lag_days: Number(body.payload.lag_days || 0) }]
+        project.metadata_json = { ...(project.metadata_json || {}), project_governance_v1: { ...((project.metadata_json || {}).project_governance_v1 || {}), audit: [...(((project.metadata_json || {}).project_governance_v1 || {}).audit || []), { action: 'Timeline dependency added', detail: `${project.tasks.find((task: any) => String(task.id) === String(body.payload?.predecessor_id))?.name} → ${target?.name}` }] } }
+      } else if (body.type === 'dependency.remove') {
+        const dependencyId = String(body.payload?.dependency_id || '')
+        project.tasks = project.tasks.map((task: any) => ({ ...task, dependencies_json: (task.dependencies_json || []).filter((dependency: any, index: number) => `edge-${task.id}-${index}` !== dependencyId) }))
+        project.metadata_json = { ...(project.metadata_json || {}), project_governance_v1: { ...((project.metadata_json || {}).project_governance_v1 || {}), audit: [...(((project.metadata_json || {}).project_governance_v1 || {}).audit || []), { action: 'Timeline dependency removed', detail: 'Timeline task A → Timeline task C' }] } }
+      }
+      lastPut = structuredClone(project); putCount += 1
+      return json({ status: 'applied', event_id: `event-${putCount}` })
+    }
+    return json({})
+  })
   await page.route('**/api/v1/**', async (route) => {
     const request = route.request()
     const url = new URL(request.url())

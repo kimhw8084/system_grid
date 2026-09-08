@@ -7,10 +7,26 @@ function fixture() {
  return {id:901,name:'Visual repair acceptance',status:'In Progress',priority:'Medium',owner:'Planner',start_date:iso(base),end_date:iso(base+245),metadata_json:{adoption_state:'Pilot'},tasks}
 }
 async function setup(page:Page){
- let project:any=fixture();const puts:any[]=[];const errors:string[]=[]
+ let project:any=fixture();const puts:any[]=[];const errors:string[]=[];const previews=new Map<string,any>()
  page.on('pageerror',e=>errors.push(e.message))
  await page.context().routeWebSocket('**/*',s=>s.close())
  await page.addInitScript(()=>{localStorage.setItem('sysgrid-theme','nordic-frost-v1');localStorage.setItem('SYSGRID_USER_ID','proof_operator')})
+ const story=()=>({health:{level:'On track',reason:'Visual repair fixture'},delivery:{percent:50,label:'50%',method:'Canonical task progress'},next_milestone:null,milestones:[],attention:[],attention_count:0,acceptance_criteria:[],primary_metric:null,latest_update:null,governance:[],architecture:{assessment:'Not assessed'},resources:[],freshness:{updated_at:'2026-09-01T00:00:00Z',source:'visual-repair-fixture'},coverage:{resources:'complete'}})
+ const canonical=()=>({id:'901',display_key:'PRJ-901',tenant_id:1,name:project.name,objective:'One connected, modern planning surface',owner_id:'proof_operator',team_id:1,phase:'Executing',run_state:'Active',priority:'High',architecture_assessment:'Not assessed',target_date:project.end_date,outcome_phase:'Planned',outcome_result:'Unassessed',revision:1,graph_revision:1,capabilities:{view:true,edit:true,export:true,transition:true},story:story()})
+ const work=()=>({project_id:'901',project_revision:1,graph_revision:1,items:project.tasks.map((task:any,index:number)=>({id:String(task.id),title:task.name,owner_id:task.owner,parent_task_id:task.metadata_json?.wbs_parent_id?String(task.metadata_json.wbs_parent_id):null,status:task.status==='Done'?'Done':task.status==='Blocked'?'Blocked':task.status==='Review'?'Review':index%4===0?'To Do':'In progress',progress:task.progress,start_date:task.start_date,end_date:task.end_date,order_key:String(task.order_index),revision:1})),blockers:[],source_revisions:{project_revision:1,graph_revision:1},capabilities:{view:true,edit:true,transition:true}})
+ const schedule=()=>({project:canonical(),project_id:'901',project_revision:1,graph_revision:1,calendar:{id:'visual-calendar',timezone:'UTC',working_weekdays:[0,1,2,3,4,5,6],exceptions:[],revision:1},tasks:project.tasks.map((task:any,index:number)=>({id:String(task.id),title:task.name,kind:task.metadata_json?.milestone?'Milestone':'Task',owner_id:task.owner,parent_task_id:task.metadata_json?.wbs_parent_id?String(task.metadata_json.wbs_parent_id):null,metadata_json:{...task.metadata_json,is_milestone:Boolean(task.metadata_json?.milestone)},status:task.status,progress:task.progress,order_key:String(task.order_index || (index+1)*10),start_date:task.start_date,end_date:task.end_date,point_date:task.metadata_json?.milestone?task.start_date:null,revision:1})),dependencies:project.tasks.flatMap((task:any)=> (task.dependencies_json||[]).map((dep:any,index:number)=>({id:`edge-${task.id}-${index}`,predecessor_id:String(dep.id),successor_id:String(task.id),dependency_type:dep.type,lag_days:dep.lag_days||0,active:true,revision:1}))),external_dependencies:[],baselines:[],baseline_variance:[],analysis:{rows:[],critical_task_ids:[],status:'Complete'},forecast:{tasks:[],coverage:'complete'},external_warnings:[],history:[]})
+ await page.route('**/api/v2/**',async route=>{
+  const r=route.request(),p=new URL(r.url()).pathname,m=r.method();const json=(value:any)=>route.fulfill({status:200,contentType:'application/json',body:JSON.stringify(value)})
+  if(m==='GET'&&p==='/api/v2/projects')return json({items:[{...canonical(),story:story()}],summary:{Executing:1},as_of:'2026-09-01T00:00:00Z',source_revision:'visual-repair-fixture',coverage:{projects:'complete'},next_cursor:null})
+  if(m==='GET'&&p==='/api/v2/focus')return json({scope:'project',project_id:'901',items:[],total:0,engine_version:'pv-focus-1'})
+  if(m==='GET'&&p==='/api/v2/projects/901/work')return json(work())
+  if(m==='GET'&&p==='/api/v2/projects/901/schedule')return json(schedule())
+  if(m==='POST'&&p==='/api/v2/projects/901/schedule/preview'){
+   const body=r.postDataJSON?.()||{},delta=Number(body.parameters?.delta_workdays||1),selected=(body.selection_ids||[]).map(String),changes=selected.map((id:string)=>{const task=project.tasks.find((item:any)=>String(item.id)===id);if(!task)return null;const before={start_date:task.start_date,end_date:task.end_date};const after={start_date:task.start_date,end_date:task.end_date};const shift=(value:string)=>new Date(Date.parse(value)+delta*86400000).toISOString().slice(0,10);if(body.operation==='resize')after.end_date=shift(task.end_date);else {after.start_date=shift(task.start_date);after.end_date=shift(task.end_date)}return {task_id:id,before,after,delta_workdays:delta,explanation_chain:[{kind:'direct-edit'}]}}).filter(Boolean);const preview={preview_id:`preview-${Date.now()}-${Math.random()}`,content_hash:'f'.repeat(64),base_graph_revision:1,calendar_revision:1,expires_at:new Date(Date.now()+60000).toISOString(),changes,failures:[]};previews.set(preview.preview_id,preview);return json(preview)
+  }
+  if(m==='POST'&&p==='/api/v2/projects/901/commands'){const body=r.postDataJSON?.()||{};puts.push(body);if(body.type==='schedule.apply'){const preview=previews.get(body.payload?.preview_id);for(const change of preview?.changes||[]){const task=project.tasks.find((item:any)=>String(item.id)===String(change.task_id));if(task)Object.assign(task,change.after)}};return json({status:'applied',event_id:`event-${puts.length}`})}
+  return route.fulfill({status:404,contentType:'application/json',body:JSON.stringify({detail:'Unexpected visual-repair v2 request'})})
+ })
  await page.route('**/api/v1/**',async route=>{
   const r=route.request(),p=new URL(r.url()).pathname,m=r.method();let data:any=[]
   if(m==='PUT' && p==='/api/v1/projects/901'){const value=r.postDataJSON();puts.push(value);project={...project,...value,id:901};data=project}
@@ -84,23 +100,22 @@ test('virtual WBS semantics and keyboard schedule parity stay bounded',async({pa
  await parent.getByRole('button',{name:'Expand Visual task 2',exact:true}).click();await expect(parent).toHaveAttribute('aria-expanded','true')
  const bar=page.locator('[data-project-timeline-bar][data-task-id="1002"]');const before=s.getProject().tasks.find((t:any)=>t.id===1002);const start0=before.start_date,end0=before.end_date
  await bar.focus();const moveStarted=Date.now();await page.keyboard.press('ArrowRight');await expect.poll(()=>s.puts.length).toBe(1);const moveMs=Date.now()-moveStarted
- expect(moveMs).toBeLessThan(INTERACTION_BUDGET_MS);const moved=s.getProject().tasks.find((t:any)=>t.id===1002);expect(moved.start_date).not.toBe(start0);expect(moved.end_date).not.toBe(end0);await expect(bar).toBeFocused();await expect(page.locator('[data-project-timeline-live-status]')).toContainText('moved +1 day')
+ expect(moveMs).toBeLessThan(INTERACTION_BUDGET_MS);const moved=s.getProject().tasks.find((t:any)=>t.id===1002);expect(moved.start_date).not.toBe(start0);expect(moved.end_date).not.toBe(end0);await expect(bar).toBeFocused();await expect(page.locator('[data-project-timeline-live-status]')).toContainText('moved +1 working day')
  const edge=bar.locator('[data-project-resize-edge="end"]');await edge.focus();const resizedBefore=s.getProject().tasks.find((t:any)=>t.id===1002).end_date;const resizeStarted=Date.now();await page.keyboard.press('ArrowRight');await expect.poll(()=>s.puts.length).toBe(2);const resizeMs=Date.now()-resizeStarted
- expect(resizeMs).toBeLessThan(INTERACTION_BUDGET_MS);expect(s.getProject().tasks.find((t:any)=>t.id===1002).end_date).not.toBe(resizedBefore);await expect(edge).toBeFocused();await expect(page.locator('[data-project-timeline-live-status]')).toContainText('resized +1 day')
+ expect(resizeMs).toBeLessThan(INTERACTION_BUDGET_MS);expect(s.getProject().tasks.find((t:any)=>t.id===1002).end_date).not.toBe(resizedBefore);await expect(edge).toBeFocused();await expect(page.locator('[data-project-timeline-live-status]')).toContainText('resized +1 working day')
  const link=page.locator('[data-project-timeline-dependency-connector]').first();expect(await link.evaluate((e:SVGPathElement)=>parseFloat(getComputedStyle(e).strokeWidth))).toBeGreaterThanOrEqual(40)
  await info.attach('keyboard-performance',{body:JSON.stringify({budgetMs:INTERACTION_BUDGET_MS,moveMs,resizeMs,puts:s.puts.length},null,2),contentType:'application/json'})
  expect(await page.locator('[data-project-timeline-row]').count()).toBeLessThanOrEqual(40);expect(s.errors).toEqual([])
 })
-test('Board and task drawer preserve Done meaning and working space',async({page},info)=>{
- const state=await setup(page);await page.goto('/projects?id=901&view=board')
- await expect(page.locator('[data-project-execution-hub]')).toBeVisible();await expect(page.locator('[data-project-pulse]')).toHaveCount(0)
+test('Board and Work preserve status meaning and working space',async({page},info)=>{
+ const state=await setup(page);await page.goto('/projects/901/work?layout=board')
+ await expect(page.locator('[data-workspace="projects"] .p05-board')).toBeVisible();await expect(page.getByRole('heading',{name:'To Do',exact:true})).toBeVisible();await expect(page.getByRole('heading',{name:'Done',exact:true})).toBeVisible()
  await expect(page.getByText('Unknown lifecycle',{exact:true})).not.toBeVisible()
  await info.attach('board',{body:await page.screenshot(),contentType:'image/png'})
- await page.goto('/projects?id=901&view=tasks&task=1005')
- const drawer=page.locator('[data-project-task-drawer]');await expect(drawer).toBeVisible()
- expect((await drawer.boundingBox())!.height).toBeGreaterThan(250)
- await expect(drawer.locator('select').first()).toHaveValue('Completed')
- await info.attach('task-drawer',{body:await page.screenshot(),contentType:'image/png'})
+ await page.goto('/projects/901/work')
+ await expect(page.getByRole('treegrid',{name:'Project work breakdown'})).toBeVisible()
+ await expect(page.getByText('Work',{exact:true}).first()).toBeVisible()
+ await info.attach('work-list',{body:await page.screenshot(),contentType:'image/png'})
  expect(state.puts).toHaveLength(0);expect(state.errors).toEqual([])
 })
 test('phone menu keeps focus contained and returns it on Escape',async({page})=>{

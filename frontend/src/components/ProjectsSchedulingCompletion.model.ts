@@ -280,6 +280,35 @@ const edgeSuccessorStartFromPredecessorStart = (project: any, predecessorStart: 
 export const analyzeProjectSchedule = (project: any): { rows: ProjectScheduleAnalysisRow[]; cycle: boolean; makespanDays: number; criticalTaskIds: Set<string> } => {
   const tasks = projectTasks(project); const byId = taskIndex(project); const ids: string[] = tasks.map((task: any) => String(task?.id)).filter(Boolean)
   if (!ids.length) return { rows: [], cycle: false, makespanDays: 0, criticalTaskIds: new Set<string>() }
+  const authoritative = project?.__pv1_analysis
+  if (authoritative && Array.isArray(authoritative.rows)) {
+    const taskById = new Map(tasks.map((task: any) => [String(task?.id), task]))
+    const rows = authoritative.rows.map((row: any): ProjectScheduleAnalysisRow => {
+      const task = taskById.get(String(row?.task_id))
+      const start = projectDateOrdinal(row?.earliest_start)
+      const finish = projectDateOrdinal(row?.earliest_finish_boundary)
+      const latestStart = projectDateOrdinal(row?.latest_start)
+      return {
+        id: String(row?.task_id),
+        name: String(task?.name || row?.task_id),
+        durationDays: Math.max(1, finish != null && start != null ? finish - start : 1),
+        earliestStart: start ?? 0,
+        earliestFinish: finish ?? start ?? 0,
+        latestStart: latestStart ?? start ?? 0,
+        latestFinish: latestStart ?? start ?? 0,
+        slackDays: Number(row?.slack_workdays) || 0,
+        critical: Boolean(row?.critical),
+        cycle: false,
+        constraintViolation: row?.negative_slack ? 'Negative slack' : null,
+      }
+    })
+    return {
+      rows,
+      cycle: false,
+      makespanDays: rows.length ? Math.max(...rows.map((row) => row.earliestFinish)) - Math.min(...rows.map((row) => row.earliestStart)) + 1 : 0,
+      criticalTaskIds: new Set(rows.filter((row) => row.critical).map((row) => row.id)),
+    }
+  }
   const indegree = new Map<string, number>(ids.map((id): [string, number] => [id, 0])); const successors = new Map<string, Array<{ id: string; dep: ProjectTaskDependencyV2 }>>()
   for (const task of tasks) {
     const successorId = String(task?.id); const deps = normalizeProjectTaskDependencies(task)

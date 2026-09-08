@@ -226,6 +226,8 @@ export const isOpenProject = (project: any) => !['Completed', 'Cancelled'].inclu
 const openTasksFor = (project: any) => (Array.isArray(project?.tasks) ? project.tasks : []).filter((task: any) => canonicalTaskStatus(task?.status) !== 'Completed')
 
 export const getCriticalTaskIds = (project: any): Set<number | string> => {
+  const authoritative = project?.__pv1_analysis?.critical_task_ids
+  if (Array.isArray(authoritative)) return new Set(authoritative.map((value: unknown) => String(value)))
   const tasks = Array.isArray(project?.tasks) ? project.tasks : []
   const taskById = new Map(tasks.map((task: any) => [String(task.id), task]))
   const scheduled = tasks
@@ -1050,8 +1052,41 @@ export interface ProjectForecastTask {
 export const getProjectForecast = (project: any, now: Date = new Date(), slipByTask: Record<string, number> = {}) => {
   const tasks = Array.isArray(project?.tasks) ? project.tasks : []
   const today = calendarOrdinal(now) ?? 0
-  const taskById = new Map(tasks.map((task: any) => [String(task?.id), task]))
+  const taskById = new Map<string, any>(tasks.map((task: any): [string, any] => [String(task?.id), task]))
   const critical = getCriticalTaskIds(project)
+  const authoritative = project?.__pv1_forecast
+  if (Object.keys(slipByTask).length === 0 && authoritative && Array.isArray(authoritative.tasks)) {
+    const taskForecasts: ProjectForecastTask[] = authoritative.tasks.map((row: any) => {
+      const task = taskById.get(String(row?.task_id))
+      const plannedEndOrdinal = calendarOrdinal(task?.end_date)
+      const forecastStartOrdinal = calendarOrdinal(row?.start_date) ?? calendarOrdinal(row?.point_date) ?? today
+      const forecastEndOrdinal = calendarOrdinal(row?.end_date) ?? calendarOrdinal(row?.point_date) ?? forecastStartOrdinal
+      return {
+        id: task?.id ?? String(row?.task_id),
+        name: String(task?.name || row?.task_id || 'Unnamed task'),
+        plannedEndOrdinal,
+        forecastStartOrdinal,
+        forecastEndOrdinal,
+        delayDays: plannedEndOrdinal == null ? 0 : Math.max(0, forecastEndOrdinal - plannedEndOrdinal),
+        critical: critical.has(String(row?.task_id)),
+      }
+    })
+    const plannedFinishOrdinal = calendarOrdinal(project?.end_date || project?.target_date) ?? (taskForecasts.length ? Math.max(...taskForecasts.map((row) => row.plannedEndOrdinal ?? row.forecastEndOrdinal)) : null)
+    const baselineFinishOrdinal = calendarOrdinal(project?.metadata_json?.baseline_end_date || project?.baseline_end_date)
+    const forecastFinishOrdinal = calendarOrdinal(authoritative.finish) ?? (taskForecasts.length ? Math.max(...taskForecasts.map((row) => row.forecastEndOrdinal)) : plannedFinishOrdinal)
+    return {
+      plannedFinishOrdinal,
+      baselineFinishOrdinal,
+      forecastFinishOrdinal,
+      plannedFinish: ordinalToDate(plannedFinishOrdinal),
+      baselineFinish: ordinalToDate(baselineFinishOrdinal),
+      forecastFinish: ordinalToDate(forecastFinishOrdinal),
+      varianceVsPlanDays: plannedFinishOrdinal == null || forecastFinishOrdinal == null ? null : forecastFinishOrdinal - plannedFinishOrdinal,
+      varianceVsBaselineDays: baselineFinishOrdinal == null || forecastFinishOrdinal == null ? null : forecastFinishOrdinal - baselineFinishOrdinal,
+      tasks: taskForecasts,
+      drivers: [],
+    }
+  }
   const memo = new Map<string, ProjectForecastTask>()
   const visiting = new Set<string>()
   const calculate = (task: any): ProjectForecastTask => {

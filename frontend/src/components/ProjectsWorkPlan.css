@@ -22,7 +22,10 @@
 .p05-inline-add { flex: 1; }
 .p05-inline-add input, .p05-import input, .p05-resource-add input, .p05-import textarea { min-height: 40px; min-width: min(360px, 100%); border: 1px solid #cbd5e1; border-radius: 7px; padding: 8px 10px; background: white; }
 .p05-import label { display: flex; align-items: center; gap: 8px; font-weight: 700; }
-.p05-treegrid { overflow: auto; border: 1px solid #e2e8f0; border-radius: 9px; background: white; }
+.p05-treegrid { max-height: 560px; overflow: auto; border: 1px solid #e2e8f0; border-radius: 9px; background: white; }
+.p05-treegrid-spacer { position: relative; }
+.p05-grid-row-virtual { position: absolute; left: 0; right: 0; }
+.p05-grid-header { position: sticky; top: 0; z-index: 2; background: white; }
 .p05-grid-row { display: grid; grid-template-columns: minmax(260px, 2.4fr) minmax(120px, 1fr) minmax(130px, .8fr) minmax(100px, .7fr) minmax(120px, .8fr); align-items: center; min-height: 48px; border-bottom: 1px solid #eef2f7; }
 .p05-grid-row > span { min-width: 0; padding: 8px 10px; }
 .p05-grid-header { position: sticky; top: 0; background: #f8fafc; font-size: 12px; font-weight: 800; z-index: 1; }

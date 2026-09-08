@@ -19,3 +19,15 @@ export function discoverRetainedChecks(gateContract) {
     execution: 'SKELETON_NOT_RUN',
   }))
 }
+
+export async function executeRetainedChecks(gateContract, execute) {
+  const checks = discoverRetainedChecks(gateContract)
+  const results = []
+  for (const check of checks) {
+    results.push({
+      ...check,
+      ...(await execute(check)),
+    })
+  }
+  return results
+}

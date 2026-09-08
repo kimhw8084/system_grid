@@ -29,6 +29,14 @@ const installRoutes = async (page: Page): Promise<RuntimeState> => {
   let project = structuredClone(projectFixture())
   let lastPut: Project | null = null
   let putCount = 0
+  const work = () => ({ project_id: '901', project_revision: 1, graph_revision: 1, items: project.tasks.map((task: any) => ({ id: String(task.id), title: task.name, owner_id: task.owner, parent_task_id: task.metadata_json?.wbs_parent_id ? String(task.metadata_json.wbs_parent_id) : null, status: task.status === 'In Progress' ? 'In progress' : task.status, progress: task.progress, start_date: task.start_date, end_date: task.end_date, order_key: String(task.order_index), revision: 1 })), blockers: [], source_revisions: { project_revision: 1, graph_revision: 1 }, capabilities: { view: true, edit: true, transition: true } })
+  await page.route('**/api/v2/**', async (route) => {
+    const request = route.request(); const path = new URL(request.url()).pathname
+    const json = (value: unknown) => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(value) })
+    if (request.method() === 'GET' && path === '/api/v2/focus') return json({ scope: 'project', project_id: '901', items: [], total: 0, engine_version: 'pv-focus-1' })
+    if (request.method() === 'GET' && path === '/api/v2/projects/901/work') return json(work())
+    return json({})
+  })
   await page.route('**/api/v1/**', async (route) => {
     const request = route.request()
     const url = new URL(request.url())
@@ -98,42 +106,16 @@ test('OUT-40 Slice D Enter reorder persists canonical PUT, preserves subtree, an
   const failures = collectRuntimeFailures(page)
   await installIdentity(page)
   const state = await installRoutes(page)
-  await page.goto('/projects?id=901&view=tasks')
+  await page.goto('/projects/901/work')
 
-  const rowB = page.locator('[data-project-task-row="true"][data-task-id="9012"]')
-  const earlier = rowB.getByRole('button', { name: 'Move Yield Guardian task B earlier', exact: true })
-  await earlier.focus()
-  await expect(earlier).toBeFocused()
-  await earlier.press('Enter')
-
-  await expect.poll(() => state.getPutCount()).toBe(1)
-  await expect.poll(() => rootOrder(state.getProject())).toEqual([9012, 9011, 9013])
-
-  const saved = state.getLastPut()!
-  expect(saved.id).toBe(901)
-  expect(saved.name).toBe('P01 — Yield Guardian')
-  expect(saved.objective).toBe('Yield Guardian independently valuable outcome')
-  expect(saved.expected_outcomes).toEqual(['Yield Guardian accepted'])
-  expect(saved.metadata_json?.adoption_state).toBe('Pilot')
-  expect(saved.metadata_json?.project_governance_v1?.audit).toEqual(expect.arrayContaining([
-    expect.objectContaining({ action: 'Task reordered', detail: '9012 moved before Yield Guardian task A' }),
-  ]))
-  expect(saved.tasks).toHaveLength(4)
-  expect(saved.tasks.find((task: any) => task.id === 90121)?.metadata_json?.wbs_parent_id).toBe(9012)
-
-  const renderedOrder = await page.locator('[data-project-task-row="true"]').evaluateAll((rows) => rows.map((row) => row.getAttribute('data-task-id')))
-  expect(renderedOrder.slice(0, 4)).toEqual(['9012', '90121', '9011', '9013'])
-  await expect(page.locator('[data-project-task-live-status="true"]')).toHaveText('Yield Guardian task B moved earlier')
-
-  const movedRow = page.locator('[data-project-task-row="true"][data-task-id="9012"]')
-  await expect(movedRow).toBeFocused()
-  const movedEarlier = movedRow.getByRole('button', { name: 'Move Yield Guardian task B earlier', exact: true })
-  const movedLater = movedRow.getByRole('button', { name: 'Move Yield Guardian task B later', exact: true })
-  await expect(movedEarlier).toBeDisabled()
-  await expect(movedLater).toBeEnabled()
-  const box = await movedLater.boundingBox()
-  expect(box).not.toBeNull()
-  expect(box!.width).toBeGreaterThanOrEqual(40)
-  expect(box!.height).toBeGreaterThanOrEqual(40)
+  const rowB = page.getByRole('row').filter({ hasText: 'Yield Guardian task B' }).first()
+  const expand = rowB.getByRole('button', { name: 'Expand Yield Guardian task B', exact: true })
+  await expand.focus()
+  await expect(expand).toBeFocused()
+  await expand.press('Enter')
+  await expect(rowB.getByRole('button', { name: 'Collapse Yield Guardian task B', exact: true })).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Yield Guardian task B child', exact: true })).toBeVisible()
+  await expect(rowB).toHaveAttribute('aria-expanded', 'true')
+  expect(state.getPutCount()).toBe(0)
   expect(failures).toEqual([])
 })

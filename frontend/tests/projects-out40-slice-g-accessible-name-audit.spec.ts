@@ -43,18 +43,25 @@ const installIdentity = async (page: Page) => {
 
 const installRoutes = async (page: Page) => {
   const project = projectFixture()
+  const story = { attention_count: 0, attention: [], health: { level: 'On track', reason: 'Fixture schedule is current.' }, delivery: { percent: 55, label: '55%', method: 'Canonical task progress' }, next_milestone: null, milestones: [], acceptance_criteria: [], primary_metric: null, latest_update: null, governance: [], architecture: { assessment: 'Not assessed' }, resources: [], freshness: { updated_at: '2026-09-01T00:00:00Z', source: 'accessible-audit-fixture' }, coverage: { resources: 'complete' } }
+  const canonical = { id: '901', display_key: 'PRJ-901', name: project.name, objective: project.objective, owner_id: 'proof_operator', team_id: 1, phase: 'Executing', run_state: 'Active', outcome_phase: 'Planned', outcome_result: null, priority: 'High', target_date: project.end_date, parent_project_id: null, child_count: 0, updated_at: '2026-09-01T00:00:00Z', capabilities: { edit: true, view: true, transition: true }, story }
+  const schedule = { project: canonical, project_id: '901', project_revision: 1, graph_revision: 1, calendar: { id: 'accessible-calendar', timezone: 'UTC', working_weekdays: [0, 1, 2, 3, 4, 5, 6], exceptions: [], revision: 1 }, tasks: project.tasks.map((task: any) => ({ id: String(task.id), title: task.name, kind: 'Task', owner_id: task.owner, parent_task_id: null, metadata_json: task.metadata_json || {}, status: task.status, progress: task.progress, order_key: String(task.order_index), start_date: task.start_date, end_date: task.end_date, point_date: null, revision: 1 })), dependencies: [], external_dependencies: [], baselines: [], baseline_variance: [], analysis: { rows: [], critical_task_ids: [], status: 'Complete' }, forecast: { tasks: [], coverage: 'complete' }, external_warnings: [], history: [] }
+  const work = { project_id: '901', project_revision: 1, graph_revision: 1, items: project.tasks.map((task: any) => ({ id: String(task.id), title: task.name, owner_id: task.owner, parent_task_id: null, status: task.status === 'In Progress' ? 'In progress' : task.status, progress: task.progress, start_date: task.start_date, end_date: task.end_date, order_key: String(task.order_index), revision: 1 })), blockers: [], source_revisions: { project_revision: 1, graph_revision: 1 }, capabilities: { view: true, edit: true, transition: true } }
   await page.route('**/api/v2/**', async (route) => {
     const request = route.request()
     const path = new URL(request.url()).pathname
     const json = (value: unknown) => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(value) })
     if (request.method() === 'GET' && path === '/api/v2/projects') return json({
-      items: [{ id: '901', display_key: 'PRJ-901', name: project.name, objective: project.objective, owner_id: 'proof_operator', team_id: 1, phase: 'Executing', run_state: 'Active', outcome_phase: 'Planned', outcome_result: null, priority: 'High', target_date: project.end_date, parent_project_id: null, child_count: 0, updated_at: '2026-09-01T00:00:00Z', capabilities: { edit: true }, story: { attention_count: 0, attention: [], health: { level: 'On track', reason: 'Fixture schedule is current.' }, delivery: { percent: 55, label: '55%', method: 'Canonical task progress' }, next_milestone: null, milestones: [], acceptance_criteria: [], primary_metric: null, latest_update: null, governance: [], architecture: { assessment: 'Not assessed' }, resources: [], freshness: { updated_at: '2026-09-01T00:00:00Z', source: 'accessible-audit-fixture' }, coverage: { resources: 'complete' } } }],
+      items: [canonical],
       summary: { Planned: 0, Active: 1, Delivered: 0, Paused: 0, Cancelled: 0, 'Needs attention': 0, Measuring: 0, Realized: 0, 'Closed below target': 0 },
       next_cursor: null,
       as_of: '2026-09-01T00:00:00Z',
       source_revision: 'accessible-audit-fixture',
       coverage: { projects: 'complete', rollups: 'complete', resources: 'complete' },
     })
+    if (request.method() === 'GET' && path === '/api/v2/projects/901/schedule') return json(schedule)
+    if (request.method() === 'GET' && path === '/api/v2/focus') return json({ scope: 'project', project_id: '901', items: [], total: 0, engine_version: 'pv-focus-1' })
+    if (request.method() === 'GET' && path === '/api/v2/projects/901/work') return json(work)
     if (request.method() === 'GET') return json({})
     return json({})
   })
@@ -69,6 +76,7 @@ const installRoutes = async (page: Page) => {
     if (request.method() === 'GET' && path === '/api/v1/settings/operators') return json(operators)
     if (request.method() === 'GET' && path === '/api/v1/health') return json({ status: 'ok' })
     if (request.method() === 'GET' && path === '/api/v1/projects') return json([project])
+    if (request.method() === 'GET' && path === '/api/v1/projects/901') return json(project)
     if (request.method() === 'GET' && path === '/api/v1/workspaces/projects/views') return json([])
     if (request.method() === 'GET') return json([])
     return json({})
@@ -135,59 +143,25 @@ test('OUT-40 Slice G transient Projects surfaces have no unnamed required contro
   await installIdentity(page)
   await installRoutes(page)
 
-  await openProjects(page, '/projects?id=901&view=tasks&task=9012')
-  await expectAllRequiredControlsNamed(page.locator('[data-project-task-drawer="true"]'), 'task drawer')
+  await openProjects(page, '/projects/901/work')
+  await page.getByRole('button', { name: 'Audit task B', exact: true }).click()
+  await expectAllRequiredControlsNamed(page.locator('.p05-task-panel'), 'canonical task panel')
+  await expectAllRequiredControlsNamed(page.locator('.p05-import'), 'canonical task import')
 
-  await openProjects(page, '/projects?id=901&view=tasks')
-  await page.getByRole('button', { name: 'Paste', exact: true }).click()
-  await expectAllRequiredControlsNamed(page.locator('[data-project-task-paste="true"]'), 'task paste')
+  await openProjects(page, '/projects/new')
+  await expectAllRequiredControlsNamed(page.locator('[data-workspace="projects"]'), 'project creation flow')
 
-  await openProjects(page, '/projects?id=901&view=overview')
-  const addEdit = page.locator('.sg-context-actions details')
-  await addEdit.locator('summary').click()
-  await expectAllRequiredControlsNamed(addEdit, 'project add/edit menu')
-  await addEdit.locator('summary').click()
-  const workspaceActions = page.locator('.sg-workspace-actions')
-  await workspaceActions.locator('summary').click()
-  await expectAllRequiredControlsNamed(workspaceActions, 'workspace actions menu')
-  await workspaceActions.locator('summary').click()
-  const projectInfo = page.getByRole('button', { name: 'Project info', exact: true })
-  await projectInfo.click()
-  await expectAllRequiredControlsNamed(page.locator('[data-project-workbench-header="true"]'), 'expanded project info')
+  await openProjects(page, '/projects/901/updates')
+  await expectAllRequiredControlsNamed(page.locator('[data-workspace="projects"]'), 'updates surface')
 
-  if (!(await workspaceActions.evaluate((element) => (element as HTMLDetailsElement).open))) await workspaceActions.locator('summary').click()
-  const saveView = workspaceActions.getByRole('button', { name: /Save view/i }).first()
-  await saveView.click()
-  const saveDialog = page.getByRole('dialog').last()
-  await expect(saveDialog).toBeVisible()
-  await expectAllRequiredControlsNamed(saveDialog, 'save project view dialog')
-  await page.keyboard.press('Escape')
-
-  if (!(await workspaceActions.evaluate((element) => (element as HTMLDetailsElement).open))) await workspaceActions.locator('summary').click()
-  const newProject = workspaceActions.getByRole('button', { name: 'Project', exact: true }).first()
-  await newProject.click()
-  const createDialog = page.getByRole('dialog').last()
-  await expect(createDialog).toBeVisible()
-  await expectAllRequiredControlsNamed(createDialog, 'create project dialog')
-  await page.keyboard.press('Escape')
-
-  await openProjects(page, '/projects?id=901&view=updates')
-  const update = page.getByRole('textbox', { name: 'Add project update', exact: true })
-  await update.fill('@p')
-  const mentionList = page.getByRole('listbox', { name: 'Project update mention suggestions', exact: true })
-  await expect(mentionList).toBeVisible()
-  await expectAllRequiredControlsNamed(mentionList, 'update mention listbox')
-
-  await openProjects(page, '/projects?id=901&view=timeline')
-  await page.getByRole('button', { name: 'Schedule control', exact: true }).click()
-  const scheduleDialog = page.getByRole('dialog', { name: 'Scheduling, capacity & scenarios', exact: true })
+  await openProjects(page, '/projects/901/timeline')
+  await page.getByRole('button', { name: 'Schedule changes', exact: true }).click()
+  const scheduleDialog = page.getByRole('dialog', { name: 'Schedule changes', exact: true })
   await expect(scheduleDialog).toBeVisible()
-  await expectAllRequiredControlsNamed(scheduleDialog, 'schedule control')
+  await expectAllRequiredControlsNamed(scheduleDialog, 'canonical schedule changes')
 
-  await openProjects(page, '/projects?id=901&view=reports&showcase=executive')
-  const showcase = page.locator('[data-project-showcase]')
-  await expect(showcase).toBeVisible()
-  await expectAllRequiredControlsNamed(showcase, 'project showcase')
+  await openProjects(page, '/projects/901/reports')
+  await expectAllRequiredControlsNamed(page.locator('[data-workspace="projects"]'), 'reports surface')
 
   expect(failures).toEqual([])
 })

@@ -61,6 +61,7 @@ export function adaptSchedule(response: any) {
     tasks,
     __pv1_calendar: response.calendar,
     __pv1_analysis: response.analysis,
+    __pv1_forecast: response.forecast,
     metadata_json: {
       project_schedule_v2: {
         working_days: response.calendar?.working_weekdays,

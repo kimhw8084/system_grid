@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { AlertTriangle, ArrowRight, CalendarDays, CheckCircle2, ChevronDown, CircleDot, Clock3, Filter, LayoutList, Milestone, Plus, RefreshCcw, Search, ShieldCheck, Sparkles, Target, Users } from 'lucide-react'
-import { useLocation, useNavigate, useSearchParams } from 'react-router-dom'
+import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 import {
   createPV1Draft,
   discardPV1Draft,
@@ -55,9 +55,9 @@ function StoryState({ title, description, action }: { title: string; description
 }
 
 function ProjectPrimaryNavigation({ project }: { project: ProjectStoryItem }) {
-  return <nav className="p04-project-nav" aria-label="Project primary navigation">{[
+  return <nav className="p04-project-nav" data-project-primary-nav="true" aria-label="Project primary navigation">{[
     ['home', 'Home'], ['work?layout=list', 'Work'], ['plan?section=brief', 'Plan'], ['timeline', 'Timeline'], ['updates?section=updates', 'Updates'], ['outcomes?section=summary', 'Outcomes'],
-  ].map(([key, label]) => <a key={key} href={`/projects/${encodeURIComponent(project.id)}/${key}`} aria-current={key.startsWith('home') ? 'page' : undefined}>{label}</a>)}</nav>
+  ].map(([key, label]) => <Link key={key} to={`/projects/${encodeURIComponent(project.id)}/${key}`} aria-current={key.startsWith('home') ? 'page' : undefined}>{label}</Link>)}</nav>
 }
 
 const apiFailureDescription = (error: unknown, fallback: string) => {
@@ -72,12 +72,12 @@ function StoryShell({ children, active, project, projects = [], teams = [], team
   return <div data-workspace="projects" data-pv1-projects-route="true" data-p04-projects-story="true" className="p04-page">
     <div className="p04-shell">
       <header className="p04-global-header">
-        <div className="p04-brand"><span>Projects</span><nav aria-label="Projects global navigation"><a href="/projects" aria-current={active === 'portfolio' ? 'page' : undefined}>Portfolio</a><a href="/projects/my-day">My day</a></nav></div>
+        <div className="p04-brand"><span>Projects</span><nav aria-label="Projects global navigation"><Link to="/projects" aria-current={active === 'portfolio' ? 'page' : undefined}>Portfolio</Link><Link to="/projects/my-day">My day</Link></nav></div>
         <div className="p04-global-actions">
           {teams.length && onTeamChange ? <label className="p04-team-selector"><span>Team</span><select value={teamId} onChange={(event) => onTeamChange(event.target.value)}><option value="">All allowed teams</option>{teams.filter((team) => !team.is_archived).map((team) => <option key={team.id} value={String(team.id)}>{team.name}</option>)}</select></label> : null}
           {project ? <label className="p04-project-selector"><span>Project</span><select value={project.id} onChange={(event) => navigate(`/projects/${encodeURIComponent(event.target.value)}/home`)}>{selectorProjects.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</select></label> : null}
           {onRefresh ? <button className="p04-icon-button" type="button" onClick={onRefresh} disabled={refreshing} aria-label="Refresh Projects"><RefreshCcw size={16} className={refreshing ? 'p04-spin' : ''} /></button> : null}
-          <a className="p04-button p04-button-primary" href="/projects/new"><Plus size={16} /> New project</a>
+          <Link className="p04-button p04-button-primary" to="/projects/new"><Plus size={16} /> New project</Link>
         </div>
       </header>
       {project && showProjectNavigation ? <ProjectPrimaryNavigation project={project} /> : null}
@@ -202,8 +202,8 @@ function PortfolioAttention({ projects }: { projects: ProjectStoryItem[] }) {
 function ProjectHomeScreen({ projectId }: { projectId: string }) {
   const navigate = useNavigate()
   const queryClient = useQueryClient()
-  const summary = useQuery({ queryKey: ['pv1-project-summary', projectId], queryFn: () => readPV1ProjectSummary(projectId), staleTime: 30_000 })
-  const portfolio = useQuery({ queryKey: ['pv1-projects-portfolio', ''], queryFn: () => readPV1Portfolio(), staleTime: 30_000 })
+  const summary = useQuery({ queryKey: ['pv1-project-summary', projectId], queryFn: () => readPV1ProjectSummary(projectId), staleTime: 60_000 })
+  const portfolio = useQuery({ queryKey: ['pv1-projects-portfolio', ''], queryFn: () => readPV1Portfolio(), staleTime: 60_000 })
   const teams = useQuery({ queryKey: ['teams'], queryFn: readCreationTeams, staleTime: 60_000 })
   const operators = useQuery({ queryKey: ['operators'], queryFn: readCreationOperators, staleTime: 60_000 })
   const project = summary.data?.project

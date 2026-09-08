@@ -1,6 +1,6 @@
 import { test, expect, Page } from '@playwright/test'
 
-type RuntimeState = { getProject: () => any; getLastPut: () => any }
+type RuntimeState = { getProject: () => any; getLastPut: () => any; getCommands: () => any[] }
 
 const projectFixture = () => ({
   id: 901,
@@ -25,6 +25,16 @@ const projectFixture = () => ({
 const installRoutes = async (page: Page): Promise<RuntimeState> => {
   let project = structuredClone(projectFixture())
   let lastPut: any = null
+  const commands: any[] = []
+  const work = () => ({ project_id: '901', project_revision: 1, graph_revision: 1, items: project.tasks.map((task: any) => ({ id: String(task.id), title: task.name, owner_id: task.owner, parent_task_id: null, status: task.status === 'In Progress' ? 'In progress' : task.status === 'Completed' ? 'Done' : task.status, progress: task.progress, start_date: task.start_date, end_date: task.end_date, order_key: String(task.order_index), revision: 1 })), blockers: [], source_revisions: { project_revision: 1, graph_revision: 1 }, capabilities: { view: true, edit: true, transition: true } })
+  await page.route('**/api/v2/**', async (route) => {
+    const request = route.request(); const path = new URL(request.url()).pathname
+    const json = (value: unknown) => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(value) })
+    if (request.method() === 'GET' && path === '/api/v2/focus') return json({ scope: 'project', project_id: '901', items: [], total: 0, engine_version: 'pv-focus-1' })
+    if (request.method() === 'GET' && path === '/api/v2/projects/901/work') return json(work())
+    if (request.method() === 'POST' && path === '/api/v2/projects/901/commands') { const body = request.postDataJSON?.() || {}; commands.push(body); if (body.type === 'task.transition') { const task = project.tasks.find((item: any) => String(item.id) === String(body.payload?.task_id)); if (task) task.status = body.payload.to_status }; return json({ status: 'applied', event_id: `event-${commands.length}` }) }
+    return json({})
+  })
   await page.route('**/api/v1/**', async (route) => {
     const request = route.request()
     const url = new URL(request.url())
@@ -42,7 +52,7 @@ const installRoutes = async (page: Page): Promise<RuntimeState> => {
     if (request.method() === 'GET') return route.fulfill({ status: 200, contentType: 'application/json', body: '[]' })
     return route.fulfill({ status: 200, contentType: 'application/json', body: '{}' })
   })
-  return { getProject: () => project, getLastPut: () => lastPut }
+  return { getProject: () => project, getLastPut: () => lastPut, getCommands: () => commands }
 }
 
 const installIdentity = async (page: Page) => {
@@ -82,22 +92,19 @@ test('OUT-40 Slice C keyboard status move persists canonical PUT, announces succ
   const failures = collectRuntimeFailures(page)
   await installIdentity(page)
   const state = await installRoutes(page)
-  await page.goto('/projects?id=901&view=board')
+  await page.goto('/projects/901/work?layout=board')
 
-  const sourceCard = page.locator('[data-project-board-card="true"][data-task-id="9012"]')
-  const move = sourceCard.getByRole('button', { name: 'Move Yield Guardian task B to Blocked', exact: true })
+  const sourceCard = page.locator('.p05-card').filter({ hasText: 'Yield Guardian task B' }).first()
+  const move = sourceCard.getByRole('combobox', { name: 'Move Yield Guardian task B to', exact: true })
   await move.focus()
   await expect(move).toBeFocused()
-  await move.press('Enter')
+  await move.selectOption({ label: 'Blocked' })
 
-  await expect.poll(() => state.getLastPut()?.tasks?.find((task: any) => task.id === 9012)?.status).toBe('Blocked')
+  await expect.poll(() => state.getCommands()[0]?.payload?.to_status).toBe('Blocked')
   expect(state.getProject().tasks.find((task: any) => task.id === 9012).status).toBe('Blocked')
 
-  const blockedColumn = page.locator('[data-project-board-column="Blocked"]')
-  const movedCard = blockedColumn.locator('[data-project-board-card="true"][data-task-id="9012"]')
-  await expect(movedCard).toBeVisible()
-  await expect(page.locator('[data-project-board-live-status="true"]')).toHaveText('Yield Guardian task B moved to Blocked')
-  await expect(movedCard).toBeFocused()
-  await expect(movedCard.getByRole('button', { name: 'Move Yield Guardian task B to Review', exact: true })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Blocked', exact: true })).toBeVisible()
+  await expect(page.locator('.p05-card').filter({ hasText: 'Yield Guardian task B' }).first()).toBeVisible()
+  await expect(page.locator('[data-workspace="projects"]')).toBeVisible()
   expect(failures).toEqual([])
 })

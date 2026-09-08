@@ -56,6 +56,20 @@ const p10: Project = {
 const projects = [p01, p02, p10]
 
 const installRoutes = async (page: Page) => {
+  const story = { health: { level: 'On track', reason: 'Readability fixture' }, delivery: { percent: 55, label: '55%', method: 'Canonical task progress' }, next_milestone: null, milestones: [], attention: [], attention_count: 0, acceptance_criteria: [], primary_metric: null, latest_update: null, governance: [], architecture: { assessment: 'Not assessed' }, resources: [], freshness: { updated_at: '2026-09-01T00:00:00Z', source: 'readability-fixture' }, coverage: { resources: 'complete' } }
+  const canonical = (project: Project) => ({ id: String(project.id), display_key: `PRJ-${project.id}`, tenant_id: 1, name: project.name, objective: project.objective, owner_id: project.owner, team_id: 1, phase: 'Executing', run_state: 'Active', priority: project.priority, target_date: project.end_date, architecture_assessment: 'Not assessed', outcome_phase: 'Planned', outcome_result: 'Unassessed', revision: 1, graph_revision: 1, capabilities: { view: true, edit: true, transition: true }, story })
+  const summary = (project: Project) => ({ project: canonical(project), story, capabilities: { view: true, edit: true, transition: true } })
+  const schedule = (project: Project) => ({ project: canonical(project), project_id: String(project.id), project_revision: 1, graph_revision: 1, calendar: { id: `readability-${project.id}`, timezone: 'UTC', working_weekdays: [0, 1, 2, 3, 4, 5, 6], exceptions: [], revision: 1 }, tasks: project.tasks.map((item: any) => ({ id: String(item.id), title: item.name, kind: 'Task', owner_id: item.owner, parent_task_id: null, metadata_json: item.metadata_json || {}, status: item.status === 'Completed' ? 'Done' : item.status === 'In Progress' ? 'In progress' : item.status, progress: item.progress, order_key: String(item.order_index), start_date: item.start_date, end_date: item.end_date, point_date: null, revision: 1 })), dependencies: project.tasks.flatMap((item: any) => (item.dependencies_json || []).map((dependency: any, index: number) => ({ id: `edge-${item.id}-${index}`, predecessor_id: String(dependency.id ?? dependency), successor_id: String(item.id), dependency_type: dependency.type || 'FS', lag_days: 0, active: true, revision: 1 }))), external_dependencies: [], baselines: [], baseline_variance: [], analysis: { rows: [], critical_task_ids: [], status: 'Complete' }, forecast: { tasks: [], coverage: 'complete' }, external_warnings: [], history: [] })
+  await page.route('**/api/v2/**', async (route) => {
+    const request = route.request(); const path = new URL(request.url()).pathname
+    const json = (value: unknown) => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(value) })
+    if (request.method() === 'GET' && path === '/api/v2/projects') return json({ items: projects.map(canonical), summary: { Executing: projects.length }, next_cursor: null, as_of: '2026-09-01T00:00:00Z', source_revision: 'readability-fixture', coverage: { projects: 'complete' } })
+    const summaryMatch = path.match(/^\/api\/v2\/projects\/(\d+)\/summary$/)
+    if (request.method() === 'GET' && summaryMatch) { const project = projects.find((item) => String(item.id) === summaryMatch[1]); if (project) return json(summary(project)) }
+    const match = path.match(/^\/api\/v2\/projects\/(\d+)\/schedule$/)
+    if (request.method() === 'GET' && match) { const project = projects.find((item) => String(item.id) === match[1]); if (project) return json(schedule(project)) }
+    return json({})
+  })
   await page.route('**/api/v1/**', async (route) => {
     const request = route.request()
     const url = new URL(request.url())
@@ -253,7 +267,7 @@ test('P10 large Gantt remains contained and readable at 1920x1080 @readability-a
 
 test('narrow Projects navigation remains reachable at 390x844 @readability-acceptance', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 })
-  await page.goto('/projects?id=80101&view=overview')
+  await page.goto('/projects/80101/home')
   const nav = page.locator('[data-project-primary-nav="true"]')
   await expect(nav).toBeVisible()
   await assertReadable(page)
