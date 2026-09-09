@@ -7,7 +7,7 @@ import { loadDesignPackage, REPOSITORY_ROOT } from './design-package.mjs'
 import { createGapMatrix, evaluateGate } from './gap-matrix.mjs'
 import { discoverRetainedChecks, executeRetainedChecks } from './retained-checks.mjs'
 import { validateEvidenceRecords } from './evidence-validator.mjs'
-import { artifactHashes, buildChecks, runCheck, runInternalCheck, HUMAN_LAYERS, PROOF_LAYER_IDS } from './runner.mjs'
+import { artifactHashes, buildChecks, runCheck, runChecksWithDependencies, runInternalCheck, HUMAN_LAYERS, PROOF_LAYER_IDS } from './runner.mjs'
 
 function timestampId() {
   return new Date().toISOString().replaceAll(/[-:.]/g, '').replace('Z', 'Z')
@@ -259,24 +259,35 @@ export async function runProductionGate({ repoRoot = REPOSITORY_ROOT, profile = 
   const checkAccounting = checks.registration_accounting || { unique_registered_checks: checks.length, execution_instances: checks.length, variant_instances: checks.length, duplicates_detected: [] }
   let retainedResults = []
   if (profile === 'release') {
+    const executionContext = {
+      run_id: `${path.resolve(destination)}:${Date.now()}`,
+      candidate_git_sha: candidate.source_commit,
+      candidate_tree_sha: candidate.source_tree,
+    }
     const python = path.join(repoRoot, 'backend', 'venv', 'bin', 'python')
     const beforeSpec = { id: 'database:before', layer: 'concurrency_security', cwd: repoRoot, file: python, args: [path.join(repoRoot, 'scripts/pv1/database-safety.py'), '--label', 'before', '--output', path.join(destination, 'database-before.json')] }
-    const beforeResult = await runCheck(beforeSpec, destination)
+    const beforeResult = await runCheck(beforeSpec, destination, executionContext)
     checkResults.set(beforeResult.check_id, beforeResult)
-    for (const spec of checks) {
-      if (spec.id.startsWith('retained:') && spec.id !== 'retained:task-1001-virtualization') continue
-      const result = await runCheck(spec, destination)
-      checkResults.set(result.check_id, result)
-    }
+    const scheduledChecks = checks.filter((spec) => !(spec.id.startsWith('retained:') && spec.id !== 'retained:task-1001-virtualization'))
+    const scheduled = await runChecksWithDependencies(scheduledChecks, destination, executionContext)
+    for (const result of scheduled.results) checkResults.set(result.check_id, result)
+    await writeJson(path.join(destination, 'dependency-graph.json'), {
+      schema: 'sysgrid.pv1.dependency-graph.v1',
+      run_id: executionContext.run_id,
+      candidate_git_sha: executionContext.candidate_git_sha,
+      candidate_tree_sha: executionContext.candidate_tree_sha,
+      dependency_graph: scheduled.dependency_graph,
+      scheduler: scheduled.scheduler,
+    })
     retainedResults = await executeRetainedChecks(design.gateContract, async (check) => {
       const id = check.command === 'git diff --check' ? 'retained:root-diff' : check.command.includes('visual-repair') ? 'retained:visual' : 'retained:out40'
       const spec = checks.find((item) => item.id === id)
-      const result = await runCheck(spec, destination)
+      const result = await runCheck(spec, destination, executionContext)
       checkResults.set(result.check_id, result)
       return { status: result.status, execution: result, artifact_files: result.artifact_files }
     })
     const afterSpec = { id: 'database:after', layer: 'concurrency_security', cwd: repoRoot, file: python, args: [path.join(repoRoot, 'scripts/pv1/database-safety.py'), '--label', 'after', '--output', path.join(destination, 'database-after.json')] }
-    const afterResult = await runCheck(afterSpec, destination)
+    const afterResult = await runCheck(afterSpec, destination, executionContext)
     checkResults.set(afterResult.check_id, afterResult)
     let before = null
     let after = null
