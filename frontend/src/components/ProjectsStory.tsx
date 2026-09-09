@@ -66,7 +66,7 @@ const apiFailureDescription = (error: unknown, fallback: string) => {
   return `${error.message || fallback}${requestId ? ` Request ID: ${requestId}.` : ''}`
 }
 
-function StoryShell({ children, active, project, projects = [], teams = [], teamId = '', onTeamChange, onRefresh, refreshing = false, showProjectNavigation = true }: { children: React.ReactNode; active: 'portfolio' | 'new' | 'home'; project?: ProjectStoryItem | null; projects?: ProjectStoryItem[]; teams?: any[]; teamId?: string; onTeamChange?: (value: string) => void; onRefresh?: () => void; refreshing?: boolean; showProjectNavigation?: boolean }) {
+function StoryShell({ children, active, project, projects = [], teams = [], teamId = '', onTeamChange, onRefresh, refreshing = false, showProjectNavigation = true, onProjectSelectorFocus }: { children: React.ReactNode; active: 'portfolio' | 'new' | 'home'; project?: ProjectStoryItem | null; projects?: ProjectStoryItem[]; teams?: any[]; teamId?: string; onTeamChange?: (value: string) => void; onRefresh?: () => void; refreshing?: boolean; showProjectNavigation?: boolean; onProjectSelectorFocus?: () => void }) {
   const navigate = useNavigate()
   const selectorProjects = project ? [project, ...projects.filter((item) => item.id !== project.id)] : projects
   return <div data-workspace="projects" data-pv1-projects-route="true" data-p04-projects-story="true" className="p04-page">
@@ -75,7 +75,7 @@ function StoryShell({ children, active, project, projects = [], teams = [], team
         <div className="p04-brand"><span>Projects</span><nav aria-label="Projects global navigation"><Link to="/projects" aria-current={active === 'portfolio' ? 'page' : undefined}>Portfolio</Link><Link to="/projects/my-day">My day</Link></nav></div>
         <div className="p04-global-actions">
           {teams.length && onTeamChange ? <label className="p04-team-selector"><span>Team</span><select value={teamId} onChange={(event) => onTeamChange(event.target.value)}><option value="">All allowed teams</option>{teams.filter((team) => !team.is_archived).map((team) => <option key={team.id} value={String(team.id)}>{team.name}</option>)}</select></label> : null}
-          {project ? <label className="p04-project-selector"><span>Project</span><select value={project.id} onChange={(event) => navigate(`/projects/${encodeURIComponent(event.target.value)}/home`)}>{selectorProjects.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</select></label> : null}
+          {project ? <label className="p04-project-selector"><span>Project</span><select value={project.id} onFocus={onProjectSelectorFocus} onPointerDown={onProjectSelectorFocus} onChange={(event) => navigate(`/projects/${encodeURIComponent(event.target.value)}/home`)}>{selectorProjects.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</select></label> : null}
           {onRefresh ? <button className="p04-icon-button" type="button" onClick={onRefresh} disabled={refreshing} aria-label="Refresh Projects"><RefreshCcw size={16} className={refreshing ? 'p04-spin' : ''} /></button> : null}
           <Link className="p04-button p04-button-primary" to="/projects/new"><Plus size={16} /> New project</Link>
         </div>
@@ -203,11 +203,18 @@ function ProjectHomeScreen({ projectId }: { projectId: string }) {
   const navigate = useNavigate()
   const queryClient = useQueryClient()
   const summary = useQuery({ queryKey: ['pv1-project-summary', projectId], queryFn: () => readPV1ProjectSummary(projectId), staleTime: 60_000 })
-  const portfolio = useQuery({ queryKey: ['pv1-projects-portfolio', ''], queryFn: () => readPV1Portfolio(), staleTime: 60_000 })
+  // The first Home viewport needs the current project's canonical summary;
+  // the complete Portfolio projection is only needed when the selector is
+  // opened.  Avoid competing with the summary request for a large graph and
+  // keep the selector's fetch on the existing authorized query path.
+  const portfolio = useQuery({ queryKey: ['pv1-projects-portfolio', ''], queryFn: () => readPV1Portfolio(), staleTime: 60_000, enabled: false })
   const teams = useQuery({ queryKey: ['teams'], queryFn: readCreationTeams, staleTime: 60_000 })
   const operators = useQuery({ queryKey: ['operators'], queryFn: readCreationOperators, staleTime: 60_000 })
   const project = summary.data?.project
   const story = summary.data?.story
+  const loadProjectsForSelector = () => {
+    if (!portfolio.data && !portfolio.isFetching) void portfolio.refetch()
+  }
   const readiness = useQuery({ queryKey: ['pv1-project-readiness', projectId, 'Proposed'], queryFn: () => readPV1Readiness(projectId, 'Proposed'), enabled: project?.phase === 'Draft' && !project.archived_at, staleTime: 15_000 })
   const lifecycle = useMutation({ mutationFn: ({ type, payload }: { type: string; payload?: Record<string, unknown> }) => runPV1LifecycleCommand(project!, type, payload), onSuccess: (saved) => { queryClient.setQueryData(['pv1-project-summary', projectId], (current: any) => current ? { ...current, project: saved, story: saved.story, capabilities: saved.capabilities } : current); queryClient.invalidateQueries({ queryKey: ['pv1-projects-portfolio'] }) } })
   if (summary.isLoading && !summary.data) return <StoryShell active="home"><StoryState title="Loading Project Home" description="Reading the canonical management story." /></StoryShell>
@@ -229,7 +236,7 @@ function ProjectHomeScreen({ projectId }: { projectId: string }) {
     const reason = window.prompt('Why is this project being cancelled? The record and history will be preserved.')?.trim()
     if (reason) command('project.cancel', { reason })
   }
-  return <StoryShell active="home" project={project} projects={portfolio.data?.items || []} teams={teams.data || []} onRefresh={() => summary.refetch()} refreshing={summary.isFetching} showProjectNavigation={false}>
+  return <StoryShell active="home" project={project} projects={portfolio.data?.items || []} teams={teams.data || []} onProjectSelectorFocus={loadProjectsForSelector} onRefresh={() => summary.refetch()} refreshing={summary.isFetching} showProjectNavigation={false}>
     <main className="p04-home" data-p04-project-home="true">
       {banner ? <div className={`p04-lifecycle-banner p04-lifecycle-${project.archived_at ? 'archived' : project.run_state.toLowerCase()}`}>{banner}</div> : null}
       <section className="p04-home-cover">
