@@ -4,9 +4,11 @@ import csv
 import hmac
 import io
 import json
+from collections import OrderedDict
 from dataclasses import replace
 from datetime import date, datetime, timedelta, timezone
 from decimal import Decimal
+from time import monotonic
 from typing import Any
 from uuid import UUID, uuid4
 
@@ -27,6 +29,35 @@ OUTCOME_RESULTS = {"Unassessed", "Realized", "Partial", "Not realized", "Inconcl
 PROJECT_ROLES = {"Owner", "Lead", "Contributor", "Stakeholder"}
 EDIT_ROLES = {"Owner", "Lead", "Tenant administrator"}
 READ_ROLES = PROJECT_ROLES | {"Tenant administrator"}
+
+# Schedule previews are pure projections of a revisioned graph.  Keep a small
+# per-worker cache for repeated identical previews (for example, a user
+# holding the preview pane open or two tabs refreshing the same projection).
+# Authorization and current revision checks still run before this cache is
+# consulted, and the revision tuple in the key makes any graph/calendar/task
+# change a cache miss.  This is a derived acceleration only; persisted task
+# and schedule records remain the sole authority.
+_SCHEDULE_PREVIEW_CACHE: OrderedDict[str, tuple[float, dict[str, Any], list[dict[str, Any]]]] = OrderedDict()
+_SCHEDULE_PREVIEW_CACHE_MAX_ENTRIES = 128
+_SCHEDULE_PREVIEW_CACHE_TTL_SECONDS = 5.0
+
+
+def _schedule_preview_cache_get(key: str) -> tuple[dict[str, Any], list[dict[str, Any]]] | None:
+    cached = _SCHEDULE_PREVIEW_CACHE.pop(key, None)
+    if cached is None:
+        return None
+    created_at, preview, warnings = cached
+    if monotonic() - created_at > _SCHEDULE_PREVIEW_CACHE_TTL_SECONDS:
+        return None
+    _SCHEDULE_PREVIEW_CACHE[key] = (created_at, preview, warnings)
+    return preview, warnings
+
+
+def _schedule_preview_cache_put(key: str, preview: dict[str, Any], warnings: list[dict[str, Any]]) -> None:
+    _SCHEDULE_PREVIEW_CACHE.pop(key, None)
+    _SCHEDULE_PREVIEW_CACHE[key] = (monotonic(), preview, warnings)
+    while len(_SCHEDULE_PREVIEW_CACHE) > _SCHEDULE_PREVIEW_CACHE_MAX_ENTRIES:
+        _SCHEDULE_PREVIEW_CACHE.popitem(last=False)
 
 
 class PV1DomainError(Exception):
@@ -486,24 +517,41 @@ async def preview_project_schedule(
     await require_project_role(session, tenant_id=tenant_id, project_id=project_id, actor_id=actor_id, request_role=request_role, write=True)
     if graph_revision != project.graph_revision or calendar_revision != project.calendar_revision:
         raise PV1DomainError("REVISION_CONFLICT", "The schedule changed before preview.", http_status=status.HTTP_409_CONFLICT, details={"current_revisions": {"graph_revision": project.graph_revision, "calendar_revision": project.calendar_revision}})
-    calendar_record, task_records, dependency_records, external_records, _ = await _schedule_records(session, tenant_id=tenant_id, project_id=project_id)
-    try:
-        project_calendar = _schedule_calendar_value(project, calendar_record)
-        constrained_tasks, external_warnings = _schedule_tasks_with_external_constraints(
-            [_schedule_task_value(item) for item in task_records], external_records, project_calendar
-        )
-        cancelled_task_ids = {item.id for item in task_records if item.status == "Cancelled"}
-        preview = schedule.preview_schedule(
-            constrained_tasks,
-            [_schedule_edge_value(item, cancelled_task_ids) for item in dependency_records],
-            project_calendar,
-            operation=operation,
-            selection_ids=selection_ids,
-            parameters=parameters,
-            graph_revision=graph_revision,
-        )
-    except schedule.ScheduleError as error:
-        raise _schedule_error(error) from error
+    cache_key = _hash_payload({
+        "tenant_id": tenant_id,
+        "project_id": project_id,
+        "actor_id": actor_id,
+        "request_role": request_role,
+        "project_revision": project.revision,
+        "graph_revision": graph_revision,
+        "calendar_revision": calendar_revision,
+        "operation": operation,
+        "selection_ids": sorted(selection_ids),
+        "parameters": parameters,
+    })
+    cached = _schedule_preview_cache_get(cache_key)
+    if cached is None:
+        calendar_record, task_records, dependency_records, external_records, _ = await _schedule_records(session, tenant_id=tenant_id, project_id=project_id)
+        try:
+            project_calendar = _schedule_calendar_value(project, calendar_record)
+            constrained_tasks, external_warnings = _schedule_tasks_with_external_constraints(
+                [_schedule_task_value(item) for item in task_records], external_records, project_calendar
+            )
+            cancelled_task_ids = {item.id for item in task_records if item.status == "Cancelled"}
+            preview = schedule.preview_schedule(
+                constrained_tasks,
+                [_schedule_edge_value(item, cancelled_task_ids) for item in dependency_records],
+                project_calendar,
+                operation=operation,
+                selection_ids=selection_ids,
+                parameters=parameters,
+                graph_revision=graph_revision,
+            )
+        except schedule.ScheduleError as error:
+            raise _schedule_error(error) from error
+        _schedule_preview_cache_put(cache_key, preview, external_warnings)
+    else:
+        preview, external_warnings = cached
     issued_at = int(_now().timestamp())
     token_payload = {
         "version": 1,

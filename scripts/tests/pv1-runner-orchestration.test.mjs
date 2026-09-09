@@ -38,6 +38,8 @@ test('production registry declares browser performance before both artifact cons
     assert.deepEqual(variants.depends_on, ['browser:performance'])
     assert.deepEqual(measurements.depends_on, ['browser:performance'])
     assert.deepEqual(browserPerformance.depends_on, ['frontend:build'])
+    assert.equal(browserPerformance.concurrency_group, 'qualification:heavy')
+    assert.equal(variants.concurrency_group, null)
     assert.deepEqual(validateCheckDependencies(checks).dependency_graph['browser:performance'], ['frontend:build'])
   } finally {
     await rm(outputDir, { recursive: true, force: true })

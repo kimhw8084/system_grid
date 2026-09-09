@@ -41,7 +41,11 @@ if is_sqlite_url(CONFIG_DATABASE_URL):
     @event.listens_for(config_engine.sync_engine, "connect")
     def set_config_pragma(dbapi_connection, connection_record):
         cursor = dbapi_connection.cursor()
-        cursor.execute("PRAGMA journal_mode=WAL")
+        # Do not change the persistent journal mode while resolving a tenant.
+        # GET/HEAD/OPTIONS paths use this engine for read-only configuration
+        # lookup, and PRAGMA journal_mode=WAL itself mutates the config file.
+        # Tenant provisioning/migration may choose WAL explicitly on its
+        # authorized mutation path; connection setup must remain read-only.
         cursor.execute("PRAGMA synchronous=NORMAL")
         cursor.execute("PRAGMA busy_timeout=5000")
         cursor.execute("PRAGMA foreign_keys=ON")

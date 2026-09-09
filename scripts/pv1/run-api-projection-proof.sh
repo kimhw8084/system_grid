@@ -33,16 +33,64 @@ runtime_env=(
   "SYSGRID_P12_RUNTIME_USER_ID=p12.performance"
   "DEFAULT_EMAIL_DOMAIN=sysgrid.test"
   "ENVIRONMENT=development"
+  "AUTO_MIGRATE_ON_STARTUP=false"
   "IDENTITY_MODE=development"
   "ALLOWED_HOSTS=127.0.0.1,localhost,test,testserver"
   "BACKEND_CORS_ORIGINS=$API_ORIGIN"
 )
 
 cleanup() {
+  local cleanup_status=$?
+  local immutability_status=0
   [[ -n "$BACKEND_PID" ]] && kill "$BACKEND_PID" >/dev/null 2>&1 || true
   cp "$TEMP_ROOT/backend.log" "$OUTPUT_DIR/backend.log" 2>/dev/null || true
+  if [[ -f "$TEMP_ROOT/database-before.json" ]]; then
+    if ! CONFIG_DATABASE_URL="sqlite+aiosqlite:///$CONFIG_DB" DATABASE_URL="sqlite+aiosqlite:///$TENANT_DB" \
+      "$BACKEND_DIR/venv/bin/python" "$ROOT_DIR/scripts/pv1/database-safety.py" \
+      --label api-projection-after --output "$TEMP_ROOT/database-after.json" >/dev/null 2>&1; then
+      immutability_status=1
+    fi
+    if [[ -f "$TEMP_ROOT/database-after.json" ]]; then
+      if ! "$BACKEND_DIR/venv/bin/python" - "$TEMP_ROOT/database-before.json" "$TEMP_ROOT/database-after.json" "$OUTPUT_DIR/database-immutability.json" <<'PY'
+import json
+import sys
+from pathlib import Path
+
+before = json.loads(Path(sys.argv[1]).read_text())
+after = json.loads(Path(sys.argv[2]).read_text())
+before_databases = before.get("databases", {})
+after_databases = after.get("databases", {})
+config_before = before_databases.get("configured_user_config_db_path")
+config_after = after_databases.get("configured_user_config_db_path")
+unchanged = config_before == config_after
+Path(sys.argv[3]).write_text(json.dumps({
+    "schema": "sysgrid.pv1.database-immutability.v1",
+    "verdict": "PASS" if unchanged else "FAIL",
+    "scope": "isolated_api_projection_fixture",
+    "unchanged_subjects": ["configured_user_config_db_path"],
+    "comparison_fields": ["path", "exists", "size", "mtime_ns", "sha256"],
+    "expected_fixture_writes": ["configured_user_system_db_path"],
+    "before": before,
+    "after": after,
+}, indent=2) + "\n")
+if not unchanged:
+    raise SystemExit(1)
+PY
+      then
+        immutability_status=1
+      fi
+    else
+      immutability_status=1
+    fi
+  else
+    immutability_status=1
+  fi
   printf '%s\n' "config_db=$CONFIG_DB" "tenant_db=$TENANT_DB" > "$OUTPUT_DIR/isolated-database-paths.txt"
   rm -rf "$TEMP_ROOT"
+  if [[ "$cleanup_status" -ne 0 ]]; then
+    return "$cleanup_status"
+  fi
+  return "$immutability_status"
 }
 trap cleanup EXIT INT TERM
 
@@ -52,6 +100,9 @@ if lsof -tiTCP:"$BACKEND_PORT" -sTCP:LISTEN >/dev/null 2>&1; then
 fi
 
 (cd "$ROOT_DIR" && "${runtime_env[@]}" ./backend/venv/bin/python seed.py --tenant-name "P12 API Projection" --tenant-db "$TENANT_DB" --admin-user p12.performance --no-seed-data)
+CONFIG_DATABASE_URL="sqlite+aiosqlite:///$CONFIG_DB" DATABASE_URL="sqlite+aiosqlite:///$TENANT_DB" \
+  "$BACKEND_DIR/venv/bin/python" "$ROOT_DIR/scripts/pv1/database-safety.py" \
+  --label api-projection-before --output "$TEMP_ROOT/database-before.json" >/dev/null
 (cd "$BACKEND_DIR" && exec "${runtime_env[@]}" ./venv/bin/python -m uvicorn app.main:app --host 127.0.0.1 --port "$BACKEND_PORT") > "$TEMP_ROOT/backend.log" 2>&1 &
 BACKEND_PID=$!
 for _ in {1..90}; do
