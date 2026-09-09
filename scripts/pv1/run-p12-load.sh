@@ -54,7 +54,7 @@ cleanup() {
 trap cleanup EXIT INT TERM
 
 (cd "$ROOT_DIR" && "${runtime_env[@]}" ./backend/venv/bin/python seed.py --tenant-name "P12 Typical Load" --tenant-db "$TENANT_DB" --admin-user p12.performance --no-seed-data) > "$TEMP_ROOT/seed.log"
-(cd "$BACKEND_DIR" && "${runtime_env[@]}" ./venv/bin/python "$ROOT_DIR/scripts/pv1/performance_fixture.py" --database-url "sqlite+aiosqlite:///$TENANT_DB" --config-database-url "sqlite+aiosqlite:///$CONFIG_DB" --profile Typical --output "$OUTPUT_DIR/typical-fixture.json")
+(cd "$BACKEND_DIR" && "${runtime_env[@]}" ./venv/bin/python "$ROOT_DIR/scripts/pv1/performance_fixture.py" --database-url "sqlite+aiosqlite:///$TENANT_DB" --config-database-url "sqlite+aiosqlite:///$CONFIG_DB" --profile Typical --variant long_names --output "$OUTPUT_DIR/typical-fixture.json")
 (cd "$BACKEND_DIR" && exec "${runtime_env[@]}" ./venv/bin/python -m uvicorn app.main:app --host 127.0.0.1 --port "$BACKEND_PORT" --workers "$BACKEND_WORKERS") > "$TEMP_ROOT/backend.log" 2>&1 &
 BACKEND_PID=$!
 for _ in {1..120}; do

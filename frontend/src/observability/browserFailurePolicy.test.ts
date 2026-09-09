@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { isExpectedTelemetryRequest, isUnexpectedConsoleError } from './browserFailurePolicy'
+import { isExpectedTelemetryRequest, isExpectedUnavailableConsoleError, isUnexpectedConsoleError } from './browserFailurePolicy'
 
 describe('browser failure classification', () => {
   it('allows only the exact telemetry beacon', () => {
@@ -24,5 +24,13 @@ describe('browser failure classification', () => {
       { method: 'POST', url: 'http://test/api/v1/observability/other', resourceType: 'beacon' },
     ] as const
     for (const failure of failures) expect(isExpectedTelemetryRequest(failure)).toBe(false)
+  })
+
+  it('allows only the intentional unavailable-state project response console error', () => {
+    const response = { method: 'GET', url: 'http://test/api/v2/projects', status: 503, state: 'unavailable' }
+    expect(isExpectedUnavailableConsoleError('Failed to load resource: the server responded with a status of 503 (Service Unavailable)', response)).toBe(true)
+    expect(isExpectedUnavailableConsoleError('Failed to load resource: the server responded with a status of 503 (Service Unavailable)', { ...response, state: 'typical' })).toBe(false)
+    expect(isExpectedUnavailableConsoleError('Failed to load resource: the server responded with a status of 503 (Service Unavailable)', { ...response, url: 'http://test/assets/index.js' })).toBe(false)
+    expect(isExpectedUnavailableConsoleError('Failed to load resource: the server responded with a status of 404 (Not Found)', response)).toBe(false)
   })
 })

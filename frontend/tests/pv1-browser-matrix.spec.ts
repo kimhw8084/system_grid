@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test'
-import { isExpectedTelemetryRequest, isUnexpectedConsoleError } from '../src/observability/browserFailurePolicy'
+import { isExpectedTelemetryRequest, isExpectedUnavailableConsoleError, isUnexpectedConsoleError, type BrowserResponseDescriptor } from '../src/observability/browserFailurePolicy'
 
 const viewports = [
   [320, 568], [390, 844], [430, 932], [768, 1024], [1024, 768],
@@ -31,7 +31,7 @@ const json = (value: unknown, status = 200) => ({ status, contentType: 'applicat
 
 type MatrixState = 'typical' | 'empty' | 'unavailable'
 
-async function installStrictRoutes(page: Page, state: () => MatrixState, unexpected: () => string[]) {
+async function installStrictRoutes(page: Page, state: () => MatrixState, unexpected: () => string[], allowedResponses: () => BrowserResponseDescriptor[]) {
   await page.route('**/*', async (route) => {
     const request = route.request()
     const url = new URL(request.url())
@@ -54,7 +54,10 @@ async function installStrictRoutes(page: Page, state: () => MatrixState, unexpec
     if (path === '/api/v1/settings/operators') return route.fulfill(json([{ id: 'matrix_operator', username: 'matrix_operator', full_name: 'Matrix Operator', team_id: 1 }]))
     if (path === '/api/v2/projects') {
       const currentState = state()
-      if (currentState === 'unavailable') return route.fulfill(json({ code: 'SERVICE_UNAVAILABLE', message: 'Matrix outage' }, 503))
+      if (currentState === 'unavailable') {
+        allowedResponses().push({ method: request.method(), url: request.url(), status: 503, state: currentState })
+        return route.fulfill(json({ code: 'SERVICE_UNAVAILABLE', message: 'Matrix outage' }, 503))
+      }
       return route.fulfill(json({ items: currentState === 'empty' ? [] : [project], summary: {}, next_cursor: null, as_of: '2026-09-01T00:00:00Z', source_revision: 'matrix-fixture', coverage: { projects: 'complete' } }))
     }
     unexpected().push(`${request.method()} ${path}`)
@@ -63,16 +66,18 @@ async function installStrictRoutes(page: Page, state: () => MatrixState, unexpec
 }
 
 test('PV1 browser/state acceptance matrix covers required cells with strict request failure @pv1-browser-matrix', async ({ page }) => {
-  const consoleErrors: string[] = []
+  const rawConsoleErrors: string[] = []
+  const allowedConsoleFailures: Array<BrowserResponseDescriptor & { message: string; reason: string; allowlist_rule: string }> = []
   const pageErrors: string[] = []
   const requestFailures: string[] = []
   const unexpected: string[] = []
   const emptyUnexpected: string[] = []
   const unavailableUnexpected: string[] = []
+  const allowedResponses: BrowserResponseDescriptor[] = []
   let state: MatrixState = 'typical'
   let activeUnexpected = unexpected
   page.on('console', (message) => {
-    if (message.type() === 'error' && isUnexpectedConsoleError(message.text())) consoleErrors.push(message.text())
+    if (message.type() === 'error' && isUnexpectedConsoleError(message.text())) rawConsoleErrors.push(message.text())
   })
   page.on('pageerror', (error) => pageErrors.push(error.message))
   page.on('requestfailed', (request) => {
@@ -86,7 +91,7 @@ test('PV1 browser/state acceptance matrix covers required cells with strict requ
     const theme = new URL(window.location.href).searchParams.get('pv1_theme')
     if (theme) localStorage.setItem('sysgrid-theme', theme)
   })
-  await installStrictRoutes(page, () => state, () => activeUnexpected)
+  await installStrictRoutes(page, () => state, () => activeUnexpected, () => allowedResponses)
 
   const cells: Array<{ viewport: string; theme: string; width: number; height: number }> = []
   for (const [width, height] of viewports) {
@@ -109,7 +114,15 @@ test('PV1 browser/state acceptance matrix covers required cells with strict requ
   await page.goto('/projects', { waitUntil: 'domcontentloaded' })
   await expect(page.getByText('Portfolio unavailable', { exact: true })).toBeVisible()
 
-  console.log(JSON.stringify({ schema: 'sysgrid.pv1.browser-matrix.v1', cells, data_states: ['typical', 'empty', 'api-unavailable'], mocked: true, unexpected_requests: [...unexpected, ...emptyUnexpected, ...unavailableUnexpected], console_errors: consoleErrors, page_errors: pageErrors, request_failures: requestFailures }))
+  const remainingAllowedResponses = [...allowedResponses]
+  const consoleErrors = rawConsoleErrors.filter((message) => {
+    const index = remainingAllowedResponses.findIndex((response) => isExpectedUnavailableConsoleError(message, response))
+    if (index < 0) return true
+    const [response] = remainingAllowedResponses.splice(index, 1)
+    allowedConsoleFailures.push({ ...response, message, reason: 'Intentional unavailable-state API fixture', allowlist_rule: 'GET /api/v2/projects -> 503 while state=unavailable' })
+    return false
+  })
+  console.log(JSON.stringify({ schema: 'sysgrid.pv1.browser-matrix.v1', cells, data_states: ['typical', 'empty', 'api-unavailable'], mocked: true, unexpected_requests: [...unexpected, ...emptyUnexpected, ...unavailableUnexpected], console_errors: consoleErrors, allowed_console_failures: allowedConsoleFailures, page_errors: pageErrors, request_failures: requestFailures }))
   expect(unexpected, 'Unexpected mocked API requests must fail the matrix').toEqual([])
   expect(emptyUnexpected, 'Unexpected empty-state API requests must fail the matrix').toEqual([])
   expect(unavailableUnexpected, 'Unexpected unavailable-state API requests must fail the matrix').toEqual([])

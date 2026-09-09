@@ -69,7 +69,38 @@ async def run(args: argparse.Namespace) -> dict[str, object]:
     raw_events: list[dict[str, object]] = []
     selected_task_id = ""
     recovery_lock = asyncio.Lock()
+    write_condition = asyncio.Condition()
+    active_writes = 0
+    recovery_active = False
     known_revision = {"graph": 1, "task": 1}
+
+    async def enter_write() -> None:
+        nonlocal active_writes
+        async with write_condition:
+            while recovery_active:
+                await write_condition.wait()
+            active_writes += 1
+
+    async def leave_write() -> None:
+        nonlocal active_writes
+        async with write_condition:
+            active_writes -= 1
+            write_condition.notify_all()
+
+    async def enter_recovery() -> None:
+        nonlocal recovery_active
+        async with write_condition:
+            while recovery_active:
+                await write_condition.wait()
+            recovery_active = True
+            while active_writes:
+                await write_condition.wait()
+
+    async def leave_recovery() -> None:
+        nonlocal recovery_active
+        async with write_condition:
+            recovery_active = False
+            write_condition.notify_all()
 
     def record_event(kind: str, response: httpx.Response | None, *, actor: str, client_ms: float, error: str | None = None) -> None:
         nonlocal read_failures, write_failures
@@ -108,6 +139,7 @@ async def run(args: argparse.Namespace) -> dict[str, object]:
         expected = dict(revision_state)
         command_id = str(uuid4())
         began = time.perf_counter()
+        await enter_write()
         try:
             response = await client.post(
                 f"/api/v2/projects/{args.project_id}/commands",
@@ -115,42 +147,51 @@ async def run(args: argparse.Namespace) -> dict[str, object]:
                 json={"command_id": command_id, "type": "task.update_fields", "expected": expected, "payload": {"task_id": selected_task_id, "progress": progress}},
             )
             record_event("write", response, actor=actor, client_ms=(time.perf_counter() - began) * 1000)
+            await leave_write()
             if response.status_code == 409:
                 conflicts += 1
                 initial_conflicts += 1
                 recovery_succeeded = False
+                recovery_barrier_active = False
                 async with recovery_lock:
-                    for _retry_index in range(5):
-                        conflict_recovery_attempts += 1
-                        refreshed = await get(client, f"/api/v2/projects/{args.project_id}/work", actor)
-                        if refreshed is None or refreshed.status_code != 200:
-                            raw_events.append({"kind": "conflict_recovery_attempt", "actor": actor, "attempt": _retry_index + 1, "status": refreshed.status_code if refreshed is not None else None, "outcome": "refresh_failed"})
+                    try:
+                        for _retry_index in range(5):
+                            conflict_recovery_attempts += 1
+                            refreshed = await get(client, f"/api/v2/projects/{args.project_id}/work", actor)
+                            if refreshed is None or refreshed.status_code != 200:
+                                raw_events.append({"kind": "conflict_recovery_attempt", "actor": actor, "attempt": _retry_index + 1, "status": refreshed.status_code if refreshed is not None else None, "outcome": "refresh_failed"})
+                                break
+                            refreshed_payload = refreshed.json()
+                            refreshed_items = refreshed_payload.get("items") or []
+                            refreshed_task = refreshed_items[0] if refreshed_items else None
+                            if refreshed_task is None:
+                                break
+                            retry_id = str(uuid4())
+                            retry_started = time.perf_counter()
+                            retry = await client.post(
+                                f"/api/v2/projects/{args.project_id}/commands",
+                                headers={**base_headers, "X-User-Id": actor, "Idempotency-Key": retry_id},
+                                json={"command_id": retry_id, "type": "task.update_fields", "expected": {"project_revision": refreshed_payload["project_revision"], "graph_revision": refreshed_payload["graph_revision"], "task_revision": refreshed_task["revision"]}, "payload": {"task_id": str(refreshed_task["id"]), "progress": progress}},
+                            )
+                            record_event("write", retry, actor=actor, client_ms=(time.perf_counter() - retry_started) * 1000)
+                            raw_events.append({"kind": "conflict_recovery_attempt", "actor": actor, "attempt": _retry_index + 1, "status": retry.status_code, "outcome": "recovered" if retry.status_code == 200 else "conflict" if retry.status_code == 409 else "failed"})
+                            if retry.status_code == 200:
+                                conflict_recoveries += 1
+                                recovery_succeeded = True
+                                counters["successful_writes"] += 1
+                                retry_body = retry.json()
+                                revision_state.update({"project_revision": retry_body["revisions"]["project_revision"], "graph_revision": retry_body["revisions"]["graph_revision"], "task_revision": retry_body["revisions"]["task_revision"]})
+                                break
+                            if retry.status_code == 409:
+                                conflicts += 1
+                                if not recovery_barrier_active:
+                                    await enter_recovery()
+                                    recovery_barrier_active = True
+                                continue
                             break
-                        refreshed_payload = refreshed.json()
-                        refreshed_items = refreshed_payload.get("items") or []
-                        refreshed_task = refreshed_items[0] if refreshed_items else None
-                        if refreshed_task is None:
-                            break
-                        retry_id = str(uuid4())
-                        retry_started = time.perf_counter()
-                        retry = await client.post(
-                            f"/api/v2/projects/{args.project_id}/commands",
-                            headers={**base_headers, "X-User-Id": actor, "Idempotency-Key": retry_id},
-                            json={"command_id": retry_id, "type": "task.update_fields", "expected": {"project_revision": refreshed_payload["project_revision"], "graph_revision": refreshed_payload["graph_revision"], "task_revision": refreshed_task["revision"]}, "payload": {"task_id": str(refreshed_task["id"]), "progress": progress}},
-                        )
-                        record_event("write", retry, actor=actor, client_ms=(time.perf_counter() - retry_started) * 1000)
-                        raw_events.append({"kind": "conflict_recovery_attempt", "actor": actor, "attempt": _retry_index + 1, "status": retry.status_code, "outcome": "recovered" if retry.status_code == 200 else "conflict" if retry.status_code == 409 else "failed"})
-                        if retry.status_code == 200:
-                            conflict_recoveries += 1
-                            recovery_succeeded = True
-                            counters["successful_writes"] += 1
-                            retry_body = retry.json()
-                            revision_state.update({"project_revision": retry_body["revisions"]["project_revision"], "graph_revision": retry_body["revisions"]["graph_revision"], "task_revision": retry_body["revisions"]["task_revision"]})
-                            break
-                        if retry.status_code == 409:
-                            conflicts += 1
-                            continue
-                        break
+                    finally:
+                        if recovery_barrier_active:
+                            await leave_recovery()
                 if not recovery_succeeded:
                     conflict_recovery_failures += 1
                     raw_events.append({"kind": "conflict_recovery_exhausted", "actor": actor, "attempts": 5, "status": "UNRECOVERED"})
@@ -160,6 +201,7 @@ async def run(args: argparse.Namespace) -> dict[str, object]:
                 revision_state.update({"project_revision": body["revisions"]["project_revision"], "graph_revision": body["revisions"]["graph_revision"], "task_revision": body["revisions"]["task_revision"]})
             return response
         except Exception as exc:
+            await leave_write()
             record_event("write", None, actor=actor, client_ms=(time.perf_counter() - began) * 1000, error=exc.__class__.__name__)
             return None
 
