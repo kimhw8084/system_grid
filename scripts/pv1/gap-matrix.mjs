@@ -64,14 +64,17 @@ export function createGapMatrix({ requirements, expectedIds, evidenceResults = [
   return { statuses: GAP_STATUSES, total: entries.length, entries }
 }
 
-export function evaluateGate({ matrix, proofLayers = [], retainedChecks = [] }) {
+export function evaluateGate({ matrix, proofLayers = [], retainedChecks = [], dedicatedEvidence = [] }) {
   const counts = Object.fromEntries(GAP_STATUSES.map((status) => [status, matrix.entries.filter((entry) => entry.status === status).length]))
   const proofNotEvaluated = proofLayers.filter((layer) => layer.status !== 'PASS')
   const retainedNotEvaluated = retainedChecks.filter((check) => check.status !== 'PASS')
+  const dedicatedNotPassed = dedicatedEvidence.filter((evidence) => evidence?.result !== 'PASS' || evidence?.verdict !== true)
+  const dedicatedFailed = dedicatedNotPassed.filter((evidence) => evidence?.result !== 'BLOCKED')
+  const dedicatedBlocked = dedicatedNotPassed.filter((evidence) => evidence?.result === 'BLOCKED')
   let verdict = 'PASS'
-  if (counts.FAIL > 0) verdict = 'FAIL'
-  else if (counts.BLOCKED > 0) verdict = 'BLOCKED'
-  else if (counts.NOT_EVALUATED > 0 || proofNotEvaluated.length || retainedNotEvaluated.length) verdict = 'NOT_EVALUATED'
+  if (counts.FAIL > 0 || dedicatedFailed.length) verdict = 'FAIL'
+  else if (counts.BLOCKED > 0 || dedicatedBlocked.length) verdict = 'BLOCKED'
+  else if (counts.NOT_EVALUATED > 0 || proofNotEvaluated.length || retainedNotEvaluated.length || dedicatedNotPassed.length) verdict = 'NOT_EVALUATED'
   return {
     verdict,
     green: verdict === 'PASS',
@@ -85,8 +88,10 @@ export function evaluateGate({ matrix, proofLayers = [], retainedChecks = [] }) 
       progress: matrix.total ? counts.VERIFIED / matrix.total : 0,
       proof_layers_not_passed: proofNotEvaluated.length,
       retained_checks_not_passed: retainedNotEvaluated.length,
+      dedicated_evidence_not_passed: dedicatedNotPassed.length,
     },
     proof_layers_not_passed: proofNotEvaluated.map((layer) => layer.layer_id),
     retained_checks_not_passed: retainedNotEvaluated.map((check) => check.check_id),
+    dedicated_evidence_not_passed: dedicatedNotPassed.map((evidence) => evidence.check_id || 'unknown'),
   }
 }

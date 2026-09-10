@@ -11,7 +11,7 @@ import { loadDesignPackage } from '../pv1/design-package.mjs'
 import { createGapMatrix, evaluateGate } from '../pv1/gap-matrix.mjs'
 import { discoverRetainedChecks } from '../pv1/retained-checks.mjs'
 import { validateEvidenceRecord } from '../pv1/evidence-validator.mjs'
-import { releaseCandidateRejection, runProductionGate } from '../pv1/gate.mjs'
+import { machineGate, makeTask1001EvidenceRecord, normalizeTask1001Evidence, phaseDecision, releaseCandidateRejection, runProductionGate } from '../pv1/gate.mjs'
 import { checkAccounting, deduplicateCheckDefinitions } from '../pv1/runner.mjs'
 import { semanticProofRegistry } from '../pv1/semantic-review.mjs'
 import { validateVariantEvidence } from '../pv1/performance-variants.mjs'
@@ -33,6 +33,49 @@ function candidateFixture() {
 
 function digest(value) {
   return createHash('sha256').update(value).digest('hex')
+}
+
+function task1001Source(overrides = {}) {
+  return {
+    schema: 'sysgrid.pv1.task-1001-regression.v1',
+    check_id: 'retained:task-1001-virtualization',
+    candidate_git_sha: 'a'.repeat(40),
+    candidate_tree_sha: 'b'.repeat(40),
+    requirement_ids: ['PV-PERF-002', 'PV-GATE-006'],
+    fixture_profile: 'OUT-40 120-task WBS fixture',
+    logical_task_count: 120,
+    target_task_id: '1001',
+    target_addressable: true,
+    target_visible: true,
+    target_selectable: true,
+    realized_row_count: 18,
+    scrollport_height: 638,
+    dom_bound: 30,
+    verdict: true,
+    ...overrides,
+  }
+}
+
+async function task1001Fixture({ sourceOverrides = {}, checkOverrides = {} } = {}) {
+  const outputDir = await mkdtemp(path.join(os.tmpdir(), 'sysgrid-task-1001-'))
+  const candidate = candidateFixture()
+  const source = task1001Source({ candidate_git_sha: candidate.source_commit, candidate_tree_sha: candidate.source_tree, ...sourceOverrides })
+  const artifactPath = path.join(outputDir, 'task-1001-evidence.json')
+  const bytes = `${JSON.stringify(source)}\n`
+  await writeFile(artifactPath, bytes)
+  const relativePath = 'task-1001-evidence.json'
+  const check = {
+    check_id: 'retained:task-1001-virtualization',
+    status: 'PASS',
+    command: { cwd: repoRoot, file: process.execPath, args: ['scripts/run-pv1-task-1001-evidence.mjs'] },
+    candidate_git_sha: candidate.source_commit,
+    candidate_tree_sha: candidate.source_tree,
+    declared_artifact_files: [relativePath],
+    artifact_bindings: [{ path: relativePath, sha256: digest(bytes), run_id: 'task-1001-test-run', candidate_git_sha: candidate.source_commit, candidate_tree_sha: candidate.source_tree }],
+    artifact_files: [artifactPath],
+    ...checkOverrides,
+  }
+  return { outputDir, candidate, source, check, artifactPath, relativePath }
 }
 
 function evidenceFixture(design, candidate, overrides = {}) {
@@ -163,6 +206,143 @@ test('release gate refuses a tracked dirty candidate', async () => {
   const rejection = releaseCandidateRejection({ ...cleanCandidate, tracked_worktree_dirty: true, dirty_patch_sha256: 'c'.repeat(64), tracked_dirty_paths: ['fixture/tracked-change.ts'] })
   assert.equal(rejection.code, 'DIRTY_TRACKED_WORKTREE')
   assert.equal(rejection.tracked_worktree_dirty, true)
+})
+
+test('task-1001 dedicated evidence validates the actual producer schema and artifact bytes', async () => {
+  const fixture = await task1001Fixture()
+  try {
+    const record = await makeTask1001EvidenceRecord({
+      candidate: fixture.candidate,
+      checkResults: new Map([[fixture.check.check_id, fixture.check]]),
+      outputDir: fixture.outputDir,
+      fixtureId: 'fixture:test',
+      environmentId: 'environment:test',
+    })
+    assert.equal(record.result, 'PASS')
+    assert.equal(record.verdict, true)
+    assert.deepEqual(record.artifact, { path: fixture.relativePath, sha256: digest(`${JSON.stringify(fixture.source)}\n`), size: Buffer.byteLength(`${JSON.stringify(fixture.source)}\n`) })
+    assert.equal(record.logical_task_count, 120)
+    assert.equal(record.realized_row_count, 18)
+    assert.equal(record.dom_bound, 30)
+    assert.equal(record.target_addressable, true)
+    assert.equal(record.target_visible, true)
+    assert.equal(record.target_selectable, true)
+    assert.deepEqual(record.failure_reasons, [])
+  } finally {
+    await rm(fixture.outputDir, { recursive: true, force: true })
+  }
+})
+
+test('task-1001 dedicated evidence fails closed for missing, malformed, stale, and unbound artifacts', async () => {
+  const missing = await task1001Fixture()
+  try {
+    await rm(missing.artifactPath)
+    const record = await makeTask1001EvidenceRecord({ candidate: missing.candidate, checkResults: new Map([[missing.check.check_id, { ...missing.check, artifact_files: [] }]]), outputDir: missing.outputDir, fixtureId: 'fixture:test', environmentId: 'environment:test' })
+    assert.equal(record.result, 'FAIL')
+    assert.ok(record.failure_reasons.some((item) => item.code === 'ARTIFACT_MISSING'))
+  } finally {
+    await rm(missing.outputDir, { recursive: true, force: true })
+  }
+
+  const malformed = await task1001Fixture()
+  try {
+    await writeFile(malformed.artifactPath, '{not-json}\n')
+    const bytes = await readFile(malformed.artifactPath)
+    const check = { ...malformed.check, artifact_bindings: [{ ...malformed.check.artifact_bindings[0], sha256: digest(bytes) }] }
+    const record = await makeTask1001EvidenceRecord({ candidate: malformed.candidate, checkResults: new Map([[check.check_id, check]]), outputDir: malformed.outputDir, fixtureId: 'fixture:test', environmentId: 'environment:test' })
+    assert.equal(record.result, 'FAIL')
+    assert.ok(record.failure_reasons.some((item) => item.code === 'ARTIFACT_JSON_INVALID'))
+  } finally {
+    await rm(malformed.outputDir, { recursive: true, force: true })
+  }
+
+  for (const mismatch of ['candidate_git_sha', 'candidate_tree_sha']) {
+    const stale = await task1001Fixture({ sourceOverrides: { [mismatch]: 'c'.repeat(40) } })
+    try {
+      const record = await makeTask1001EvidenceRecord({ candidate: stale.candidate, checkResults: new Map([[stale.check.check_id, stale.check]]), outputDir: stale.outputDir, fixtureId: 'fixture:test', environmentId: 'environment:test' })
+      assert.equal(record.result, 'FAIL')
+      assert.ok(record.failure_reasons.some((item) => item.code === 'ARTIFACT_CANDIDATE_MISMATCH'))
+    } finally {
+      await rm(stale.outputDir, { recursive: true, force: true })
+    }
+  }
+
+  const unbound = await task1001Fixture({ checkOverrides: { artifact_bindings: [] } })
+  try {
+    const record = await makeTask1001EvidenceRecord({ candidate: unbound.candidate, checkResults: new Map([[unbound.check.check_id, unbound.check]]), outputDir: unbound.outputDir, fixtureId: 'fixture:test', environmentId: 'environment:test' })
+    assert.equal(record.result, 'FAIL')
+    assert.ok(record.failure_reasons.some((item) => item.code === 'ARTIFACT_BINDING_MISSING'))
+  } finally {
+    await rm(unbound.outputDir, { recursive: true, force: true })
+  }
+
+  const tamperedBinding = await task1001Fixture({ checkOverrides: { artifact_bindings: [{ path: 'task-1001-evidence.json', sha256: 'f'.repeat(64), run_id: 'task-1001-test-run', candidate_git_sha: candidateFixture().source_commit, candidate_tree_sha: candidateFixture().source_tree }] } })
+  try {
+    const record = await makeTask1001EvidenceRecord({ candidate: tamperedBinding.candidate, checkResults: new Map([[tamperedBinding.check.check_id, tamperedBinding.check]]), outputDir: tamperedBinding.outputDir, fixtureId: 'fixture:test', environmentId: 'environment:test' })
+    assert.equal(record.result, 'FAIL')
+    assert.ok(record.failure_reasons.some((item) => item.code === 'ARTIFACT_BINDING_MISMATCH'))
+  } finally {
+    await rm(tamperedBinding.outputDir, { recursive: true, force: true })
+  }
+
+  const escaped = await task1001Fixture({ checkOverrides: { artifact_files: [path.join('..', 'task-1001-evidence.json')] } })
+  try {
+    const record = await makeTask1001EvidenceRecord({ candidate: escaped.candidate, checkResults: new Map([[escaped.check.check_id, escaped.check]]), outputDir: escaped.outputDir, fixtureId: 'fixture:test', environmentId: 'environment:test' })
+    assert.equal(record.result, 'FAIL')
+    assert.ok(record.failure_reasons.some((item) => item.code === 'ARTIFACT_PATH_UNSAFE'))
+  } finally {
+    await rm(escaped.outputDir, { recursive: true, force: true })
+  }
+})
+
+test('task-1001 semantic fields are explicit and producer verdict is fail-closed', () => {
+  const candidate = candidateFixture()
+  const check = { check_id: 'retained:task-1001-virtualization', status: 'PASS', candidate_git_sha: candidate.source_commit, candidate_tree_sha: candidate.source_tree, declared_artifact_files: ['task-1001-evidence.json'] }
+  const artifact = { path: 'task-1001-evidence.json', sha256: 'd'.repeat(64), size: 10 }
+  for (const field of ['target_addressable', 'target_visible', 'target_selectable', 'verdict']) {
+    const source = task1001Source({ candidate_git_sha: candidate.source_commit, candidate_tree_sha: candidate.source_tree, [field]: false })
+    const record = normalizeTask1001Evidence({ candidate, check, source, artifact, artifactBinding: { path: artifact.path, sha256: artifact.sha256, candidate_git_sha: candidate.source_commit, candidate_tree_sha: candidate.source_tree }, outputDir: '/tmp/task-1001-test', fixtureId: 'fixture:test', environmentId: 'environment:test' })
+    assert.equal(record.result, 'FAIL', field)
+    assert.equal(record.verdict, false, field)
+  }
+  const missing = task1001Source({ candidate_git_sha: candidate.source_commit, candidate_tree_sha: candidate.source_tree })
+  delete missing.target_visible
+  const missingRecord = normalizeTask1001Evidence({ candidate, check, source: missing, artifact, artifactBinding: { path: artifact.path, sha256: artifact.sha256, candidate_git_sha: candidate.source_commit, candidate_tree_sha: candidate.source_tree }, outputDir: '/tmp/task-1001-test', fixtureId: 'fixture:test', environmentId: 'environment:test' })
+  assert.equal(missingRecord.result, 'FAIL')
+  assert.ok(missingRecord.failure_reasons.some((item) => item.code === 'TARGET_VISIBLE_NOT_TRUE'))
+
+  for (const status of ['FAIL', 'BLOCKED']) {
+    const producerFailure = normalizeTask1001Evidence({ candidate, check: { ...check, status }, source: task1001Source({ candidate_git_sha: candidate.source_commit, candidate_tree_sha: candidate.source_tree }), artifact, artifactBinding: { path: artifact.path, sha256: artifact.sha256, candidate_git_sha: candidate.source_commit, candidate_tree_sha: candidate.source_tree }, outputDir: '/tmp/task-1001-test', fixtureId: 'fixture:test', environmentId: 'environment:test' })
+    assert.equal(producerFailure.result, 'FAIL', status)
+    assert.ok(producerFailure.failure_reasons.some((item) => item.code === 'PRODUCER_CHECK_NOT_PASS'), status)
+  }
+  const contradictory = normalizeTask1001Evidence({ candidate, check, source: task1001Source({ candidate_git_sha: candidate.source_commit, candidate_tree_sha: candidate.source_tree, realized_row_count: 31 }), artifact, artifactBinding: { path: artifact.path, sha256: artifact.sha256, candidate_git_sha: candidate.source_commit, candidate_tree_sha: candidate.source_tree }, outputDir: '/tmp/task-1001-test', fixtureId: 'fixture:test', environmentId: 'environment:test' })
+  assert.equal(contradictory.result, 'FAIL')
+  assert.ok(contradictory.failure_reasons.some((item) => item.code === 'REALIZED_ROWS_EXCEED_BOUND'))
+})
+
+test('task-1001 dedicated evidence is verdict-decisive and serialized consistently', () => {
+  const inputs = {
+    matrix: { total: 1, entries: [{ requirement_id: 'PV-TEST-001', required_evidence_types: [], status: 'VERIFIED' }] },
+    proofLayers: [{ layer_id: 'machine', status: 'PASS' }],
+    retainedChecks: [{ check_id: 'retained:test', status: 'PASS' }],
+    deferredRequirementIds: new Set(),
+  }
+  const pass = { check_id: 'retained:task-1001-virtualization', result: 'PASS', verdict: true }
+  const fail = { check_id: 'retained:task-1001-virtualization', result: 'FAIL', verdict: false, failure_reasons: [{ code: 'ARTIFACT_MISSING', message: 'missing' }] }
+  const passingGate = evaluateGate({ ...inputs, dedicatedEvidence: [pass] })
+  const passingMachine = machineGate({ ...inputs, dedicatedEvidence: [pass] })
+  assert.equal(passingGate.verdict, 'PASS')
+  assert.equal(passingMachine.verdict, 'PASS')
+  assert.deepEqual(phaseDecision(passingMachine), { phase_verdict: 'PASS', exit_code: 0 })
+
+  const failingGate = evaluateGate({ ...inputs, dedicatedEvidence: [fail] })
+  const failingMachine = machineGate({ ...inputs, dedicatedEvidence: [fail] })
+  assert.equal(failingGate.verdict, 'FAIL')
+  assert.equal(failingMachine.verdict, 'FAIL')
+  assert.deepEqual(phaseDecision(failingMachine), { phase_verdict: 'FAIL', exit_code: 2 })
+  assert.deepEqual(failingGate.dedicated_evidence_not_passed, ['retained:task-1001-virtualization'])
+  assert.deepEqual(failingMachine.unresolved_dedicated_evidence, ['retained:task-1001-virtualization'])
 })
 
 test('manual implemented=true is ignored without evidence', async () => {
