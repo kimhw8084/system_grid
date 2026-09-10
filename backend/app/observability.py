@@ -63,7 +63,7 @@ def request_rate_limit_key(request, actor_id: str | None = None) -> str:
     return ":".join((str(tenant)[:80], str(actor)[:200], request.method.upper(), "/".join(path)))
 
 
-def safe_request_metric(*, request_id: str, method: str, path: str, status_code: int, duration_ms: float, workspace: str | None = None, command_id_present: bool = False, outcome: str | None = None, projection_lag_ms: float | None = None, schedule_calculation_version: str | None = None, schedule_calculation_duration_ms: float | None = None, upload_scan_state: str | None = None, job_delivery_status: str | None = None) -> dict[str, object]:
+def safe_request_metric(*, request_id: str, method: str, path: str, status_code: int, duration_ms: float, workspace: str | None = None, command_id_present: bool = False, outcome: str | None = None, projection_lag_ms: float | None = None, schedule_calculation_version: str | None = None, schedule_calculation_duration_ms: float | None = None, schedule_cache_status: str | None = None, upload_scan_state: str | None = None, job_delivery_status: str | None = None) -> dict[str, object]:
     """Return only fields permitted in operational telemetry."""
     metric = {
         "request_id": request_id,
@@ -81,6 +81,8 @@ def safe_request_metric(*, request_id: str, method: str, path: str, status_code:
         metric["schedule_calculation_version"] = str(schedule_calculation_version)[:80]
     if schedule_calculation_duration_ms is not None:
         metric["schedule_calculation_duration_ms"] = round(max(0.0, float(schedule_calculation_duration_ms)), 2)
+    if schedule_cache_status in {"hit", "miss", "coalesced"}:
+        metric["schedule_cache_status"] = schedule_cache_status
     if upload_scan_state:
         metric["upload_scan_state"] = str(upload_scan_state)[:40]
     if job_delivery_status:

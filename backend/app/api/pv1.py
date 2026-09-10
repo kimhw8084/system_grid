@@ -588,6 +588,8 @@ async def get_project_schedule(project_id: str, request: Request, db: AsyncSessi
 @router.post("/projects/{project_id}/schedule/preview")
 async def preview_project_schedule(project_id: str, request: Request, body: schemas.SchedulePreviewRequest, db: AsyncSession = Depends(get_db)):
     """Pure schedule calculation: this endpoint intentionally never commits."""
+    diagnostics: dict[str, Any] = {}
+    request.state.schedule_calculation_version = domain.schedule.CALCULATION_VERSION
     try:
         return await domain.preview_project_schedule(
             db,
@@ -600,10 +602,16 @@ async def preview_project_schedule(project_id: str, request: Request, body: sche
             parameters=body.parameters,
             graph_revision=body.graph_revision,
             calendar_revision=body.calendar_revision,
+            diagnostics=diagnostics,
         )
     except domain.PV1DomainError as error:
         await db.rollback()
         return _error(request, error)
+    finally:
+        if "schedule_calculation_duration_ms" in diagnostics:
+            request.state.schedule_calculation_duration_ms = diagnostics["schedule_calculation_duration_ms"]
+        if "cache_status" in diagnostics:
+            request.state.schedule_cache_status = diagnostics["cache_status"]
 
 
 @router.post("/projects/{project_id}/tasks/import/preview")

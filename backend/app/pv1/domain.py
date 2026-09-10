@@ -1,3 +1,4 @@
+import asyncio
 import hashlib
 import base64
 import csv
@@ -8,7 +9,7 @@ from collections import OrderedDict
 from dataclasses import replace
 from datetime import date, datetime, timedelta, timezone
 from decimal import Decimal
-from time import monotonic
+from time import perf_counter
 from typing import Any
 from uuid import UUID, uuid4
 
@@ -36,26 +37,36 @@ READ_ROLES = PROJECT_ROLES | {"Tenant administrator"}
 # Authorization and current revision checks still run before this cache is
 # consulted, and the revision tuple in the key makes any graph/calendar/task
 # change a cache miss.  This is a derived acceleration only; persisted task
-# and schedule records remain the sole authority.
-_SCHEDULE_PREVIEW_CACHE: OrderedDict[str, tuple[float, dict[str, Any], list[dict[str, Any]]]] = OrderedDict()
-_SCHEDULE_PREVIEW_CACHE_MAX_ENTRIES = 128
-_SCHEDULE_PREVIEW_CACHE_TTL_SECONDS = 5.0
+# and schedule records remain the sole authority.  There is no wall-clock TTL:
+# the signed request identity expires separately, while this bounded LRU is
+# invalidated by the revision-bound key.
+_SCHEDULE_PREVIEW_CACHE: OrderedDict[str, tuple[dict[str, Any], list[dict[str, Any]]]] = OrderedDict()
+_SCHEDULE_PREVIEW_CACHE_MAX_ENTRIES = 16
+
+
+class _SchedulePreviewCoordination:
+    def __init__(self) -> None:
+        self.lock = asyncio.Lock()
+        self.users = 0
+
+
+# Coordinate only active calculations.  The lock never owns a request task or
+# database session: every holder calculates inside its own request, and a
+# cancelled owner releases the lock for another caller to retry safely.
+_SCHEDULE_PREVIEW_COORDINATION: dict[str, _SchedulePreviewCoordination] = {}
 
 
 def _schedule_preview_cache_get(key: str) -> tuple[dict[str, Any], list[dict[str, Any]]] | None:
     cached = _SCHEDULE_PREVIEW_CACHE.pop(key, None)
     if cached is None:
         return None
-    created_at, preview, warnings = cached
-    if monotonic() - created_at > _SCHEDULE_PREVIEW_CACHE_TTL_SECONDS:
-        return None
-    _SCHEDULE_PREVIEW_CACHE[key] = (created_at, preview, warnings)
-    return preview, warnings
+    _SCHEDULE_PREVIEW_CACHE[key] = cached
+    return cached
 
 
 def _schedule_preview_cache_put(key: str, preview: dict[str, Any], warnings: list[dict[str, Any]]) -> None:
     _SCHEDULE_PREVIEW_CACHE.pop(key, None)
-    _SCHEDULE_PREVIEW_CACHE[key] = (monotonic(), preview, warnings)
+    _SCHEDULE_PREVIEW_CACHE[key] = (preview, warnings)
     while len(_SCHEDULE_PREVIEW_CACHE) > _SCHEDULE_PREVIEW_CACHE_MAX_ENTRIES:
         _SCHEDULE_PREVIEW_CACHE.popitem(last=False)
 
@@ -334,6 +345,100 @@ async def _schedule_records(
     return calendar_record, list(task_result.scalars()), list(dependency_result.scalars()), list(external_result.scalars()), list(baseline_result.scalars())
 
 
+async def _calculate_schedule_preview(
+    session: AsyncSession,
+    *,
+    tenant_id: int,
+    project: models.PV1Project,
+    project_id: str,
+    operation: str,
+    selection_ids: list[str],
+    parameters: dict[str, Any],
+    graph_revision: int,
+) -> tuple[dict[str, Any], list[dict[str, Any]]]:
+    calendar_record, task_records, dependency_records, external_records, _ = await _schedule_records(
+        session,
+        tenant_id=tenant_id,
+        project_id=project_id,
+    )
+    try:
+        project_calendar = _schedule_calendar_value(project, calendar_record)
+        constrained_tasks, external_warnings = _schedule_tasks_with_external_constraints(
+            [_schedule_task_value(item) for item in task_records], external_records, project_calendar
+        )
+        cancelled_task_ids = {item.id for item in task_records if item.status == "Cancelled"}
+        preview = schedule.preview_schedule(
+            constrained_tasks,
+            [_schedule_edge_value(item, cancelled_task_ids) for item in dependency_records],
+            project_calendar,
+            operation=operation,
+            selection_ids=selection_ids,
+            parameters=parameters,
+            graph_revision=graph_revision,
+        )
+    except schedule.ScheduleError as error:
+        raise _schedule_error(error) from error
+    return preview, external_warnings
+
+
+async def _schedule_preview_value(
+    cache_key: str,
+    session: AsyncSession,
+    *,
+    tenant_id: int,
+    project: models.PV1Project,
+    project_id: str,
+    operation: str,
+    selection_ids: list[str],
+    parameters: dict[str, Any],
+    graph_revision: int,
+    diagnostics: dict[str, Any] | None = None,
+) -> tuple[dict[str, Any], list[dict[str, Any]]]:
+    cached = _schedule_preview_cache_get(cache_key)
+    if cached is not None:
+        if diagnostics is not None:
+            diagnostics.update({"cache_status": "hit", "schedule_calculation_duration_ms": 0.0})
+        return cached
+
+    coordination = _SCHEDULE_PREVIEW_COORDINATION.get(cache_key)
+    if coordination is None:
+        coordination = _SchedulePreviewCoordination()
+        _SCHEDULE_PREVIEW_COORDINATION[cache_key] = coordination
+    coordination.users += 1
+    waited_for_coordination = coordination.lock.locked()
+    if diagnostics is not None:
+        diagnostics["cache_status"] = "coalesced" if waited_for_coordination else "miss"
+    try:
+        async with coordination.lock:
+            # A previous holder may have populated the revision-bound cache
+            # while this request was waiting.  Do not calculate again.
+            cached = _schedule_preview_cache_get(cache_key)
+            if cached is not None:
+                if diagnostics is not None:
+                    diagnostics["schedule_calculation_duration_ms"] = 0.0
+                return cached
+
+            started = perf_counter()
+            result = await _calculate_schedule_preview(
+                session,
+                tenant_id=tenant_id,
+                project=project,
+                project_id=project_id,
+                operation=operation,
+                selection_ids=selection_ids,
+                parameters=parameters,
+                graph_revision=graph_revision,
+            )
+            _schedule_preview_cache_put(cache_key, *result)
+            if diagnostics is not None:
+                diagnostics["schedule_calculation_duration_ms"] = (perf_counter() - started) * 1000
+            return result
+    finally:
+        coordination.users -= 1
+        if coordination.users == 0 and not coordination.lock.locked() and _SCHEDULE_PREVIEW_COORDINATION.get(cache_key) is coordination:
+            _SCHEDULE_PREVIEW_COORDINATION.pop(cache_key, None)
+
+
 def _dependency_dict(item: models.PV1Dependency, cancelled_task_ids: set[str] | None = None) -> dict[str, Any]:
     cancelled_task_ids = cancelled_task_ids or set()
     effective_active = item.active and item.predecessor_id not in cancelled_task_ids and item.successor_id not in cancelled_task_ids
@@ -510,6 +615,7 @@ async def preview_project_schedule(
     parameters: dict[str, Any],
     graph_revision: int,
     calendar_revision: int,
+    diagnostics: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     project = await get_pv1_project(session, tenant_id, project_id)
     if not project:
@@ -529,29 +635,18 @@ async def preview_project_schedule(
         "selection_ids": sorted(selection_ids),
         "parameters": parameters,
     })
-    cached = _schedule_preview_cache_get(cache_key)
-    if cached is None:
-        calendar_record, task_records, dependency_records, external_records, _ = await _schedule_records(session, tenant_id=tenant_id, project_id=project_id)
-        try:
-            project_calendar = _schedule_calendar_value(project, calendar_record)
-            constrained_tasks, external_warnings = _schedule_tasks_with_external_constraints(
-                [_schedule_task_value(item) for item in task_records], external_records, project_calendar
-            )
-            cancelled_task_ids = {item.id for item in task_records if item.status == "Cancelled"}
-            preview = schedule.preview_schedule(
-                constrained_tasks,
-                [_schedule_edge_value(item, cancelled_task_ids) for item in dependency_records],
-                project_calendar,
-                operation=operation,
-                selection_ids=selection_ids,
-                parameters=parameters,
-                graph_revision=graph_revision,
-            )
-        except schedule.ScheduleError as error:
-            raise _schedule_error(error) from error
-        _schedule_preview_cache_put(cache_key, preview, external_warnings)
-    else:
-        preview, external_warnings = cached
+    preview, external_warnings = await _schedule_preview_value(
+        cache_key,
+        session,
+        tenant_id=tenant_id,
+        project=project,
+        project_id=project_id,
+        operation=operation,
+        selection_ids=selection_ids,
+        parameters=parameters,
+        graph_revision=graph_revision,
+        diagnostics=diagnostics,
+    )
     issued_at = int(_now().timestamp())
     token_payload = {
         "version": 1,

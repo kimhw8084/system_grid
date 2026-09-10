@@ -14,6 +14,7 @@ from fastapi import FastAPI, Request, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from sqlalchemy import text
+from starlette.middleware.gzip import GZipMiddleware
 from starlette.middleware.trustedhost import TrustedHostMiddleware
 
 from .api import (
@@ -123,6 +124,7 @@ app.add_middleware(
     expose_headers=EXPOSED_DOWNLOAD_HEADERS + ["X-Request-ID"],
 )
 app.add_middleware(TrustedHostMiddleware, allowed_hosts=settings.allowed_hosts)
+app.add_middleware(GZipMiddleware, minimum_size=1024, compresslevel=1)
 
 
 @app.middleware("http")
@@ -149,6 +151,7 @@ async def request_context_and_export_headers(request: Request, call_next):
         projection_lag_ms=getattr(request.state, "projection_lag_ms", None),
         schedule_calculation_version=getattr(request.state, "schedule_calculation_version", None),
         schedule_calculation_duration_ms=getattr(request.state, "schedule_calculation_duration_ms", None),
+        schedule_cache_status=getattr(request.state, "schedule_cache_status", None),
         upload_scan_state=getattr(request.state, "upload_scan_state", None),
         job_delivery_status=getattr(request.state, "job_delivery_status", None),
     )
@@ -160,6 +163,8 @@ async def request_context_and_export_headers(request: Request, call_next):
         response.headers["X-Schedule-Calculation-Version"] = str(metric["schedule_calculation_version"])
     if "schedule_calculation_duration_ms" in metric:
         response.headers["X-Schedule-Calculation-Duration-Ms"] = str(metric["schedule_calculation_duration_ms"])
+    if "schedule_cache_status" in metric:
+        response.headers["X-Schedule-Cache-Status"] = str(metric["schedule_cache_status"])
     logger.info("request_complete", extra={"pv1_metric": metric})
     if response.status_code == 200:
         response_header_names = {key.lower() for key in response.headers.keys()}
