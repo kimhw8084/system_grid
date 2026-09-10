@@ -121,13 +121,21 @@ def _is_active_project(project: Any) -> bool:
     )
 
 
-def _task_is_critical_path(task_id: str, dependencies: Iterable[Any], tasks_by_id: dict[str, Any]) -> bool:
+def _critical_predecessors_by_successor(dependencies: Iterable[Any]) -> dict[str, tuple[str, ...]]:
+    """Index active dependency predecessors once for linear task evaluation."""
+    predecessors: dict[str, list[str]] = {}
     for dependency in dependencies:
         if not getattr(dependency, "active", True):
             continue
-        if str(getattr(dependency, "successor_id", "")) != task_id:
-            continue
-        predecessor = tasks_by_id.get(str(getattr(dependency, "predecessor_id", "")))
+        successor_id = str(getattr(dependency, "successor_id", ""))
+        predecessor_id = str(getattr(dependency, "predecessor_id", ""))
+        predecessors.setdefault(successor_id, []).append(predecessor_id)
+    return {successor_id: tuple(predecessor_ids) for successor_id, predecessor_ids in predecessors.items()}
+
+
+def _task_is_critical_path(task_id: str, predecessor_ids_by_successor: dict[str, tuple[str, ...]], tasks_by_id: dict[str, Any]) -> bool:
+    for predecessor_id in predecessor_ids_by_successor.get(task_id, ()):
+        predecessor = tasks_by_id.get(predecessor_id)
         if predecessor and getattr(predecessor, "status", None) not in {"Done", "Cancelled"}:
             return True
     return False
@@ -155,6 +163,10 @@ def build_focus(
     task_map = {str(getattr(task, "id")): task for task in task_list}
     deps = [dependency for dependency in dependencies if str(getattr(dependency, "project_id", "")) in project_map]
     blocker_list = [blocker for blocker in blockers if getattr(blocker, "state", "Open") == "Open"]
+    predecessor_ids_by_successor = _critical_predecessors_by_successor(deps)
+    blockers_by_task: dict[str, list[Any]] = {}
+    for blocker in blocker_list:
+        blockers_by_task.setdefault(str(getattr(blocker, "task_id", "")), []).append(blocker)
     pin_keys = {
         (str(getattr(pin, "entity_kind", "")), str(getattr(pin, "entity_id", "")))
         for pin in pins
@@ -178,8 +190,8 @@ def build_focus(
         if task.kind in {"Summary", "Milestone"} or task.status in {"Done", "Cancelled"} or task.owner_id != actor_id:
             continue
         due = _as_date(task.end_date or task.point_date)
-        critical_path = _task_is_critical_path(task_id, deps, task_map)
-        task_blockers = [item for item in blocker_list if str(item.task_id) == task_id]
+        critical_path = _task_is_critical_path(task_id, predecessor_ids_by_successor, task_map)
+        task_blockers = blockers_by_task.get(task_id, ())
         predecessor_blocked = critical_path and task.status not in {"Done", "Cancelled"}
         reasons: list[str] = []
         if task_blockers:

@@ -1,4 +1,5 @@
 from datetime import date
+from time import perf_counter
 from types import SimpleNamespace
 from uuid import uuid4
 
@@ -45,6 +46,38 @@ def test_focus_engine_bucket_tie_and_diversity_are_deterministic():
     assert first == second
     assert [item["bucket"] for item in first["items"]] == [3, 5, 6]
     assert first["items"][0]["due_context"] == "Due today"
+
+
+def test_focus_engine_indexes_large_dependency_graph_without_changing_critical_path_truth():
+    project = SimpleNamespace(id="large", name="Large", phase="Executing", run_state="Active", archived_at=None)
+    tasks = [
+        SimpleNamespace(
+            id=f"task-{index}", project_id="large", kind="Task", status="To Do", owner_id="mina",
+            priority="Medium", progress=0, mandatory=True, end_date=date(2026, 9, 7),
+            point_date=None, title=f"Task {index}", created_at=None, updated_at=None,
+        )
+        for index in range(10_000)
+    ]
+    dependencies = [
+        SimpleNamespace(
+            predecessor_id=f"task-{index}", successor_id=f"task-{index + offset}",
+            project_id="large", active=True,
+        )
+        for offset in (1, 2)
+        for index in range(10_000 - offset)
+    ]
+
+    started = perf_counter()
+    result = build_focus(actor_id="mina", projects=[project], tasks=tasks, dependencies=dependencies, today=date(2026, 9, 7), project_id="large")
+    elapsed = perf_counter() - started
+
+    assert result["total"] == 10_000
+    assert result["items"][0]["entity_id"] == "task-0"
+    assert "Unblock/waiting: predecessor is incomplete" in result["all_priorities"][1]["reason_tags"]
+    # The pre-fix implementation performed a full dependency scan for every
+    # task. Keep this generous enough for CI variance while catching a return
+    # to the O(tasks * dependencies) path.
+    assert elapsed < 5, f"large Focus projection regressed to an unbounded dependency scan: {elapsed:.3f}s"
 
 
 @pytest.mark.asyncio
